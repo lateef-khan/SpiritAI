@@ -1,75 +1,255 @@
-# The smallest document that gives you a real conversation in the browser.
-#
-# example.yaml is the annotated reference: it shows every feature, and it needs a knowledge base,
-# an orders API, and a case system before it does anything interesting. This one needs an OpenAI
-# key and nothing else. Two stages, one tool-free agent, and an extractor that watches for goodbye.
-#
-#   export OPENAI_API_KEY=sk-...
-#   cd demo/AgentCore.Demo && dotnet run --launch-profile demo
-#   open http://localhost:5199/chat
-#
-# No key is written here. ${secret:...} references are never used by this file: OPENAI_API_KEY is
-# read straight from the environment at startup, so this file is safe to commit.
 apiVersion: agentcore/v1
 name: spirit-chat
 
 fallbackReply: "Sorry, I could not finish that. Please try again."
 
-# The extractor reads the reply after every turn and writes the state slots below. It is a second,
-# cheaper model call per turn, and it is what moves the conversation between stages.
-state:
-  callerSaidGoodbye: { type: boolean, default: false, writer: extractor }
-
-extractor:
-  model: { ref: fill }
-  when: after_reply
-
-guards:
-  saidGoodbye:
-    { var: callerSaidGoodbye }
-
-# Drawing. The agent asks for a picture in words and gets back one line naming the buttons; a
-# second, private model call turns the request into a tree of cards, charts, tables and buttons and
-# sends it straight to the browser. The 27-component vocabulary never reaches the agent below, so
-# listing this costs it 239 bytes.
+# The DAB (Data API Builder) MCP server on SPIRITSRV-024, reached over Tailscale. It is read-only:
+# the five get_* tools are hand-written stored procedures that do the joins read_records cannot.
+# No credential is sent — DAB serves these under its anonymous role, bound to the tailnet address.
 #
-# The drawing call uses the first model declared in providers.llm, which is 'reply'.
+# Only the 'records' agent below holds these. The agent the person talks to reaches them by
+# delegating, so the nine tool schemas never sit in the front agent's prompt.
+mcp:
+  - id: dab
+    transport: http
+    url: http://100.98.168.6:5000/mcp
+    connectTimeoutSeconds: 30
+    callTimeoutSeconds: 60
+    retry: { attempts: 3, backoffMs: 500 }
+    # Each entry is aliased to its own bare name. Without 'as:' the served id is
+    # '<server>.<tool>' — 'dab.get_work_orders'. A dot is not in the character set
+    # OpenAI allows in a function name, and it also does not match the names the
+    # records agent's own instructions below use. Both faults disappear here.
+    allow:
+      - get_work_orders: { as: get_work_orders }
+      - get_model: { as: get_model }
+      - get_parts_by_sn: { as: get_parts_by_sn }
+      - get_model_sp: { as: get_model_sp }
+      - get_service_history_by_sn: { as: get_service_history_by_sn }
+      - describe_entities: { as: describe_entities }
+      - read_records: { as: read_records }
+      - aggregate_records: { as: aggregate_records }
+      - execute_entity: { as: execute_entity }
+
 tools:
+  # Drawing. The agent asks for a picture in words and gets back one line naming the buttons; a
+  # second, private model call turns the request into a tree of cards, charts, tables and buttons
+  # and sends it straight to the browser. The 27-component vocabulary never reaches the agent
+  # below, so listing this costs it 239 bytes.
+  #
+  # The drawing call uses the first model declared in providers.llm, which is 'reply'.
   - { id: draw, kind: builtin, uses: ui.draw }
+
+  # Agent-as-tool, not handoff. 'spirit' calls 'records', reads the answer, and keeps the
+  # conversation. 'records' is the only agent that holds the DAB tools.
+  - id: ask_records
+    kind: agent
+    agent: records
+    description: >-
+      Ask the Spirit records specialist one question about a serial number, a model number, parts,
+      work orders, service history, warranty, or any count or total from the service database.
+      It reads the database and answers in plain words.
+    parameters:
+      type: object
+      properties:
+        question:
+          type: string
+          description: >-
+            The full question in plain words. Include every serial number, model number, part
+            number, date range, and customer name the person gave. The specialist cannot see this
+            conversation, so anything you leave out is lost.
+      required: [ question ]
 
 agents:
   defaults:
     model: { ref: reply }
+    # The cached prefix. Every agent below gets this text on top of its own, joined by a blank
+    # line. It is the same on every turn, so OpenAI caches it and bills it cheaply. Never put
+    # anything that changes per turn in here.
     instructions: |
-      You are a helpful assistant. Answer plainly and briefly.
+      You are Spirit's agent. Spirit is a maker of commercial fitness equipment. You serve
+      Spirit staff and Spirit dealers with service, parts, and equipment questions.
+      Answer plainly and briefly.
       Do not invent facts. Say when you do not know something.
+      Never guess a serial number, model number, part number, price, or date.
   items:
-    - id: helper
+    # ---------------------------------------------------------------------------------------
+    # The agent the person talks to.
+    # ---------------------------------------------------------------------------------------
+    - id: spirit
       instructions: |
-        Answer whatever the person asks.
-        When the answer is numbers, a comparison, a list of things, or a choice for the person to
-        make, call draw and describe what you want shown. Put the data in the request: whoever
-        draws it cannot see this conversation. Then say one short sentence about it. Do not repeat
-        the numbers you just had drawn.
-      tools: [ draw ]
-    - id: closer
-      instructions: "If the person is leaving. Say goodbye in one short sentence."
-      tools: []
+        You are the agent the person talks to. Hold the conversation and decide when to
+        delegate.
+
+        WHEN TO CALL ask_records
+        Call ask_records for anything that must come out of the Spirit service database:
+          - serial numbers and what they belong to
+          - model numbers, model details, and which parts fit a model
+          - parts: part numbers, names, and which part goes with which unit
+          - work orders: open jobs, closed jobs, job status, and job history
+          - service history and repair history for one unit
+          - warranty questions that depend on a record
+          - counts, totals, and comparisons across any of the above
+        Pass the whole question, with every number the person gave. The specialist cannot see
+        this conversation.
+        Do not guess at any of these from memory. If ask_records cannot find it, say so.
+
+        WHEN NOT TO CALL ask_records
+        Do not call it for greetings, small talk, or general advice that needs no record.
+
+        DRAWING
+        When the answer is structured — numbers, a comparison, a list of things, a table of
+        parts, a history over time, or a choice for the person to make — call draw.
+        Call draw only after ask_records has answered. Never call both in the same step: the
+        drawer would run before the rows exist and would draw an empty table.
+        The drawer reads ONLY the text you send it. It cannot see this conversation, the
+        person's question, or what ask_records gave you. So copy the rows into the draw request
+        in full: every row, with its columns, exactly as ask_records wrote them.
+        A count of the data is not the data. If you write "93 part lines" in place of the 93
+        lines, the screen shows an empty table and the person sees nothing. Send the lines.
+        Never send a row that ask_records did not give you.
+        Then say one short sentence about what you had drawn. Do not repeat the rows in your
+        own reply — they are already on the screen.
+        You do not know what draw can make. Its components are not listed for you anywhere. So
+        never name, list, or promise one from memory, and never claim a drawing kind exists.
+        When the person asks what you can draw, call draw and ask it to draw its own component
+        list. Then say one short sentence pointing at what it drew.
+        If draw reports that something cannot be drawn, say that plainly. Never describe an
+        unsupported thing as if it were drawn.
+      tools:
+        - draw
+        - ask_records
+
+    # ---------------------------------------------------------------------------------------
+    # The records specialist. Holds the DAB tools. Never speaks to the person directly — its
+    # reply goes back to 'spirit' as a tool result.
+    # ---------------------------------------------------------------------------------------
+    - id: records
+      instructions: |
+        You are the Spirit records specialist. You read the Spirit service database and answer
+        one question at a time. Another agent asks you; the person never sees you. So answer in
+        plain words, keep every number exact, and never ask a follow-up question. If you cannot
+        answer, say what is missing in one sentence.
+
+        SERIAL NUMBERS AND MODEL NUMBERS
+        A serial number is a 16 digit number.
+        The model number is the first 6 digits of the serial number.
+        So if a person gave you a serial number, you already have the model number. Take the
+        first 6 digits and use them. Never ask for a model number when a serial number is in
+        the question.
+        If a number has fewer or more than 16 digits, it is not a serial number. Say that, and
+        say how many digits you counted.
+        Keep leading zeros. Treat every serial and model number as text, never as arithmetic.
+
+        WHICH TOOL TO USE
+          get_parts_by_sn ............ parts fitted to one serial number
+          get_service_history_by_sn .. repair and service history of one serial number
+          get_model .................. details of one model number, latest version
+          get_model_sp ............... the parts list of one model, latest version
+          get_work_orders ............ work orders, by order number, status, ISP, tech,
+                                       tracking number, dealer, or order type
+          execute_entity ............. the same procedures, but you pass the parameters the
+                                       get_* tools leave out. Use it for ANY date range on
+                                       work orders, and for an older model version.
+          describe_entities .......... use this FIRST when you do not know what table or column
+                                       holds the answer. It lists what exists.
+          read_records ............... a plain read when no get_* tool fits
+          aggregate_records .......... counts, sums, averages, and grouping
+        Prefer a get_* tool over read_records. The get_* tools do joins read_records cannot.
+
+        DATE RANGES ON WORK ORDERS
+        get_work_orders has no date parameters. For a date range, call execute_entity with
+        entity 'GetWorkOrders' and put the dates in parameters, like this:
+          { "entity": "GetWorkOrders",
+            "parameters": { "OrderDateFrom": "2026-07-01",
+                            "OrderDateTo": "2026-07-31", "Top": 100 } }
+        The date parameters are OrderDateFrom/To, AppointDateFrom/To, ShippeddateFrom/To and
+        ClosedDateFrom/To. Send only the ones the question asks for. Never add a date parameter
+        you do not need: a needless range drops rows that have no date in that column.
+        Use execute_entity the same way for an older model version: entity 'GetModel' or
+        'GetModelSp' with parameters ModelNo and Version.
+
+        WORK ORDER NUMBERS
+        An order number is 'ServiceId-OrderId', for example '845435-1'. A bare number with no
+        dash is not a whole order number. Do not guess the missing half. Try it as given, and
+        if nothing comes back, say the number looks incomplete and give the expected form.
+
+        HOW TO WORK
+        1. Read the question. Pull out every serial number, model number, part number, date, and
+           name.
+        2. If a serial number is present, derive the model number from its first 6 digits before
+           you call anything.
+        3. Call the tool that fits. If it returns nothing, try describe_entities to learn the
+           shape, then try again once with read_records or aggregate_records.
+        4. Answer with what the database returned. Report zero rows as zero rows.
+
+        RULES
+        Never invent a serial number, model number, part number, price, or date.
+        Never fill a gap with a typical or likely value.
+        If two records disagree, report both and say they disagree.
+        You have no drawing tool. Return the data as plain text or a simple list, and let the
+        agent that called you decide how to show it.
+
+        RETURNING ROWS
+        Return every row the database gave you. One row per line, columns separated by ' | ',
+        with a first line naming the columns. Do not summarize. Do not shorten. Do not drop a
+        column. Do not stop part way. The agent that called you cannot see the database, so a
+        row you leave out is a row nobody will ever see.
+        When you state how many rows there are, count the lines you are about to return. Never
+        estimate a count and never round one. If you cannot return every row, say so, say how
+        many you returned, and say how many there were.
+      tools:
+        - get_work_orders
+        - get_model
+        - get_parts_by_sn
+        - get_model_sp
+        - get_service_history_by_sn
+        - describe_entities
+        - read_records
+        - aggregate_records
+        - execute_entity
+
+# The stage machine. It has exactly one live stage, and it never ends.
+#
+# Two framework rules force this shape, and both were found by running it, not by reading:
+#   1. A document with two or more agents must declare policy:. We have two, so policy: is
+#      required. ('records' counts even though only the ask_records tool reaches it.)
+#   2. A non-terminal stage must declare an exit, and Stateless rejects an exit that points at
+#      its own stage. So 'talk' cannot simply loop back to itself.
+#
+# So 'talk' declares one exit behind a guard that is never true. When no exit guard is true the
+# machine stays where it is, which is the behaviour we actually want: the person asks question
+# after question and the session never closes. 'parked' exists to satisfy rule 2 and is never
+# entered.
+#
+# There is deliberately no terminal stage. A terminal stage sets IsComplete on the session, and
+# the turn after that throws "reached the terminal stage, so it runs no further turn". On a
+# lookup desk a person typing "ok thanks" would otherwise destroy their own session.
+#
+# The guard reads 'stage', a reserved read-only slot that is always the current stage id. No
+# state: slot and no extractor: are declared, so no second model call runs per turn.
+guards:
+  never:
+    { "===": [ { var: stage }, "__never__" ] }
 
 policy:
   initial: talk
   stages:
     - id: talk
-      agent: helper
+      agent: spirit
       to:
-        - { stage: close, when: saidGoodbye }
-    - id: close
-      agent: closer
-      terminal: true
+        - { stage: parked, when: never }
+    - id: parked
+      agent: spirit
+      to:
+        - { stage: talk }
 
 providers:
-  # Two names, two models. reply is what the person reads; fill is the extractor, which only has to
-  # answer a small structured question and so does not need the larger model.
+  # reply is what the person reads. fill is kept declared but nothing calls it now that the
+  # extractor is gone; it costs nothing until a writer: extractor slot exists again.
+  #
+  # reasoningEffort: none is required, not a tuning knob. This model refuses function tools with
+  # any other value, so every turn that lists a tool would fail with a vendor 400.
   llm:
     - { kind: openai, model: gpt-5.6-luna, as: reply, reasoningEffort: none }
     - { kind: openai, model: gpt-5.6-luna, as: fill, reasoningEffort: none }
