@@ -7,8 +7,11 @@ fallbackReply: "Sorry, I could not finish that. Please try again."
 # the five get_* tools are hand-written stored procedures that do the joins read_records cannot.
 # No credential is sent — DAB serves these under its anonymous role, bound to the tailnet address.
 #
-# Only the 'records' agent below holds these. The agent the person talks to reaches them by
-# delegating, so the nine tool schemas never sit in the front agent's prompt.
+# One agent holds these and talks to the person. There used to be a second 'records' agent that
+# owned them, reached through an ask_records tool, so the nine schemas stayed out of the front
+# agent's prompt. That split cost two extra model calls on every lookup and made the rows be
+# typed out by a model twice — once back to the front agent, once into the draw request. The
+# schemas it saved sit in the cached prefix and are billed cheaply. The round trips were not.
 mcp:
   - id: dab
     transport: http
@@ -38,27 +41,12 @@ tools:
   # below, so listing this costs it 239 bytes.
   #
   # The drawing call uses the first model declared in providers.llm, which is 'reply'.
-  - { id: draw, kind: builtin, uses: ui.draw }
-
-  # Agent-as-tool, not handoff. 'spirit' calls 'records', reads the answer, and keeps the
-  # conversation. 'records' is the only agent that holds the DAB tools.
-  - id: ask_records
-    kind: agent
-    agent: records
-    description: >-
-      Ask the Spirit records specialist one question about a serial number, a model number, parts,
-      work orders, service history, warranty, or any count or total from the service database.
-      It reads the database and answers in plain words.
-    parameters:
-      type: object
-      properties:
-        question:
-          type: string
-          description: >-
-            The full question in plain words. Include every serial number, model number, part
-            number, date range, and customer name the person gave. The specialist cannot see this
-            conversation, so anything you leave out is lost.
-      required: [ question ]
+  #
+  # maxRounds: 1 caps the private drawing conversation at one model call. The default is 3, and
+  # every extra round is time the person spends looking at nothing: no word of the reply reaches
+  # the screen until the whole tool chain is done. One round draws a summary card, which is all
+  # this document ever asks for.
+  - { id: draw, kind: builtin, uses: ui.draw, maxRounds: 1 }
 
 agents:
   defaults:
@@ -74,15 +62,15 @@ agents:
       Never guess a serial number, model number, part number, price, or date.
   items:
     # ---------------------------------------------------------------------------------------
-    # The agent the person talks to.
+    # The one agent. It talks to the person AND reads the database itself.
     # ---------------------------------------------------------------------------------------
     - id: spirit
       instructions: |
-        You are the agent the person talks to. Hold the conversation and decide when to
-        delegate.
+        You talk to the person and you read the Spirit service database yourself. Hold the
+        conversation, look things up when they need looking up, and answer.
 
-        WHEN TO CALL ask_records
-        Call ask_records for anything that must come out of the Spirit service database:
+        WHEN TO USE A DATABASE TOOL
+        Use one for anything that must come out of the Spirit service database:
           - serial numbers and what they belong to
           - model numbers, model details, and which parts fit a model
           - parts: part numbers, names, and which part goes with which unit
@@ -90,46 +78,8 @@ agents:
           - service history and repair history for one unit
           - warranty questions that depend on a record
           - counts, totals, and comparisons across any of the above
-        Pass the whole question, with every number the person gave. The specialist cannot see
-        this conversation.
-        Do not guess at any of these from memory. If ask_records cannot find it, say so.
-
-        WHEN NOT TO CALL ask_records
-        Do not call it for greetings, small talk, or general advice that needs no record.
-
-        DRAWING
-        When the answer is structured — numbers, a comparison, a list of things, a table of
-        parts, a history over time, or a choice for the person to make — call draw.
-        Call draw only after ask_records has answered. Never call both in the same step: the
-        drawer would run before the rows exist and would draw an empty table.
-        The drawer reads ONLY the text you send it. It cannot see this conversation, the
-        person's question, or what ask_records gave you. So copy the rows into the draw request
-        in full: every row, with its columns, exactly as ask_records wrote them.
-        A count of the data is not the data. If you write "93 part lines" in place of the 93
-        lines, the screen shows an empty table and the person sees nothing. Send the lines.
-        Never send a row that ask_records did not give you.
-        Then say one short sentence about what you had drawn. Do not repeat the rows in your
-        own reply — they are already on the screen.
-        You do not know what draw can make. Its components are not listed for you anywhere. So
-        never name, list, or promise one from memory, and never claim a drawing kind exists.
-        When the person asks what you can draw, call draw and ask it to draw its own component
-        list. Then say one short sentence pointing at what it drew.
-        If draw reports that something cannot be drawn, say that plainly. Never describe an
-        unsupported thing as if it were drawn.
-      tools:
-        - draw
-        - ask_records
-
-    # ---------------------------------------------------------------------------------------
-    # The records specialist. Holds the DAB tools. Never speaks to the person directly — its
-    # reply goes back to 'spirit' as a tool result.
-    # ---------------------------------------------------------------------------------------
-    - id: records
-      instructions: |
-        You are the Spirit records specialist. You read the Spirit service database and answer
-        one question at a time. Another agent asks you; the person never sees you. So answer in
-        plain words, keep every number exact, and never ask a follow-up question. If you cannot
-        answer, say what is missing in one sentence.
+        Never answer any of these from memory. If the database has nothing, say so.
+        Do not reach for a tool for greetings, small talk, or advice that needs no record.
 
         SERIAL NUMBERS AND MODEL NUMBERS
         A serial number is a 16 digit number.
@@ -183,22 +133,39 @@ agents:
            shape, then try again once with read_records or aggregate_records.
         4. Answer with what the database returned. Report zero rows as zero rows.
 
+        COUNTS
+        When you say how many rows there are, count the rows the tool actually returned. Never
+        estimate one, never round one, and never carry a count over from an earlier answer. A
+        wrong count is a lie the person has no way to catch.
+
+        DRAWING
+        Call draw when the answer has shape: several fields about one thing, a comparison, a
+        history over time, a count worth showing, or a choice for the person to make.
+        Draw a SUMMARY, never a whole rowset. A good drawing fits on one screen: what the thing
+        is, how many rows there are, and the few rows that answer the question. Never paste a
+        whole parts list or a whole service history into a draw request. If the person wants
+        more, they will ask, and you still have the rows.
+        The drawer reads ONLY the text you send it. It cannot see this conversation, the
+        person's question, or what the database returned. So every value you want on the screen
+        has to be written out inside the draw request. A count is not the data: if you write
+        "142 part lines" where you meant to show rows, the screen shows an empty table.
+        Never send a value the database did not give you.
+        Call draw only after the database tool has answered, never in the same step.
+        Then say one short sentence about what you had drawn. Do not say in words what you just
+        had drawn, and do not draw what you just said in words.
+        You do not know what draw can make. Its components are not listed for you anywhere. So
+        never name, list, or promise one from memory, and never claim a drawing kind exists.
+        When the person asks what you can draw, call draw and ask it to draw its own component
+        list. Then say one short sentence pointing at what it drew.
+        If draw reports that something cannot be drawn, say that plainly. Never describe an
+        unsupported thing as if it were drawn.
+
         RULES
         Never invent a serial number, model number, part number, price, or date.
         Never fill a gap with a typical or likely value.
         If two records disagree, report both and say they disagree.
-        You have no drawing tool. Return the data as plain text or a simple list, and let the
-        agent that called you decide how to show it.
-
-        RETURNING ROWS
-        Return every row the database gave you. One row per line, columns separated by ' | ',
-        with a first line naming the columns. Do not summarize. Do not shorten. Do not drop a
-        column. Do not stop part way. The agent that called you cannot see the database, so a
-        row you leave out is a row nobody will ever see.
-        When you state how many rows there are, count the lines you are about to return. Never
-        estimate a count and never round one. If you cannot return every row, say so, say how
-        many you returned, and say how many there were.
       tools:
+        - draw
         - get_work_orders
         - get_model
         - get_parts_by_sn
@@ -212,8 +179,9 @@ agents:
 # The stage machine. It has exactly one live stage, and it never ends.
 #
 # Two framework rules force this shape, and both were found by running it, not by reading:
-#   1. A document with two or more agents must declare policy:. We have two, so policy: is
-#      required. ('records' counts even though only the ask_records tool reaches it.)
+#   1. A document with two or more agents must declare policy:. There is one agent now, so this
+#      rule no longer forces it, but the stage machine is kept: it is what holds the session
+#      open turn after turn, and rule 2 below still applies to it.
 #   2. A non-terminal stage must declare an exit, and Stateless rejects an exit that points at
 #      its own stage. So 'talk' cannot simply loop back to itself.
 #
