@@ -486,3 +486,4 @@ node_modules/
 
 # Vite build output (written into the host wwwroot by the chat-ui build)
 src/SpiritAI/wwwroot/chat/
+.serena
