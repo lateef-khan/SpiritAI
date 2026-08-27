@@ -71,8 +71,8 @@ providers:
   # Two names, two models. reply is what the person reads; fill is the extractor, which only has to
   # answer a small structured question and so does not need the larger model.
   llm:
-    - { kind: openai, model: gpt-5.6-luna, as: reply }
-    - { kind: openai, model: gpt-5.6-luna, as: fill }
+    - { kind: openai, model: gpt-5.6-luna, as: reply, reasoningEffort: none }
+    - { kind: openai, model: gpt-5.6-luna, as: fill, reasoningEffort: none }
 
   # Required by the schema even for a text-only host, and inert until something opens /v1/call. The
   # chat UI never touches either one.
