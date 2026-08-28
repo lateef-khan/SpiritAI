@@ -8,17 +8,28 @@ var app = builder.Build();
 
 app.MapAgentCoreHost();
 
+// Configure with, e.g.:
+//   "Widget": { "AllowedOrigins": [ "https://www.spiritfitness.com" ] }
+var widgetOrigins = builder.Configuration.GetSection("Widget:AllowedOrigins").Get<string[]>();
+
+var frameAncestors = widgetOrigins is { Length: > 0 }
+    ? string.Join(' ', widgetOrigins)
+    : "'none'";
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/chat"))
+    {
+        // `frame-ancestors` and not `X-Frame-Options`: the older header cannot express a list, so a
+        // second allowed site would mean choosing which one works.
+        context.Response.Headers["Content-Security-Policy"] = $"frame-ancestors {frameAncestors}";
+    }
+
+    await next();
+});
+
 app.UseStaticFiles();
 
-// Two things in this pattern are load-bearing, both measured rather than assumed.
-//
-// nonfile: without it, routing selects this fallback for /chat/assets/index.js, the static file
-// middleware stands down because an endpoint is already selected, and every script and stylesheet
-// is answered with the page. The constraint makes the fallback decline anything whose last segment
-// looks like a file, so static files sees no endpoint and serves the real bytes.
-//
-// The /chat scope: an unmatched /v1 route must answer 404, or a mistyped endpoint reaches the
-// browser as a confusing HTML parse error instead of an obvious miss.
 app.MapFallbackToFile("/chat/{*path:nonfile}", "chat/index.html");
 
 app.Run();
