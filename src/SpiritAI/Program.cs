@@ -1,8 +1,11 @@
 using AgentCore.Hosting;
+using SpiritAI.Knowledge;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddAgentCoreHost();
+
+builder.AddAgentCoreHost(options => options
+    .UseKnowledgeQueryAnalyzers(new IdentifierCodeAnalyzer()));
 
 var app = builder.Build();
 

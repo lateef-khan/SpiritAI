@@ -2,6 +2,9 @@
   <Folder Name="/src/">
     <Project Path="src/SpiritAI/SpiritAI.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SpiritAI.Tests/SpiritAI.Tests.csproj" />
+  </Folder>
   <Project Path="../AgentCore/src/AgentCore.Application/AgentCore.Application.csproj" />
   <Project Path="../AgentCore/src/AgentCore.AspNetCore/AgentCore.AspNetCore.csproj" />
   <Project Path="../AgentCore/src/AgentCore.Domain/AgentCore.Domain.csproj" />
