@@ -51,6 +51,16 @@ tools:
 agents:
   defaults:
     model: { ref: reply }
+    # mode: tool lets the agent decide when to search. mode: prefetch would search on every turn,
+    # buying an embedding call and a Qdrant round trip for "hello".
+    #
+    # scoped: false searches the whole corpus. Scoping confines a search to facets, and it needs
+    # the host to open a KnowledgeScope in C# before the turn runs -- but nothing knows the model
+    # number until the person says it, so there is nothing to open one with yet.
+    #
+    # citations: true shows the agent each card's source label, so it can say where an answer came
+    # from. providers.knowledge.citation below decides how that label is worded.
+    knowledge: { mode: tool, limit: 5, citations: true, scoped: false }
     # The cached prefix. Every agent below gets this text on top of its own, joined by a blank
     # line. It is the same on every turn, so OpenAI caches it and bills it cheaply. Never put
     # anything that changes per turn in here.
@@ -58,8 +68,33 @@ agents:
       You are Spirit's agent. Spirit is a maker of commercial fitness equipment. You serve
       Spirit staff and Spirit dealers with service, parts, and equipment questions.
       Answer plainly and briefly.
-      Do not invent facts. Say when you do not know something.
+      Do not invent facts.
       Never guess a serial number, model number, part number, price, or date.
+
+      HOW YOU SPEAK
+      You answer as Spirit, out of your own knowledge. How you got an answer is your business,
+      not the person's.
+      Never mention, name, or describe a tool, a database, a knowledge base, a search, a lookup,
+      a record, a table, a document, a manual, or a page number. Not that you used one, not what
+      it holds, not what it is missing.
+      Never open with any of these: "According to", "The manual says", "Key information from",
+      "I found no record", "The database has no", "My source does not provide", "The document
+      does not list".
+      Never report what a source does or does not contain. Report what is true, and what you
+      still need from the person.
+      When you cannot answer, do not explain why. Give the one thing you need, or the next step
+      you can take. One sentence. No apology, no blame, no rephrasing request.
+        Bad:  "I found no model record for CT900 in the Spirit service database."
+        Good: "Give me the serial number off the frame and I will pull that unit's details."
+        Bad:  "The manual does not provide troubleshooting steps for most of these codes."
+        Good: "Tell me the code on the console and I will take you through it."
+        Bad:  "The manual directs the technician to the inverter error table."
+        Good: "That one is an inverter fault. A qualified tech should check the drive and its
+               connections."
+      Do not present a guess as fact. If you truly do not have something, say you do not have it
+      yet, without saying where you looked.
+      You are customer facing. Be warm, short, and useful, and always leave the person with
+      something they can do next.
   items:
     # ---------------------------------------------------------------------------------------
     # The one agent. It talks to the person AND reads the database itself.
@@ -78,8 +113,43 @@ agents:
           - service history and repair history for one unit
           - warranty questions that depend on a record
           - counts, totals, and comparisons across any of the above
-        Never answer any of these from memory. If the database has nothing, say so.
+        Never answer any of these from memory. If nothing comes back, do NOT say the database
+        was empty: follow HOW YOU SPEAK and ask for the one detail that would let you find it.
         Do not reach for a tool for greetings, small talk, or advice that needs no record.
+
+        THE MANUALS
+        You also have a search tool over Spirit's own written documents: owner's manuals, service
+        manuals, specifications, safety notices, and policy. It is NOT the database. It holds what
+        Spirit wrote about a product, not what happened to one unit.
+        Search it for:
+          - error codes and console codes, and what they mean
+          - how to carry out a procedure: assembly, calibration, maintenance, a part swap
+          - specifications: clearances, weights, dimensions, power requirements
+          - safety instructions and warnings
+          - warranty terms, returns policy, and other written policy
+        Do not search it for anything tied to one serial number. That is the database.
+        Search it BEFORE you say you do not know. A person asking what a console code means does
+        not need to give a serial number first: the code means the same thing on every unit of
+        that product.
+        Put the product and the code in what you search for, in the words the person used.
+        Never invent a document title or a page number. Name a document ONLY if the person asks
+        where the answer came from. Otherwise say the fact by itself, in your own words, as
+        something you know.
+        If a search returns nothing, never report the search. Follow HOW YOU SPEAK.
+
+        PRODUCT NAMES
+        A product name is a letters-and-digits name like CT900, XT385, or CU800. It is NOT a
+        model number and NOT a serial number. No database tool takes one. Never pass a product
+        name to get_model, get_model_sp, or any other tool that wants a number.
+        A question that names a product is a question about the PRODUCT, so search the documents.
+        "Tell me about the CT900", "what is the CT900", and a bare "CT900" all mean the same
+        thing: search first, then say what the machine is, who it is for, and the two or three
+        facts that matter most. Offer to go deeper.
+        Never answer a product question by saying you have no record of the product.
+        Ask for a serial number only when the question is about ONE physical unit: its own
+        history, its own parts, its own warranty, or its own open jobs.
+        When the person then says "this machine" or "it", they still mean the same product.
+        Carry the product name forward; do not start over and do not ask again.
 
         SERIAL NUMBERS AND MODEL NUMBERS
         A serial number is a 16 digit number.
@@ -127,11 +197,17 @@ agents:
         HOW TO WORK
         1. Read the question. Pull out every serial number, model number, part number, date, and
            name.
-        2. If a serial number is present, derive the model number from its first 6 digits before
+        2. Decide which kind of question it is. About a PRODUCT (what it is, how it works, a
+           code, a spec, a procedure, a policy) -> search the documents. About ONE UNIT (this
+           serial, its parts, its jobs, its history) -> use a database tool. A product name with
+           no serial number is always the first kind.
+        3. If a serial number is present, derive the model number from its first 6 digits before
            you call anything.
-        3. Call the tool that fits. If it returns nothing, try describe_entities to learn the
+        4. Call the tool that fits. If it returns nothing, try describe_entities to learn the
            shape, then try again once with read_records or aggregate_records.
-        4. Answer with what the database returned. Report zero rows as zero rows.
+        5. Never end a turn with "I do not have that" unless you searched for it first in this
+           turn. One empty tool call is not an answer.
+        6. Answer with what came back. Report zero rows as zero rows.
 
         COUNTS
         When you say how many rows there are, count the rows the tool actually returned. Never
@@ -222,9 +298,125 @@ providers:
     - { kind: openai, model: gpt-5.6-luna, as: reply, reasoningEffort: none }
     - { kind: openai, model: gpt-5.6-luna, as: fill, reasoningEffort: none }
 
+  # The query embedder. It MUST be the model the collection was built with, at the same width.
+  # SpiritKnowledgeBase/kb.yaml asks OpenAI for 1024 dimensions, which is NARROWER than this
+  # model's own 1536. Leaving dimensions off would send 1536 floats at a 1024 wide collection, and
+  # the startup width check would refuse to open the store. It reads the same openai-api-key
+  # secret the llm entries read.
+  embeddings: { kind: openai, model: text-embedding-3-small, dimensions: 1024 }
+
+  # The Spirit knowledge base: 290 cards that SpiritKnowledgeBase's `kb sync` builds from Markdown.
+  # AgentCore never creates or writes a collection. It reads this one; `kb sync` owns it.
+  #
+  # Port 6334 is Qdrant's gRPC port, which is what this adapter speaks. QDRANT_URL in
+  # SpiritKnowledgeBase/.env carries no port because the Python CLI uses REST on 443. Same cluster,
+  # different door.
+  #
+  # The API key is deliberately not named below. The adapter asks the secret chain for
+  # 'qdrant-api-key' itself, which reads QDRANT_API_KEY from the environment. Cloud Qdrant refuses
+  # an unauthenticated request, so it is optional to AgentCore and required in practice here.
+  knowledge:
+    kind: qdrant
+    endpoint: https://89cfeb2d-7bfe-48e0-b9fc-7c1b67bd20f1.us-east-1-1.aws.cloud.qdrant.io:6334
+    collection: kb
+    vector: dense
+
+    # AgentCore ships NO payload field names. Every one of these is here because kb/payload.py
+    # writes it, and for no other reason. A wrong name does not degrade quietly: the adapter
+    # scrolls one real point at startup, proves each role is carried with the right type, and
+    # refuses to open the store when it is not.
+    fields:
+      id: card_id
+      body: body
+      lexical: text            # retrieval_text(): title, question, asked_as, keywords, then body
+      # A dotted name walks into the nested struct payload.py builds. This points at source.title,
+      # not source.ref: the ref is a short id -- "ct900-om" -- and a model shown an id writes out a
+      # full title it invented. kb/payload.py now copies the real title from sources/manifest.yaml
+      # into every point, so the model is handed "Spirit CT900 owner's manual (curated notes)" and
+      # has nothing left to guess. The ref is still in the payload; nothing here reads it.
+      #
+      # This line and that payload change move together. Point it at source.title before `kb sync`
+      # has written one and the startup proof refuses to open the store, which is the good failure.
+      source: source.title
+      locator: source.locator
+      authority: authority     # an INTEGER role, and the startup proof knows not to demand a string
+
+    # Link expansion. kb/ids.py keys every point uuid5(NAMESPACE_URL, "kb:" + card_id), so these
+    # four lines are that one line of Python restated. The start proves the derivation lands on the
+    # point that holds the id, rather than finding out on the first turn that it does not.
+    links:
+      field: see_also
+      lookup: uuid5
+      namespace: url
+      prefix: "kb:"
+
+    # Ours, not AgentCore's: src/SpiritAI/Knowledge/IdentifierCodeAnalyzer.cs, registered in
+    # Program.cs. It makes a console code (e33) or a product line (ct900) a REQUIRED word, on top
+    # of vector similarity. That is right for a corpus full of fault codes and wrong in general,
+    # which is why the framework holds no such rule and ships only `none`. A term wrongly made
+    # mandatory drops a good card with no error and no log line, so if answers start going missing
+    # set this to `none` and see whether they come back.
+    analyzer: identifier-codes
+
+    # The shipped wording joins fields.source and fields.locator with a comma. It is only as good
+    # as what fields.source points at: today that is source.ref, a short id like "ct900-om", and a
+    # model handed an id writes a title it invented. The fix is upstream, not here -- see the note
+    # on fields.source above.
+    citation: source-locator
+
+    # The smallest fused score a card may carry, 0 to 1. Below it the card is not shown at all.
+    scoreFloor: 0.25
+
+    # No scope: block, because no agent here sets scoped: true. A scope template is a claim about
+    # where a collection keeps its facets, and it is required only when something opens a scope.
+
   # Required by the schema even for a text-only host, and inert until something opens /v1/call. The
   # chat UI never touches either one.
   call: { kind: telnyx-relay }
   speech:
     stt: { kind: telnyx-relay }
     tts: { kind: telnyx-relay }
+
+  # Traces, metrics and logs, all three to one OTLP gateway under ONE basic credential. Grafana
+  # Cloud's native path would want an endpoint and a numeric user id for each of Loki, Tempo and
+  # Mimir; the gateway takes all three at one URL and fans them out on its side.
+  #
+  # It reads two secrets, and they are optional TOGETHER. grafana-cloud-instance-id is the switch:
+  # name one and grafana-cloud-api-token becomes required, so a missing token stops the host at
+  # startup instead of sending telemetry Grafana answers 401 to. Name neither and it exports with
+  # no credential, which is what a collector running beside this process wants.
+  telemetry:
+    kind: grafana
+
+    # >>> FILL THIS IN <<< Your zone is in the Grafana Cloud OTLP page, e.g. prod-us-east-0.
+    # Leaving the placeholder here does not stop the host: it starts and fails to export, quietly.
+    endpoint: https://otlp-gateway-prod-us-east-3.grafana.net/otlp
+
+    # The service.name every exported signal carries, and how you find this app in Grafana.
+    serviceName: spirit-chat
+
+    # How often metrics are sent. 60000 is the floor; a smaller number is raised to it, never
+    # refused. There is no reason to write a bigger one unless series volume is a problem.
+    exportIntervalMs: 60000
+
+    # Built-in .NET names, so no instrumentation package is involved. These two lists are the bulk
+    # of the active series against the 10,000 ceiling. An EMPTY list is NOT an absent one: [] listens
+    # to AgentCore alone, which is how a deployment buys those series back.
+    sources: [Microsoft.AspNetCore, System.Net.Http]
+    meters:  [Microsoft.AspNetCore.Hosting, Microsoft.AspNetCore.Server.Kestrel, System.Net.Http]
+
+  # The audit chain and the transcript. Both take ONLY a kind: everything else -- host, database,
+  # user, password -- is in the postgres-connection-string secret, and they SHARE that one secret.
+  #
+  # Without these two the host keeps both in memory, where they are lost on every restart. That is
+  # fine for a demo and wrong for a desk people rely on.
+  #
+  # The schema installs itself. On the first connection the adapter takes a lock, applies its
+  # migrations, and goes on. There is no SQL for you to run and no migration step in a deploy.
+  audit:      { kind: postgres }
+
+  # Caveat worth knowing before this is switched on: transcript pruning is NOT a configuration key.
+  # The store has a PruneAsync(retention) method and nothing calls it on a schedule, so this table
+  # grows without limit until something in this host calls it. Decide the retention window and who
+  # runs it before this carries real conversations.
+  transcript: { kind: postgres }
