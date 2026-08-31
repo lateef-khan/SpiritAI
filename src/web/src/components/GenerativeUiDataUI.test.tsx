@@ -6,7 +6,7 @@ import {
 } from "@assistant-ui/react";
 import { defaultGenerativeUILibrary } from "@assistant-ui/react-generative-ui";
 import { act, cleanup, render, screen } from "@testing-library/react";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import { GENERATIVE_UI_PART, GenerativeUiDataUI } from "./GenerativeUiDataUI";
@@ -137,20 +137,21 @@ describe("the drawing renderer", () => {
   });
 });
 
+// The drift guard reads AgentCore's own source tree, which this repo does not contain. It is the
+// sibling checkout `Directory.Build.props` points at, so it is there on a developer's machine and
+// absent on a CI runner and in package mode. AGENTCORE_ROOT overrides the path, matching the
+// `-p:AgentCoreRoot=` build switch. Where the file is missing the guard is skipped, not failed.
+const vocabularyPath = resolve(
+  process.cwd(),
+  process.env.AGENTCORE_ROOT ?? "../../../AgentCore",
+  "src/AgentCore.Application/Tools/Drawing/vocabulary.md",
+);
+
 describe("the vocabulary the drawing model is taught", () => {
-  test("names only components this app can actually render", () => {
+  test.skipIf(!existsSync(vocabularyPath))("names only components this app can actually render", () => {
     // The drift guard. The C# skill file is the model's whole vocabulary and the library is what
     // draws it; an upgrade that renames a component would otherwise show the caller a hole.
-    // From demo/chat-ui, which is where vitest runs. `import.meta.url` is not a file URL under
-    // happy-dom.
-    //
-    // This reaches outside demo/chat-ui into AgentCore's own source tree, so this test breaks if
-    // chat-ui is copied into another repo, per the README's suggestion. There is no fix here short
-    // of publishing the vocabulary as its own artifact both sides read.
-    const vocabulary = readFileSync(
-      resolve(process.cwd(), "../../src/AgentCore.Application/Tools/Drawing/vocabulary.md"),
-      "utf8",
-    );
+    const vocabulary = readFileSync(vocabularyPath, "utf8");
 
     const taught = [...vocabulary.matchAll(/^- `([A-Z][A-Za-z]*)`/gm)].map((match) => match[1]);
     const renderable = new Set(Object.keys(defaultGenerativeUILibrary));

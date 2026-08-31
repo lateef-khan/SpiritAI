@@ -30,10 +30,11 @@ export default defineConfig({
   },
   // Vitest reads this block, so the runner needs no config file of its own.
   test: {
-    // The renderer tests mount React, so they need a DOM. The old `node --test` runner could not
-    // even load a .tsx file.
     environment: "happy-dom",
     include: ["src/**/*.test.{ts,tsx}"],
+    env: {
+      VITE_NEON_AUTH_URL: "https://auth.invalid/neondb/auth",
+    },
   },
   server: {
     // The dev server serves the UI and forwards the API to the running host, so `npm run dev` and
