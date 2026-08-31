@@ -26,6 +26,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="config/spirit.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

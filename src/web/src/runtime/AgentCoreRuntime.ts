@@ -15,6 +15,7 @@ import {
   type TurnState,
   type WireMessage,
 } from "./transport.ts";
+import { authFetch } from "@/auth/authFetch";
 
 /**
  * The bridge between assistant-ui and AgentCore's OpenAI-compatible endpoint.
@@ -166,7 +167,7 @@ export function useAgentCoreRuntime(endpoint: string) {
         session: session.current,
         messages: wireMessages(messages.map(flatten)),
         abortSignal,
-        fetch: (url, init) => fetch(url, init),
+        fetch: (url, init) => authFetch(url, init),
       });
 
       const clock = newTurnClock();

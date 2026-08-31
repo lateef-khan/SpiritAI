@@ -1,4 +1,5 @@
 using AgentCore.Hosting;
+using SpiritAI.Auth;
 using SpiritAI.Knowledge;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,7 +8,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddAgentCoreHost(options => options
     .UseKnowledgeQueryAnalyzers(new IdentifierCodeAnalyzer()));
 
+builder.Services.AddNeonAuth(builder.Configuration);
+
 var app = builder.Build();
+
+// Before the endpoints, so the token is checked before AgentCore reads a body or opens a socket.
+// Only /v1 is behind it: /health, /chat and the sign-in page stay open.
+app.UseNeonAuthOnApi();
 
 app.MapAgentCoreHost();
 
