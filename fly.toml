@@ -1,0 +1,78 @@
+# Fly config for SpiritAI. ONE app: the .NET host serves both the API (/v1) and
+# the Vite bundle (/chat) out of wwwroot, so there is no separate frontend deploy.
+#
+#   fly deploy
+
+app = "spiritai"
+primary_region = "iad"
+
+# Build-time only. The host reads Auth__Neon__BaseUrl from [env] at runtime; the
+# browser bundle needs the SAME URL compiled in, because Vite resolves VITE_
+# variables when the bundle is built, not when the container starts. Keep the two
+# in step -- a mismatch means the sign-in page talks to a different Neon project
+# than the token check does.
+[build]
+  [build.args]
+    VITE_NEON_AUTH_URL = "https://ep-late-violet-axh7nydj.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth"
+
+# Plain, non-secret settings only. Secrets go through `fly secrets set`; see
+# deploy-setup.sh. .NET reads a nested key like Auth:Neon:BaseUrl from an
+# environment variable with TWO underscores, not one.
+[env]
+  ASPNETCORE_HTTP_PORTS = "8080"
+
+  # The Machine id is appended per Machine by docker-entrypoint.sh.
+  TS_HOSTNAME = "spiritai"
+  # Grant this tag access to the DAB server in the Tailscale ACL. Node names
+  # change on every deploy; the tag does not.
+  TS_TAGS = "tag:spiritai"
+
+  # From the Neon Console, Auth -> Configuration -> Auth Base URL.
+  # REPLACE THIS with your project's URL before the first deploy.
+  Auth__Neon__BaseUrl = "https://ep-late-violet-axh7nydj.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth"
+
+  # Believe Fly's proxy about who is calling. The public widget endpoint rate
+  # limits per caller, and without this every visitor arrives as fly-proxy and
+  # shares one bucket.
+  #
+  # Safe HERE and not in general: emptying ASP.NET's known-proxy list is what makes
+  # the header readable at all, so anything that reaches port 8080 without passing
+  # through fly-proxy can name its own address. Machines on this Fly org's private
+  # network and peers on the tailnet can do that. The worst of it is a bypassed
+  # rate limit on the public endpoint, from inside two networks you control.
+  ProxyHeaders__Enabled = "true"
+
+  # Sites allowed to embed /chat in an iframe (Program.cs turns this into
+  # a frame-ancestors CSP header). Add __1, __2 for more.
+  Widget__AllowedOrigins__0 = "https://www.spiritfitness.com"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+
+  # Development setting: sleep when idle, wake on the next request.
+  #
+  # "stop" and NOT "suspend", deliberately. Suspend restores a RAM snapshot
+  # without re-running the entrypoint, so tailscaled would come back holding a
+  # WireGuard session the coordination server has already dropped and the DAB
+  # tools would fail with no obvious cause. A full stop re-runs `tailscale up`.
+  #
+  # The cost is a slow first request after idle: tailscaled has to reconnect and
+  # the knowledge store re-proves its schema against Qdrant at startup. Set
+  # min_machines_running = 1 and auto_stop_machines = "off" for production.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/health"
+    interval = "15s"
+    timeout = "5s"
+    # Generous: tailscaled has to come up and the knowledge store proves its
+    # schema against Qdrant before /health answers.
+    grace_period = "45s"
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "2gb"

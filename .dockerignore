@@ -1,0 +1,26 @@
+# Paths are relative to this repo, which is the whole build context.
+
+.git
+.github
+.vs
+.idea
+.vscode
+.serena
+.superpowers
+.claude
+
+**/bin
+**/obj
+**/node_modules
+**/TestResults
+
+src/SpiritAI/wwwroot/chat
+__queuestorage__
+tests
+docs
+SpiritAI.slnx
+
+**/*.user
+**/.env
+**/.env.*
+**/*.log

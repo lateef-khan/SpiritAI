@@ -1,0 +1,17 @@
+<!doctype html>
+<!--
+  The sign-in page, served at /chat/login.html. It talks to no endpoint of its own — the address it
+  collects goes to Neon Auth, which mails the link — so it needs none of index.html's
+  `data-agentcore-endpoint` wiring.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign in · SpiritAI</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/login-main.tsx"></script>
+  </body>
+</html>

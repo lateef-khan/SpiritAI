@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+    The dev-loop switch. Default is the local AgentCore checkout next to this repo, so an edit in
+    AgentCore shows up on the next F5 here with no pack and no version bump. CI sets
+    UseLocalAgentCore=false to build against the published NuGet package instead.
+  -->
+  <PropertyGroup>
+    <UseLocalAgentCore Condition="'$(UseLocalAgentCore)' == ''">true</UseLocalAgentCore>
+    <AgentCoreRoot Condition="'$(AgentCoreRoot)' == ''">$(MSBuildThisFileDirectory)../AgentCore</AgentCoreRoot>
+  </PropertyGroup>
+</Project>
