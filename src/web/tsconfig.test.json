@@ -16,8 +16,11 @@
         "./src/*"
       ]
     },
+    // "vite/client" is what types `import.meta.env`. The tests reach the auth client through the
+    // page they render, and it reads VITE_NEON_AUTH_URL from there.
     "types": [
-      "node"
+      "node",
+      "vite/client"
     ],
     "strict": true,
     "isolatedModules": true,

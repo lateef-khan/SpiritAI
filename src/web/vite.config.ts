@@ -1,9 +1,9 @@
 /// <reference types="vitest/config" />
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { resolve } from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
-import { resolve } from "node:path";
 
 // The build writes into the demo host's wwwroot, which serves it as static files at /chat.
 export default defineConfig({
@@ -21,11 +21,10 @@ export default defineConfig({
     outDir: "../SpiritAI/wwwroot/chat",
     emptyOutDir: true,
     rollupOptions: {
-      // Two pages, one bundle of shared chunks. `index` is the full app at /chat; `widget` is the
-      // embeddable bubble at /chat/widget.html, framed by public/embed.js.
       input: {
         index: resolve(__dirname, "index.html"),
         widget: resolve(__dirname, "widget.html"),
+        login: resolve(__dirname, "login.html"),
       },
     },
   },

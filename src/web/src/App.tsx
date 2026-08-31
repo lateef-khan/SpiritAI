@@ -3,6 +3,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider, useRemoteThreadListRuntime } from "@assistant-ui/react";
 import { AgentCoreSidebar } from "@/components/AgentCoreSidebar";
+import { AuthGate } from "@/auth/AuthGate";
 import { GenerativeUiDataUI } from "@/components/GenerativeUiDataUI";
 import { useAgentCoreRuntime } from "./runtime/AgentCoreRuntime";
 import { localThreadListAdapter } from "./runtime/LocalThreadListAdapter";
@@ -17,16 +18,6 @@ import { localThreadListAdapter } from "./runtime/LocalThreadListAdapter";
 const endpoint =
   document.documentElement.dataset.agentcoreEndpoint || "/v1/chat/completions";
 
-/**
- * The application: assistant-ui's thread and thread list, over AgentCore's endpoint.
- *
- * This is their `templates/default` composition with the Next.js parts left out — the `"use client"`
- * directive, the breadcrumb header that links to their docs, and the AI SDK transport. Our runtime
- * hook and our thread list adapter stand where `useChatRuntime` stood.
- *
- * `TooltipProvider` is not decoration. The vendored action bar renders `Tooltip` for every control
- * it shows, and those throw without a provider above them.
- */
 export function App() {
   // `useRemoteThreadListRuntime` calls `runtimeHook` once per thread, which is what makes the
   // session id inside `useAgentCoreRuntime` belong to one conversation rather than to the whole
@@ -37,18 +28,20 @@ export function App() {
   });
 
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
-      <GenerativeUiDataUI />
-      <TooltipProvider>
-        <SidebarProvider>
-          <div className="flex h-dvh w-full">
-            <AgentCoreSidebar />
-            <div className="flex-1 overflow-hidden">
-              <Thread />
+    <AuthGate>
+      <AssistantRuntimeProvider runtime={runtime}>
+        <GenerativeUiDataUI />
+        <TooltipProvider>
+          <SidebarProvider>
+            <div className="flex h-dvh w-full">
+              <AgentCoreSidebar />
+              <div className="flex-1 overflow-hidden">
+                <Thread />
+              </div>
             </div>
-          </div>
-        </SidebarProvider>
-      </TooltipProvider>
-    </AssistantRuntimeProvider>
+          </SidebarProvider>
+        </TooltipProvider>
+      </AssistantRuntimeProvider>
+    </AuthGate>
   );
 }
