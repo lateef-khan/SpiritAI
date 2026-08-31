@@ -1,0 +1,82 @@
+name: CI / Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# One deploy at a time. A second push while the first is still rolling would
+# otherwise race two releases onto the same Machine.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Frontend tests
+        working-directory: src/web
+        run: |
+          npm ci
+          npm run test
+
+      # UseLocalAgentCore=false is the point of this job: it proves the app still
+      # builds against the published AgentCore.Hosting package, which is what the
+      # Dockerfile and therefore the deploy actually use. The sibling AgentCore
+      # source checkout does not exist on a runner.
+      #
+      # The csproj and the test csproj, never SpiritAI.slnx — the solution lists
+      # the local AgentCore projects.
+      - name: Backend tests (NuGet package mode)
+        run: >
+          dotnet test tests/SpiritAI.Tests/SpiritAI.Tests.csproj
+          -p:UseLocalAgentCore=false
+          -p:SkipClientAppBuild=true
+          --nologo
+
+  # Creates the Fly app if it is missing and stages the app's secrets. Running
+  # it on every deploy makes the whole thing idempotent: there is no separate
+  # first-time setup to remember, and a rotated key only has to change in one
+  # place (GitHub secrets).
+  bootstrap:
+    name: Fly app & secrets
+    needs: build
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/sync-fly-secrets.yml
+    secrets: inherit
+
+  deploy:
+    name: Deploy to Fly.io
+    needs: bootstrap
+    # Never from a pull request: a fork PR would otherwise reach the deploy token.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      # --remote-only builds the image on Fly's builder, so this runner needs no
+      # Docker and no Tailscale. The app's own secrets (OPENAI_API_KEY,
+      # QDRANT_API_KEY, TS_AUTHKEY) already live on Fly and are NOT passed from
+      # here — see sync-fly-secrets.yml.
+      - name: Deploy
+        run: flyctl deploy --remote-only --wait-timeout 300
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

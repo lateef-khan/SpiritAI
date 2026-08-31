@@ -488,3 +488,5 @@ node_modules/
 src/SpiritAI/wwwroot/chat/
 .serena
 docs
+# Local deploy secrets (tailscale-setup.sh)
+.env.deploy.local

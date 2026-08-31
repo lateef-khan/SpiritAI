@@ -20,6 +20,11 @@ public sealed class NeonAuthOptions
     /// </summary>
     public string[] ProtectedPathPrefixes { get; set; } = ["/v1"];
 
+    /// <summary>
+    /// Paths that stay open even though a protected prefix also covers them. Checked first.
+    /// </summary>
+    public string[] OpenPathPrefixes { get; set; } = [];
+
     /// <summary>How far a token's clock may drift from ours before it is refused.</summary>
     public TimeSpan ClockSkew { get; set; } = TimeSpan.FromSeconds(60);
 

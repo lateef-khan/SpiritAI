@@ -1,19 +1,11 @@
 /**
  * `fetch`, with the host's price of entry attached.
- *
- * The conversation endpoint now refuses a request that carries no Neon token, so every call the
- * runtime makes has to go through here. It is a wrapper and not a change to transport.ts on
- * purpose: `runTurn` already takes the `fetch` it should use, and that seam is exactly this.
  */
 import { authClient } from "./authClient";
 import { LOGIN_URL } from "./routes";
 
 /**
  * How long a fetched token is reused.
- *
- * Neon's access tokens live 15 minutes. Asking for a fresh one on every turn would put a round
- * trip in front of every message for no gain, and reusing one right up to its last second would
- * hand the host a token that expires mid-flight. Ten minutes sits between the two.
  */
 const TOKEN_TTL_MS = 10 * 60 * 1000;
 
@@ -24,25 +16,57 @@ export function forgetToken(): void {
   cached = null;
 }
 
+/** Thrown when the turn cannot be signed. Never a reason to navigate — see {@link authFetch}. */
+export class NotSignedInError extends Error {}
+
+/**
+ * Reads the current access token.
+ */
 async function currentToken(): Promise<string | null> {
   if (cached && Date.now() < cached.until) return cached.token;
 
-  const { data, error } = await authClient.token();
+  const token = (await fromSession()) ?? (await fromTokenEndpoint());
 
-  if (error || !data?.token) {
+  if (!token) {
     cached = null;
     return null;
   }
 
-  cached = { token: data.token, until: Date.now() + TOKEN_TTL_MS };
-  return data.token;
+  cached = { token, until: Date.now() + TOKEN_TTL_MS };
+  return token;
+}
+
+async function fromSession(): Promise<string | null> {
+  const { data, error } = await authClient.getSession();
+
+  if (error) {
+    // Loud, because the alternative is a chat that fails with no explanation anywhere.
+    console.error("[auth] could not read the session", error);
+    return null;
+  }
+
+  return data?.session?.token ?? null;
+}
+
+async function fromTokenEndpoint(): Promise<string | null> {
+  const { data, error } = await authClient.token();
+
+  if (error) {
+    console.error("[auth] could not mint an access token", error);
+    return null;
+  }
+
+  return data?.token ?? null;
+}
+
+/** Whether Neon still considers this browser signed in. */
+async function stillSignedIn(): Promise<boolean> {
+  const { data } = await authClient.getSession();
+  return Boolean(data?.session);
 }
 
 /**
  * Signs one request and sends it.
- *
- * A 401 means the session died while the tab stayed open — the link expired, or somebody signed
- * out elsewhere. There is nothing the chat can do with that, so it goes back to the door.
  */
 export async function authFetch(
   input: RequestInfo | URL,
@@ -50,14 +74,31 @@ export async function authFetch(
 ): Promise<Response> {
   const token = await currentToken();
 
+  if (!token) {
+    if (!(await stillSignedIn())) {
+      window.location.replace(LOGIN_URL);
+      throw new NotSignedInError("You are signed out.");
+    }
+
+    throw new NotSignedInError(
+      "Signed in, but Neon issued no access token for this session.",
+    );
+  }
+
   const headers = new Headers(init?.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  headers.set("Authorization", `Bearer ${token}`);
 
   const response = await fetch(input, { ...init, headers });
 
   if (response.status === 401) {
     forgetToken();
-    window.location.replace(LOGIN_URL);
+
+    if (!(await stillSignedIn())) {
+      window.location.replace(LOGIN_URL);
+      throw new NotSignedInError("Your session expired.");
+    }
+
+    throw new NotSignedInError("The host refused this session's token.");
   }
 
   return response;

@@ -1,7 +1,7 @@
 import { Thread } from "@/components/assistant-ui/thread";
 import { LauncherBubble } from "@/components/elements/launcher-bubble";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { GenerativeUiDataUI } from "@/components/GenerativeUiDataUI";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -26,8 +26,11 @@ const SIZE = {
   open: { width: 400, height: 620 },
 } as const;
 
+/*
+ * The widget's own route, and not the app's.
+ */
 const endpoint =
-  document.documentElement.dataset.agentcoreEndpoint || "/v1/chat/completions";
+  document.documentElement.dataset.agentcoreEndpoint || "/v1/public/chat/completions";
 
 const PROMPTS = [
   "What treadmill fits a small room?",
@@ -40,10 +43,6 @@ type Phase = "closed" | "teaser" | "open";
 /**
  * Tells the host page how much room to give the frame.
  *
- * An iframe cannot resize itself — its size belongs to the document that embedded it. So the widget
- * posts what it needs and `embed.js` applies it. Without this the frame would be stuck at whatever
- * size it was created with, and either clip the open panel or leave a 400px invisible rectangle
- * over the host page swallowing clicks while the bubble is closed.
  */
 function useFrameSize(phase: Phase) {
   useEffect(() => {
@@ -58,7 +57,7 @@ function useFrameSize(phase: Phase) {
 }
 
 export function Widget() {
-  const runtime = useAgentCoreRuntime(endpoint);
+  const runtime = useAgentCoreRuntime(endpoint, (url, init) => fetch(url, init));
   const [phase, setPhase] = useState<Phase>("closed");
   const [pending, setPending] = useState<string | null>(null);
 

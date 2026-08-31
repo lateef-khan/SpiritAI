@@ -10,15 +10,32 @@ public static class NeonAuthServiceCollectionExtensions
     /// Adds Neon token validation, bound from the <see cref="NeonAuthOptions.SectionName"/>
     /// section.
     /// </summary>
-    public static IServiceCollection AddNeonAuth(this IServiceCollection services, IConfiguration configuration)
+    /// <param name="services">The host's services.</param>
+    /// <param name="configuration">Where the section is read from.</param>
+    /// <param name="configure">
+    /// Applied after the configuration is bound, for what the code owns rather than a settings
+    /// file: <see cref="NeonAuthOptions.OpenPathPrefixes"/> is set from where the open route is
+    /// mapped.
+    /// </param>
+    public static IServiceCollection AddNeonAuth(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        Action<NeonAuthOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(services);
 
         ArgumentNullException.ThrowIfNull(configuration);
 
-        services.AddOptions<NeonAuthOptions>()
-            .Bind(configuration.GetSection(NeonAuthOptions.SectionName))
-            .Validate(options => options.IsUsable(out _), FailureMessage(configuration))
+        var options = services.AddOptions<NeonAuthOptions>()
+            .Bind(configuration.GetSection(NeonAuthOptions.SectionName));
+
+        if (configure is not null)
+        {
+            options.Configure(configure);
+        }
+
+        options
+            .Validate(o => o.IsUsable(out _), FailureMessage(configuration))
             .ValidateOnStart();
 
         services.TryAddSingletonTimeProvider();
@@ -66,13 +83,15 @@ public static class NeonAuthApplicationBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        var prefixes = app.ApplicationServices.GetRequiredService<IOptions<NeonAuthOptions>>().Value.ProtectedPathPrefixes;
+        var options = app.ApplicationServices.GetRequiredService<IOptions<NeonAuthOptions>>().Value;
 
         app.UseAuthentication();
 
         app.Use(async (context, next) =>
         {
-            if (!IsProtected(context.Request.Path, prefixes))
+            // Open wins over protected, so one route may be carved out of a guarded prefix.
+            if (Matches(context.Request.Path, options.OpenPathPrefixes)
+                || !Matches(context.Request.Path, options.ProtectedPathPrefixes))
             {
                 await next().ConfigureAwait(false);
                 return;
@@ -93,7 +112,7 @@ public static class NeonAuthApplicationBuilderExtensions
         return app;
     }
 
-    private static bool IsProtected(PathString path, string[] prefixes)
+    private static bool Matches(PathString path, string[] prefixes)
     {
         foreach (var prefix in prefixes)
         {

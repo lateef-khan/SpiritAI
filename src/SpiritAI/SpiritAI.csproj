@@ -13,7 +13,7 @@
     <ProjectReference Include="$(AgentCoreRoot)/src/AgentCore.Hosting/AgentCore.Hosting.csproj" />
   </ItemGroup>
   <ItemGroup Condition="'$(UseLocalAgentCore)' != 'true'">
-    <PackageReference Include="AgentCore.Hosting" Version="0.1.0" />
+    <PackageReference Include="AgentCore.Hosting" Version="0.3.0" />
   </ItemGroup>
 
   <!--

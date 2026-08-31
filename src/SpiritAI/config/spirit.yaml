@@ -377,19 +377,9 @@ providers:
     stt: { kind: telnyx-relay }
     tts: { kind: telnyx-relay }
 
-  # Traces, metrics and logs, all three to one OTLP gateway under ONE basic credential. Grafana
-  # Cloud's native path would want an endpoint and a numeric user id for each of Loki, Tempo and
-  # Mimir; the gateway takes all three at one URL and fans them out on its side.
-  #
-  # It reads two secrets, and they are optional TOGETHER. grafana-cloud-instance-id is the switch:
-  # name one and grafana-cloud-api-token becomes required, so a missing token stops the host at
-  # startup instead of sending telemetry Grafana answers 401 to. Name neither and it exports with
-  # no credential, which is what a collector running beside this process wants.
   telemetry:
     kind: grafana
 
-    # >>> FILL THIS IN <<< Your zone is in the Grafana Cloud OTLP page, e.g. prod-us-east-0.
-    # Leaving the placeholder here does not stop the host: it starts and fails to export, quietly.
     endpoint: https://otlp-gateway-prod-us-east-3.grafana.net/otlp
 
     # The service.name every exported signal carries, and how you find this app in Grafana.
@@ -405,18 +395,6 @@ providers:
     sources: [Microsoft.AspNetCore, System.Net.Http]
     meters:  [Microsoft.AspNetCore.Hosting, Microsoft.AspNetCore.Server.Kestrel, System.Net.Http]
 
-  # The audit chain and the transcript. Both take ONLY a kind: everything else -- host, database,
-  # user, password -- is in the postgres-connection-string secret, and they SHARE that one secret.
-  #
-  # Without these two the host keeps both in memory, where they are lost on every restart. That is
-  # fine for a demo and wrong for a desk people rely on.
-  #
-  # The schema installs itself. On the first connection the adapter takes a lock, applies its
-  # migrations, and goes on. There is no SQL for you to run and no migration step in a deploy.
-  audit:      { kind: postgres }
+  audit: { kind: postgres }
 
-  # Caveat worth knowing before this is switched on: transcript pruning is NOT a configuration key.
-  # The store has a PruneAsync(retention) method and nothing calls it on a schedule, so this table
-  # grows without limit until something in this host calls it. Decide the retention window and who
-  # runs it before this carries real conversations.
-  transcript: { kind: postgres }
+  calls: { kind: postgres }

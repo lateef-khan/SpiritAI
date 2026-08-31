@@ -19,15 +19,6 @@ import { authFetch } from "@/auth/authFetch";
 
 /**
  * The bridge between assistant-ui and AgentCore's OpenAI-compatible endpoint.
- *
- * AgentCore keeps the transcript on the server and names the call in the `X-AgentCore-Session`
- * header. assistant-ui, like every OpenAI client, is stateless and sends the whole message list
- * instead. Holding the session id here — in the browser, for the life of the tab — is what
- * reconciles the two, and it is what saves AgentCore from needing a server-side map from chat
- * thread to call.
- *
- * Everything that touches the wire lives in {@link ./transport.ts}, where it is tested. This file
- * is the React shape around it and nothing else.
  */
 
 /**
@@ -150,12 +141,18 @@ export function sourceContent(source: SourcePart) {
 }
 
 /**
+ * How a turn reaches the host.
+ */
+export type TurnFetch = (url: string, init: RequestInit) => Promise<Response>;
+
+/**
  * Binds assistant-ui to one AgentCore endpoint.
  *
  * @param endpoint The route the host mapped the text endpoint on.
+ * @param fetchTurn How to send a turn. Defaults to the signed-in path.
  * @returns The runtime to hand to `AssistantRuntimeProvider`.
  */
-export function useAgentCoreRuntime(endpoint: string) {
+export function useAgentCoreRuntime(endpoint: string, fetchTurn: TurnFetch = authFetch) {
   // A ref and not state: changing the session must never re-render, and the value has to be the
   // current one by the time the next turn reads it rather than on the next paint.
   const session = useRef<Session>({ current: null });
@@ -167,7 +164,7 @@ export function useAgentCoreRuntime(endpoint: string) {
         session: session.current,
         messages: wireMessages(messages.map(flatten)),
         abortSignal,
-        fetch: (url, init) => authFetch(url, init),
+        fetch: (url, init) => fetchTurn(url, init),
       });
 
       const clock = newTurnClock();

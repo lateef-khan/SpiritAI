@@ -45,6 +45,28 @@ public sealed class NeonAuthRoutingTests
     }
 
     [Fact]
+    public async Task AnOpenPrefixIsCarvedOutOfAGuardedOne()
+    {
+        using var host = await StartAsync(openPrefixes: ["/v1/public/chat/completions"]);
+
+        // The widget's route. It sits under /v1 with everything else and must still answer a
+        // stranger, or the public bubble 401s on every message.
+        var response = await host.GetTestClient().GetAsync("/v1/public/chat/completions", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TheCarveOutDoesNotOpenTheRestOfTheApi()
+    {
+        using var host = await StartAsync(openPrefixes: ["/v1/public/chat/completions"]);
+
+        var response = await host.GetTestClient().GetAsync("/v1/chat/completions", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task AProtectedPrefixDoesNotSwallowANeighbouringPath()
     {
         using var host = await StartAsync();
@@ -108,7 +130,7 @@ public sealed class NeonAuthRoutingTests
     /// configuration document, and what is under test is which paths the lock covers, not what
     /// answers behind it.
     /// </remarks>
-    private static async Task<IHost> StartAsync(NeonAuthTestKit? kit = null)
+    private static async Task<IHost> StartAsync(NeonAuthTestKit? kit = null, string[]? openPrefixes = null)
     {
         kit ??= new NeonAuthTestKit();
 
@@ -117,12 +139,14 @@ public sealed class NeonAuthRoutingTests
                 .UseTestServer()
                 .ConfigureServices(services =>
                 {
-                    services.AddNeonAuth(new ConfigurationBuilder()
-                        .AddInMemoryCollection(new Dictionary<string, string?>
-                        {
-                            [$"{NeonAuthOptions.SectionName}:BaseUrl"] = NeonAuthTestKit.BaseUrl,
-                        })
-                        .Build());
+                    services.AddNeonAuth(
+                        new ConfigurationBuilder()
+                            .AddInMemoryCollection(new Dictionary<string, string?>
+                            {
+                                [$"{NeonAuthOptions.SectionName}:BaseUrl"] = NeonAuthTestKit.BaseUrl,
+                            })
+                            .Build(),
+                        options => options.OpenPathPrefixes = openPrefixes ?? []);
 
                     // The one seam the test needs: the same validator, wired to the test's key set
                     // rather than to the real Neon.
@@ -141,6 +165,7 @@ public sealed class NeonAuthRoutingTests
                         endpoints.MapGet("/v1x/open", () => Results.Ok("open"));
                         endpoints.MapGet("/v1", () => Results.Ok("root"));
                         endpoints.MapGet("/v1/call", () => Results.Ok("call"));
+                        endpoints.MapGet("/v1/public/chat/completions", () => Results.Ok("public"));
                         endpoints.MapGet(
                             "/v1/chat/completions",
                             (HttpContext context) => Results.Content(
