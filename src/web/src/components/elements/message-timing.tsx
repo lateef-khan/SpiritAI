@@ -35,9 +35,7 @@ export function MessageTiming({
             className={cn(
               mono,
               "tabular-nums",
-              streaming
-                ? "text-blue-500 dark:text-blue-400"
-                : "text-foreground/50",
+              streaming ? "text-blue-500 dark:text-blue-400" : "text-foreground/50",
             )}
           >
             {stat.value}

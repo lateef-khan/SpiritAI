@@ -17,14 +17,7 @@ export function LauncherBubble({
   ...props
 }: Omit<
   ComponentProps<"div">,
-  | "children"
-  | "open"
-  | "unread"
-  | "greeting"
-  | "prompts"
-  | "onToggle"
-  | "onPick"
-  | "onStart"
+  "children" | "open" | "unread" | "greeting" | "prompts" | "onToggle" | "onPick" | "onStart"
 > & {
   open: boolean;
   unread: number;
@@ -37,10 +30,7 @@ export function LauncherBubble({
   return (
     <div
       data-slot="launcher-bubble"
-      className={cn(
-        "flex w-full max-w-[19rem] flex-col items-end gap-2.5",
-        className,
-      )}
+      className={cn("flex w-full max-w-[19rem] flex-col items-end gap-2.5", className)}
 
       {...props}
     >
@@ -53,9 +43,7 @@ export function LauncherBubble({
         >
           <div className="flex flex-col gap-1">
             <span className="text-[13.5px] font-medium">{greeting}</span>
-            <span className={cn(mono, "text-foreground/30")}>
-              typically replies in a minute
-            </span>
+            <span className={cn(mono, "text-foreground/30")}>typically replies in a minute</span>
           </div>
 
           <div className="flex flex-col gap-1.5">

@@ -92,12 +92,7 @@ export type SourceFrame = {
 
 /** Anything `JSON.parse` can produce. */
 export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | readonly JsonValue[]
-  | { readonly [key: string]: JsonValue };
+  string | number | boolean | null | readonly JsonValue[] | { readonly [key: string]: JsonValue };
 
 /** A JSON object, which is the only shape a tool's arguments ever take. */
 export type JsonObject = { readonly [key: string]: JsonValue };
@@ -307,10 +302,7 @@ function post(options: TurnOptions, session: string | null): Promise<Response> {
  * @returns A new list. Never the one passed in: the state yielded before this is read after it, so
  * a list mutated in place would change under a consumer that already has it.
  */
-export function foldTool(
-  tools: readonly ToolPart[],
-  frame: ToolFrame,
-): readonly ToolPart[] {
+export function foldTool(tools: readonly ToolPart[], frame: ToolFrame): readonly ToolPart[] {
   const callId = frame.call_id;
   if (!callId) {
     return tools;
@@ -435,7 +427,7 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
   let sources: readonly SourcePart[] = [];
 
   try {
-    for (; ;) {
+    for (;;) {
       const { done, value } = await reader.read();
       if (done) {
         break;

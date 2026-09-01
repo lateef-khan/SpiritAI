@@ -68,10 +68,7 @@ async function stillSignedIn(): Promise<boolean> {
 /**
  * Signs one request and sends it.
  */
-export async function authFetch(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-): Promise<Response> {
+export async function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const token = await currentToken();
 
   if (!token) {
@@ -80,9 +77,7 @@ export async function authFetch(
       throw new NotSignedInError("You are signed out.");
     }
 
-    throw new NotSignedInError(
-      "Signed in, but Neon issued no access token for this session.",
-    );
+    throw new NotSignedInError("Signed in, but Neon issued no access token for this session.");
   }
 
   const headers = new Headers(init?.headers);

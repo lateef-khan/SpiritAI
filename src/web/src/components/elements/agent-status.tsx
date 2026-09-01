@@ -19,10 +19,7 @@ export function AgentStatus({
   onAct,
   className,
   ...props
-}: Omit<
-  ComponentProps<"div">,
-  "children" | "state" | "label" | "elapsed" | "onAct"
-> & {
+}: Omit<ComponentProps<"div">, "children" | "state" | "label" | "elapsed" | "onAct"> & {
   state: AgentState;
   label: string;
   elapsed?: string;
@@ -60,26 +57,24 @@ export function AgentStatus({
         {label}
       </span>
       {elapsed !== undefined && state !== "done" && (
-        <span className={cn(mono, "text-foreground/30 tabular-nums")}>
-          {elapsed}
-        </span>
+        <span className={cn(mono, "text-foreground/30 tabular-nums")}>{elapsed}</span>
       )}
       {/* The shipped element renders this button with no handler at all — a control labelled
           "Pause agent" that cannot pause anything. `onAct` is added here so it does what it says,
           and the button is dropped entirely when the caller gives it nothing to do. */}
       {onAct && (
-      <button
-        type="button"
-        onClick={onAct}
-        aria-label={state === "done" ? "Run again" : "Stop the agent"}
-        className={cn(ghostButton, "size-6")}
-      >
-        {state === "done" ? (
-          <RotateCcwIcon className="size-3" />
-        ) : (
-          <PauseIcon className="size-3" />
-        )}
-      </button>
+        <button
+          type="button"
+          onClick={onAct}
+          aria-label={state === "done" ? "Run again" : "Stop the agent"}
+          className={cn(ghostButton, "size-6")}
+        >
+          {state === "done" ? (
+            <RotateCcwIcon className="size-3" />
+          ) : (
+            <PauseIcon className="size-3" />
+          )}
+        </button>
       )}
     </div>
   );

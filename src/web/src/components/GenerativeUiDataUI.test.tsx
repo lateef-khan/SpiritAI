@@ -43,7 +43,12 @@ function mount(options: { hold?: boolean } = {}) {
 
   const adapter: ChatModelAdapter = {
     async *run({ messages }) {
-      sent.push(messages.at(-1)?.content.map((part) => ("text" in part ? part.text : "")).join("") ?? "");
+      sent.push(
+        messages
+          .at(-1)
+          ?.content.map((part) => ("text" in part ? part.text : ""))
+          .join("") ?? "",
+      );
 
       yield {
         content: [{ type: "data" as const, name: GENERATIVE_UI_PART, data: CARD }],
@@ -148,16 +153,19 @@ const vocabularyPath = resolve(
 );
 
 describe("the vocabulary the drawing model is taught", () => {
-  test.skipIf(!existsSync(vocabularyPath))("names only components this app can actually render", () => {
-    // The drift guard. The C# skill file is the model's whole vocabulary and the library is what
-    // draws it; an upgrade that renames a component would otherwise show the caller a hole.
-    const vocabulary = readFileSync(vocabularyPath, "utf8");
+  test.skipIf(!existsSync(vocabularyPath))(
+    "names only components this app can actually render",
+    () => {
+      // The drift guard. The C# skill file is the model's whole vocabulary and the library is what
+      // draws it; an upgrade that renames a component would otherwise show the caller a hole.
+      const vocabulary = readFileSync(vocabularyPath, "utf8");
 
-    const taught = [...vocabulary.matchAll(/^- `([A-Z][A-Za-z]*)`/gm)].map((match) => match[1]);
-    const renderable = new Set(Object.keys(defaultGenerativeUILibrary));
+      const taught = [...vocabulary.matchAll(/^- `([A-Z][A-Za-z]*)`/gm)].map((match) => match[1]);
+      const renderable = new Set(Object.keys(defaultGenerativeUILibrary));
 
-    expect(taught.length).toBe(27);
-    expect(taught.filter((name) => !renderable.has(name))).toEqual([]);
-    expect([...renderable].filter((name) => !taught.includes(name))).toEqual([]);
-  });
+      expect(taught.length).toBe(27);
+      expect(taught.filter((name) => !renderable.has(name))).toEqual([]);
+      expect([...renderable].filter((name) => !taught.includes(name))).toEqual([]);
+    },
+  );
 });

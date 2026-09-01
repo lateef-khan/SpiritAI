@@ -77,10 +77,10 @@ describe("createAgentCoreThreadListAdapter", () => {
     await adapter.archive("call-1");
     await adapter.unarchive("call-1");
 
-    assert.deepEqual(patches.map((p) => p.body), [
-      { status: "archived" },
-      { status: "regular" },
-    ]);
+    assert.deepEqual(
+      patches.map((p) => p.body),
+      [{ status: "archived" }, { status: "regular" }],
+    );
   });
 
   it("clears custom fields with an explicit null", async () => {
@@ -108,10 +108,7 @@ describe("createAgentCoreThreadListAdapter", () => {
       },
     });
 
-    const stream = await createAgentCoreThreadListAdapter(api).generateTitle(
-      "call-1",
-      [] as never,
-    );
+    const stream = await createAgentCoreThreadListAdapter(api).generateTitle("call-1", [] as never);
 
     assert.equal(await textOf(stream), "Belt slips");
 

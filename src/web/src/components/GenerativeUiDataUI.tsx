@@ -41,7 +41,11 @@ const GenerativeUiPart: FC<DataMessagePartProps> = ({ data }) => {
   return (
     // The guard above stops the click landing; `inert` stops the caller believing it did, and takes
     // the controls out of the tab order rather than only ignoring the mouse.
-    <div inert={isRunning} data-agentcore-drawing="" className={isRunning ? "opacity-60" : undefined}>
+    <div
+      inert={isRunning}
+      data-agentcore-drawing=""
+      className={isRunning ? "opacity-60" : undefined}
+    >
       {renderGenerativeUI(data, styledGenerativeUILibrary, { status: "done", dispatch })}
     </div>
   );

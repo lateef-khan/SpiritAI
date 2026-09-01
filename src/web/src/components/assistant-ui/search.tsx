@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  ConversationSearch,
-  type SearchHit,
-} from "@/components/elements/conversation-search";
+import { ConversationSearch, type SearchHit } from "@/components/elements/conversation-search";
 import { useAuiState } from "@assistant-ui/react";
 import { useMemo, useState, type FC } from "react";
 

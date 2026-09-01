@@ -5,10 +5,7 @@ import { CircleAlertIcon, RefreshCwIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ShimmerLabel } from "./surfaces";
 
-export interface ErrorStateProps extends Omit<
-  ComponentProps<"div">,
-  "children" | "role"
-> {
+export interface ErrorStateProps extends Omit<ComponentProps<"div">, "children" | "role"> {
   title: string;
   detail: string;
   retrying: boolean;
@@ -37,9 +34,7 @@ export function ErrorState({
         {...props}
       >
         <RefreshCwIcon className="text-foreground/45 size-3.5 shrink-0 animate-spin motion-reduce:animate-none" />
-        <ShimmerLabel className="text-foreground/55 relative inline-block">
-          Retrying
-        </ShimmerLabel>
+        <ShimmerLabel className="text-foreground/55 relative inline-block">Retrying</ShimmerLabel>
       </div>
     );
   }

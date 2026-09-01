@@ -86,7 +86,6 @@ describe("createThreadsApi", () => {
     }, /404/);
   });
 
-
   it("asks for a page of threads", async () => {
     const fetch = fakeFetch({ threads: [], nextCursor: null });
 
@@ -127,10 +126,7 @@ describe("createThreadsApi", () => {
   it("throws a readable error when the host refuses", async () => {
     const fetch = fakeFetch({ title: "No such thread." }, 404);
 
-    await assert.rejects(
-      () => createThreadsApi(fetch.send).fetch("call-1"),
-      /404/,
-    );
+    await assert.rejects(() => createThreadsApi(fetch.send).fetch("call-1"), /404/);
   });
 });
 

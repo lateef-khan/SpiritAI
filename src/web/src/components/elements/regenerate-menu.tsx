@@ -64,9 +64,7 @@ export function RegenerateMenu({
               onClick={() => onPick?.(option.id)}
               className="hover:bg-foreground/[0.05] flex items-baseline gap-2 rounded-xl px-2.5 py-1.5 text-start transition-colors"
             >
-              <span className="min-w-0 flex-1 truncate text-[13px]">
-                {option.label}
-              </span>
+              <span className="min-w-0 flex-1 truncate text-[13px]">{option.label}</span>
               <span className={cn(mono, "text-foreground/30 shrink-0")}>
                 {option.id === currentId ? "current" : option.detail}
               </span>

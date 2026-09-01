@@ -49,10 +49,7 @@ function useFrameSize(phase: Phase) {
     const size = SIZE[phase];
     // "*" rather than a fixed origin: the widget is embedded on sites it cannot know the names of,
     // and the message carries no secret — only two numbers.
-    window.parent?.postMessage(
-      { source: "agentcore-widget", type: "resize", ...size },
-      "*",
-    );
+    window.parent?.postMessage({ source: "agentcore-widget", type: "resize", ...size }, "*");
   }, [phase]);
 }
 
@@ -97,9 +94,7 @@ export function Widget() {
               unread={0}
               greeting="Hi — ask us anything about Spirit equipment."
               prompts={PROMPTS}
-              onToggle={() =>
-                setPhase(phase === "teaser" ? "closed" : "teaser")
-              }
+              onToggle={() => setPhase(phase === "teaser" ? "closed" : "teaser")}
               onPick={(prompt) => {
                 setPending(prompt);
                 setPhase("open");

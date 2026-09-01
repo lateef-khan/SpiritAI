@@ -12,10 +12,7 @@ export function StoppedRun({
   onDiscard,
   className,
   ...props
-}: Omit<
-  ComponentProps<"div">,
-  "children" | "words" | "reason" | "onContinue" | "onDiscard"
-> & {
+}: Omit<ComponentProps<"div">, "children" | "words" | "reason" | "onContinue" | "onDiscard"> & {
   words: readonly string[];
   reason: string;
   onContinue?: () => void;

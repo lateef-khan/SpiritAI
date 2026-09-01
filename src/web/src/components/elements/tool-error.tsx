@@ -40,20 +40,14 @@ export function ToolError({
   return (
     <div
       data-slot="tool-error"
-      className={cn(
-        paper,
-        "flex w-full max-w-sm flex-col gap-3 rounded-2xl p-3.5",
-        className,
-      )}
+      className={cn(paper, "flex w-full max-w-sm flex-col gap-3 rounded-2xl p-3.5", className)}
 
       {...props}
     >
       <div className="flex items-center gap-2.5">
         <AlertCircleIcon className="size-3.5 shrink-0 text-red-500" />
         <span className={cn(mono, "text-foreground/55 shrink-0")}>{name}</span>
-        <span className="text-foreground/80 min-w-0 flex-1 truncate text-[13px]">
-          {target}
-        </span>
+        <span className="text-foreground/80 min-w-0 flex-1 truncate text-[13px]">{target}</span>
         <span className={cn(mono, "text-foreground/30 shrink-0 tabular-nums")}>
           {attempt}/{maxAttempts}
         </span>

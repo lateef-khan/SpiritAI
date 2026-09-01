@@ -18,11 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
 import { authClient, useSession } from "./authClient";
 import { forgetToken } from "./authFetch";
@@ -62,11 +58,7 @@ export function AccountMenu() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton size="lg" className="gap-2">
-              <AccountAvatar
-                name={name}
-                email={user.email}
-                image={user.image}
-              />
+              <AccountAvatar name={name} email={user.email} image={user.image} />
               <AccountLines name={name} email={user.email} />
               <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
             </SidebarMenuButton>
@@ -78,19 +70,11 @@ export function AccountMenu() {
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
           >
             <DropdownMenuLabel className="flex items-center gap-2 p-2 font-normal">
-              <AccountAvatar
-                name={name}
-                email={user.email}
-                image={user.image}
-              />
+              <AccountAvatar name={name} email={user.email} image={user.image} />
               <AccountLines name={name} email={user.email} />
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={signingOut}
-              onSelect={signOut}
-            >
+            <DropdownMenuItem variant="destructive" disabled={signingOut} onSelect={signOut}>
               <LogOut />
               Log out
             </DropdownMenuItem>

@@ -31,10 +31,7 @@ export function ConversationSearch({
   onQueryChange?: (query: string) => void;
   onStep?: (delta: number) => void;
 }) {
-  const index =
-    hits.length === 0
-      ? -1
-      : Math.min(Math.max(activeIndex, 0), hits.length - 1);
+  const index = hits.length === 0 ? -1 : Math.min(Math.max(activeIndex, 0), hits.length - 1);
   const active = index === -1 ? undefined : hits[index];
 
   return (
@@ -45,12 +42,7 @@ export function ConversationSearch({
       {...props}
     >
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div
-          className={cn(
-            paper,
-            "flex items-center gap-2 rounded-full py-1.5 pr-1.5 pl-3",
-          )}
-        >
+        <div className={cn(paper, "flex items-center gap-2 rounded-full py-1.5 pr-1.5 pl-3")}>
           <SearchIcon className="text-foreground/30 size-3.5 shrink-0" />
           <input
             value={query}
@@ -59,9 +51,7 @@ export function ConversationSearch({
             aria-label="Find in conversation"
             className="text-foreground/85 placeholder:text-foreground/30 min-w-0 flex-1 bg-transparent text-[13px] outline-none"
           />
-          <span
-            className={cn(mono, "text-foreground/30 shrink-0 tabular-nums")}
-          >
+          <span className={cn(mono, "text-foreground/30 shrink-0 tabular-nums")}>
             {hits.length === 0 ? "0" : `${index + 1}/${hits.length}`}
           </span>
           <button

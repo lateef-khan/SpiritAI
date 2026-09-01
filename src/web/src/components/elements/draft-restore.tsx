@@ -12,10 +12,7 @@ export function DraftRestore({
   onDiscard,
   className,
   ...props
-}: Omit<
-  ComponentProps<"div">,
-  "children" | "draft" | "savedAt" | "onRestore" | "onDiscard"
-> & {
+}: Omit<ComponentProps<"div">, "children" | "draft" | "savedAt" | "onRestore" | "onDiscard"> & {
   draft: string;
   savedAt: string;
   onRestore?: () => void;
@@ -35,9 +32,7 @@ export function DraftRestore({
       <PencilLineIcon className="text-foreground/30 size-3.5 shrink-0" />
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="text-foreground/70 truncate text-[13px]">{draft}</span>
-        <span className={cn(mono, "text-foreground/30")}>
-          unsent draft · {savedAt}
-        </span>
+        <span className={cn(mono, "text-foreground/30")}>unsent draft · {savedAt}</span>
       </div>
       <button
         type="button"

@@ -1,0 +1,5 @@
+# Vite writes the bundle into the host's wwwroot; it is build output, not source.
+../SpiritAI/wwwroot
+
+# Lockfiles are generated, and reformatting one makes every future diff unreadable.
+package-lock.json

@@ -134,9 +134,7 @@ function toolContent(tool: ToolPart) {
     toolName: tool.name,
     args: tool.arguments,
     argsText: JSON.stringify(tool.arguments, null, 2),
-    ...(tool.result !== undefined
-      ? { result: tool.result, isError: tool.failed === true }
-      : {}),
+    ...(tool.result !== undefined ? { result: tool.result, isError: tool.failed === true } : {}),
   };
 }
 
@@ -302,9 +300,7 @@ export function useAgentCoreRuntime(
         content = [
           ...state.tools.map(toolContent),
           ...state.sources.map(sourceContent),
-          ...(state.text.length > 0
-            ? [{ type: "text" as const, text: state.text }]
-            : []),
+          ...(state.text.length > 0 ? [{ type: "text" as const, text: state.text }] : []),
           ...state.data.map((part) => ({
             type: "data" as const,
             name: part.name,

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@assistant-ui/core": "^0.3.14",
@@ -37,6 +39,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "assistant-ui": "^0.0.111",
     "happy-dom": "^20.11.6",
+    "prettier": "3.9.6",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.0",
     "vite": "^7.0.0",

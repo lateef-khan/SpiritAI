@@ -61,11 +61,7 @@ export function useMagicLinkSignIn(): MagicLinkSignIn {
       (cause: unknown) => {
         if (requestId.current !== id) return;
         setStatus("error");
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "Something went wrong. Try again.",
-        );
+        setError(cause instanceof Error ? cause.message : "Something went wrong. Try again.");
       },
     );
   }, []);

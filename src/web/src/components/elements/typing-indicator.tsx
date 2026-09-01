@@ -10,10 +10,7 @@ export function TypingIndicator({
   variant = "bubble",
   className,
   ...props
-}: Omit<
-  ComponentProps<"div">,
-  "children" | "variant" | "role" | "aria-label"
-> & {
+}: Omit<ComponentProps<"div">, "children" | "variant" | "role" | "aria-label"> & {
   variant?: "bubble" | "bare";
 }) {
   const dots = DOT_DELAYS.map((delay) => (
@@ -47,11 +44,7 @@ export function TypingIndicator({
       className={cn(paper, "w-fit rounded-full px-4 py-3.5", className)}
       {...props}
     >
-      <div
-        role="status"
-        aria-label="Assistant is typing"
-        className="flex gap-1"
-      >
+      <div role="status" aria-label="Assistant is typing" className="flex gap-1">
         {dots}
       </div>
     </div>

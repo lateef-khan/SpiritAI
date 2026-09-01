@@ -5,10 +5,7 @@ import {
   ComposerAttachments,
   UserMessageAttachments,
 } from "@/components/assistant-ui/attachment";
-import {
-  Sources,
-  type Source,
-} from "@/components/assistant-ui/elements/sources";
+import { Sources, type Source } from "@/components/assistant-ui/elements/sources";
 import { File } from "@/components/assistant-ui/file";
 import { ThreadFollowupSuggestions } from "@/components/assistant-ui/follow-up-suggestions";
 import { Image } from "@/components/assistant-ui/image";
@@ -96,12 +93,8 @@ export type ThreadComponents = {
   AssistantMessage?: ComponentType | undefined;
   Welcome?: ComponentType | undefined;
   ToolFallback?: ToolCallMessagePartComponent | undefined;
-  ToolGroup?:
-  | ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>>
-  | undefined;
-  ReasoningGroup?:
-  | ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>>
-  | undefined;
+  ToolGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined;
+  ReasoningGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined;
 };
 
 export type ThreadProps = {
@@ -110,14 +103,12 @@ export type ThreadProps = {
 
 const EMPTY_COMPONENTS: ThreadComponents = {};
 
-const ThreadComponentsContext =
-  createContext<ThreadComponents>(EMPTY_COMPONENTS);
+const ThreadComponentsContext = createContext<ThreadComponents>(EMPTY_COMPONENTS);
 
 // Startup exposes a loading placeholder thread; treat it as a new chat so
 // the composer mounts centered. Loads after startup keep the docked layout.
 const isNewChatView = (s: AssistantState) =>
-  s.thread.messages.length === 0 &&
-  (!s.thread.isLoading || s.threads.isLoading);
+  s.thread.messages.length === 0 && (!s.thread.isLoading || s.threads.isLoading);
 
 // A switched thread that is still fetching its history: skeleton, not welcome.
 const isHistoryLoadingView = (s: AssistantState) =>
@@ -188,20 +179,14 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
             <ThreadHistorySkeleton />
           </AuiIf>
 
-          <div
-            data-slot="aui_message-group"
-            className="mb-14 flex flex-col gap-y-6 empty:hidden"
-          >
-            <ThreadPrimitive.Messages>
-              {() => <ThreadMessage />}
-            </ThreadPrimitive.Messages>
+          <div data-slot="aui_message-group" className="mb-14 flex flex-col gap-y-6 empty:hidden">
+            <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
           </div>
 
           <ThreadPrimitive.ViewportFooter
             className={cn(
               "aui-thread-viewport-footer bg-background flex flex-col gap-4 overflow-visible pb-4 md:pb-6",
-              !isEmpty &&
-              "sticky bottom-0 mt-auto rounded-t-(--composer-radius)",
+              !isEmpty && "sticky bottom-0 mt-auto rounded-t-(--composer-radius)",
             )}
           >
             <ThreadScrollToBottom />
@@ -222,8 +207,7 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
 };
 
 /** The local calendar day, as a value two dates on the same day always share. */
-const dayKey = (date: Date) =>
-  `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 
 /** "Today" and "Yesterday" beat a date nobody has to decode; older days get the date. */
 function dayLabel(date: Date): string {
@@ -313,9 +297,7 @@ const ThreadWelcome: FC = () => {
 const ThreadSuggestions: FC = () => {
   return (
     <div className="aui-thread-welcome-suggestions flex w-full flex-wrap items-center justify-center gap-2 px-4">
-      <ThreadPrimitive.Suggestions>
-        {() => <ThreadSuggestionItem />}
-      </ThreadPrimitive.Suggestions>
+      <ThreadPrimitive.Suggestions>{() => <ThreadSuggestionItem />}</ThreadPrimitive.Suggestions>
     </div>
   );
 };
@@ -432,9 +414,7 @@ const ComposerAction: FC = () => {
 
 /** How this message ended, or `undefined` while it is still running or is the caller's own. */
 const useAssistantStatus = () =>
-  useAuiState((s) =>
-    s.message.role === "assistant" ? s.message.status : undefined,
-  );
+  useAuiState((s) => (s.message.role === "assistant" ? s.message.status : undefined));
 
 /** The error a run carries is `unknown`, and only a string of it can go on screen. */
 function errorDetail(error: unknown): string {
@@ -532,10 +512,7 @@ const MessageTimingFooter: FC = () => {
 /**
  * One provider-metadata bag, read defensively: the shape is ours by convention, not by type.
  */
-function metadataString(
-  bag: PartProviderMetadata[string] | undefined,
-  key: string,
-): string {
+function metadataString(bag: PartProviderMetadata[string] | undefined, key: string): string {
   const value = bag?.[key];
   return typeof value === "string" ? value : "";
 }
@@ -581,13 +558,7 @@ const MessageSources: FC = () => {
 
   if (sources.length === 0) return null;
 
-  return (
-    <Sources
-      sources={sources.map(sourceCardOf)}
-      open={open}
-      onOpenChange={setOpen}
-    />
-  );
+  return <Sources sources={sources.map(sourceCardOf)} open={open} onOpenChange={setOpen} />;
 };
 
 const AssistantMessage: FC = () => {
@@ -638,9 +609,7 @@ const AssistantMessage: FC = () => {
                 );
               case "group-reasoning": {
                 if (ReasoningGroup) {
-                  return (
-                    <ReasoningGroup group={part}>{children}</ReasoningGroup>
-                  );
+                  return <ReasoningGroup group={part}>{children}</ReasoningGroup>;
                 }
                 const running = part.status.type === "running";
                 return (
@@ -726,10 +695,7 @@ const AssistantActionBar: FC = () => {
       <Regenerate />
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger asChild>
-          <TooltipIconButton
-            tooltip="More"
-            className="data-[state=open]:bg-accent"
-          >
+          <TooltipIconButton tooltip="More" className="data-[state=open]:bg-accent">
             <MoreHorizontalIcon />
           </TooltipIconButton>
         </ActionBarMorePrimitive.Trigger>
@@ -774,9 +740,7 @@ const UserMessage: FC = () => {
 
       <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
         <div className="aui-user-message-content peer bg-muted text-foreground rounded-xl px-4 py-2 wrap-break-word empty:hidden">
-          <MessagePrimitive.Parts
-            components={{ File: UserFilePart, Image: UserImagePart }}
-          />
+          <MessagePrimitive.Parts components={{ File: UserFilePart, Image: UserImagePart }} />
         </div>
         <div className="aui-user-action-bar-wrapper absolute start-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden rtl:translate-x-full">
           <UserActionBar />
@@ -820,11 +784,7 @@ const EditComposer: FC = () => {
         />
         <div className="aui-edit-composer-footer mx-2.5 mb-2.5 flex items-center gap-1.5 self-end">
           <ComposerPrimitive.Cancel asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 rounded-full px-3.5"
-            >
+            <Button variant="ghost" size="sm" className="h-8 rounded-full px-3.5">
               Cancel
             </Button>
           </ComposerPrimitive.Cancel>
@@ -839,10 +799,7 @@ const EditComposer: FC = () => {
   );
 };
 
-const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
-  className,
-  ...rest
-}) => {
+const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({ className, ...rest }) => {
   return (
     <BranchPickerPrimitive.Root
       hideWhenSingleBranch

@@ -21,9 +21,7 @@ export function useSpeaker(): Speaker | null {
   return useAuiState((s) => {
     if (s.message.role !== "assistant") return null;
 
-    const custom = s.message.metadata?.custom as
-      | { speaker?: unknown }
-      | undefined;
+    const custom = s.message.metadata?.custom as { speaker?: unknown } | undefined;
     const speaker = custom?.speaker;
 
     if (
@@ -62,9 +60,7 @@ export const MessageSpeaker: FC = () => {
     >
       <Icon aria-hidden className="size-3.5 shrink-0" />
       <span className="font-medium">{speaker.name}</span>
-      {speaker.detail && (
-        <span className="text-foreground/40">· {speaker.detail}</span>
-      )}
+      {speaker.detail && <span className="text-foreground/40">· {speaker.detail}</span>}
     </div>
   );
 };

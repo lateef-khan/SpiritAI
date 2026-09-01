@@ -36,7 +36,5 @@ export async function sendMagicLink(email: string): Promise<void> {
     throw new MagicLinkError("Too many attempts. Wait a minute and try again.");
   }
 
-  throw new MagicLinkError(
-    error.message || "Could not reach the sign-in service. Try again.",
-  );
+  throw new MagicLinkError(error.message || "Could not reach the sign-in service. Try again.");
 }
