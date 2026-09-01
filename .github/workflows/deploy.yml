@@ -29,11 +29,19 @@ jobs:
           cache: npm
           cache-dependency-path: src/web/package-lock.json
 
+      - name: Install frontend dependencies
+        working-directory: src/web
+        run: npm ci
+
+      # Its own step rather than a line inside the test step, so a formatting
+      # failure reads as one in the checks list instead of a failing test.
+      - name: Frontend format check
+        working-directory: src/web
+        run: npm run format:check
+
       - name: Frontend tests
         working-directory: src/web
-        run: |
-          npm ci
-          npm run test
+        run: npm run test
 
       # UseLocalAgentCore=false is the point of this job: it proves the app still
       # builds against the published AgentCore.Hosting package, which is what the
