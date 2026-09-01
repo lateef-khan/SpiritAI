@@ -467,9 +467,11 @@ public sealed class ThreadEndpointTests
 
         public async IAsyncEnumerable<string> GenerateFromAsync(
             string callId,
-            string words,
+            IReadOnlyList<ChatMessage> messages,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            var words = string.Join(' ', messages.Select(message => message.Text));
+
             if (string.IsNullOrWhiteSpace(words))
             {
                 yield break;

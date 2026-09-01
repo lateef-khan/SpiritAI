@@ -4,6 +4,8 @@ using System.Text.Json;
 using AgentCore.Application.Calls;
 using AgentCore.Application.Ports;
 
+using Microsoft.Extensions.AI;
+
 namespace SpiritAI.Threads;
 
 /// <summary>
@@ -174,17 +176,17 @@ public static class ThreadEndpointRouteBuilderExtensions
                 "text/plain; charset=utf-8"));
         });
 
-    /// <summary>Reads the words to name out of a title request.</summary>
+    /// <summary>Reads the messages to name out of a title request.</summary>
     /// <param name="body">What the browser sent, which may be nothing and may be anything at all.</param>
     /// <returns>
-    /// The words, empty when the browser sent none, or <see langword="null"/> when the body is not
-    /// a conversation and the request has to be refused.
+    /// The messages, empty when the browser sent none, or <see langword="null"/> when the body is
+    /// not a conversation and the request has to be refused.
     /// </returns>
-    private static string? WordsOf(JsonElement? body)
+    private static IReadOnlyList<ChatMessage>? WordsOf(JsonElement? body)
     {
         if (body is not { } sent)
         {
-            return string.Empty;
+            return [];
         }
 
         if (sent.ValueKind != JsonValueKind.Object
@@ -194,7 +196,7 @@ public static class ThreadEndpointRouteBuilderExtensions
             return null;
         }
 
-        StringBuilder words = new();
+        List<ChatMessage> said = [];
 
         foreach (var message in messages.EnumerateArray())
         {
@@ -205,16 +207,25 @@ public static class ThreadEndpointRouteBuilderExtensions
                 return null;
             }
 
-            if (words.Length > 0)
-            {
-                words.Append('\n');
-            }
-
-            words.Append(content.GetString());
+            said.Add(new ChatMessage(RoleOf(message), content.GetString() ?? string.Empty));
         }
 
-        return words.ToString();
+        return said;
     }
+
+    /// <summary>Reads one message's role, which the browser may not have sent.</summary>
+    /// <param name="message">One entry of the request's <c>messages</c> array.</param>
+    /// <returns>The role it named, or <see cref="ChatRole.User"/> when it named none this host knows.</returns>
+    private static ChatRole RoleOf(JsonElement message)
+        => message.TryGetProperty("role", out var role) && role.ValueKind == JsonValueKind.String
+            ? role.GetString() switch
+            {
+                "assistant" => ChatRole.Assistant,
+                "system" => ChatRole.System,
+                "tool" => ChatRole.Tool,
+                _ => ChatRole.User,
+            }
+            : ChatRole.User;
 
     /// <summary>Renames, archives, or rewrites the consumer-owned fields of one thread.</summary>
     private static Task<IResult> AmendAsync(
