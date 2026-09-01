@@ -396,7 +396,7 @@ test("runTurn keeps a tool answer that is an object as an object", async () => {
   ]);
 
   const last = collected[collected.length - 1];
-  assert.deepEqual(last.tools[0].result, { entities: ["it\'s"] });
+  assert.deepEqual(last.tools[0].result, { entities: ["it's"] });
 });
 
 test("runTurn folds a tool result onto the call it answers", async () => {

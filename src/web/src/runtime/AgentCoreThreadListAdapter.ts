@@ -112,7 +112,10 @@ function useServerHistory(api: ThreadsApi): RuntimeAdapters {
 export function useThreadSession(): () => Promise<string> {
   const auiRef = useAuiRef();
 
-  return useCallback(async () => (await auiRef.current.threadListItem.initialize()).remoteId, []);
+  return useCallback(
+    async () => (await auiRef.current.threadListItem.initialize()).remoteId,
+    [auiRef],
+  );
 }
 
 /**

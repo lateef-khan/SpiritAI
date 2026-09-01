@@ -39,6 +39,10 @@ jobs:
         working-directory: src/web
         run: npm run format:check
 
+      - name: Frontend lint
+        working-directory: src/web
+        run: npm run lint
+
       - name: Frontend tests
         working-directory: src/web
         run: npm run test
