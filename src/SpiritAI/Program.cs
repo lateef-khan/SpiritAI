@@ -3,6 +3,7 @@ using SpiritAI.Auth;
 using SpiritAI.Hosting;
 using SpiritAI.Knowledge;
 using SpiritAI.PublicChat;
+using SpiritAI.Threads;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,8 @@ builder.AddAgentCoreHost(options => options
 builder.Services.AddProxyHeaders(builder.Configuration);
 
 builder.Services.AddPublicChat(builder.Configuration);
+
+builder.Services.AddThreadSessions();
 
 var publicChat = builder.Configuration.GetSection(PublicChatOptions.SectionName).Get<PublicChatOptions>()
     ?? new PublicChatOptions();
@@ -29,9 +32,13 @@ app.UseRateLimiter();
 
 app.UseNeonAuthOnApi();
 
+app.UseThreadSessions();
+
 app.MapAgentCoreHost();
 
 app.MapPublicChat();
+
+app.MapThreads();
 
 // Configure with, e.g.:
 //   "Widget": { "AllowedOrigins": [ "https://www.spiritfitness.com" ] }

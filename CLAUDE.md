@@ -11,6 +11,7 @@ It started as a copy of `AgentCore/demo` and grows from there.
   (needs `OPENAI_API_KEY` in the environment). `example.yaml` is the annotated
   reference copied from AgentCore; treat it as documentation.
 - `src/SpiritAI/Auth/` — sign-in. Verifies the Neon Auth token on `/v1`; see below.
+- `src/SpiritAI/Threads/` — the thread list, as REST over AgentCore's call store; see below.
 - `src/web/` — React + Vite chat frontend (assistant-ui). The MSBuild target
   `BuildClientApp` in `SpiritAI.csproj` runs `npm ci && npm run build` and Vite writes
   the bundle into `src/SpiritAI/wwwroot/chat/` (gitignored).
@@ -85,6 +86,30 @@ Neon signs with EdDSA (Ed25519) and offers no alternative. Neither
 `System.Security.Cryptography` nor `Microsoft.IdentityModel` implements that curve on
 .NET 10, which is why `BouncyCastle.Cryptography` is a dependency and why the token
 check in `Auth/` is hand-written rather than `AddJwtBearer`.
+
+## The thread list
+
+AgentCore maps no routes for its call store, so a browser has no way to reach a
+conversation's row, its title, or its place in a person's list. `src/SpiritAI/Threads/`
+maps seven routes under `/v1/threads` that do, shaped field for field to assistant-ui's
+`RemoteThreadListAdapter` so `src/web/src/runtime/AgentCoreThreadListAdapter.ts` stays a
+fetch and a rename rather than a mapping layer that can drift.
+
+`/v1` is already guarded, so every request here carries a token that verified. What a
+token does **not** carry is any right to the call id in the path. The call store can list
+one principal's calls but cannot answer "is this one of theirs?", so the owner is written
+into the row at creation (`ThreadEnvelope`) and the question becomes one primary-key read
+(`ThreadOwnership`). A call that is not there and a call that is somebody else's are both
+404, on purpose: a caller who could tell them apart could guess ids and learn which ones
+name a real conversation.
+
+`UseThreadSessions` is a second, separate door, in front of the chat endpoint rather than
+the thread list. AgentCore opens a session only for a turn that names none and answers 404
+to a turn naming a call it is not holding, so without it the second visit to any thread
+fails. It reopens a thread the caller owns, and refuses one that names anybody else's —
+the chat endpoint does not know who a caller is and cannot be the one to check. The
+widget's public route is untouched: nobody behind it is signed in, so there is no
+principal to check a claim against.
 
 ## Build & run
 

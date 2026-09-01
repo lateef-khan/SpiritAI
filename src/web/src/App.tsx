@@ -6,7 +6,11 @@ import { AgentCoreSidebar } from "@/components/AgentCoreSidebar";
 import { AuthGate } from "@/auth/AuthGate";
 import { GenerativeUiDataUI } from "@/components/GenerativeUiDataUI";
 import { useAgentCoreRuntime } from "./runtime/AgentCoreRuntime";
-import { localThreadListAdapter } from "./runtime/LocalThreadListAdapter";
+import {
+  createAgentCoreThreadListAdapter,
+  useThreadSession,
+} from "./runtime/AgentCoreThreadListAdapter";
+import { authFetch } from "@/auth/authFetch";
 
 /**
  * The route the text endpoint answers on.
@@ -18,13 +22,26 @@ import { localThreadListAdapter } from "./runtime/LocalThreadListAdapter";
 const endpoint =
   document.documentElement.dataset.agentcoreEndpoint || "/v1/chat/completions";
 
+/**
+ * The thread list, on the host. Built once: swapping the adapter does not reload the list, so a
+ * new one per render would be a new backing store that nothing ever reads.
+ */
+const threads = createAgentCoreThreadListAdapter();
+
+/**
+ * One thread's turn loop, bound to that thread's call.
+ *
+ * `useRemoteThreadListRuntime` calls this once per thread, so `useThreadSession` resolves to the
+ * open thread rather than to the tab.
+ */
+function useThreadRuntime() {
+  return useAgentCoreRuntime(endpoint, authFetch, useThreadSession());
+}
+
 export function App() {
-  // `useRemoteThreadListRuntime` calls `runtimeHook` once per thread, which is what makes the
-  // session id inside `useAgentCoreRuntime` belong to one conversation rather than to the whole
-  // tab. The adapter beside it is the stub — see runtime/LocalThreadListAdapter.ts.
   const runtime = useRemoteThreadListRuntime({
-    runtimeHook: () => useAgentCoreRuntime(endpoint),
-    adapter: localThreadListAdapter(),
+    runtimeHook: useThreadRuntime,
+    adapter: threads,
   });
 
   return (
