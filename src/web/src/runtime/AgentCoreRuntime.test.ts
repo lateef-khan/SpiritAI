@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { sourceContent } from "./AgentCoreRuntime.ts";
+import type { CompleteAttachment, ThreadMessage, ThreadUserMessage } from "@assistant-ui/react";
+import { flatten, sourceContent } from "./AgentCoreRuntime.ts";
 import type { SourcePart } from "./transport.ts";
 
 const document: SourcePart = {
@@ -51,5 +52,88 @@ describe("sourceContent", () => {
     const part = sourceContent({ ...document, sourceType: "url", url: null });
 
     expect(part).toMatchObject({ type: "source", sourceType: "document" });
+  });
+});
+
+const userMessage = (
+  content: ThreadUserMessage["content"],
+  attachments: ThreadUserMessage["attachments"] = [],
+): ThreadMessage => ({
+  id: "m-1",
+  createdAt: new Date(0),
+  role: "user",
+  content,
+  attachments,
+  metadata: { custom: {} },
+});
+
+const attachment = (
+  name: string,
+  type: CompleteAttachment["type"],
+  content: CompleteAttachment["content"],
+): CompleteAttachment => ({
+  id: `att-${name}`,
+  type,
+  name,
+  content,
+  status: { type: "complete" },
+});
+
+describe("flatten", () => {
+  it("sends the typed text of a message that carries nothing else", () => {
+    const wire = flatten(userMessage([{ type: "text", text: "how tall is a CT900?" }]));
+
+    expect(wire).toEqual({ role: "user", content: "how tall is a CT900?" });
+  });
+
+  it("inlines the text an attachment carries, ahead of the question about it", () => {
+    // A text file already arrives as a text part, wrapped in a tag naming the file. Putting it
+    // first means the model reads the material before the question asked about it.
+    const wire = flatten(
+      userMessage(
+        [{ type: "text", text: "what is wrong here?" }],
+        [
+          attachment("log.txt", "document", [
+            { type: "text", text: "<attachment name=log.txt>\nboom\n</attachment>" },
+          ]),
+        ],
+      ),
+    );
+
+    expect(wire.content).toBe(
+      "<attachment name=log.txt>\nboom\n</attachment>\nwhat is wrong here?",
+    );
+  });
+
+  it("names an attachment that carries no text", () => {
+    // An image flattens to nothing, and a turn with no user text at all is a 400. Naming the file
+    // keeps the turn sendable and tells the model a file it cannot read was attached.
+    const wire = flatten(
+      userMessage(
+        [],
+        [attachment("belt.png", "image", [{ type: "image", image: "data:image/png;base64,AA" }])],
+      ),
+    );
+
+    expect(wire.content).toBe("[attachment: belt.png]");
+  });
+
+  it("leaves an assistant message alone", () => {
+    const wire = flatten({
+      id: "m-2",
+      createdAt: new Date(0),
+      role: "assistant",
+      content: [{ type: "text", text: "about 84 inches." }],
+      status: { type: "complete", reason: "stop" },
+      metadata: {
+        unstable_state: null,
+        unstable_annotations: [],
+        unstable_data: [],
+        steps: [],
+        custom: {},
+      },
+    });
+
+    expect(wire).toEqual({ role: "assistant", content: "about 84 inches." });
   });
 });

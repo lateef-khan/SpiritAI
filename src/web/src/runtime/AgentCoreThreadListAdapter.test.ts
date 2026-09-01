@@ -128,7 +128,11 @@ describe("createAgentCoreThreadListAdapter", () => {
     });
 
     await createAgentCoreThreadListAdapter(api).generateTitle("call-1", [
-      { role: "user", content: [{ type: "text", text: "the belt keeps slipping" }] },
+      {
+        role: "user",
+        content: [{ type: "text", text: "the belt keeps slipping" }],
+        attachments: [],
+      },
     ] as never);
 
     assert.deepEqual(sent, [[{ role: "user", content: "the belt keeps slipping" }]]);

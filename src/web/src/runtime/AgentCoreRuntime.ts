@@ -1,7 +1,11 @@
 import {
+  CompositeAttachmentAdapter,
+  SimpleImageAttachmentAdapter,
+  SimpleTextAttachmentAdapter,
   useLocalRuntime,
   type ChatModelAdapter,
   type ChatModelRunResult,
+  type CompleteAttachment,
   type MessageTiming,
   type ThreadMessage,
 } from "@assistant-ui/react";
@@ -22,12 +26,34 @@ import { authFetch } from "@/auth/authFetch";
  */
 
 /**
+ * What one attachment contributes to the message it rides on.
+ *
+ * A text file arrives already wrapped in a tag naming it, so it goes up as it is. Anything else —
+ * an image — has no text to send and is named instead. The name is not decoration: a message whose
+ * only content is an image would otherwise flatten to nothing, and the endpoint answers a turn with
+ * no user text with a 400. Naming it keeps the turn sendable and tells the model a file it cannot
+ * read was attached, rather than leaving it to answer a question about nothing.
+ */
+function attachmentText(attachment: CompleteAttachment): string {
+  const text = attachment.content
+    .filter((part): part is { type: "text"; text: string } => part.type === "text")
+    .map((part) => part.text)
+    .join("");
+
+  return text.length > 0 ? text : `[attachment: ${attachment.name}]`;
+}
+
+/**
  * Flattens one assistant-ui message into the single string the OpenAI shape carries.
  *
  * AgentCore's endpoint reads text and no other content part, so anything else in the message — an
  * image, a tool call — has nothing to map onto and is left out rather than sent as `[object
  * Object]`. The thread list sends its words up the same way, so this is the app's one mapper
  * rather than one per caller.
+ *
+ * Attachments hang off the message rather than sitting in its content, so they are read separately
+ * and placed ahead of the typed words: the model should read the material before the question asked
+ * about it.
  */
 export function flatten(message: ThreadMessage): WireMessage {
   const text = message.content
@@ -35,7 +61,14 @@ export function flatten(message: ThreadMessage): WireMessage {
     .map((part) => part.text)
     .join("");
 
-  return { role: message.role, content: text };
+  const attached = message.role === "user" ? message.attachments.map(attachmentText) : [];
+
+  // Blocks joined by a newline, where the content parts above were joined by nothing: those parts
+  // are pieces of one sentence, while an attachment and a question are two separate things to say.
+  return {
+    role: message.role,
+    content: [...attached, ...(text.length > 0 ? [text] : [])].join("\n"),
+  };
 }
 
 /**
@@ -167,6 +200,27 @@ export type TurnFetch = (url: string, init: RequestInit) => Promise<Response>;
 export type ThreadSession = () => Promise<string>;
 
 /**
+ * What the composer accepts when someone attaches a file.
+ *
+ * Without this the composer has no attachment support at all: assistant-ui reads the capability off
+ * the presence of this adapter, and adding a file without one throws an error the add-attachment
+ * button swallows — so the file picker opens, a file is picked, and nothing appears.
+ *
+ * Built once at module scope rather than per render. Both adapters are stateless — each reads a
+ * file and hands back its content — so there is nothing for a second instance to own, and the
+ * composer would only re-read an object that behaves identically.
+ *
+ * The image adapter is first because the order decides which one claims a file, and the text
+ * adapter's list is the narrower of the two. An image becomes a data URL the browser draws in the
+ * thread; the endpoint cannot carry it, so {@link flatten} sends the file's name in its place until
+ * AgentCore's wire shape grows a content part for it.
+ */
+const attachments = new CompositeAttachmentAdapter([
+  new SimpleImageAttachmentAdapter(),
+  new SimpleTextAttachmentAdapter(),
+]);
+
+/**
  * Binds assistant-ui to one AgentCore endpoint.
  *
  * @param endpoint The route the host mapped the text endpoint on.
@@ -267,5 +321,5 @@ export function useAgentCoreRuntime(
     },
   };
 
-  return useLocalRuntime(adapter);
+  return useLocalRuntime(adapter, { adapters: { attachments } });
 }
