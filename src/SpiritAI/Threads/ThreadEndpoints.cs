@@ -3,7 +3,6 @@ using System.Text.Json;
 
 using AgentCore.Application.Calls;
 using AgentCore.Application.Ports;
-
 using Microsoft.Extensions.AI;
 
 namespace SpiritAI.Threads;
@@ -34,16 +33,59 @@ public static class ThreadEndpointRouteBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
-        endpoints.MapGet(Pattern, ListAsync);
-        endpoints.MapPost(Pattern, CreateAsync);
-        endpoints.MapGet(One, FetchAsync);
-        endpoints.MapGet($"{One}/messages", HistoryAsync);
-        endpoints.MapPost($"{One}/title", TitleAsync);
-        endpoints.MapPatch(One, AmendAsync);
-        endpoints.MapDelete(One, DeleteAsync);
+        endpoints.MapGet(Pattern, ListAsync)
+            .Describe("listThreads")
+            .Produces<ThreadPage>()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        endpoints.MapPost(Pattern, CreateAsync)
+            .Describe("createThread")
+            .Produces<ThreadCreated>(StatusCodes.Status201Created);
+
+        endpoints.MapGet(One, FetchAsync)
+            .Describe("getThread")
+            .Produces<ThreadSummary>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        endpoints.MapGet($"{One}/messages", HistoryAsync)
+            .Describe("getThreadMessages")
+            .Produces<ThreadHistory>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        // Left out of the document on purpose. This route answers with a text stream the browser
+        // reads a piece at a time; a generated client would parse one whole body and hand back a
+        // string, which is the one thing the caller must not do. See threadsApi.ts.
+        endpoints.MapPost($"{One}/title", TitleAsync)
+            .ExcludeFromDescription();
+
+        endpoints.MapPatch(One, AmendAsync)
+            .Describe("updateThread")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
+        endpoints.MapDelete(One, DeleteAsync)
+            .Describe("deleteThread")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound);
 
         return endpoints;
     }
+
+    /// <summary>
+    /// Names one route in the OpenAPI document, and declares the 401 every route here can answer.
+    /// </summary>
+    /// <param name="route">The route just mapped.</param>
+    /// <param name="operationId">
+    /// The name the generated client's function takes. Chosen here rather than derived, because a
+    /// derived name changes whenever the path does and every call site breaks with it.
+    /// </param>
+    /// <returns>The same builder.</returns>
+    private static RouteHandlerBuilder Describe(this RouteHandlerBuilder route, string operationId)
+        => route
+            .WithName(operationId)
+            .WithTags("Threads")
+            .Produces(StatusCodes.Status401Unauthorized);
 
     /// <summary>Runs a route body for the caller behind the request, or refuses it.</summary>
     /// <param name="http">The request, carrying whoever the token named.</param>
@@ -318,6 +360,6 @@ public static class ThreadEndpointRouteBuilderExtensions
             return TypedResults.NoContent();
         });
 
-    private static IResult Refuse(string detail)
+    private static Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult Refuse(string detail)
         => TypedResults.Problem(detail, statusCode: StatusCodes.Status400BadRequest, title: "The request cannot be read.");
 }

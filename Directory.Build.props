@@ -5,6 +5,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!--
+      Microsoft.AspNetCore.OpenApi's source generator lifts the XML doc comments off the endpoints
+      and the records they answer with into the OpenAPI document, which is where the generated
+      TypeScript client picks up its JSDoc. It emits interceptors to do it, and interceptors are
+      refused unless their namespace is named here.
+    -->
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated</InterceptorsNamespaces>
   </PropertyGroup>
 
   <!--

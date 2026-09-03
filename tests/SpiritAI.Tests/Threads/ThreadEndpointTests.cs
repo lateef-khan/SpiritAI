@@ -141,7 +141,7 @@ public sealed class ThreadEndpointTests
         var remoteId = await world.Owner.CreateThreadAsync();
         var thread = await world.Owner.FetchAsync(remoteId);
 
-        Assert.Equal("regular", thread.Status);
+        Assert.Equal(ThreadStatus.Regular, thread.Status);
         Assert.Null(thread.Title);
     }
 
@@ -212,8 +212,8 @@ public sealed class ThreadEndpointTests
         await world.Owner.PatchAsync($"{Threads}/{remoteId}", new { custom = new { pinned = true } });
 
         var custom = (await world.Owner.FetchAsync(remoteId)).Custom;
-        Assert.True(custom.HasValue);
-        Assert.True(custom!.Value.GetProperty("pinned").GetBoolean());
+        Assert.NotNull(custom);
+        Assert.True(custom["pinned"].GetBoolean());
     }
 
     [Fact]

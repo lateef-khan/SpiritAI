@@ -1,56 +1,47 @@
 import type { ExportedMessageRepository } from "@assistant-ui/react";
 import type { WireMessage } from "./transport.ts";
-import { authFetch } from "@/auth/authFetch";
+import {
+  createThread,
+  deleteThread,
+  getThread,
+  getThreadMessages,
+  listThreads,
+  updateThread,
+} from "@/api/sdk.gen";
+import type {
+  ThreadCreated,
+  ThreadHistory,
+  ThreadPage,
+  ThreadStatus,
+  ThreadSummary,
+} from "@/api/types.gen";
+import { apiClient, createApiClient, type FetchLike } from "@/apiClient";
 
 /**
  * Everything the browser asks the host about threads, with no assistant-ui in sight.
  *
- * Separate from the adapter above it for the same reason `transport.ts` is separate from the
- * runtime: a URL built wrong, a cursor not escaped, a 404 read as success — each of those shows up
- * as a thread list that is quietly empty, with nothing in any log. This half is testable without a
- * React tree.
+ * The requests themselves are generated — `src/api/` is written by `openapi-ts` from the document
+ * the host emits, so a URL built wrong or a cursor left unescaped is no longer a thing that can
+ * happen here. What is left is the two jobs a generated client cannot do: reading a text stream a
+ * piece at a time, and turning the wire's dates back into dates.
  */
 
 /** Where the host maps the thread list. */
 export const ThreadsPath = "/v1/threads";
 
-/** Whether a thread is still listed as usual. The host spells it the same way. */
-export type ThreadStatus = "regular" | "archived";
+export type { FetchLike, ThreadStatus };
 
 /** One thread, exactly as the host writes it. */
-export type WireThread = {
-  readonly remoteId: string;
-  readonly status: ThreadStatus;
-  readonly externalId?: string | null;
-  readonly title?: string | null;
-  /** ISO 8601. JSON has no date, so this is a string until the adapter revives it. */
-  readonly lastMessageAt?: string | null;
-  readonly custom?: Record<string, unknown> | null;
-};
+export type WireThread = ThreadSummary;
 
 /** One page of the caller's threads. */
-export type WireThreadPage = {
-  readonly threads: readonly WireThread[];
-  readonly nextCursor?: string | null;
-};
+export type WireThreadPage = ThreadPage;
 
 /** What a thread's creation answers with. */
-export type WireThreadCreated = {
-  readonly remoteId: string;
-  readonly externalId?: string | null;
-};
+export type WireThreadCreated = ThreadCreated;
 
 /** The conversation as the host sends it, before its dates are dates. */
-export type WireHistory = {
-  readonly headId?: string | null;
-  readonly messages: readonly {
-    readonly parentId: string | null;
-    readonly message: Record<string, unknown>;
-  }[];
-};
-
-/** The part of `fetch` this module uses, so a test can hand it one that reaches no network. */
-export type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
+export type WireHistory = ThreadHistory;
 
 /** Every question the browser asks about threads. */
 export type ThreadsApi = {
@@ -81,7 +72,7 @@ export function reviveHistory(raw: WireHistory): ExportedMessageRepository {
       parentId: item.parentId,
       message: {
         ...item.message,
-        createdAt: new Date(item.message["createdAt"] as string),
+        createdAt: new Date(item.message.createdAt),
       },
     })) as ExportedMessageRepository["messages"],
   };
@@ -93,49 +84,64 @@ export function reviveHistory(raw: WireHistory): ExportedMessageRepository {
  * @param send How a request reaches the host. Defaults to the signed-in path.
  * @returns The api the adapter runs on.
  */
-export function createThreadsApi(send: FetchLike = authFetch): ThreadsApi {
-  const one = (remoteId: string) => `${ThreadsPath}/${encodeURIComponent(remoteId)}`;
+export function createThreadsApi(send?: FetchLike): ThreadsApi {
+  const client = send ? createApiClient(send) : apiClient;
+  const request = send ?? apiClient.getConfig().fetch!;
 
   return {
-    list: (after) =>
-      json<WireThreadPage>(
-        send,
-        after ? `${ThreadsPath}?after=${encodeURIComponent(after)}` : ThreadsPath,
-      ),
+    list: async (after) =>
+      (
+        await listThreads({
+          client,
+          throwOnError: true,
+          ...(after ? { query: { after } } : {}),
+        })
+      ).data,
 
-    create: () => json<WireThreadCreated>(send, ThreadsPath, { method: "POST" }),
+    create: async () => (await createThread({ client, throwOnError: true })).data,
 
-    fetch: (remoteId) => json<WireThread>(send, one(remoteId)),
+    fetch: async (remoteId) =>
+      (await getThread({ client, throwOnError: true, path: { remoteId } })).data,
 
-    patch: (remoteId, body) =>
-      noContent(send, one(remoteId), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      }),
+    patch: async (remoteId, body) => {
+      await updateThread({ client, throwOnError: true, path: { remoteId }, body });
+    },
 
-    remove: (remoteId) => noContent(send, one(remoteId), { method: "DELETE" }),
+    remove: async (remoteId) => {
+      await deleteThread({ client, throwOnError: true, path: { remoteId } });
+    },
 
     history: async (remoteId) =>
-      reviveHistory(await json<WireHistory>(send, `${one(remoteId)}/messages`)),
+      reviveHistory(
+        (await getThreadMessages({ client, throwOnError: true, path: { remoteId } })).data,
+      ),
 
-    title: (remoteId, messages) => pieces(send, `${one(remoteId)}/title`, { messages }),
+    title: (remoteId, messages) =>
+      pieces(request, `${ThreadsPath}/${encodeURIComponent(remoteId)}/title`, { messages }),
   };
 }
 
 /**
  * Reads a streaming answer as text, a piece at a time.
  *
+ * Hand-written, and the reason is in the document rather than here: this route is marked
+ * `ExcludeFromDescription`, because a generated call parses one whole body and hands back an
+ * object, which is the one thing this caller must not do.
+ *
  * `TextDecoder` rather than `TextDecoderStream`: the second is absent from the test environment,
  * and `stream: true` on the first is what keeps a character split across two chunks whole. The
  * final `decode()` with no argument flushes whatever half-character was left over.
  */
 async function* pieces(send: FetchLike, url: string, body: unknown): AsyncGenerator<string> {
-  const response = await ok(send, url, {
+  const response = await send(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
+  if (!response.ok) {
+    throw new Error(`the host answered ${response.status} for ${url}.`);
+  }
 
   if (!response.body) return;
 
@@ -159,30 +165,4 @@ async function* pieces(send: FetchLike, url: string, body: unknown): AsyncGenera
   const rest = decoder.decode();
 
   if (rest) yield rest;
-}
-
-/**
- * Sends one request and refuses anything that is not a success.
- *
- * The status is in the message on purpose. A thread list that silently empties is the failure this
- * whole file exists to make visible, and 404 versus 500 is the difference between "somebody else's
- * thread" and "the host is broken".
- */
-async function ok(send: FetchLike, url: string, init: RequestInit): Promise<Response> {
-  const response = await send(url, init);
-
-  if (!response.ok) {
-    throw new Error(`the host answered ${response.status} for ${url}.`);
-  }
-
-  return response;
-}
-
-async function json<T>(send: FetchLike, url: string, init: RequestInit = {}): Promise<T> {
-  return (await ok(send, url, init)).json() as Promise<T>;
-}
-
-/** Sends one request whose answer has no body to read — the host replies 204. */
-async function noContent(send: FetchLike, url: string, init: RequestInit): Promise<void> {
-  await ok(send, url, init);
 }

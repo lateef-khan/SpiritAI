@@ -1,13 +1,29 @@
 # What is ours and what is not
 
-`runtime/` and `auth/` are ours. Everything in them is written and maintained here, and they are
-the only places a change to this application's behaviour belongs.
+`runtime/` and `auth/` are ours. Everything in them is written and maintained here.
 
-`components/`, `hooks/`, and `lib/` are assistant-ui's and shadcn's. Those files arrived through
-their registries and are byte-identical to what the CLI wrote. **Do not edit them.** They carry no
-explanatory comments for the same reason: a diff against upstream is the cheap way to see whether
-one has been tampered with, and re-running the commands below has to stay a clean overwrite rather
-than a merge.
+`components/` is shared ground, and the split is by folder:
+
+- `components/ui/`, `components/assistant-ui/` and `components/icons/` arrived through the shadcn
+  and assistant-ui registries. **Do not edit them.** They carry no explanatory comments on purpose:
+  a diff against upstream is the cheap way to see whether one has been tampered with, and re-running
+  the commands below should stay an overwrite rather than a merge. `hooks/use-mobile.ts` and
+  `lib/utils.ts` came the same way and follow the same rule.
+- Every other folder under `components/` is ours — `chat/`, `elements/` and `unit/` today. Ours
+  always goes in a named folder. A file loose at the top of `components/` belongs to neither side
+  and is the one shape to avoid.
+
+Two things already broke that promise, and both matter before you re-run a registry command:
+
+- `a970b77` ran Prettier over the whole web codebase and reformatted all 27 files under `ui/` and
+  `assistant-ui/`. None of them is byte-identical to what the CLI wrote any more, so the diff
+  against upstream is noise rather than the tamper check it was meant to be.
+- Five files of ours were written straight into `assistant-ui/` instead of beside our own code:
+  `draft.tsx`, `search.tsx`, `regenerate.tsx`, `speaker.tsx` and `elements/sources.tsx`. They never
+  came from the registry at all. `thread.tsx` and `tool-fallback.tsx` are the only registry files
+  whose bodies we edited, to hang our `elements/` pieces into the render tree.
+
+So re-adding any of these is a merge, not an overwrite. `icons/` is untouched.
 
 To refresh them:
 

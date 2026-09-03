@@ -3,3 +3,7 @@
 
 # Lockfiles are generated, and reformatting one makes every future diff unreadable.
 package-lock.json
+
+# Written by OpenApiDocumentTests, byte for byte. Reformatting it here would make the next test
+# run look like a change.
+openapi/v1.json

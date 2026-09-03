@@ -2,7 +2,25 @@ import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 import { AssistantMessageStream, type AssistantStream } from "assistant-stream";
 import { createAgentCoreThreadListAdapter } from "./AgentCoreThreadListAdapter.ts";
-import type { ThreadsApi } from "./threadsApi.ts";
+import type { ThreadsApi, WireThread } from "./threadsApi.ts";
+
+/**
+ * One thread as the host writes it.
+ *
+ * Every field is present because the host's record has every field; the ones nobody set come over
+ * as null rather than missing. A fixture that left them out would be testing a shape the wire
+ * cannot produce.
+ */
+function wireThread(fields: Partial<WireThread> & { remoteId: string }): WireThread {
+  return {
+    status: "regular",
+    externalId: null,
+    title: null,
+    lastMessageAt: null,
+    custom: null,
+    ...fields,
+  };
+}
 
 /** A stand-in for the host, recording what the adapter asked of it. */
 function fakeApi(overrides: Partial<ThreadsApi> = {}) {
@@ -11,8 +29,8 @@ function fakeApi(overrides: Partial<ThreadsApi> = {}) {
 
   const api: ThreadsApi = {
     list: async () => ({ threads: [], nextCursor: null }),
-    create: async () => ({ remoteId: "call-new" }),
-    fetch: async () => ({ remoteId: "call-1", status: "regular" }),
+    create: async () => ({ remoteId: "call-new", externalId: null }),
+    fetch: async () => wireThread({ remoteId: "call-1" }),
     patch: async (remoteId, body) => void patches.push({ remoteId, body }),
     remove: async (remoteId) => void removed.push(remoteId),
     history: async () => ({ messages: [] }),
@@ -28,12 +46,11 @@ describe("createAgentCoreThreadListAdapter", () => {
     const { api } = fakeApi({
       list: async () => ({
         threads: [
-          {
+          wireThread({
             remoteId: "call-1",
-            status: "regular",
             title: "Belt slips",
             lastMessageAt: "2026-08-31T09:00:00Z",
-          },
+          }),
         ],
         nextCursor: null,
       }),

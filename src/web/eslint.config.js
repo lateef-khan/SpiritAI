@@ -16,7 +16,7 @@ import tseslint from "typescript-eslint";
  * argue with it. A rule that fires here should always be about behaviour.
  */
 export default tseslint.config(
-  { ignores: ["../SpiritAI/wwwroot/**"] },
+  { ignores: ["../SpiritAI/wwwroot/**", "src/api/**"] },
 
   js.configs.recommended,
   tseslint.configs.recommended,

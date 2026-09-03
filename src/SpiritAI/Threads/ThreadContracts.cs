@@ -6,15 +6,30 @@ using AgentCore.Application.Calls;
 namespace SpiritAI.Threads;
 
 /// <summary>
+/// Whether a thread is still listed as usual.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ThreadStatus>))]
+public enum ThreadStatus
+{
+    /// <summary>Listed as usual.</summary>
+    [JsonStringEnumMemberName(ThreadSummary.Regular)]
+    Regular,
+
+    /// <summary>Filed away, and off the list until it is asked for.</summary>
+    [JsonStringEnumMemberName(ThreadSummary.Archived)]
+    Archived,
+}
+
+/// <summary>
 /// The shapes the browser reads, which are assistant-ui's and not AgentCore's.
 /// </summary>
 public sealed record ThreadSummary(
     string RemoteId,
-    string Status,
+    ThreadStatus Status,
     string? ExternalId,
     string? Title,
     DateTimeOffset? LastMessageAt,
-    JsonElement? Custom)
+    IReadOnlyDictionary<string, JsonElement>? Custom)
 {
     /// <summary>The two values <c>status</c> takes, as the wire spells them.</summary>
     public const string Regular = "regular";
@@ -31,12 +46,28 @@ public sealed record ThreadSummary(
 
         return new ThreadSummary(
             record.CallId,
-            record.Status == CallStatus.Archived ? Archived : Regular,
+            record.Status == CallStatus.Archived ? ThreadStatus.Archived : ThreadStatus.Regular,
             record.ExternalId,
             record.Title,
             record.LastMessageAt,
-            ThreadEnvelope.AppOf(record.Custom));
+            FieldsOf(record.Custom));
     }
+
+    /// <summary>
+    /// Reads the browser's own fields as the object they are.
+    /// </summary>
+    /// <remarks>
+    /// A <see cref="JsonElement"/> is "some JSON" and nothing more, which is all the document could
+    /// then say and all the generated client could then type. <c>PATCH</c> already refuses a
+    /// <c>custom</c> that is not an object, so a dictionary is what this column actually holds.
+    /// A row written before that check, or by something else, reads as nothing rather than throwing.
+    /// </remarks>
+    /// <param name="custom">The stored column, or <see langword="null"/>.</param>
+    /// <returns>The browser's fields, or <see langword="null"/> when the row holds none.</returns>
+    private static IReadOnlyDictionary<string, JsonElement>? FieldsOf(JsonElement? custom)
+        => ThreadEnvelope.AppOf(custom) is { ValueKind: JsonValueKind.Object } app
+            ? app.Deserialize<Dictionary<string, JsonElement>>(JsonSerializerOptions.Web)
+            : null;
 
     /// <summary>Reads the wire's spelling of a status.</summary>
     /// <param name="text">What the caller sent.</param>

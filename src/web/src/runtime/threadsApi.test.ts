@@ -1,13 +1,40 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
-import { createThreadsApi, reviveHistory, ThreadsPath } from "./threadsApi.ts";
+import { createThreadsApi, reviveHistory, ThreadsPath, type FetchLike } from "./threadsApi.ts";
+
+/** One request, however it was handed over. */
+type Sent = { url: string; method: string; body: string | null };
+
+/**
+ * Reads a request the same way whichever shape it arrives in.
+ *
+ * The generated client builds a whole `Request` and passes it alone; `title` is hand-written and
+ * passes a path and an init, the way `fetch` is usually called. Both are valid `FetchLike` calls.
+ */
+async function sentOf(input: RequestInfo | URL, init?: RequestInit): Promise<Sent> {
+  if (input instanceof Request) {
+    const { pathname, search } = new URL(input.url);
+
+    return {
+      url: pathname + search,
+      method: input.method,
+      body: (await input.clone().text()) || null,
+    };
+  }
+
+  return {
+    url: String(input),
+    method: init?.method ?? "GET",
+    body: (init?.body as string | undefined) ?? null,
+  };
+}
 
 /** A `fetch` that answers one canned body and records what it was asked. */
 function fakeFetch(body: unknown, status = 200) {
-  const calls: { url: string; init: RequestInit }[] = [];
+  const calls: Sent[] = [];
 
-  const send = async (url: string, init: RequestInit) => {
-    calls.push({ url, init });
+  const send: FetchLike = async (input, init) => {
+    calls.push(await sentOf(input, init));
     return new Response(body === undefined ? null : JSON.stringify(body), {
       status,
       headers: { "Content-Type": "application/json" },
@@ -26,13 +53,13 @@ describe("createThreadsApi", () => {
 
     for await (const _ of createThreadsApi(fetch.send).title("call-1", Said)) void _;
 
-    assert.equal(fetch.calls[0]!.init.body, JSON.stringify({ messages: Said }));
+    assert.equal(fetch.calls[0]!.body, JSON.stringify({ messages: Said }));
   });
 
   it("reads a streamed title a piece at a time", async () => {
-    const calls: { url: string; init: RequestInit }[] = [];
-    const send = async (url: string, init: RequestInit) => {
-      calls.push({ url, init });
+    const calls: Sent[] = [];
+    const send: FetchLike = async (input, init) => {
+      calls.push(await sentOf(input, init));
       return new Response(
         new ReadableStream<Uint8Array>({
           start(controller) {
@@ -51,7 +78,7 @@ describe("createThreadsApi", () => {
 
     assert.deepEqual(read, ["Belt", " slips"]);
     assert.equal(calls[0]!.url, `${ThreadsPath}/call-1/title`);
-    assert.equal(calls[0]!.init.method, "POST");
+    assert.equal(calls[0]!.method, "POST");
   });
 
   it("keeps a character whole when the host splits it across two chunks", async () => {
@@ -59,7 +86,7 @@ describe("createThreadsApi", () => {
     // replacement characters here rather than the letter the model actually wrote.
     const split = new TextEncoder().encode("é");
 
-    const send = async () =>
+    const send: FetchLike = async () =>
       new Response(
         new ReadableStream<Uint8Array>({
           start(controller) {
@@ -99,19 +126,21 @@ describe("createThreadsApi", () => {
 
     await createThreadsApi(fetch.send).list("cursor+with//characters");
 
-    assert.equal(
-      fetch.calls[0]!.url,
-      `${ThreadsPath}?after=${encodeURIComponent("cursor+with//characters")}`,
-    );
+    // Read back rather than compared as text: what matters is that the cursor survives the trip
+    // whole, not which of the several legal encodings the client chose for it.
+    const asked = new URL(fetch.calls[0]!.url, "http://localhost");
+
+    assert.equal(asked.pathname, ThreadsPath);
+    assert.equal(asked.searchParams.get("after"), "cursor+with//characters");
   });
 
   it("makes a thread with no body of its own", async () => {
-    const fetch = fakeFetch({ remoteId: "call-1" });
+    const fetch = fakeFetch({ remoteId: "call-1", externalId: null });
 
     const made = await createThreadsApi(fetch.send).create();
 
     assert.equal(made.remoteId, "call-1");
-    assert.equal(fetch.calls[0]!.init.method, "POST");
+    assert.equal(fetch.calls[0]!.method, "POST");
   });
 
   it("sends only the fields a change names", async () => {
@@ -119,8 +148,8 @@ describe("createThreadsApi", () => {
 
     await createThreadsApi(fetch.send).patch("call-1", { title: "Belt slips" });
 
-    assert.equal(fetch.calls[0]!.init.method, "PATCH");
-    assert.equal(fetch.calls[0]!.init.body, JSON.stringify({ title: "Belt slips" }));
+    assert.equal(fetch.calls[0]!.method, "PATCH");
+    assert.equal(fetch.calls[0]!.body, JSON.stringify({ title: "Belt slips" }));
   });
 
   it("throws a readable error when the host refuses", async () => {
@@ -153,6 +182,6 @@ describe("reviveHistory", () => {
   });
 
   it("answers with an empty conversation when the host sends none", () => {
-    assert.deepEqual(reviveHistory({ messages: [] }).messages, []);
+    assert.deepEqual(reviveHistory({ headId: null, messages: [] }).messages, []);
   });
 });

@@ -2,15 +2,19 @@ import { Thread } from "@/components/assistant-ui/thread";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider, useRemoteThreadListRuntime } from "@assistant-ui/react";
-import { AgentCoreSidebar } from "@/components/AgentCoreSidebar";
+import { AgentCoreSidebar } from "@/components/chat/AgentCoreSidebar";
 import { AuthGate } from "@/auth/AuthGate";
-import { GenerativeUiDataUI } from "@/components/GenerativeUiDataUI";
+import { GenerativeUiDataUI } from "@/components/chat/GenerativeUiDataUI";
 import { useAgentCoreRuntime } from "./runtime/AgentCoreRuntime";
 import {
   createAgentCoreThreadListAdapter,
   useThreadSession,
 } from "./runtime/AgentCoreThreadListAdapter";
 import { authFetch } from "@/auth/authFetch";
+import { ThreadUnitPanel } from "@/components/unit/ThreadUnitPanel";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { PanelRightIcon } from "lucide-react";
 
 /**
  * The route the text endpoint answers on.
@@ -37,6 +41,32 @@ function useThreadRuntime() {
   return useAgentCoreRuntime(endpoint, authFetch, useThreadSession());
 }
 
+/**
+ * Where the unit panel sits.
+ *
+ * Beside the conversation on a wide screen. On a narrow one there is no room for two columns, becomes a `Sheet`.
+ */
+function UnitColumn() {
+  const isMobile = useIsMobile();
+
+  if (!isMobile) {
+    return <ThreadUnitPanel className="w-80 shrink-0" />;
+  }
+
+  return (
+    <Sheet>
+      <SheetTrigger className="absolute end-3 top-3 z-10 rounded-md border bg-background p-1.5">
+        <PanelRightIcon className="size-4" />
+        <span className="sr-only">Show the unit</span>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-80 p-0">
+        <SheetTitle className="sr-only">Unit</SheetTitle>
+        <ThreadUnitPanel className="border-l-0" />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export function App() {
   const runtime = useRemoteThreadListRuntime({
     runtimeHook: useThreadRuntime,
@@ -51,9 +81,10 @@ export function App() {
           <SidebarProvider>
             <div className="flex h-dvh w-full">
               <AgentCoreSidebar />
-              <div className="flex-1 overflow-hidden">
+              <div className="relative flex-1 overflow-hidden">
                 <Thread />
               </div>
+              <UnitColumn />
             </div>
           </SidebarProvider>
         </TooltipProvider>
