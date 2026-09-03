@@ -2,27 +2,29 @@
 
 `runtime/` and `auth/` are ours. Everything in them is written and maintained here.
 
-`components/` is almost all theirs. `ui/`, `assistant-ui/`, `icons/` and `elements/` came through
-the shadcn and assistant-ui registries, as did `hooks/use-mobile.ts` and `lib/utils.ts`. **Prefer
-not to edit them.** They carry no explanatory comments on purpose: a diff against upstream is the
-cheap way to see whether one has been tampered with. `components/chat/` and `components/unit/` are
-ours, and ours always goes in a named folder — a file loose at the top of `components/` belongs to
-neither side and is the one shape to avoid.
+`components/` is almost all theirs. `ui/`, `assistant-ui/` (including `assistant-ui/elements/`) and
+`icons/` came through the shadcn and assistant-ui registries, as did `hooks/use-mobile.ts` and
+`lib/utils.ts`. **Prefer not to edit them.** They carry no explanatory comments on purpose: a diff
+against upstream is the cheap way to see whether one has been tampered with. `components/chat/` and
+`components/unit/` are ours, and ours always goes in a named folder — a file loose at the top of
+`components/` belongs to neither side and is the one shape to avoid.
 
-`elements/` is worth naming, because its own path is already an edit. The registry writes every
-`elements-*` item to `components/assistant-ui/elements/`; all thirteen were moved up to
-`components/elements/` instead, and `sources.tsx` was left behind at the upstream path. So a fresh
-`shadcn add elements-<name>` lands in the wrong directory and has to be moved by hand.
+Every path here is the path the registry writes to, and it has to stay that way. `components.json`
+maps aliases by item _type_, not by sub-path, so there is no setting that redirects an `elements-*`
+item somewhere else: the registry hard-codes `components/assistant-ui/elements/<name>.tsx`. Move the
+folder and every future `shadcn add` silently lands in the old place instead.
 
-Three things have already broken the clean-overwrite promise:
+Two things have broken the clean-overwrite promise, and neither is worth undoing:
 
-- `a970b77` ran Prettier over the whole web codebase and reformatted all 27 files under `ui/` and
-  `assistant-ui/`. None is byte-identical to what the CLI wrote any more, so the upstream diff is
-  noise rather than the tamper check it was meant to be.
-- `day-separator.tsx` and `sources.tsx` have bodies we changed; the other eleven under `elements/`
-  still match upstream once whitespace is ignored.
-- `thread.tsx` and `tool-fallback.tsx` are the only registry files under `assistant-ui/` whose
-  bodies we edited, to hang our pieces into the render tree.
+- `a970b77` ran Prettier over the whole web codebase and reformatted every one of the 40 files that
+  existed under `ui/` and `assistant-ui/` at the time. None is byte-identical to what the CLI wrote
+  any more, so the upstream diff is noise rather than the tamper check it was meant to be. Compare
+  with whitespace ignored.
+- Four registry files have real body edits. `thread.tsx` and `tool-fallback.tsx` hang our pieces
+  into the render tree. `elements/day-separator.tsx` gained `DayDivider` (see below).
+  `elements/sources.tsx` gained an `id` field, because upstream keys the list by `domain`, which is
+  neither unique nor always present. Every other file under `elements/` still matches upstream once
+  whitespace is ignored.
 
 Four files under `assistant-ui/` are ours outright and never came from any registry: `draft.tsx`,
 `search.tsx`, `regenerate.tsx` and `speaker.tsx`. They exist for two reasons, and both are worth

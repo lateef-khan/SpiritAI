@@ -52,11 +52,11 @@ import { ComposerDraft } from "@/components/assistant-ui/draft";
 import { Regenerate } from "@/components/assistant-ui/regenerate";
 import { ThreadMessageSearch } from "@/components/assistant-ui/search";
 import { MessageSpeaker } from "@/components/assistant-ui/speaker";
-import { DayDivider } from "@/components/elements/day-separator";
-import { ErrorState } from "@/components/elements/error-state";
-import { MessageTiming as MessageTimingStats } from "@/components/elements/message-timing";
-import { StoppedRun } from "@/components/elements/stopped-run";
-import { TypingIndicator } from "@/components/elements/typing-indicator";
+import { DayDivider } from "@/components/assistant-ui/elements/day-separator";
+import { ErrorState } from "@/components/assistant-ui/elements/error-state";
+import { MessageTiming as MessageTimingStats } from "@/components/assistant-ui/elements/message-timing";
+import { StoppedRun } from "@/components/assistant-ui/elements/stopped-run";
+import { TypingIndicator } from "@/components/assistant-ui/elements/typing-indicator";
 import { useActionBarReload } from "@assistant-ui/core/react";
 import {
   ArrowDownIcon,

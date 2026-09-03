@@ -1,5 +1,5 @@
 import { Thread } from "@/components/assistant-ui/thread";
-import { LauncherBubble } from "@/components/elements/launcher-bubble";
+import { LauncherBubble } from "@/components/assistant-ui/elements/launcher-bubble";
 import { GenerativeUiDataUI } from "@/components/chat/GenerativeUiDataUI";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";

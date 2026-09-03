@@ -14,7 +14,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ToolError } from "@/components/elements/tool-error";
+import { ToolError } from "@/components/assistant-ui/elements/tool-error";
 import { useActionBarReload } from "@assistant-ui/core/react";
 
 const ANIMATION_DURATION = 200;

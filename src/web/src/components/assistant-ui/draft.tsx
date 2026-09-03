@@ -1,6 +1,6 @@
 "use client";
 
-import { DraftRestore } from "@/components/elements/draft-restore";
+import { DraftRestore } from "@/components/assistant-ui/elements/draft-restore";
 import { useAui, useAuiState } from "@assistant-ui/react";
 import { useEffect, useState, type FC } from "react";
 

@@ -3,7 +3,7 @@
 import { ChevronDownIcon } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { collapsePanel, fieldInteractive, mono, paper } from "@/components/elements/surfaces";
+import { collapsePanel, fieldInteractive, mono, paper } from "./surfaces";
 
 export interface Source {
   /**
