@@ -29,77 +29,107 @@ export function UnitPanel({
   const { chips, selected, select } = useIdentifiers(said);
   const { view, retry } = useUnitDocument(selected);
 
+  // A serial names a machine and an order names a job. The two documents share no fields, so
+  // selecting an order does not filter the machine — it replaces the whole panel. One flat row of
+  // pills hides that; a bar per kind, at opposite ends, cannot.
+  const serials = chips.filter((chip) => chip.kind === "serial");
+  const orders = chips.filter((chip) => chip.kind === "order");
+
   return (
     <aside
       aria-label="Unit"
       data-testid="unit-panel"
       className={cn("flex h-full min-h-0 w-full flex-col border-l bg-card", className)}
     >
-      {chips.length > 0 ? <Chips chips={chips} selected={selected} onSelect={select} /> : null}
+      {serials.length > 0 ? (
+        <IdBar ids={serials} selected={selected} onSelect={select} className="border-b" />
+      ) : null}
 
-      {view.state === "idle" ? (
-        <Empty title="No information yet" />
-      ) : view.state === "loading" ? (
-        <>
-          <FactsSkeleton />
-          <TabsSkeleton />
-        </>
-      ) : view.state === "missing" ? (
-        <Empty
-          title="No unit with that number"
-          detail={`Nothing on file for ${view.identifier.value}.`}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {view.state === "idle" ? (
+          <Empty title="No information yet" />
+        ) : view.state === "loading" ? (
+          <>
+            <FactsSkeleton />
+            <TabsSkeleton />
+          </>
+        ) : view.state === "missing" ? (
+          <Empty
+            title="No unit with that number"
+            detail={`Nothing on file for ${view.identifier.value}.`}
+          />
+        ) : view.state === "failed" ? (
+          <Empty title="Could not reach the database" detail="Nothing was read." onRetry={retry} />
+        ) : view.state === "order" ? (
+          <OrderLines view={view} />
+        ) : view.unit.header ? (
+          <>
+            <UnitFacts header={view.unit.header} warranty={view.unit.warranty} />
+            <UnitTabs unit={view.unit} onAsk={onAsk} disabled={isRunning} />
+          </>
+        ) : (
+          <Empty
+            title="Could not read this unit"
+            detail="The lookup answered nothing."
+            onRetry={retry}
+          />
+        )}
+      </div>
+
+      {orders.length > 0 ? (
+        <IdBar
+          ids={orders}
+          selected={selected}
+          onSelect={select}
+          label="Work orders"
+          className="border-t"
         />
-      ) : view.state === "failed" ? (
-        <Empty title="Could not reach the database" detail="Nothing was read." onRetry={retry} />
-      ) : view.state === "order" ? (
-        <OrderLines view={view} />
-      ) : view.unit.header ? (
-        <>
-          <UnitFacts header={view.unit.header} />
-          <UnitTabs unit={view.unit} onAsk={onAsk} disabled={isRunning} />
-        </>
-      ) : (
-        <Empty
-          title="Could not read this unit"
-          detail="The lookup answered nothing."
-          onRetry={retry}
-        />
-      )}
+      ) : null}
     </aside>
   );
 }
 
 /**
- * Every number this thread has mentioned, newest first and selected.
+ * Every number of one kind this thread has mentioned, newest first.
  *
  * One small feature covers three problems: a correction that was itself wrong, two numbers in one
  * message, and flipping between two machines. Chasing a wrong one costs a single cheap request.
+ *
+ * Both bars stay drawn whatever is selected, so a person reading a work order still has the machine
+ * they came from one click away — which no lookup could give them, because an order number names no
+ * serial anywhere in the database.
  */
-function Chips({
-  chips,
+function IdBar({
+  ids,
   selected,
   onSelect,
+  label,
+  className,
 }: {
-  chips: readonly Identifier[];
+  ids: readonly Identifier[];
   selected: Identifier | null;
   onSelect: (value: string) => void;
+  label?: string;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-wrap gap-1 border-b p-2">
-      {chips.map((chip) => (
+    <div className={cn("flex flex-wrap items-center gap-1 p-2", className)}>
+      {label ? <span className="px-0.5 text-[11px] text-muted-foreground">{label}</span> : null}
+
+      {ids.map((id) => (
         <button
-          key={chip.value}
+          key={id.value}
           type="button"
-          aria-pressed={chip.value === selected?.value}
-          onClick={() => onSelect(chip.value)}
+          aria-pressed={id.value === selected?.value}
+          onClick={() => onSelect(id.value)}
           className={cn(
             "rounded-full border px-2 py-0.5 font-mono text-xs tabular-nums",
-            chip.value === selected?.value
+            id.value === selected?.value
               ? "border-transparent bg-primary text-primary-foreground"
               : "text-muted-foreground hover:bg-accent",
           )}
         >
-          {chip.kind === "serial" ? `…${chip.value.slice(-8)}` : chip.value}
+          {id.kind === "serial" ? `…${id.value.slice(-8)}` : id.value}
         </button>
       ))}
     </div>

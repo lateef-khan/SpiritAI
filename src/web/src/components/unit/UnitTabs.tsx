@@ -1,6 +1,7 @@
 import type { UnitDocument, UnitJob, UnitPart, UnitSection, WarrantyTerm } from "@/api/types.gen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 import { asDay } from "./format";
 
@@ -131,20 +132,34 @@ function JobRow({
   disabled: boolean;
 }) {
   return (
-    <Row
-      disabled={disabled}
-      onClick={() => onAsk(`Tell me about work order ${job.orderNumber}.`)}
-      lead={<span className="font-mono tabular-nums">{job.orderNumber}</span>}
-      body={job.summary ?? "—"}
-      trail={
-        <>
-          <span className={job.status === "closed" ? "text-muted-foreground" : "font-medium"}>
+    <li>
+      <button
+        type="button"
+        inert={disabled}
+        onClick={() => onAsk(`Tell me about work order ${job.orderNumber}.`)}
+        className="block w-full px-3 py-2 text-left hover:bg-accent"
+      >
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="font-mono text-xs font-medium tabular-nums">{job.orderNumber}</span>
+          <span
+            className={cn(
+              "shrink-0 text-xs",
+              job.status === "closed" ? "text-muted-foreground" : "font-medium",
+            )}
+          >
             {job.statusText ?? job.status}
           </span>
-          <span className="text-muted-foreground">{asDay(job.calledOn)}</span>
-        </>
-      }
-    />
+        </div>
+
+        {/* On its own line, and never truncated: what went wrong is the reason to read the row. */}
+        <p className="mt-0.5 text-xs">{job.summary ?? "—"}</p>
+
+        <p className="mt-0.5 flex gap-3 text-[11px] text-muted-foreground">
+          <span>{asDay(job.calledOn)}</span>
+          {job.technician ? <span className="truncate">{job.technician}</span> : null}
+        </p>
+      </button>
+    </li>
   );
 }
 
@@ -175,7 +190,7 @@ function WarrantyRow({ term }: { term: WarrantyTerm }) {
       <span className="w-24 shrink-0 font-medium">{term.category}</span>
       <span className="flex-1 truncate text-muted-foreground">{asDay(term.expiresOn)}</span>
       <span className={term.isCovered ? "font-medium" : "text-muted-foreground"}>
-        {term.isCovered === null ? "no date" : term.isCovered ? "covered" : "expired"}
+        {term.isCovered === null ? "No date" : term.isCovered ? "Covered" : "Expired"}
       </span>
     </li>
   );

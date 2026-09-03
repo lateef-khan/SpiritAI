@@ -56,6 +56,7 @@ const unit = (over: Partial<UnitDocument> = {}): UnitDocument => ({
   parts: [{ spNo: "J99A0002", dyacoNo: null, description: "HARDWARE KIT", quantity: 1 }],
   warranty: [
     { category: "Labor", days: 730, expiresOn: "2012-10-22T00:00:00+00:00", isCovered: false },
+    { category: "Deck", days: 3650, expiresOn: "2020-10-20T00:00:00+00:00", isCovered: false },
   ],
   unavailable: [],
   ...over,
@@ -165,5 +166,30 @@ describe("UnitPanel", () => {
     // Newest first, and the older one stays one click away.
     expect(await screen.findByRole("button", { name: "…04036047" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "12345-1" })).toBeTruthy();
+  });
+  test("answers the cover question above the tabs, not inside the fourth one", async () => {
+    vi.mocked(getUnit).mockResolvedValue({ data: unit() } as never);
+
+    panel(said(Serial));
+
+    // Eight categories do not fit above the tabs. Labor is the one staff quote, so it is the one
+    // named, and it is readable without a tab click.
+    expect(await screen.findByText("Out of warranty")).toBeTruthy();
+    expect(screen.getByText(/^Labor ended/)).toBeTruthy();
+  });
+
+  test("keeps serials and work orders on bars of their own", async () => {
+    vi.mocked(getUnit).mockResolvedValue({ data: unit() } as never);
+
+    panel([
+      { role: "user", text: "796955-1" },
+      { role: "user", text: Serial },
+    ]);
+
+    // Selecting an order replaces the whole panel rather than filtering the machine, so the two
+    // kinds never share a row. The machine stays one click away while an order is open.
+    expect(await screen.findByRole("button", { name: "…04036047" })).toBeTruthy();
+    expect(screen.getByText("Work orders")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "796955-1" })).toBeTruthy();
   });
 });
