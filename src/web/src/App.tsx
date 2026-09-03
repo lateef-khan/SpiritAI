@@ -12,6 +12,12 @@ import {
 } from "./runtime/AgentCoreThreadListAdapter";
 import { authFetch } from "@/auth/authFetch";
 import { ThreadUnitPanel } from "@/components/unit/ThreadUnitPanel";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+  useDefaultLayout,
+} from "@/components/ui/resizable";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PanelRightIcon } from "lucide-react";
@@ -42,28 +48,58 @@ function useThreadRuntime() {
 }
 
 /**
- * Where the unit panel sits.
- *
- * Beside the conversation on a wide screen. On a narrow one there is no room for two columns, becomes a `Sheet`.
+ * The conversation and the unit panel, side by side.
  */
-function UnitColumn() {
-  const isMobile = useIsMobile();
-
-  if (!isMobile) {
-    return <ThreadUnitPanel className="w-80 shrink-0" />;
-  }
+function ChatAndUnit() {
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: "spirit-chat-unit" });
 
   return (
-    <Sheet>
-      <SheetTrigger className="absolute end-3 top-3 z-10 rounded-md border bg-background p-1.5">
-        <PanelRightIcon className="size-4" />
-        <span className="sr-only">Show the unit</span>
-      </SheetTrigger>
-      <SheetContent side="right" className="w-80 p-0">
-        <SheetTitle className="sr-only">Unit</SheetTitle>
+    <ResizablePanelGroup
+      orientation="horizontal"
+      className="min-w-0 flex-1"
+      defaultLayout={defaultLayout}
+      onLayoutChanged={onLayoutChanged}
+    >
+      <ResizablePanel id="chat" minSize="22rem">
+        <Thread />
+      </ResizablePanel>
+      <ResizableHandle />
+      <ResizablePanel
+        id="unit"
+        defaultSize="20rem"
+        minSize="16rem"
+        maxSize="40rem"
+        groupResizeBehavior="preserve-pixel-size"
+      >
         <ThreadUnitPanel className="border-l-0" />
-      </SheetContent>
-    </Sheet>
+      </ResizablePanel>
+    </ResizablePanelGroup>
+  );
+}
+
+/**
+ * The same two, on a narrow screen.
+ *
+ * There is no room for two columns, so the unit panel becomes a `Sheet` and there is no divider
+ * to drag.
+ */
+function ChatAndUnitSheet() {
+  return (
+    <>
+      <div className="relative min-w-0 flex-1 overflow-hidden">
+        <Thread />
+      </div>
+      <Sheet>
+        <SheetTrigger className="absolute end-3 top-3 z-10 rounded-md border bg-background p-1.5">
+          <PanelRightIcon className="size-4" />
+          <span className="sr-only">Show the unit</span>
+        </SheetTrigger>
+        <SheetContent side="right" className="w-80 p-0">
+          <SheetTitle className="sr-only">Unit</SheetTitle>
+          <ThreadUnitPanel className="border-l-0" />
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
 
@@ -72,6 +108,7 @@ export function App() {
     runtimeHook: useThreadRuntime,
     adapter: threads,
   });
+  const isMobile = useIsMobile();
 
   return (
     <AuthGate>
@@ -81,10 +118,7 @@ export function App() {
           <SidebarProvider>
             <div className="flex h-dvh w-full">
               <AgentCoreSidebar />
-              <div className="relative flex-1 overflow-hidden">
-                <Thread />
-              </div>
-              <UnitColumn />
+              {isMobile ? <ChatAndUnitSheet /> : <ChatAndUnit />}
             </div>
           </SidebarProvider>
         </TooltipProvider>

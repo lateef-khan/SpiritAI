@@ -2,28 +2,41 @@
 
 `runtime/` and `auth/` are ours. Everything in them is written and maintained here.
 
-`components/` is shared ground, and the split is by folder:
+`components/` is almost all theirs. `ui/`, `assistant-ui/`, `icons/` and `elements/` came through
+the shadcn and assistant-ui registries, as did `hooks/use-mobile.ts` and `lib/utils.ts`. **Prefer
+not to edit them.** They carry no explanatory comments on purpose: a diff against upstream is the
+cheap way to see whether one has been tampered with. `components/chat/` and `components/unit/` are
+ours, and ours always goes in a named folder — a file loose at the top of `components/` belongs to
+neither side and is the one shape to avoid.
 
-- `components/ui/`, `components/assistant-ui/` and `components/icons/` arrived through the shadcn
-  and assistant-ui registries. **Do not edit them.** They carry no explanatory comments on purpose:
-  a diff against upstream is the cheap way to see whether one has been tampered with, and re-running
-  the commands below should stay an overwrite rather than a merge. `hooks/use-mobile.ts` and
-  `lib/utils.ts` came the same way and follow the same rule.
-- Every other folder under `components/` is ours — `chat/`, `elements/` and `unit/` today. Ours
-  always goes in a named folder. A file loose at the top of `components/` belongs to neither side
-  and is the one shape to avoid.
+`elements/` is worth naming, because its own path is already an edit. The registry writes every
+`elements-*` item to `components/assistant-ui/elements/`; all thirteen were moved up to
+`components/elements/` instead, and `sources.tsx` was left behind at the upstream path. So a fresh
+`shadcn add elements-<name>` lands in the wrong directory and has to be moved by hand.
 
-Two things already broke that promise, and both matter before you re-run a registry command:
+Three things have already broken the clean-overwrite promise:
 
 - `a970b77` ran Prettier over the whole web codebase and reformatted all 27 files under `ui/` and
-  `assistant-ui/`. None of them is byte-identical to what the CLI wrote any more, so the diff
-  against upstream is noise rather than the tamper check it was meant to be.
-- Five files of ours were written straight into `assistant-ui/` instead of beside our own code:
-  `draft.tsx`, `search.tsx`, `regenerate.tsx`, `speaker.tsx` and `elements/sources.tsx`. They never
-  came from the registry at all. `thread.tsx` and `tool-fallback.tsx` are the only registry files
-  whose bodies we edited, to hang our `elements/` pieces into the render tree.
+  `assistant-ui/`. None is byte-identical to what the CLI wrote any more, so the upstream diff is
+  noise rather than the tamper check it was meant to be.
+- `day-separator.tsx` and `sources.tsx` have bodies we changed; the other eleven under `elements/`
+  still match upstream once whitespace is ignored.
+- `thread.tsx` and `tool-fallback.tsx` are the only registry files under `assistant-ui/` whose
+  bodies we edited, to hang our pieces into the render tree.
 
-So re-adding any of these is a merge, not an overwrite. `icons/` is untouched.
+Four files under `assistant-ui/` are ours outright and never came from any registry: `draft.tsx`,
+`search.tsx`, `regenerate.tsx` and `speaker.tsx`. They exist for two reasons, and both are worth
+knowing before writing a fifth.
+
+The registry elements are **presentational**. `DraftRestore` takes `onRestore` and `onDismiss` and
+knows nothing about storage; `RegenerateMenu` takes a list of options and an `onPick`. Something has
+to hold the state and talk to the runtime, and that something is the file in `assistant-ui/`.
+
+The registry elements are also **built for the gallery**, so several render a whole conversation from
+an array — `SpeakerIdentity` takes `turns`, `DaySeparator` takes `messages`. Inside
+`ThreadPrimitive.Messages` assistant-ui already owns the message list, so a component that draws all
+the messages cannot be nested in a loop over them. `DayDivider` is the single-message version, added
+beside the original in the same file; `speaker.tsx` is the same move for `SpeakerIdentity`.
 
 To refresh them:
 

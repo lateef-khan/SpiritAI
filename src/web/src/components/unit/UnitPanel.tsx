@@ -38,10 +38,7 @@ export function UnitPanel({
       {chips.length > 0 ? <Chips chips={chips} selected={selected} onSelect={select} /> : null}
 
       {view.state === "idle" ? (
-        <Empty
-          title="No unit yet"
-          detail="Paste a serial number or a work order number and it will show up here."
-        />
+        <Empty title="No information yet" />
       ) : view.state === "loading" ? (
         <>
           <FactsSkeleton />
@@ -145,13 +142,13 @@ function Empty({
   onRetry,
 }: {
   title: string;
-  detail: string;
+  detail?: string;
   onRetry?: () => void;
 }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-1 p-6 text-center">
       <p className="text-sm font-medium">{title}</p>
-      <p className="text-xs text-muted-foreground">{detail}</p>
+      {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
       {onRetry ? (
         <button type="button" onClick={onRetry} className="mt-2 text-xs underline">
           Try again

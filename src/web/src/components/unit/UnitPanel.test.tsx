@@ -84,10 +84,10 @@ function panel(turns: Said[]) {
 }
 
 describe("UnitPanel", () => {
-  test("invites a number when nobody has pasted one", () => {
+  test("stays empty when nobody has pasted a number", () => {
     panel(said("the belt slips"));
 
-    expect(screen.getByText("No unit yet")).toBeTruthy();
+    expect(screen.getByText("No information yet")).toBeTruthy();
   });
 
   test("shows skeletons while the lookup is in flight", () => {
