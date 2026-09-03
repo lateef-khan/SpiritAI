@@ -24,7 +24,7 @@ export function UnitTabs({
 
   return (
     <Tabs defaultValue="jobs" className="min-h-0 flex-1 gap-0">
-      <TabsList className="rounded-none border-b bg-transparent p-0">
+      <TabsList className="h-auto shrink-0 justify-start gap-0 overflow-x-auto rounded-none border-b bg-transparent p-0 px-2 [scrollbar-width:none]">
         <Tab value="jobs" label="Jobs" count={unit.jobs?.length} />
         <Tab value="history" label="History" count={unit.history?.length} />
         <Tab value="parts" label="Parts" count={unit.parts?.length} />
@@ -71,7 +71,7 @@ export function UnitTabs({
 /** The panel while it is still being read. */
 export function TabsSkeleton() {
   return (
-    <div className="space-y-2 p-3">
+    <div className="space-y-2 p-3.5">
       {[0, 1, 2, 3, 4].map((row) => (
         <Skeleton key={row} className="h-8 w-full" />
       ))}
@@ -79,12 +79,19 @@ export function TabsSkeleton() {
   );
 }
 
+/** One tab, underlined when it is the open one — the count is the answer to "is anything here?". */
 function Tab({ value, label, count }: { value: string; label: string; count?: number }) {
   return (
-    <TabsTrigger value={value} className="rounded-none data-[state=active]:shadow-none">
+    <TabsTrigger
+      value={value}
+      className={cn(
+        "flex-none items-baseline gap-1 rounded-none border-b-2 border-transparent px-2.5 py-2 text-[13px] font-normal text-muted-foreground shadow-none hover:text-foreground",
+        "data-[state=active]:border-b-foreground data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-foreground data-[state=active]:shadow-none",
+      )}
+    >
       {label}
       {count === undefined ? null : (
-        <span className="tabular-nums text-muted-foreground">{count}</span>
+        <span className="text-[11px] tabular-nums text-muted-foreground">{count}</span>
       )}
     </TabsTrigger>
   );
@@ -112,9 +119,9 @@ function Panel<T>({
   return (
     <TabsContent value={value} className="min-h-0 overflow-y-auto">
       {missing || !rows ? (
-        <p className="p-3 text-xs text-muted-foreground">Could not load this.</p>
+        <p className="p-3.5 text-xs text-muted-foreground">Could not load this.</p>
       ) : rows.length === 0 ? (
-        <p className="p-3 text-xs text-muted-foreground">{empty}</p>
+        <p className="p-3.5 text-xs text-muted-foreground">{empty}</p>
       ) : (
         <ul className="divide-y">{children(rows)}</ul>
       )}
@@ -131,33 +138,43 @@ function JobRow({
   onAsk: (question: string) => void;
   disabled: boolean;
 }) {
+  const isClosed = job.status === "closed";
+
   return (
     <li>
       <button
         type="button"
         inert={disabled}
         onClick={() => onAsk(`Tell me about work order ${job.orderNumber}.`)}
-        className="block w-full px-3 py-2 text-left hover:bg-accent"
+        className="flex w-full gap-2.5 px-3.5 py-2.5 text-left hover:bg-accent"
       >
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="font-mono text-xs font-medium tabular-nums">{job.orderNumber}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-mono text-[13px] font-medium tabular-nums">
+            {job.orderNumber}
+          </span>
+
+          {/* On its own line, and never truncated: what went wrong is the reason to read the row. */}
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            {[job.summary ?? "—", job.technician].filter(Boolean).join(" · ")}
+          </span>
+        </span>
+
+        <span className="shrink-0 text-right">
           <span
             className={cn(
-              "shrink-0 text-xs",
-              job.status === "closed" ? "text-muted-foreground" : "font-medium",
+              "inline-block rounded border px-1.5 py-px text-[11px]",
+              isClosed
+                ? "border-aui-success/40 text-aui-success"
+                : "border-chart-2/45 text-chart-2",
             )}
           >
             {job.statusText ?? job.status}
           </span>
-        </div>
 
-        {/* On its own line, and never truncated: what went wrong is the reason to read the row. */}
-        <p className="mt-0.5 text-xs">{job.summary ?? "—"}</p>
-
-        <p className="mt-0.5 flex gap-3 text-[11px] text-muted-foreground">
-          <span>{asDay(job.calledOn)}</span>
-          {job.technician ? <span className="truncate">{job.technician}</span> : null}
-        </p>
+          <span className="mt-1 block text-[11px] whitespace-nowrap text-muted-foreground">
+            {asDay(job.calledOn)}
+          </span>
+        </span>
       </button>
     </li>
   );
@@ -186,9 +203,9 @@ function PartRow({
 /** Warranty rows are not clickable: there is nothing further to ask about a date. */
 function WarrantyRow({ term }: { term: WarrantyTerm }) {
   return (
-    <li className="flex items-baseline gap-2 px-3 py-2 text-xs">
+    <li className="flex items-baseline gap-2 px-3.5 py-2 text-xs">
       <span className="w-24 shrink-0 font-medium">{term.category}</span>
-      <span className="flex-1 truncate text-muted-foreground">{asDay(term.expiresOn)}</span>
+      <span className="flex-1 text-muted-foreground">{asDay(term.expiresOn)}</span>
       <span className={term.isCovered ? "font-medium" : "text-muted-foreground"}>
         {term.isCovered === null ? "No date" : term.isCovered ? "Covered" : "Expired"}
       </span>
@@ -222,7 +239,7 @@ function Row({
         type="button"
         inert={disabled}
         onClick={onClick}
-        className="flex w-full items-baseline gap-2 px-3 py-2 text-left text-xs hover:bg-accent disabled:opacity-60"
+        className="flex w-full items-baseline gap-2 px-3.5 py-2 text-left text-xs hover:bg-accent disabled:opacity-60"
       >
         <span className="w-24 shrink-0">{lead}</span>
         <span className="flex-1 truncate">{body}</span>

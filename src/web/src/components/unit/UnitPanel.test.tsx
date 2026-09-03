@@ -127,7 +127,10 @@ describe("UnitPanel", () => {
     panel(said(Serial));
 
     expect(await screen.findByText("No unit with that number")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "…04036047" })).toBeTruthy();
+
+    // Written in full: a serial gets checked digit by digit against a sticker, and a shortened one
+    // cannot be checked at all.
+    expect(screen.getByRole("button", { name: Serial })).toBeTruthy();
   });
 
   test("offers to try again when the host is the problem", async () => {
@@ -164,7 +167,7 @@ describe("UnitPanel", () => {
     ]);
 
     // Newest first, and the older one stays one click away.
-    expect(await screen.findByRole("button", { name: "…04036047" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: Serial })).toBeTruthy();
     expect(screen.getByRole("button", { name: "12345-1" })).toBeTruthy();
   });
   test("answers the cover question above the tabs, not inside the fourth one", async () => {
@@ -188,8 +191,8 @@ describe("UnitPanel", () => {
 
     // Selecting an order replaces the whole panel rather than filtering the machine, so the two
     // kinds never share a row. The machine stays one click away while an order is open.
-    expect(await screen.findByRole("button", { name: "…04036047" })).toBeTruthy();
-    expect(screen.getByText("Work orders")).toBeTruthy();
+    expect(await screen.findByRole("button", { name: Serial })).toBeTruthy();
+    expect(screen.getByText("Work order")).toBeTruthy();
     expect(screen.getByRole("button", { name: "796955-1" })).toBeTruthy();
   });
 });

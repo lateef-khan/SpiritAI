@@ -84,3 +84,18 @@ function pick(terms: readonly WarrantyTerm[], soonest: boolean): WarrantyTerm {
       : b.expiresOn.localeCompare(a.expiresOn);
   })[0];
 }
+
+/**
+ * Writes a category the way a sentence wants it.
+ *
+ * The database stores it shouted — `TREADMILL` — which reads as an error in the middle of a line
+ * of prose under the machine's name.
+ *
+ * @param category What the host sent, or nothing.
+ * @returns The category in sentence case, or `null` when there is none.
+ */
+export function asKind(category: string | null | undefined): string | null {
+  if (!category) return null;
+
+  return category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+}
