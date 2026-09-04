@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getOrder, getUnit } from "@/api/sdk.gen";
 import type { OrderDocument, UnitDocument } from "@/api/types.gen";
@@ -38,12 +38,16 @@ export function useUnitDocument(identifier: Identifier | null): {
     null,
   );
 
-  const asked = identifier ? `${identifier.kind}:${identifier.value}:${attempt}` : null;
+  const kind = identifier?.kind ?? null;
+  const value = identifier?.value ?? null;
+  const wanted = useMemo(() => (kind && value ? { kind, value } : null), [kind, value]);
+
+  const asked = wanted ? `${wanted.kind}:${wanted.value}:${attempt}` : null;
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   useEffect(() => {
-    if (!identifier || !asked) return;
+    if (!wanted || !asked) return;
 
     // Guards the answer rather than the request. Two lookups can be in flight after a quick
     // correction, and the one that started last is the one the person is waiting for.
@@ -54,20 +58,18 @@ export function useUnitDocument(identifier: Identifier | null): {
 
       try {
         view =
-          identifier.kind === "serial"
+          wanted.kind === "serial"
             ? {
-                state: "unit",
-                identifier,
-                unit: (await getUnit({ throwOnError: true, path: { serial: identifier.value } }))
-                  .data,
-              }
+              state: "unit",
+              identifier: wanted,
+              unit: (await getUnit({ throwOnError: true, path: { serial: wanted.value } })).data,
+            }
             : {
-                state: "order",
-                identifier,
-                order: (
-                  await getOrder({ throwOnError: true, path: { orderNumber: identifier.value } })
-                ).data,
-              };
+              state: "order",
+              identifier: wanted,
+              order: (await getOrder({ throwOnError: true, path: { orderNumber: wanted.value } }))
+                .data,
+            };
       } catch (refusal) {
         // A 404 is an answer: nothing carries that number. A 400 is the same answer from the other
         // direction. Anything else is the host having a problem, which is worth offering to ask
@@ -75,7 +77,7 @@ export function useUnitDocument(identifier: Identifier | null): {
         const missing =
           refusal instanceof HostRefusedError && (refusal.status === 404 || refusal.status === 400);
 
-        view = { state: missing ? "missing" : "failed", identifier };
+        view = { state: missing ? "missing" : "failed", identifier: wanted };
       }
 
       if (current) setAnswer({ to: asked, view });
@@ -84,15 +86,15 @@ export function useUnitDocument(identifier: Identifier | null): {
     return () => {
       current = false;
     };
-  }, [identifier, asked]);
+  }, [wanted, asked]);
 
   // Derived, not stored. Writing "loading" from inside the effect would paint the old unit once
   // before replacing it, and cost a render to do it.
-  const view: UnitView = !identifier
+  const view: UnitView = !wanted
     ? { state: "idle" }
     : answer?.to === asked
       ? answer.view
-      : { state: "loading", identifier };
+      : { state: "loading", identifier: wanted };
 
   return { view, retry };
 }
