@@ -5,10 +5,6 @@
     <UserSecretsId>61731f03-519d-4c62-84f0-ad54e7b0f0c3</UserSecretsId>
   </PropertyGroup>
 
-  <!--
-    Switchable AgentCore reference — see Directory.Build.props. Local checkout by default for the
-    fast edit/F5 loop; the NuGet package when UseLocalAgentCore=false (CI).
-  -->
   <ItemGroup Condition="'$(UseLocalAgentCore)' == 'true'">
     <ProjectReference Include="$(AgentCoreRoot)/src/AgentCore.Hosting/AgentCore.Hosting.csproj" />
   </ItemGroup>
@@ -45,15 +41,15 @@
     <ClientAppSource Include="../web/vite.config.ts" />
     <ClientAppSource Include="../web/tsconfig*.json" />
   </ItemGroup>
-
-  <!--
-    Same pattern as the AgentCore demo: Node is required, not probed for, and Outputs names the
-    real Vite artifact (not a stamp) so a deleted wwwroot forces a rebuild instead of a silent 404.
-    Set SkipClientAppBuild=true for a server-only build on a machine without Node.
-  -->
+  
   <Target Name="BuildClientApp" BeforeTargets="BeforeBuild" Condition="'$(SkipClientAppBuild)' != 'true'" Inputs="@(ClientAppSource)" Outputs="wwwroot/chat/index.html">
     <Exec Command="npm ci" WorkingDirectory="../web" />
     <Exec Command="npm run build" WorkingDirectory="../web" />
+    <ItemGroup>
+      <_StaleClientAppContent Include="@(Content)" Condition="$([System.String]::Copy('%(Identity)').StartsWith('wwwroot/chat/'))" />
+      <Content Remove="@(_StaleClientAppContent)" />
+      <Content Include="wwwroot/chat/**" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
   </Target>
 
 </Project>
