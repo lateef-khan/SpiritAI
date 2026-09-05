@@ -176,6 +176,17 @@ state:
       linker: exact
       refreshSeconds: 600
       maxValues: 2000
+  code:
+    type: string
+    writer: extractor
+    description: >-
+      The error or fault code on the console, lowercase, such as e1, e3, e7,
+      or no-display. Leave it unset unless the person read a code off the screen.
+    vocabulary:
+      from: knowledge
+      linker: exact
+      refreshSeconds: 600
+      maxValues: 2000
 
 extractor:
   model: { ref: fill }
@@ -244,10 +255,10 @@ providers:
     scoreFloor: 0.35
     scope:
       template: "facets.{key}"
-      fromState: [applies_to]
+      fromState: [applies_to, code]
       wildcard:
         value: "*"
-        facets: [applies_to]
+        facets: [applies_to, code]
     ambiguity:
       maxCandidates: 8
       maxAsks: 2

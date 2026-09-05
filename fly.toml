@@ -53,17 +53,10 @@ Widget__AllowedOrigins__0 = "https://www.spiritfitness.com"
 internal_port = 8080
 force_https = true
 
-# Development setting: sleep when idle, wake on the next request.
-#
-# "stop" and NOT "suspend", deliberately. Suspend restores a RAM snapshot
-# without re-running the entrypoint, so tailscaled would come back holding a
-# WireGuard session the coordination server has already dropped and the DAB
-# tools would fail with no obvious cause. A full stop re-runs `tailscale up`.
-#
-# The cost is a slow first request after idle: tailscaled has to reconnect and
-# the knowledge store re-proves its schema against Qdrant at startup. Set
-# min_machines_running = 1 and auto_stop_machines = "off" for production.
-auto_stop_machines = "stop"
+# Warm on a schedule, not on idle. The cron in
+# .github/workflows/machine-schedule.yml starts the Machine at 12:00 UTC and
+# stops it at 02:00 UTC.
+auto_stop_machines = "off"
 auto_start_machines = true
 min_machines_running = 0
 
