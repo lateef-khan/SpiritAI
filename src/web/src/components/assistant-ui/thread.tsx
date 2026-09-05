@@ -50,7 +50,6 @@ import {
 // the app already depends on directly.
 import { ComposerDraft } from "@/components/assistant-ui/draft";
 import { Regenerate } from "@/components/assistant-ui/regenerate";
-import { ThreadMessageSearch } from "@/components/assistant-ui/search";
 import { MessageSpeaker } from "@/components/assistant-ui/speaker";
 import { DayDivider } from "@/components/assistant-ui/elements/day-separator";
 import { ErrorState } from "@/components/assistant-ui/elements/error-state";
@@ -190,9 +189,6 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
             )}
           >
             <ThreadScrollToBottom />
-            <AuiIf condition={(s) => s.thread.messages.length > 0}>
-              <ThreadMessageSearch />
-            </AuiIf>
             <ComposerDraft />
             <ThreadFollowupSuggestions />
             <Composer />
