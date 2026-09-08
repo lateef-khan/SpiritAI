@@ -81,19 +81,14 @@ import {
 
 export type ThreadGroupPart = MessagePrimitive.GroupedParts.GroupPart;
 
-/**
- * Optional component overrides for the thread. `AssistantMessage` and
- * `Welcome` replace whole sections; the remaining slots override how the
- * assistant message renders tool calls and part groups. Tool UIs registered
- * by name (toolkit `render`, `useAssistantDataUI`) take precedence over
- * `ToolFallback`.
- */
 export type ThreadComponents = {
   AssistantMessage?: ComponentType | undefined;
   Welcome?: ComponentType | undefined;
   ToolFallback?: ToolCallMessagePartComponent | undefined;
   ToolGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined;
   ReasoningGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined;
+  Sources?: ComponentType | undefined;
+  Timing?: ComponentType | undefined;
 };
 
 export type ThreadProps = {
@@ -101,6 +96,14 @@ export type ThreadProps = {
 };
 
 const EMPTY_COMPONENTS: ThreadComponents = {};
+
+/**
+ * A slot that draws nothing.
+ *
+ * Module scope rather than an inline `() => null`: the slots are read by component identity, so a
+ * fresh function per render would remount the subtree around it.
+ */
+export const Hidden: FC = () => null;
 
 const ThreadComponentsContext = createContext<ThreadComponents>(EMPTY_COMPONENTS);
 
@@ -562,6 +565,8 @@ const AssistantMessage: FC = () => {
     ToolFallback: ToolFallbackComponent = ToolFallback,
     ToolGroup,
     ReasoningGroup,
+    Sources: SourcesSection = MessageSources,
+    Timing: TimingSection = MessageTimingFooter,
   } = useContext(ThreadComponentsContext);
 
   const ACTION_BAR_PT = "pt-1.5";
@@ -654,10 +659,10 @@ const AssistantMessage: FC = () => {
             }
           }}
         </MessagePrimitive.GroupedParts>
-        <MessageSources />
+        <SourcesSection />
         <StoppedRunNotice />
         <MessageError />
-        <MessageTimingFooter />
+        <TimingSection />
       </div>
 
       <div

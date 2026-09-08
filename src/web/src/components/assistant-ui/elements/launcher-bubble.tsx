@@ -5,8 +5,15 @@ import { MessageCircleIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { field, floating, inkButton, mono } from "./surfaces";
 
+/**
+ * The bubble a host page shows in its corner, with an optional card above it.
+ *
+ * The card is what a launcher can offer before the thread exists — a greeting, some openers, a
+ * button that starts the conversation. A launcher that opens straight into the chat has nothing to
+ * put there, so `greeting` and `prompts` are optional and the card is skipped when both are empty.
+ */
 export function LauncherBubble({
-  open,
+  open = false,
   unread,
   greeting,
   prompts,
@@ -19,14 +26,16 @@ export function LauncherBubble({
   ComponentProps<"div">,
   "children" | "open" | "unread" | "greeting" | "prompts" | "onToggle" | "onPick" | "onStart"
 > & {
-  open: boolean;
+  open?: boolean;
   unread: number;
-  greeting: string;
-  prompts: readonly string[];
+  greeting?: string;
+  prompts?: readonly string[];
   onToggle?: () => void;
   onPick?: (prompt: string) => void;
   onStart?: () => void;
 }) {
+  const hasCard = Boolean(greeting) || (prompts?.length ?? 0) > 0;
+
   return (
     <div
       data-slot="launcher-bubble"
@@ -34,7 +43,7 @@ export function LauncherBubble({
 
       {...props}
     >
-      {open && (
+      {open && hasCard && (
         <div
           className={cn(
             floating,
@@ -47,7 +56,7 @@ export function LauncherBubble({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            {prompts.map((prompt) => (
+            {prompts?.map((prompt) => (
               <button
                 key={prompt}
                 type="button"
