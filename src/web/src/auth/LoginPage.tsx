@@ -11,41 +11,40 @@ import { cn } from "@/lib/utils";
 
 import { useSession } from "./authClient";
 import { APP_URL } from "./routes";
-import { useMagicLinkSignIn } from "./useMagicLinkSignIn";
-
-/** Who to ask for an account. Placeholder until the real inbox is decided. */
-const ADMIN_CONTACT = "admin@example.com";
+import { useEmailCodeSignIn } from "./useEmailCodeSignIn";
 
 export function LoginPage() {
-  const signIn = useMagicLinkSignIn();
+  const signIn = useEmailCodeSignIn();
   const { data: session, isPending } = useSession();
 
-  // The far end of the emailed link: Neon verifies it, sets the session and sends the browser to
-  // /chat/. Someone who instead comes back to this page with a live session should not be asked to
-  // sign in again, so they get the same push forward.
-  useEffect(() => {
-    if (session) window.location.replace(APP_URL);
-  }, [session]);
+  // Two ways to arrive at the app, and neither happens on its own. A code accepted on this page
+  // hands back a session in the same page load, and someone who reloads with a live session should
+  // not be asked to sign in again; both are one navigation away from leaving.
+  const leaving = signIn.status === "signedIn" || Boolean(session);
 
-  // A signed-in visitor is one navigation away from leaving. Drawing the form first would show
-  // them a sign-in page they do not need, so hold the blank ground until the redirect lands.
-  if (isPending || session) return <main className="h-dvh" aria-busy />;
+  useEffect(() => {
+    if (leaving) window.location.replace(APP_URL);
+  }, [leaving]);
+
+  // Drawing the form first would show them a sign-in page they do not need, so hold the blank
+  // ground until the redirect lands.
+  if (isPending || leaving) return <main className="h-dvh" aria-busy />;
 
   return (
     <main className="flex min-h-dvh items-center justify-center p-6">
       <div className="flex w-full max-w-xs flex-col gap-10">
         <Wordmark />
-        {signIn.status === "sent" ? (
-          <LinkSentPanel signIn={signIn} />
-        ) : (
+        {signIn.status === "idle" || signIn.status === "sending" ? (
           <EmailForm signIn={signIn} />
+        ) : (
+          <CodeForm signIn={signIn} />
         )}
       </div>
     </main>
   );
 }
 
-type SignIn = ReturnType<typeof useMagicLinkSignIn>;
+type SignIn = ReturnType<typeof useEmailCodeSignIn>;
 
 function EmailForm({ signIn }: { signIn: SignIn }) {
   const [email, setEmail] = useState("");
@@ -54,7 +53,7 @@ function EmailForm({ signIn }: { signIn: SignIn }) {
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!sending) signIn.requestLink(email);
+    if (!sending) signIn.requestCode(email);
   }
 
   return (
@@ -64,7 +63,7 @@ function EmailForm({ signIn }: { signIn: SignIn }) {
           Sign in to SpiritAI
         </h1>
         <p className="text-muted-foreground text-sm">
-          Enter your email and we’ll send you a sign-in link.
+          Enter your email and we’ll send you a sign-in code.
         </p>
       </div>
 
@@ -82,45 +81,36 @@ function EmailForm({ signIn }: { signIn: SignIn }) {
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            aria-invalid={signIn.status === "error" || undefined}
+            aria-invalid={Boolean(signIn.error) || undefined}
             aria-describedby={signIn.error ? `${id}-error` : undefined}
             disabled={sending}
           />
         </div>
 
-        {signIn.error ? (
-          <p
-            id={`${id}-error`}
-            role="alert"
-            className="text-destructive flex items-start gap-2 text-sm"
-          >
-            <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-            {signIn.error}
-          </p>
-        ) : null}
+        <Problem id={`${id}-error`} error={signIn.error} />
 
         <Button type="submit" className="w-full" disabled={sending || email.trim() === ""}>
           <Spinner show={sending} />
-          {sending ? "Sending…" : "Send sign-in link"}
+          {sending ? "Sending…" : "Send sign-in code"}
         </Button>
       </form>
 
-      {/* Stands in for the sign-up link this page deliberately does not have. Someone who cannot
-          get in needs a person, not a form. TODO: point this at the real address. */}
-      <p className="text-muted-foreground text-sm">
-        Access is granted by an administrator.{" "}
-        <a
-          href={`mailto:${ADMIN_CONTACT}`}
-          className="text-foreground underline underline-offset-4"
-        >
-          Request access
-        </a>
-      </p>
+      {/* This page deliberately has no sign-up link. Access is granted by an administrator. */}
+      <p className="text-muted-foreground text-sm">Access is granted by an administrator.</p>
     </>
   );
 }
 
-function LinkSentPanel({ signIn }: { signIn: SignIn }) {
+function CodeForm({ signIn }: { signIn: SignIn }) {
+  const [code, setCode] = useState("");
+  const id = useId();
+  const verifying = signIn.status === "verifying";
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!verifying) signIn.submitCode(code);
+  }
+
   return (
     <>
       <div className="flex flex-col gap-3">
@@ -128,22 +118,48 @@ function LinkSentPanel({ signIn }: { signIn: SignIn }) {
         <h1 className="text-3xl leading-tight font-semibold tracking-tight text-balance">
           Check your email
         </h1>
-        {/* Says "if", not "we did". An address that is not configured gets this same screen and no
-            email, and the wording must not give that away. */}
         <p className="text-muted-foreground text-sm">
-          If <span className="text-foreground font-medium">{signIn.email}</span> can sign in, a link
-          is on its way. It expires in 15 minutes.
+          If <span className="text-foreground font-medium">{signIn.email}</span> can sign in, a code
+          is on its way.
         </p>
       </div>
+
+      <form className="grid gap-5" onSubmit={onSubmit}>
+        <div className="grid gap-2">
+          <Label htmlFor={id}>Code</Label>
+          <Input
+            id={id}
+            type="text"
+            name="one-time-code"
+            placeholder="123456"
+            autoComplete="one-time-code"
+            inputMode="numeric"
+            autoFocus
+            required
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            aria-invalid={Boolean(signIn.error) || undefined}
+            aria-describedby={signIn.error ? `${id}-error` : undefined}
+            disabled={verifying}
+          />
+        </div>
+
+        <Problem id={`${id}-error`} error={signIn.error} />
+
+        <Button type="submit" className="w-full" disabled={verifying || code.trim() === ""}>
+          <Spinner show={verifying} />
+          {verifying ? "Checking…" : "Sign in"}
+        </Button>
+      </form>
 
       <div className="grid gap-3">
         <Button
           variant="outline"
           className="w-full"
-          disabled={signIn.resendIn > 0}
-          onClick={() => signIn.requestLink(signIn.email)}
+          disabled={signIn.resendIn > 0 || verifying}
+          onClick={() => signIn.requestCode(signIn.email)}
         >
-          {signIn.resendIn > 0 ? `Resend in ${signIn.resendIn}s` : "Resend the link"}
+          {signIn.resendIn > 0 ? `Resend in ${signIn.resendIn}s` : "Send a new code"}
         </Button>
 
         <Button variant="ghost" className="text-muted-foreground w-full" onClick={signIn.reset}>
@@ -152,6 +168,17 @@ function LinkSentPanel({ signIn }: { signIn: SignIn }) {
         </Button>
       </div>
     </>
+  );
+}
+
+function Problem({ id, error }: { id: string; error: string | null }) {
+  if (!error) return null;
+
+  return (
+    <p id={id} role="alert" className="text-destructive flex items-start gap-2 text-sm">
+      <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+      {error}
+    </p>
   );
 }
 
