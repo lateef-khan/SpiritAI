@@ -94,9 +94,6 @@ function EmailForm({ signIn }: { signIn: SignIn }) {
           {sending ? "Sending…" : "Send sign-in code"}
         </Button>
       </form>
-
-      {/* This page deliberately has no sign-up link. Access is granted by an administrator. */}
-      <p className="text-muted-foreground text-sm">Access is granted by an administrator.</p>
     </>
   );
 }
