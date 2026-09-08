@@ -2,7 +2,9 @@ using AgentCore.Hosting;
 using SpiritAI.Auth;
 using SpiritAI.Hosting;
 using SpiritAI.Knowledge;
+using SpiritAI.Lookup;
 using SpiritAI.PublicChat;
+using SpiritAI.Threads;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,12 @@ builder.AddAgentCoreHost(options => options
 builder.Services.AddProxyHeaders(builder.Configuration);
 
 builder.Services.AddPublicChat(builder.Configuration);
+
+builder.Services.AddThreadSessions();
+
+builder.Services.AddUnitLookup();
+
+builder.Services.AddSpiritOpenApi();
 
 var publicChat = builder.Configuration.GetSection(PublicChatOptions.SectionName).Get<PublicChatOptions>()
     ?? new PublicChatOptions();
@@ -29,27 +37,22 @@ app.UseRateLimiter();
 
 app.UseNeonAuthOnApi();
 
+app.UseThreadSessions();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
 app.MapAgentCoreHost();
 
 app.MapPublicChat();
 
-// Configure with, e.g.:
-//   "Widget": { "AllowedOrigins": [ "https://www.spiritfitness.com" ] }
-var widgetOrigins = builder.Configuration.GetSection("Widget:AllowedOrigins").Get<string[]>();
+app.MapThreads();
 
-var frameAncestors = widgetOrigins is { Length: > 0 }
-    ? string.Join(' ', widgetOrigins)
-    : "'none'";
+app.MapLookup();
 
-app.Use(async (context, next) =>
-{
-    if (context.Request.Path.StartsWithSegments("/chat"))
-    {
-        context.Response.Headers["Content-Security-Policy"] = $"frame-ancestors {frameAncestors}";
-    }
-
-    await next();
-});
+app.UseWidgetFrameAncestors(builder.Configuration);
 
 app.UseStaticFiles();
 

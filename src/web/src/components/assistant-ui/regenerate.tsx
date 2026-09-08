@@ -1,6 +1,6 @@
 "use client";
 
-import { RegenerateMenu } from "@/components/elements/regenerate-menu";
+import { RegenerateMenu } from "@/components/assistant-ui/elements/regenerate-menu";
 import { useAui, useAuiState } from "@assistant-ui/react";
 import { useActionBarReload } from "@assistant-ui/core/react";
 import { useState, type FC } from "react";

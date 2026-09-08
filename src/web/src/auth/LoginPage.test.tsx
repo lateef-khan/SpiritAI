@@ -33,10 +33,7 @@ function signInAs(address: string) {
 
   // `user-event` is not a dependency here, and the field is controlled, so the change has to be
   // dispatched through React's own value setter rather than by assigning `.value`.
-  const setter = Object.getOwnPropertyDescriptor(
-    HTMLInputElement.prototype,
-    "value",
-  )!.set!;
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
   setter.call(field, address);
   field.dispatchEvent(new Event("input", { bubbles: true }));
 

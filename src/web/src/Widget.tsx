@@ -1,6 +1,6 @@
-import { Thread } from "@/components/assistant-ui/thread";
-import { LauncherBubble } from "@/components/elements/launcher-bubble";
-import { GenerativeUiDataUI } from "@/components/GenerativeUiDataUI";
+import { Hidden, Thread } from "@/components/assistant-ui/thread";
+import { LauncherBubble } from "@/components/assistant-ui/elements/launcher-bubble";
+import { GenerativeUiDataUI } from "@/components/chat/GenerativeUiDataUI";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { XIcon } from "lucide-react";
@@ -22,7 +22,6 @@ import { useAgentCoreRuntime } from "./runtime/AgentCoreRuntime";
 /** The size the frame should be, in CSS pixels, for each state. */
 const SIZE = {
   closed: { width: 96, height: 96 },
-  teaser: { width: 336, height: 420 },
   open: { width: 400, height: 620 },
 } as const;
 
@@ -32,13 +31,14 @@ const SIZE = {
 const endpoint =
   document.documentElement.dataset.agentcoreEndpoint || "/v1/public/chat/completions";
 
-const PROMPTS = [
-  "What treadmill fits a small room?",
-  "How do I service my elliptical?",
-  "Where is my order?",
-] as const;
+const WIDGET_COMPONENTS = {
+  ToolGroup: Hidden,
+  ToolFallback: Hidden,
+  Sources: Hidden,
+  Timing: Hidden,
+} as const;
 
-type Phase = "closed" | "teaser" | "open";
+type Phase = "closed" | "open";
 
 /**
  * Tells the host page how much room to give the frame.
@@ -49,30 +49,15 @@ function useFrameSize(phase: Phase) {
     const size = SIZE[phase];
     // "*" rather than a fixed origin: the widget is embedded on sites it cannot know the names of,
     // and the message carries no secret — only two numbers.
-    window.parent?.postMessage(
-      { source: "agentcore-widget", type: "resize", ...size },
-      "*",
-    );
+    window.parent?.postMessage({ source: "agentcore-widget", type: "resize", ...size }, "*");
   }, [phase]);
 }
 
 export function Widget() {
   const runtime = useAgentCoreRuntime(endpoint, (url, init) => fetch(url, init));
   const [phase, setPhase] = useState<Phase>("closed");
-  const [pending, setPending] = useState<string | null>(null);
 
   useFrameSize(phase);
-
-  // A prompt picked from the teaser has to wait for the thread to exist before it can be sent.
-  useEffect(() => {
-    if (phase !== "open" || !pending) return;
-
-    runtime.thread.append({
-      role: "user",
-      content: [{ type: "text", text: pending }],
-    });
-    setPending(null);
-  }, [phase, pending, runtime]);
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
@@ -89,23 +74,10 @@ export function Widget() {
               >
                 <XIcon className="size-4" />
               </button>
-              <Thread />
+              <Thread components={WIDGET_COMPONENTS} />
             </div>
           ) : (
-            <LauncherBubble
-              open={phase === "teaser"}
-              unread={0}
-              greeting="Hi — ask us anything about Spirit equipment."
-              prompts={PROMPTS}
-              onToggle={() =>
-                setPhase(phase === "teaser" ? "closed" : "teaser")
-              }
-              onPick={(prompt) => {
-                setPending(prompt);
-                setPhase("open");
-              }}
-              onStart={() => setPhase("open")}
-            />
+            <LauncherBubble unread={0} onToggle={() => setPhase("open")} />
           )}
         </div>
       </TooltipProvider>

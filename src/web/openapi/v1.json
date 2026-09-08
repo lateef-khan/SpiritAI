@@ -1,0 +1,1155 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "SpiritAI.Tests | v1",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost/"
+    }
+  ],
+  "paths": {
+    "/v1/threads": {
+      "get": {
+        "tags": [
+          "Threads"
+        ],
+        "operationId": "listThreads",
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Threads"
+        ],
+        "operationId": "createThread",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadCreated"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/threads/{remoteId}": {
+      "get": {
+        "tags": [
+          "Threads"
+        ],
+        "operationId": "getThread",
+        "parameters": [
+          {
+            "name": "remoteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadSummary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Threads"
+        ],
+        "operationId": "updateThread",
+        "parameters": [
+          {
+            "name": "remoteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Threads"
+        ],
+        "operationId": "deleteThread",
+        "parameters": [
+          {
+            "name": "remoteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/threads/{remoteId}/messages": {
+      "get": {
+        "tags": [
+          "Threads"
+        ],
+        "operationId": "getThreadMessages",
+        "parameters": [
+          {
+            "name": "remoteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadHistory"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/units/{serial}": {
+      "get": {
+        "tags": [
+          "Lookup"
+        ],
+        "operationId": "getUnit",
+        "parameters": [
+          {
+            "name": "serial",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/orders/{orderNumber}": {
+      "get": {
+        "tags": [
+          "Lookup"
+        ],
+        "operationId": "getOrder",
+        "parameters": [
+          {
+            "name": "orderNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "JobStatus": {
+        "enum": [
+          "open",
+          "closed",
+          "unknown"
+        ]
+      },
+      "JsonElement": { },
+      "OrderDocument": {
+        "required": [
+          "orderNumber",
+          "serviceId",
+          "orderId",
+          "orderType",
+          "orderedOn",
+          "appointedOn",
+          "shippedOn",
+          "closedOn",
+          "technician",
+          "ispName",
+          "ispStatus",
+          "dealerNo",
+          "trackingNo",
+          "notes",
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "orderNumber": {
+            "type": "string"
+          },
+          "serviceId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "orderId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "orderType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "orderedOn": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "appointedOn": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "shippedOn": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "closedOn": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "technician": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ispName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ispStatus": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dealerNo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "trackingNo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderLine"
+            }
+          }
+        }
+      },
+      "OrderLine": {
+        "required": [
+          "partNo",
+          "description",
+          "shipped",
+          "isReturned"
+        ],
+        "type": "object",
+        "properties": {
+          "partNo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "shipped": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "isReturned": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ThreadCreated": {
+        "required": [
+          "remoteId",
+          "externalId"
+        ],
+        "type": "object",
+        "properties": {
+          "remoteId": {
+            "type": "string"
+          },
+          "externalId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ThreadHistory": {
+        "required": [
+          "headId",
+          "messages"
+        ],
+        "type": "object",
+        "properties": {
+          "headId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ThreadHistoryItem"
+            }
+          }
+        }
+      },
+      "ThreadHistoryItem": {
+        "required": [
+          "parentId",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "parentId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "message": {
+            "$ref": "#/components/schemas/ThreadHistoryMessage"
+          }
+        }
+      },
+      "ThreadHistoryMessage": {
+        "required": [
+          "id",
+          "role",
+          "content",
+          "createdAt",
+          "metadata"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ThreadPart"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/ThreadMessageMetadata"
+          },
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ThreadMessageStatus"
+              }
+            ]
+          },
+          "attachments": {
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        }
+      },
+      "ThreadMessageMetadata": {
+        "type": "object",
+        "properties": {
+          "custom": {
+            "type": "object"
+          }
+        }
+      },
+      "ThreadMessageStatus": {
+        "required": [
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "ThreadPage": {
+        "required": [
+          "threads",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "threads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ThreadSummary"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ThreadPart": {
+        "required": [
+          "type"
+        ],
+        "type": "object",
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ThreadPartThreadTextPart"
+          },
+          {
+            "$ref": "#/components/schemas/ThreadPartThreadToolCallPart"
+          },
+          {
+            "$ref": "#/components/schemas/ThreadPartThreadSourcePart"
+          },
+          {
+            "$ref": "#/components/schemas/ThreadPartThreadDataPart"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "text": "#/components/schemas/ThreadPartThreadTextPart",
+            "tool-call": "#/components/schemas/ThreadPartThreadToolCallPart",
+            "source": "#/components/schemas/ThreadPartThreadSourcePart",
+            "data": "#/components/schemas/ThreadPartThreadDataPart"
+          }
+        }
+      },
+      "ThreadPartThreadDataPart": {
+        "required": [
+          "name",
+          "data"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "data"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/JsonElement"
+          }
+        }
+      },
+      "ThreadPartThreadSourcePart": {
+        "required": [
+          "id",
+          "sourceType",
+          "title",
+          "url",
+          "mediaType",
+          "parentId",
+          "providerMetadata"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "source"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "sourceType": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mediaType": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": "string"
+          },
+          "providerMetadata": {
+            "$ref": "#/components/schemas/ThreadSourceMetadata"
+          }
+        }
+      },
+      "ThreadPartThreadTextPart": {
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "ThreadPartThreadToolCallPart": {
+        "required": [
+          "toolCallId",
+          "toolName",
+          "args",
+          "argsText"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "tool-call"
+            ],
+            "type": "string"
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string"
+          },
+          "args": {
+            "$ref": "#/components/schemas/JsonElement"
+          },
+          "argsText": {
+            "type": "string"
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "isError": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "ThreadSourceMetadata": {
+        "required": [
+          "agentcore"
+        ],
+        "type": "object",
+        "properties": {
+          "agentcore": {
+            "$ref": "#/components/schemas/ThreadSourceOrigin"
+          }
+        }
+      },
+      "ThreadSourceOrigin": {
+        "required": [
+          "origin",
+          "locator"
+        ],
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string"
+          },
+          "locator": {
+            "type": "string"
+          }
+        }
+      },
+      "ThreadStatus": {
+        "enum": [
+          "regular",
+          "archived"
+        ]
+      },
+      "ThreadSummary": {
+        "required": [
+          "remoteId",
+          "status",
+          "externalId",
+          "title",
+          "lastMessageAt",
+          "custom"
+        ],
+        "type": "object",
+        "properties": {
+          "remoteId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ThreadStatus"
+          },
+          "externalId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastMessageAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "custom": {
+            "type": [
+              "null",
+              "object"
+            ]
+          }
+        }
+      },
+      "UnitDocument": {
+        "required": [
+          "serial",
+          "header",
+          "jobs",
+          "history",
+          "parts",
+          "warranty",
+          "unavailable"
+        ],
+        "type": "object",
+        "properties": {
+          "serial": {
+            "type": "string"
+          },
+          "header": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UnitHeader"
+              }
+            ]
+          },
+          "jobs": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/UnitJob"
+            }
+          },
+          "history": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/UnitJob"
+            }
+          },
+          "parts": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/UnitPart"
+            }
+          },
+          "warranty": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/WarrantyTerm"
+            }
+          },
+          "unavailable": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnitSection"
+            }
+          }
+        }
+      },
+      "UnitHeader": {
+        "required": [
+          "serial",
+          "modelNo",
+          "modelVersion",
+          "modelName",
+          "category",
+          "isSole",
+          "manufacturedOn",
+          "purchasedOn",
+          "setUpOn"
+        ],
+        "type": "object",
+        "properties": {
+          "serial": {
+            "type": "string"
+          },
+          "modelNo": {
+            "type": "string"
+          },
+          "modelVersion": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "modelName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "category": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isSole": {
+            "type": "boolean"
+          },
+          "manufacturedOn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "purchasedOn": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "setUpOn": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "UnitJob": {
+        "required": [
+          "orderNumber",
+          "serviceId",
+          "orderId",
+          "status",
+          "statusText",
+          "calledOn",
+          "servicedOn",
+          "technician",
+          "summary",
+          "solution"
+        ],
+        "type": "object",
+        "properties": {
+          "orderNumber": {
+            "type": "string"
+          },
+          "serviceId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "orderId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "statusText": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "calledOn": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "servicedOn": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "technician": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "summary": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "solution": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "UnitPart": {
+        "required": [
+          "spNo",
+          "dyacoNo",
+          "description",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "spNo": {
+            "type": "string"
+          },
+          "dyacoNo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "quantity": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "UnitSection": {
+        "enum": [
+          "header",
+          "jobs",
+          "history",
+          "parts",
+          "warranty"
+        ]
+      },
+      "WarrantyTerm": {
+        "required": [
+          "category",
+          "days",
+          "expiresOn",
+          "isCovered"
+        ],
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "days": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "expiresOn": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "isCovered": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Threads"
+    },
+    {
+      "name": "Lookup"
+    }
+  ]
+}

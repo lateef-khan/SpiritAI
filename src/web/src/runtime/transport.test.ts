@@ -174,7 +174,10 @@ test("a terminal turn lets the call go, so the next one opens a new call", async
       streaming(
         [
           delta("goodbye"),
-          event({ choices: [{ delta: {}, finish_reason: "stop" }], agentcore: { is_terminal: true } }),
+          event({
+            choices: [{ delta: {}, finish_reason: "stop" }],
+            agentcore: { is_terminal: true },
+          }),
         ],
         { [SessionHeader]: "call-1" },
       ),
@@ -193,7 +196,10 @@ test("a non-terminal turn keeps the call", async () => {
       streaming(
         [
           delta("still here"),
-          event({ choices: [{ delta: {}, finish_reason: "stop" }], agentcore: { is_terminal: false } }),
+          event({
+            choices: [{ delta: {}, finish_reason: "stop" }],
+            agentcore: { is_terminal: false },
+          }),
         ],
         { [SessionHeader]: "call-1" },
       ),
@@ -264,10 +270,7 @@ test("an event split across two reads is still read once, whole", async () => {
   const whole = delta("split me");
   const at = Math.floor(whole.length / 2);
 
-  const { yields } = await collect(
-    [streaming([whole.slice(0, at), whole.slice(at)])],
-    session,
-  );
+  const { yields } = await collect([streaming([whole.slice(0, at), whole.slice(at)])], session);
 
   assert.deepEqual(yields, ["split me"]);
 });
@@ -393,7 +396,7 @@ test("runTurn keeps a tool answer that is an object as an object", async () => {
   ]);
 
   const last = collected[collected.length - 1];
-  assert.deepEqual(last.tools[0].result, { entities: ["it\'s"] });
+  assert.deepEqual(last.tools[0].result, { entities: ["it's"] });
 });
 
 test("runTurn folds a tool result onto the call it answers", async () => {

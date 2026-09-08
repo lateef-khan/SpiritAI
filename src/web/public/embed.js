@@ -23,7 +23,7 @@
   var origin = new URL(self.src, window.location.href).origin;
   var src = origin + "/chat/widget.html";
 
-  if (document.querySelector('iframe[data-agentcore-widget]')) return;
+  if (document.querySelector("iframe[data-agentcore-widget]")) return;
 
   var frame = document.createElement("iframe");
   frame.src = src;

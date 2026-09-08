@@ -99,11 +99,7 @@ function EmailForm({ signIn }: { signIn: SignIn }) {
           </p>
         ) : null}
 
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={sending || email.trim() === ""}
-        >
+        <Button type="submit" className="w-full" disabled={sending || email.trim() === ""}>
           <Spinner show={sending} />
           {sending ? "Sending…" : "Send sign-in link"}
         </Button>
@@ -135,8 +131,8 @@ function LinkSentPanel({ signIn }: { signIn: SignIn }) {
         {/* Says "if", not "we did". An address that is not configured gets this same screen and no
             email, and the wording must not give that away. */}
         <p className="text-muted-foreground text-sm">
-          If <span className="text-foreground font-medium">{signIn.email}</span>{" "}
-          can sign in, a link is on its way. It expires in 15 minutes.
+          If <span className="text-foreground font-medium">{signIn.email}</span> can sign in, a link
+          is on its way. It expires in 15 minutes.
         </p>
       </div>
 
@@ -147,16 +143,10 @@ function LinkSentPanel({ signIn }: { signIn: SignIn }) {
           disabled={signIn.resendIn > 0}
           onClick={() => signIn.requestLink(signIn.email)}
         >
-          {signIn.resendIn > 0
-            ? `Resend in ${signIn.resendIn}s`
-            : "Resend the link"}
+          {signIn.resendIn > 0 ? `Resend in ${signIn.resendIn}s` : "Resend the link"}
         </Button>
 
-        <Button
-          variant="ghost"
-          className="text-muted-foreground w-full"
-          onClick={signIn.reset}
-        >
+        <Button variant="ghost" className="text-muted-foreground w-full" onClick={signIn.reset}>
           <ArrowLeft />
           Use a different email
         </Button>

@@ -41,9 +41,7 @@ describe("AuthGate", () => {
       </AuthGate>,
     );
 
-    await waitFor(() =>
-      expect(replace).toHaveBeenCalledWith("/chat/login.html"),
-    );
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/chat/login.html"));
     expect(screen.queryByText("the app")).toBeNull();
   });
 

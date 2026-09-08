@@ -30,10 +30,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
 function AuthSplash() {
   return (
-    <div
-      className="bg-background flex h-dvh w-full items-center justify-center"
-      aria-busy
-    >
+    <div className="bg-background flex h-dvh w-full items-center justify-center" aria-busy>
       <span className="sr-only">Checking your session…</span>
     </div>
   );

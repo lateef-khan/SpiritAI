@@ -1,0 +1,88 @@
+name: Machine schedule
+
+# Keep the Machine warm through the working day and stopped overnight. A cold
+# start here is slow -- tailscaled has to rejoin the tailnet and the knowledge
+# store re-proves its schema against Qdrant -- so the point of this workflow is
+# that nobody pays that wait during the hours people actually use the chat.
+#
+# GitHub cron is UTC and ignores daylight saving, so the window is set to the
+# wider of the two US Central offsets. It always covers 07:00-20:00 local, and
+# errs an hour early in winter rather than an hour late:
+#
+#   12:00 UTC = 07:00 CDT / 06:00 CST
+#   02:00 UTC = 21:00 CDT / 20:00 CST (of the day before)
+#
+# fly.toml is the other half of this: auto_stop_machines is off so Fly's idle
+# timer cannot sleep the Machine mid-window.
+on:
+  schedule:
+    - cron: "0 12 * * *"
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Start or stop the Machines right now
+        required: true
+        type: choice
+        options: [start, stop]
+        default: start
+
+# A start and a stop must never overlap, or the app is left in whichever state
+# finished last rather than the one that was asked for.
+concurrency:
+  group: machine-schedule
+  cancel-in-progress: false
+
+jobs:
+  schedule:
+    name: Start or stop the Machines
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Pick the action
+        id: pick
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            action="${{ inputs.action }}"
+          elif [ "${{ github.event.schedule }}" = "0 12 * * *" ]; then
+            action=start
+          else
+            action=stop
+          fi
+          echo "action=$action" >> "$GITHUB_OUTPUT"
+          echo "Will $action the Machines."
+
+      - name: Apply it
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          APP: spiritai
+          ACTION: ${{ steps.pick.outputs.action }}
+        run: |
+          set -euo pipefail
+
+          # Select only the Machines not already where we want them, so a rerun
+          # or a missed cron is a no-op instead of an error. Transient states
+          # such as `destroying` are left alone on purpose.
+          if [ "$ACTION" = "start" ]; then
+            filter='.[] | select(.state == "stopped" or .state == "suspended") | .id'
+          else
+            filter='.[] | select(.state == "started") | .id'
+          fi
+
+          ids=$(flyctl machines list --app "$APP" --json | jq -r "$filter")
+
+          if [ -z "$ids" ]; then
+            echo "Nothing to $ACTION."
+            flyctl machines list --app "$APP"
+            exit 0
+          fi
+
+          for id in $ids; do
+            echo "--- $ACTION $id"
+            flyctl machine "$ACTION" "$id" --app "$APP"
+          done
+
+          flyctl machines list --app "$APP"

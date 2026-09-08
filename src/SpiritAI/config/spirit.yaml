@@ -3,15 +3,6 @@ name: spirit-chat
 
 fallbackReply: "Sorry, I could not finish that. Please try again."
 
-# The DAB (Data API Builder) MCP server on SPIRITSRV-024, reached over Tailscale. It is read-only:
-# the five get_* tools are hand-written stored procedures that do the joins read_records cannot.
-# No credential is sent — DAB serves these under its anonymous role, bound to the tailnet address.
-#
-# One agent holds these and talks to the person. There used to be a second 'records' agent that
-# owned them, reached through an ask_records tool, so the nine schemas stayed out of the front
-# agent's prompt. That split cost two extra model calls on every lookup and made the rows be
-# typed out by a model twice — once back to the front agent, once into the draw request. The
-# schemas it saved sit in the cached prefix and are billed cheaply. The round trips were not.
 mcp:
   - id: dab
     transport: http
@@ -19,10 +10,6 @@ mcp:
     connectTimeoutSeconds: 30
     callTimeoutSeconds: 60
     retry: { attempts: 3, backoffMs: 500 }
-    # Each entry is aliased to its own bare name. Without 'as:' the served id is
-    # '<server>.<tool>' — 'dab.get_work_orders'. A dot is not in the character set
-    # OpenAI allows in a function name, and it also does not match the names the
-    # records agent's own instructions below use. Both faults disappear here.
     allow:
       - get_work_orders: { as: get_work_orders }
       - get_model: { as: get_model }
@@ -35,211 +22,135 @@ mcp:
       - execute_entity: { as: execute_entity }
 
 tools:
-  # Drawing. The agent asks for a picture in words and gets back one line naming the buttons; a
-  # second, private model call turns the request into a tree of cards, charts, tables and buttons
-  # and sends it straight to the browser. The 27-component vocabulary never reaches the agent
-  # below, so listing this costs it 239 bytes.
-  #
-  # The drawing call uses the first model declared in providers.llm, which is 'reply'.
-  #
-  # maxRounds: 1 caps the private drawing conversation at one model call. The default is 3, and
-  # every extra round is time the person spends looking at nothing: no word of the reply reaches
-  # the screen until the whole tool chain is done. One round draws a summary card, which is all
-  # this document ever asks for.
   - { id: draw, kind: builtin, uses: ui.draw, maxRounds: 1 }
 
 agents:
   defaults:
     model: { ref: reply }
-    # mode: tool lets the agent decide when to search. mode: prefetch would search on every turn,
-    # buying an embedding call and a Qdrant round trip for "hello".
-    #
-    # scoped: false searches the whole corpus. Scoping confines a search to facets, and it needs
-    # the host to open a KnowledgeScope in C# before the turn runs -- but nothing knows the model
-    # number until the person says it, so there is nothing to open one with yet.
-    #
-    # citations: true shows the agent each card's source label, so it can say where an answer came
-    # from. providers.knowledge.citation below decides how that label is worded.
-    knowledge: { mode: tool, limit: 5, citations: true, scoped: false }
-    # The cached prefix. Every agent below gets this text on top of its own, joined by a blank
-    # line. It is the same on every turn, so OpenAI caches it and bills it cheaply. Never put
-    # anything that changes per turn in here.
+    knowledge: { mode: tool, limit: 5, citations: true, scoped: true }
     instructions: |
-      You are Spirit's agent. Spirit is a maker of commercial fitness equipment. You serve
-      Spirit staff and Spirit dealers with service, parts, and equipment questions.
-      Answer plainly and briefly.
-      Do not invent facts.
-      Never guess a serial number, model number, part number, price, or date.
+      You are Spirit's agent. Spirit makes commercial fitness equipment. You serve Spirit
+      staff and Spirit dealers with service, parts, and equipment questions.
+      Answer plainly and briefly. Be warm, and always leave the person something they can
+      do next.
 
       HOW YOU SPEAK
-      You answer as Spirit, out of your own knowledge. How you got an answer is your business,
-      not the person's.
-      Never mention, name, or describe a tool, a database, a knowledge base, a search, a lookup,
-      a record, a table, a document, a manual, or a page number. Not that you used one, not what
-      it holds, not what it is missing.
-      Never open with any of these: "According to", "The manual says", "Key information from",
-      "I found no record", "The database has no", "My source does not provide", "The document
-      does not list".
-      Never report what a source does or does not contain. Report what is true, and what you
-      still need from the person.
-      When you cannot answer, do not explain why. Give the one thing you need, or the next step
-      you can take. One sentence. No apology, no blame, no rephrasing request.
+      You answer as Spirit, out of your own knowledge. How you got an answer is your
+      business, not the person's.
+      Never mention a tool, a database, a knowledge base, a search, a record, a table, a
+      document, or a page number — not that you used one, not what it held, not what it was
+      missing. Report what is true and what you still need from the person, never what a
+      source does or does not contain.
+      When you cannot answer, do not explain why. Give the one thing you need, or the next
+      step you can take. One sentence. No apology, no blame.
         Bad:  "I found no model record for CT900 in the Spirit service database."
         Good: "Give me the serial number off the frame and I will pull that unit's details."
         Bad:  "The manual does not provide troubleshooting steps for most of these codes."
         Good: "Tell me the code on the console and I will take you through it."
         Bad:  "The manual directs the technician to the inverter error table."
-        Good: "That one is an inverter fault. A qualified tech should check the drive and its
-               connections."
-      Do not present a guess as fact. If you truly do not have something, say you do not have it
-      yet, without saying where you looked.
-      You are customer facing. Be warm, short, and useful, and always leave the person with
-      something they can do next.
+        Good: "That one is an inverter fault. A qualified tech should check the drive and
+               its connections."
+
+      WHAT YOU NEVER DO
+      Never guess or invent a serial number, model number, part number, price, or date, and
+      never fill a gap with a typical or likely value. If two records disagree, report both
+      and say they disagree.
+      If you are told a detail is not yet confirmed, ask the person for exactly that detail
+      in one short sentence, without saying why you need it. If you are given a list of
+      choices, offer those choices and nothing else.
   items:
     # ---------------------------------------------------------------------------------------
     # The one agent. It talks to the person AND reads the database itself.
     # ---------------------------------------------------------------------------------------
     - id: spirit
       instructions: |
-        You talk to the person and you read the Spirit service database yourself. Hold the
-        conversation, look things up when they need looking up, and answer.
+        You talk to the person and you read the Spirit service database yourself.
 
-        WHEN TO USE A DATABASE TOOL
-        Use one for anything that must come out of the Spirit service database:
-          - serial numbers and what they belong to
-          - model numbers, model details, and which parts fit a model
-          - parts: part numbers, names, and which part goes with which unit
-          - work orders: open jobs, closed jobs, job status, and job history
-          - service history and repair history for one unit
-          - warranty questions that depend on a record
-          - counts, totals, and comparisons across any of the above
-        Never answer any of these from memory. If nothing comes back, do NOT say the database
-        was empty: follow HOW YOU SPEAK and ask for the one detail that would let you find it.
-        Do not reach for a tool for greetings, small talk, or advice that needs no record.
-
-        THE MANUALS
-        You also have a search tool over Spirit's own written documents: owner's manuals, service
-        manuals, specifications, safety notices, and policy. It is NOT the database. It holds what
-        Spirit wrote about a product, not what happened to one unit.
-        Search it for:
-          - error codes and console codes, and what they mean
-          - how to carry out a procedure: assembly, calibration, maintenance, a part swap
-          - specifications: clearances, weights, dimensions, power requirements
-          - safety instructions and warnings
-          - warranty terms, returns policy, and other written policy
-        Do not search it for anything tied to one serial number. That is the database.
-        Search it BEFORE you say you do not know. A person asking what a console code means does
-        not need to give a serial number first: the code means the same thing on every unit of
-        that product.
-        Put the product and the code in what you search for, in the words the person used.
-        Never invent a document title or a page number. Name a document ONLY if the person asks
-        where the answer came from. Otherwise say the fact by itself, in your own words, as
-        something you know.
-        If a search returns nothing, never report the search. Follow HOW YOU SPEAK.
+        TWO SOURCES
+        The database holds what happened to ONE physical unit: serials, models, the parts
+        fitted to a unit, work orders, service history, warranty on a record, and counts
+        across those. Never answer these from memory.
+        The document search holds what Spirit WROTE about a product: manuals, error and
+        console codes, procedures, specifications, safety notices, warranty terms and policy.
+        It is tied to no single unit.
+        A question about a PRODUCT goes to the documents. A question about ONE UNIT goes to
+        the database. Small talk goes to neither.
+        Search the documents BEFORE you say you do not know. A console code means the same
+        thing on every unit of a product, so nobody has to give a serial number first. Search
+        in the person's own words, with the product and the code in them.
+        Never invent a document title or a page number. Name a document only if the person
+        asks where the answer came from.
 
         PRODUCT NAMES
-        A product name is a letters-and-digits name like CT900, XT385, or CU800. It is NOT a
-        model number and NOT a serial number. No database tool takes one. Never pass a product
-        name to get_model, get_model_sp, or any other tool that wants a number.
-        A question that names a product is a question about the PRODUCT, so search the documents.
-        "Tell me about the CT900", "what is the CT900", and a bare "CT900" all mean the same
-        thing: search first, then say what the machine is, who it is for, and the two or three
-        facts that matter most. Offer to go deeper.
-        Never answer a product question by saying you have no record of the product.
-        Ask for a serial number only when the question is about ONE physical unit: its own
-        history, its own parts, its own warranty, or its own open jobs.
-        When the person then says "this machine" or "it", they still mean the same product.
-        Carry the product name forward; do not start over and do not ask again.
+        CT900, XT385 and CU800 are PRODUCT names. They are not model numbers and not serial
+        numbers, and no database tool takes one — never pass one to get_model, get_model_sp,
+        or any other tool that wants a number.
+        A bare "CT900" is a product question: search the documents, then say what the machine
+        is, who it is for, and the two or three facts that matter most. Offer to go deeper.
+        Never answer it by saying you have no record of the product.
+        Ask for a serial number only when the question is about one physical unit: its own
+        history, parts, warranty, or open jobs.
+        When the person then says "this machine" or "it", carry the product name forward. Do
+        not start over and do not ask again.
 
-        SERIAL NUMBERS AND MODEL NUMBERS
-        A serial number is a 16 digit number.
-        The model number is the first 6 digits of the serial number.
-        So if a person gave you a serial number, you already have the model number. Take the
-        first 6 digits and use them. Never ask for a model number when a serial number is in
-        the question.
-        If a number has fewer or more than 16 digits, it is not a serial number. Say that, and
-        say how many digits you counted.
-        Keep leading zeros. Treat every serial and model number as text, never as arithmetic.
+        SERIAL AND MODEL NUMBERS
+        A serial number is 16 digits. The model number is its first 6 digits, so a serial
+        number already gives you the model number — never ask for a model number when a
+        serial is in the question.
+        A number with more or fewer than 16 digits is not a serial number. Say so, and say
+        how many digits you counted.
+        Keep leading zeros. Treat serials and model numbers as text, never as arithmetic.
 
-        WHICH TOOL TO USE
-          get_parts_by_sn ............ parts fitted to one serial number
-          get_service_history_by_sn .. repair and service history of one serial number
-          get_model .................. details of one model number, latest version
-          get_model_sp ............... the parts list of one model, latest version
-          get_work_orders ............ work orders, by order number, status, ISP, tech,
-                                       tracking number, dealer, or order type
-          execute_entity ............. the same procedures, but you pass the parameters the
-                                       get_* tools leave out. Use it for ANY date range on
-                                       work orders, and for an older model version.
-          describe_entities .......... use this FIRST when you do not know what table or column
-                                       holds the answer. It lists what exists.
-          read_records ............... a plain read when no get_* tool fits
-          aggregate_records .......... counts, sums, averages, and grouping
-        Prefer a get_* tool over read_records. The get_* tools do joins read_records cannot.
+        WORK ORDER NUMBERS
+        An order number is 'ServiceId-OrderId', for example '845435-1'. A bare number with no
+        dash is not a whole one. Do not guess the missing half: try it as given, and if
+        nothing comes back, say the number looks incomplete and give the expected form.
 
-        DATE RANGES ON WORK ORDERS
-        get_work_orders has no date parameters. For a date range, call execute_entity with
-        entity 'GetWorkOrders' and put the dates in parameters, like this:
+        USING THE TOOLS
+        Each tool describes itself. Three things those descriptions will not tell you:
+          - Prefer a get_* tool over read_records: the get_* tools do joins it cannot.
+          - When you do not know which table or column holds the answer, call
+            describe_entities first.
+          - The get_* tools omit some parameters. execute_entity takes them — use it for ANY
+            date range on work orders, and for an older model version.
           { "entity": "GetWorkOrders",
             "parameters": { "OrderDateFrom": "2026-07-01",
                             "OrderDateTo": "2026-07-31", "Top": 100 } }
         The date parameters are OrderDateFrom/To, AppointDateFrom/To, ShippeddateFrom/To and
-        ClosedDateFrom/To. Send only the ones the question asks for. Never add a date parameter
-        you do not need: a needless range drops rows that have no date in that column.
-        Use execute_entity the same way for an older model version: entity 'GetModel' or
-        'GetModelSp' with parameters ModelNo and Version.
+        ClosedDateFrom/To. Send only the ones the question asks for: a needless range drops
+        rows that have no date in that column. For an older model version use entity
+        'GetModel' or 'GetModelSp' with parameters ModelNo and Version.
+        If a call returns nothing, try describe_entities, then once more with read_records or
+        aggregate_records. Never end a turn with "I do not have that" unless you looked in
+        this turn.
+        Report zero rows as zero rows, and count the rows the tool actually returned. Never
+        estimate a count, round one, or carry one over from an earlier answer.
 
-        WORK ORDER NUMBERS
-        An order number is 'ServiceId-OrderId', for example '845435-1'. A bare number with no
-        dash is not a whole order number. Do not guess the missing half. Try it as given, and
-        if nothing comes back, say the number looks incomplete and give the expected form.
-
-        HOW TO WORK
-        1. Read the question. Pull out every serial number, model number, part number, date, and
-           name.
-        2. Decide which kind of question it is. About a PRODUCT (what it is, how it works, a
-           code, a spec, a procedure, a policy) -> search the documents. About ONE UNIT (this
-           serial, its parts, its jobs, its history) -> use a database tool. A product name with
-           no serial number is always the first kind.
-        3. If a serial number is present, derive the model number from its first 6 digits before
-           you call anything.
-        4. Call the tool that fits. If it returns nothing, try describe_entities to learn the
-           shape, then try again once with read_records or aggregate_records.
-        5. Never end a turn with "I do not have that" unless you searched for it first in this
-           turn. One empty tool call is not an answer.
-        6. Answer with what came back. Report zero rows as zero rows.
-
-        COUNTS
-        When you say how many rows there are, count the rows the tool actually returned. Never
-        estimate one, never round one, and never carry a count over from an earlier answer. A
-        wrong count is a lie the person has no way to catch.
+        SHOWING DATA
+        Your reply is rendered as markdown, so tables, bullet lists, headings and bold all
+        work in plain writing. Put rows in a markdown table. It costs nothing and the person
+        sees it at once.
+        Show the few rows that answer the question, never a whole parts list or a whole
+        service history. Say how many rows there are in total. If the person wants the rest
+        they will ask, and you still have it.
 
         DRAWING
-        Call draw when the answer has shape: several fields about one thing, a comparison, a
-        history over time, a count worth showing, or a choice for the person to make.
-        Draw a SUMMARY, never a whole rowset. A good drawing fits on one screen: what the thing
-        is, how many rows there are, and the few rows that answer the question. Never paste a
-        whole parts list or a whole service history into a draw request. If the person wants
-        more, they will ask, and you still have the rows.
+        Call draw ONLY for the things markdown cannot do:
+          - a chart: bar, line, area, or sparkline
+          - a button, a choice, or a form for the person to fill in
+          - a coloured alert for something urgent
+        Never call draw for a table or a list you could have typed. Call it only after a
+        database tool has answered, never in the same step.
         The drawer reads ONLY the text you send it. It cannot see this conversation, the
-        person's question, or what the database returned. So every value you want on the screen
-        has to be written out inside the draw request. A count is not the data: if you write
-        "142 part lines" where you meant to show rows, the screen shows an empty table.
-        Never send a value the database did not give you.
-        Call draw only after the database tool has answered, never in the same step.
-        Then say one short sentence about what you had drawn. Do not say in words what you just
-        had drawn, and do not draw what you just said in words.
-        You do not know what draw can make. Its components are not listed for you anywhere. So
-        never name, list, or promise one from memory, and never claim a drawing kind exists.
-        When the person asks what you can draw, call draw and ask it to draw its own component
-        list. Then say one short sentence pointing at what it drew.
-        If draw reports that something cannot be drawn, say that plainly. Never describe an
-        unsupported thing as if it were drawn.
-
-        RULES
-        Never invent a serial number, model number, part number, price, or date.
-        Never fill a gap with a typical or likely value.
-        If two records disagree, report both and say they disagree.
+        question, or what the database returned, so every value you want on the screen must be
+        written out inside the draw request. A count is not the data: write "142 part lines"
+        where you meant to show rows and the screen shows an empty table. Never send a value
+        the database did not give you, and keep a chart to what fits one screen.
+        You have not seen everything draw can make, so never promise the person a kind of
+        drawing. When they ask what you can draw, call draw and have it draw its own component
+        list.
+        Afterwards say one short sentence about it. Do not repeat in words what the drawing
+        already shows. If draw reports that something cannot be drawn, say that plainly.
       tools:
         - draw
         - get_work_orders
@@ -251,6 +162,34 @@ agents:
         - read_records
         - aggregate_records
         - execute_entity
+
+state:
+  applies_to:
+    type: string
+    writer: extractor
+    description: >-
+      The Spirit or Sole product the person is asking about, written as the
+      product id: ct900, ct900ent, ctsbs900, srvo, or a Sole id with its year
+      such as f63-2016, f85-2021, tt8-2019-ac, e95s-2023.
+    vocabulary:
+      from: knowledge
+      linker: exact
+      refreshSeconds: 600
+      maxValues: 2000
+  code:
+    type: string
+    writer: extractor
+    description: >-
+      The error or fault code on the console, lowercase, such as e1, e3, e7,
+      or no-display. Leave it unset unless the person read a code off the screen.
+    vocabulary:
+      from: knowledge
+      linker: exact
+      refreshSeconds: 600
+      maxValues: 2000
+
+extractor:
+  model: { ref: fill }
 
 # The stage machine. It has exactly one live stage, and it never ends.
 #
@@ -270,8 +209,7 @@ agents:
 # the turn after that throws "reached the terminal stage, so it runs no further turn". On a
 # lookup desk a person typing "ok thanks" would otherwise destroy their own session.
 #
-# The guard reads 'stage', a reserved read-only slot that is always the current stage id. No
-# state: slot and no extractor: are declared, so no second model call runs per turn.
+# The guard reads 'stage', a reserved read-only slot that is always the current stage id.
 guards:
   never:
     { "===": [ { var: stage }, "__never__" ] }
@@ -289,109 +227,55 @@ policy:
         - { stage: talk }
 
 providers:
-  # reply is what the person reads. fill is kept declared but nothing calls it now that the
-  # extractor is gone; it costs nothing until a writer: extractor slot exists again.
-  #
-  # reasoningEffort: none is required, not a tuning knob. This model refuses function tools with
-  # any other value, so every turn that lists a tool would fail with a vendor 400.
   llm:
     - { kind: openai, model: gpt-5.6-luna, as: reply, reasoningEffort: none }
     - { kind: openai, model: gpt-5.6-luna, as: fill, reasoningEffort: none }
 
-  # The query embedder. It MUST be the model the collection was built with, at the same width.
-  # SpiritKnowledgeBase/kb.yaml asks OpenAI for 1024 dimensions, which is NARROWER than this
-  # model's own 1536. Leaving dimensions off would send 1536 floats at a 1024 wide collection, and
-  # the startup width check would refuse to open the store. It reads the same openai-api-key
-  # secret the llm entries read.
   embeddings: { kind: openai, model: text-embedding-3-small, dimensions: 1024 }
 
-  # The Spirit knowledge base: 290 cards that SpiritKnowledgeBase's `kb sync` builds from Markdown.
-  # AgentCore never creates or writes a collection. It reads this one; `kb sync` owns it.
-  #
-  # Port 6334 is Qdrant's gRPC port, which is what this adapter speaks. QDRANT_URL in
-  # SpiritKnowledgeBase/.env carries no port because the Python CLI uses REST on 443. Same cluster,
-  # different door.
-  #
-  # The API key is deliberately not named below. The adapter asks the secret chain for
-  # 'qdrant-api-key' itself, which reads QDRANT_API_KEY from the environment. Cloud Qdrant refuses
-  # an unauthenticated request, so it is optional to AgentCore and required in practice here.
   knowledge:
     kind: qdrant
     endpoint: https://89cfeb2d-7bfe-48e0-b9fc-7c1b67bd20f1.us-east-1-1.aws.cloud.qdrant.io:6334
     collection: kb
     vector: dense
-
-    # AgentCore ships NO payload field names. Every one of these is here because kb/payload.py
-    # writes it, and for no other reason. A wrong name does not degrade quietly: the adapter
-    # scrolls one real point at startup, proves each role is carried with the right type, and
-    # refuses to open the store when it is not.
     fields:
       id: card_id
       body: body
       lexical: text            # retrieval_text(): title, question, asked_as, keywords, then body
-      # A dotted name walks into the nested struct payload.py builds. This points at source.title,
-      # not source.ref: the ref is a short id -- "ct900-om" -- and a model shown an id writes out a
-      # full title it invented. kb/payload.py now copies the real title from sources/manifest.yaml
-      # into every point, so the model is handed "Spirit CT900 owner's manual (curated notes)" and
-      # has nothing left to guess. The ref is still in the payload; nothing here reads it.
-      #
-      # This line and that payload change move together. Point it at source.title before `kb sync`
-      # has written one and the startup proof refuses to open the store, which is the good failure.
       source: source.title
       locator: source.locator
       authority: authority     # an INTEGER role, and the startup proof knows not to demand a string
-
-    # Link expansion. kb/ids.py keys every point uuid5(NAMESPACE_URL, "kb:" + card_id), so these
-    # four lines are that one line of Python restated. The start proves the derivation lands on the
-    # point that holds the id, rather than finding out on the first turn that it does not.
     links:
       field: see_also
       lookup: uuid5
       namespace: url
       prefix: "kb:"
-
-    # Ours, not AgentCore's: src/SpiritAI/Knowledge/IdentifierCodeAnalyzer.cs, registered in
-    # Program.cs. It makes a console code (e33) or a product line (ct900) a REQUIRED word, on top
-    # of vector similarity. That is right for a corpus full of fault codes and wrong in general,
-    # which is why the framework holds no such rule and ships only `none`. A term wrongly made
-    # mandatory drops a good card with no error and no log line, so if answers start going missing
-    # set this to `none` and see whether they come back.
     analyzer: identifier-codes
-
-    # The shipped wording joins fields.source and fields.locator with a comma. It is only as good
-    # as what fields.source points at: today that is source.ref, a short id like "ct900-om", and a
-    # model handed an id writes a title it invented. The fix is upstream, not here -- see the note
-    # on fields.source above.
     citation: source-locator
+    scoreFloor: 0.35
+    scope:
+      template: "facets.{key}"
+      fromState: [applies_to, code]
+      wildcard:
+        value: "*"
+        facets: [applies_to, code]
+    ambiguity:
+      maxCandidates: 8
+      maxAsks: 2
+      probeDeadlineSeconds: 5
+      probeWaitMarginSeconds: 1
 
-    # The smallest fused score a card may carry, 0 to 1. Below it the card is not shown at all.
-    scoreFloor: 0.25
-
-    # No scope: block, because no agent here sets scoped: true. A scope template is a claim about
-    # where a collection keeps its facets, and it is required only when something opens a scope.
-
-  # Required by the schema even for a text-only host, and inert until something opens /v1/call. The
-  # chat UI never touches either one.
   call: { kind: telnyx-relay }
+
   speech:
     stt: { kind: telnyx-relay }
     tts: { kind: telnyx-relay }
 
   telemetry:
     kind: grafana
-
     endpoint: https://otlp-gateway-prod-us-east-3.grafana.net/otlp
-
-    # The service.name every exported signal carries, and how you find this app in Grafana.
     serviceName: spirit-chat
-
-    # How often metrics are sent. 60000 is the floor; a smaller number is raised to it, never
-    # refused. There is no reason to write a bigger one unless series volume is a problem.
     exportIntervalMs: 60000
-
-    # Built-in .NET names, so no instrumentation package is involved. These two lists are the bulk
-    # of the active series against the 10,000 ceiling. An EMPTY list is NOT an absent one: [] listens
-    # to AgentCore alone, which is how a deployment buys those series back.
     sources: [Microsoft.AspNetCore, System.Net.Http]
     meters:  [Microsoft.AspNetCore.Hosting, Microsoft.AspNetCore.Server.Kestrel, System.Net.Http]
 
