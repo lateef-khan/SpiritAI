@@ -152,9 +152,10 @@ agents:
         Show the few rows that answer the question, never a whole parts list or a whole
         service history. Say how many rows there are in total. If the person wants the rest
         they will ask, and you still have it.
-        Every list tool returns at most 20 rows and a TotalRows column holding the real
-        total. Read TotalRows and say "5 of 800". Never estimate a total and never count
-        the rows you were sent and call that the total.
+        Every list tool returns 20 rows by default, up to 100 if you ask for more with
+        Top, and a TotalRows column holding the real total. Read TotalRows and say "5 of
+        800". Never estimate a total and never count the rows you were sent and call
+        that the total.
         When someone wants one part, pass Search rather than pulling the whole list. Ask for
         IncludeDetail only when the person asked for that detail; it costs a lot of room.
 
