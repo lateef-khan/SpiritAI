@@ -137,7 +137,8 @@ agents:
         The date parameters are OrderDateFrom/To, AppointDateFrom/To, ShippeddateFrom/To and
         ClosedDateFrom/To. Send only the ones the question asks for: a needless range drops
         rows that have no date in that column. For an older model version use entity
-        'GetModel' or 'GetModelSp' with parameters ModelNo and Version.
+        'GetModel' with parameters ModelNo and Version, or entity 'SearchParts' with
+        SerialNo, ModelNo or Name, plus Version.
         If a call returns nothing, try describe_entities, then once more with read_records or
         aggregate_records. Never end a turn with "I do not have that" unless you looked in
         this turn.
