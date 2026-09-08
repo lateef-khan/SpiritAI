@@ -255,10 +255,10 @@ providers:
     scoreFloor: 0.35
     scope:
       template: "facets.{key}"
-      fromState: [applies_to, code]
+      fromState: [applies_to, code, product_line]
       wildcard:
         value: "*"
-        facets: [applies_to, code]
+        facets: [applies_to, code, product_line]
     ambiguity:
       maxCandidates: 8
       maxAsks: 2
