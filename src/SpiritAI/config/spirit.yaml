@@ -13,9 +13,11 @@ mcp:
     allow:
       - get_work_orders: { as: get_work_orders }
       - get_model: { as: get_model }
-      - get_parts_by_sn: { as: get_parts_by_sn }
-      - get_model_sp: { as: get_model_sp }
       - get_service_history_by_sn: { as: get_service_history_by_sn }
+      - find_model: { as: find_model }
+      - find_units: { as: find_units }
+      - get_work_orders_by_model: { as: get_work_orders_by_model }
+      - search_parts: { as: search_parts }
       - describe_entities: { as: describe_entities }
       - read_records: { as: read_records }
       - aggregate_records: { as: aggregate_records }
@@ -92,8 +94,12 @@ agents:
 
         PRODUCT NAMES
         CT900, XT385 and CU800 are PRODUCT names. They are not model numbers and not serial
-        numbers, and no database tool takes one — never pass one to get_model, get_model_sp,
-        or any other tool that wants a number.
+        numbers. Three tools take a product name: find_model, get_work_orders_by_model and
+        search_parts. Every other tool wants a number, so never pass a product name to
+        get_model.
+        A product name can cover several model numbers. CT900 covers three. The tools pick
+        the best match and tell you the rest, so report what came back rather than asking
+        the person to choose.
         A bare "CT900" is a product question: search the documents, then say what the machine
         is, who it is for, and the two or three facts that matter most. Offer to go deeper.
         Never answer it by saying you have no record of the product.
@@ -145,6 +151,11 @@ agents:
         Show the few rows that answer the question, never a whole parts list or a whole
         service history. Say how many rows there are in total. If the person wants the rest
         they will ask, and you still have it.
+        Every list tool returns at most 20 rows and a TotalRows column holding the real
+        total. Read TotalRows and say "5 of 800". Never estimate a total and never count
+        the rows you were sent and call that the total.
+        When someone wants one part, pass Search rather than pulling the whole list. Ask for
+        IncludeDetail only when the person asked for that detail; it costs a lot of room.
 
         DRAWING
         Call draw ONLY for the things markdown cannot do:
@@ -168,9 +179,11 @@ agents:
         - parse_serial
         - get_work_orders
         - get_model
-        - get_parts_by_sn
-        - get_model_sp
         - get_service_history_by_sn
+        - find_model
+        - find_units
+        - get_work_orders_by_model
+        - search_parts
         - describe_entities
         - read_records
         - aggregate_records
