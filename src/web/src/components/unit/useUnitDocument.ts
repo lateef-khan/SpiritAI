@@ -60,16 +60,16 @@ export function useUnitDocument(identifier: Identifier | null): {
         view =
           wanted.kind === "serial"
             ? {
-              state: "unit",
-              identifier: wanted,
-              unit: (await getUnit({ throwOnError: true, path: { serial: wanted.value } })).data,
-            }
+                state: "unit",
+                identifier: wanted,
+                unit: (await getUnit({ throwOnError: true, path: { serial: wanted.value } })).data,
+              }
             : {
-              state: "order",
-              identifier: wanted,
-              order: (await getOrder({ throwOnError: true, path: { orderNumber: wanted.value } }))
-                .data,
-            };
+                state: "order",
+                identifier: wanted,
+                order: (await getOrder({ throwOnError: true, path: { orderNumber: wanted.value } }))
+                  .data,
+              };
       } catch (refusal) {
         // A 404 is an answer: nothing carries that number. A 400 is the same answer from the other
         // direction. Anything else is the host having a problem, which is worth offering to ask
