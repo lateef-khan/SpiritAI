@@ -24,6 +24,15 @@ mcp:
 tools:
   - { id: draw, kind: builtin, uses: ui.draw, maxRounds: 1 }
 
+  - id: parse_serial
+    kind: binding
+    binds: ParseSerial
+    description: >-
+      Read a serial number. Answers whether the text is one, how many digits it
+      carries, the six digit model number, and the month it was built as MM/YYYY. It
+      reads the number itself and touches no records, so it costs nothing and answers
+      for a unit that was never sold.
+
 agents:
   defaults:
     model: { ref: reply }
@@ -94,11 +103,14 @@ agents:
         not start over and do not ask again.
 
         SERIAL AND MODEL NUMBERS
+        Call parse_serial on any number the person offers as a serial, before any database
+        tool. It gives you the model number, the build month, and the digit count. Never cut
+        those out of the digits yourself.
         A serial number is 16 digits. The model number is its first 6 digits, so a serial
         number already gives you the model number — never ask for a model number when a
         serial is in the question.
         A number with more or fewer than 16 digits is not a serial number. Say so, and say
-        how many digits you counted.
+        how many digits parse_serial counted.
         Keep leading zeros. Treat serials and model numbers as text, never as arithmetic.
 
         WORK ORDER NUMBERS
@@ -153,6 +165,7 @@ agents:
         already shows. If draw reports that something cannot be drawn, say that plainly.
       tools:
         - draw
+        - parse_serial
         - get_work_orders
         - get_model
         - get_parts_by_sn
