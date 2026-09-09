@@ -340,6 +340,19 @@ state:
       linker: exact
       refreshSeconds: 600
       maxValues: 2000
+  model:
+    type: string
+    writer: extractor
+    description: >-
+      The machine and the year it was built, as one tag, such as lcr-2023 or
+      f63-2019. Read the year off what the person said, and the machine off the
+      product they named. When they name a machine and no year, leave it unset.
+      Never invent a year and never carry one over from another machine.
+    vocabulary:
+      from: knowledge
+      linker: exact
+      refreshSeconds: 600
+      maxValues: 2000
 
 extractor:
   model: { ref: fill }
