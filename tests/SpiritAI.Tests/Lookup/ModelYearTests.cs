@@ -38,6 +38,46 @@ public sealed class ModelYearTests
     }
 
     [Fact]
+    public void ReadsTheYearOutOfTheDescriptionWhenTheNameCarriesNone()
+    {
+        var model = ModelYear.Read("522112", "LCR", "FG, SOLE,  TREADMILL LCR 2013");
+
+        Assert.Equal(2013, model.Year);
+    }
+
+    [Fact]
+    public void TheNameWinsWhenBothCarryAYear()
+    {
+        var model = ModelYear.Read("522118", "Sole LCR 2019", "Bike Sole LCR 2013");
+
+        Assert.Equal(2019, model.Year);
+    }
+
+    [Fact]
+    public void KeepsTheNameAsTheNameEvenWhenTheYearCameFromTheDescription()
+    {
+        var model = ModelYear.Read("522112", "LCR", "FG, SOLE,  TREADMILL LCR 2013");
+
+        Assert.Equal("LCR", model.Name);
+    }
+
+    [Fact]
+    public void HasNoYearWhenNeitherCarriesOne()
+    {
+        var model = ModelYear.Read("522126", "LCR", "SOLE, LCR BIKE");
+
+        Assert.Null(model.Year);
+    }
+
+    [Fact]
+    public void ReadsTheNameAloneWhenNoDescriptionIsGiven()
+    {
+        var model = ModelYear.Read("563816", "SOLE F63 2016");
+
+        Assert.Equal(2016, model.Year);
+    }
+
+    [Fact]
     public void PicksTheModelWhoseNameCarriesTheYear()
     {
         var picked = ModelYear.Pick(Nine(), 2016);

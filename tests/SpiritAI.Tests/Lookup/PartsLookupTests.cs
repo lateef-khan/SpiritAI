@@ -105,6 +105,19 @@ public sealed class PartsLookupTests
     }
 
     [Fact]
+    public async Task TheDatabaseAloneJustifiesOnlyTwoLcrYears()
+    {
+        // 2013 is in a description and 2019 is in a name. The other four rows record no year at
+        // all, which is exactly why the database is not the authority on which years exist.
+        var lookup = new PartsLookup(Fake());
+
+        var answer = await lookup.FindAsync("LCR", null, null, null, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal("needs_year", answer.Outcome);
+        Assert.Equal([2013, 2019], answer.Years);
+    }
+
+    [Fact]
     public async Task SaysTheProductIsUnknownWhenNothingMatches()
     {
         var lookup = new PartsLookup(Fake());
@@ -137,7 +150,18 @@ public sealed class PartsLookupTests
             return Rows($$"""{"ModelNo":"{{exact}}","ModelName":"SOLE F63 2016"}""");
         }
 
-        return arguments.TryGetValue("Name", out var name) && (string?)name == "F63"
+        if (arguments.TryGetValue("Name", out var name) && (string?)name == "LCR")
+        {
+            return Rows(
+                """{"ModelNo":"522110","ModelName":"LCR","ModelDesc":"FG, SOLE,  TREADMILL LCR"}""",
+                """{"ModelNo":"522112","ModelName":"LCR","ModelDesc":"FG, SOLE,  TREADMILL LCR 2013"}""",
+                """{"ModelNo":"522116","ModelName":"LCR","ModelDesc":"FG, SOLE,  LCR Bike Light Commercial"}""",
+                """{"ModelNo":"522118","ModelName":"Sole LCR 2019","ModelDesc":"Bike Sole LCR 2019"}""",
+                """{"ModelNo":"522122","ModelName":"LCR","ModelDesc":"FG, Sole LCR Bike"}""",
+                """{"ModelNo":"522126","ModelName":"LCR","ModelDesc":"SOLE, LCR BIKE"}""");
+        }
+
+        return (string?)name == "F63"
             ? Rows(
                 """{"ModelNo":"563286","ModelName":"F63"}""",
                 """{"ModelNo":"563812","ModelName":"SOLE F63 2013"}""",

@@ -21,16 +21,30 @@ public sealed partial record ModelYear(string ModelNo, string Name, int? Year)
 
     private const int Latest = 2099;
 
-    /// <summary>Reads one model's name.</summary>
+    /// <summary>Reads one model's name, and its description when the name carries no year.</summary>
     /// <param name="modelNo">The six digit model number.</param>
     /// <param name="name">The model's name, such as <c>SOLE F63 2016</c>.</param>
-    /// <returns>The model number and the year its name carries.</returns>
-    public static ModelYear Read(string modelNo, string? name)
+    /// <param name="description">
+    /// The model's description, such as <c>FG, SOLE,  TREADMILL LCR 2013</c>. Some rows record the
+    /// year only here: of the six the LCR covers, one names its year in the description and nowhere
+    /// else.
+    /// </param>
+    /// <returns>The model number, its name, and the year one of the two carries.</returns>
+    public static ModelYear Read(string modelNo, string? name, string? description = null)
     {
         var text = name ?? string.Empty;
+
+        // The name is the better source, so it is asked first and answers alone when it can. The
+        // description is a fallback, never a tie-breaker.
+        return new ModelYear(modelNo, text, YearIn(text) ?? YearIn(description));
+    }
+
+    /// <summary>The year one string names, or nothing.</summary>
+    private static int? YearIn(string? text)
+    {
         int? year = null;
 
-        foreach (Match match in FourDigits().Matches(text))
+        foreach (Match match in FourDigits().Matches(text ?? string.Empty))
         {
             var candidate = int.Parse(match.Value, CultureInfo.InvariantCulture);
 
@@ -42,7 +56,7 @@ public sealed partial record ModelYear(string ModelNo, string Name, int? Year)
             }
         }
 
-        return new ModelYear(modelNo, text, year);
+        return year;
     }
 
     /// <summary>Picks the one model whose name carries a year.</summary>

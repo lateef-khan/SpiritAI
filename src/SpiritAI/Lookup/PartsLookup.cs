@@ -202,7 +202,8 @@ public sealed class PartsLookup(ToolInvoker invoke)
             ? []
             : [.. rows.Select(row => ModelYear.Read(
                 Text(row, "ModelNo") ?? string.Empty,
-                Text(row, "ModelName") ?? Text(row, "ModelDesc")))];
+                Text(row, "ModelName"),
+                Text(row, "ModelDesc")))];
     }
 
     /// <summary>Calls one tool and reads its rows, or nothing when it refused.</summary>
