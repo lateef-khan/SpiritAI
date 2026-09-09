@@ -4,23 +4,6 @@ using System.Text.Json;
 namespace SpiritAI.Lookup;
 
 /// <summary>
-/// Calls one DAB tool.
-/// </summary>
-/// <remarks>
-/// A delegate rather than <c>ToolRegistry</c> itself. The registry has an internal constructor and
-/// cannot be built in a test, so this is the seam that lets the shaping below be tested without a
-/// live database behind Tailscale.
-/// </remarks>
-/// <param name="toolId">The tool's id, as <c>spirit.yaml</c> aliases it.</param>
-/// <param name="arguments">The tool's arguments, by name.</param>
-/// <param name="cancellationToken">Cancels the call.</param>
-/// <returns>Whatever the tool answered, as JSON.</returns>
-public delegate ValueTask<JsonElement> ToolInvoker(
-    string toolId,
-    IReadOnlyDictionary<string, object?> arguments,
-    CancellationToken cancellationToken);
-
-/// <summary>
 /// Reads one machine, or one work order, straight from the tools the agent uses.
 /// </summary>
 /// <remarks>
@@ -199,87 +182,13 @@ public sealed class UnitLookup(ToolInvoker invoke)
     {
         try
         {
-            return RowsOf(await _invoke(toolId, arguments, cancellationToken).ConfigureAwait(false));
+            return DabEnvelope.RowsOf(await _invoke(toolId, arguments, cancellationToken).ConfigureAwait(false));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             // A tool that throws is a section that cannot be drawn, never a request that fails. The
             // caller names the section instead, and the rest of the panel still renders.
             return null;
-        }
-    }
-
-    /// <summary>Finds the rows in whichever envelope a DAB tool wrapped them in.</summary>
-    /// <remarks>
-    /// A stored procedure answers <c>{ status, value: { value: [...] } }</c> and
-    /// <c>read_records</c> answers <c>{ result: { value: [...] } }</c>. A refusal answers
-    /// <c>{ status: "error", error: { ... } }</c> and is read here as nothing.
-    /// </remarks>
-    /// <param name="payload">What the tool answered.</param>
-    /// <returns>The rows, or <see langword="null"/> when the payload holds none.</returns>
-    private static IReadOnlyList<JsonElement>? RowsOf(JsonElement payload)
-    {
-        var body = Unwrap(payload);
-
-        if (body.ValueKind != JsonValueKind.Object)
-        {
-            return null;
-        }
-
-        if (body.TryGetProperty("status", out var status)
-            && status.ValueKind == JsonValueKind.String
-            && string.Equals(status.GetString(), "error", StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        foreach (var outer in (string[])["value", "result"])
-        {
-            if (body.TryGetProperty(outer, out var wrapper)
-                && wrapper.ValueKind == JsonValueKind.Object
-                && wrapper.TryGetProperty("value", out var rows)
-                && rows.ValueKind == JsonValueKind.Array)
-            {
-                return [.. rows.EnumerateArray()];
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>Digs the JSON body out of whatever the tool layer handed back.</summary>
-    /// <remarks>
-    /// An MCP tool answers with content parts, and the part carrying the rows is a string of JSON.
-    /// Depending on how the call was made, that arrives already parsed, as that string, or still
-    /// inside its <c>content</c> array. All three are the same body.
-    /// </remarks>
-    /// <param name="payload">What the tool answered.</param>
-    /// <returns>The body, parsed.</returns>
-    private static JsonElement Unwrap(JsonElement payload)
-    {
-        if (payload.ValueKind == JsonValueKind.Object
-            && payload.TryGetProperty("content", out var content)
-            && content.ValueKind == JsonValueKind.Array
-            && content.EnumerateArray().FirstOrDefault() is { ValueKind: JsonValueKind.Object } part
-            && part.TryGetProperty("text", out var text))
-        {
-            return Unwrap(text);
-        }
-
-        if (payload.ValueKind != JsonValueKind.String)
-        {
-            return payload;
-        }
-
-        try
-        {
-            using var parsed = JsonDocument.Parse(payload.GetString() ?? string.Empty);
-
-            return parsed.RootElement.Clone();
-        }
-        catch (JsonException)
-        {
-            return payload;
         }
     }
 
