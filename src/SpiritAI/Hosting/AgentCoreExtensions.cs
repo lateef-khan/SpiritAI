@@ -1,5 +1,6 @@
 using System.ComponentModel;
 
+using AgentCore.Application.State;
 using AgentCore.AspNetCore.DependencyInjection;
 using AgentCore.Hosting;
 
@@ -47,7 +48,8 @@ public static class AgentCoreExtensions
     /// </param>
     private static void Configure(AgentCoreOptions options, IServiceProvider services)
         => options
-            .UseKnowledgeQueryAnalyzers(new IdentifierCodeAnalyzer())
+            .UseKnowledgeQueryAnalyzers(new IdentifierCodeAnalyzer(
+                () => IdentifierCodeAnalyzer.ProductsIn(services.GetService<VocabularyCache>())))
             .Bind(
                 SerialBinding,
                 ([Description("The number the person offered as a serial number, exactly as they wrote it.")] string serial)
