@@ -114,8 +114,8 @@ function AccountLines({ name, email }: { name: string; email: string }) {
 }
 
 /**
- * Up to two letters for the tile behind a missing photo. Magic-link sign-in carries no picture, so
- * this is what most people see rather than a fallback for the rare account.
+ * Up to two letters for the tile behind a missing photo. Signing in with an emailed code carries
+ * no picture, so this is what most people see rather than a fallback for the rare account.
  */
 function initials(name: string, email: string): string {
   const words = name.split(/\s+/).filter(Boolean);

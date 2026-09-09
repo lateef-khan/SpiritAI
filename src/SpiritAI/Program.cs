@@ -1,15 +1,13 @@
 using AgentCore.Hosting;
 using SpiritAI.Auth;
 using SpiritAI.Hosting;
-using SpiritAI.Knowledge;
 using SpiritAI.Lookup;
 using SpiritAI.PublicChat;
 using SpiritAI.Threads;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddAgentCoreHost(options => options
-    .UseKnowledgeQueryAnalyzers(new IdentifierCodeAnalyzer()));
+builder.AddSpiritAgentCore();
 
 builder.Services.AddProxyHeaders(builder.Configuration);
 
