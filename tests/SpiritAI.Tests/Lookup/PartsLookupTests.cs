@@ -20,7 +20,7 @@ public sealed class PartsLookupTests
     [Fact]
     public async Task AsksForTheYearWhenOnlyTheProductNameIsKnown()
     {
-        var lookup = new PartsLookup(Fake());
+        var lookup = new PartsLookup(Fake(), Models());
 
         var answer = await lookup.FindAsync("F63", null, null, null, "motor", TestContext.Current.CancellationToken);
 
@@ -34,7 +34,7 @@ public sealed class PartsLookupTests
     {
         // 563286 is named "F63" with no year and lists five parts. Answering from it looks like an
         // answer and is not, so a bare name must not reach it.
-        var lookup = new PartsLookup(Fake());
+        var lookup = new PartsLookup(Fake(), Models());
 
         var answer = await lookup.FindAsync("F63", null, null, null, "motor", TestContext.Current.CancellationToken);
 
@@ -44,7 +44,7 @@ public sealed class PartsLookupTests
     [Fact]
     public async Task FindsThePartsOnceTheYearIsKnown()
     {
-        var lookup = new PartsLookup(Fake());
+        var lookup = new PartsLookup(Fake(), Models());
 
         var answer = await lookup.FindAsync("F63", 2016, null, null, "motor", TestContext.Current.CancellationToken);
 
@@ -57,7 +57,7 @@ public sealed class PartsLookupTests
     [Fact]
     public async Task TakesTheModelNumberOutOfASerial()
     {
-        var lookup = new PartsLookup(Fake());
+        var lookup = new PartsLookup(Fake(), Models());
 
         var answer = await lookup.FindAsync(null, null, "5638160000000001", null, "motor", TestContext.Current.CancellationToken);
 
@@ -75,7 +75,7 @@ public sealed class PartsLookupTests
             {
                 sent = value as string;
             }
-        }));
+        }), Models());
 
         await lookup.FindAsync("F63", 2016, null, null, "motor belt roller", TestContext.Current.CancellationToken);
 
@@ -85,7 +85,7 @@ public sealed class PartsLookupTests
     [Fact]
     public async Task SaysSoWhenTheYearWasNeverBuilt()
     {
-        var lookup = new PartsLookup(Fake());
+        var lookup = new PartsLookup(Fake(), Models());
 
         var answer = await lookup.FindAsync("F63", 1998, null, null, null, TestContext.Current.CancellationToken);
 
@@ -96,7 +96,7 @@ public sealed class PartsLookupTests
     [Fact]
     public async Task ReportsAnEmptyListRatherThanPretendingItAsked()
     {
-        var lookup = new PartsLookup(Fake());
+        var lookup = new PartsLookup(Fake(), Models());
 
         var answer = await lookup.FindAsync("F63", 2019, null, null, "bearing", TestContext.Current.CancellationToken);
 
@@ -105,22 +105,58 @@ public sealed class PartsLookupTests
     }
 
     [Fact]
-    public async Task TheDatabaseAloneJustifiesOnlyTwoLcrYears()
+    public async Task OffersTheManualsYearsRatherThanTheDatabasesWhenAskingForAYear()
     {
-        // 2013 is in a description and 2019 is in a name. The other four rows record no year at
-        // all, which is exactly why the database is not the authority on which years exist.
-        var lookup = new PartsLookup(Fake());
+        // The database justifies only 2013 and 2019: one LCR row names a year, one describes one,
+        // and the other four record none. Offering those two would tell a person standing at a
+        // 2023 machine that theirs does not exist.
+        var lookup = new PartsLookup(Fake(), Models());
 
         var answer = await lookup.FindAsync("LCR", null, null, null, null, TestContext.Current.CancellationToken);
 
         Assert.Equal("needs_year", answer.Outcome);
-        Assert.Equal([2013, 2019], answer.Years);
+        Assert.Equal(LcrShapes.LcrYears, answer.Years);
+    }
+
+    [Fact]
+    public async Task ResolvesAYearTheDatabaseDoesNotNameThroughTheManuals()
+    {
+        // No LCR row is named 2023. The manuals say lcr-2023 is 522122, and 522122 is one of the
+        // six rows, so the parts come back for it.
+        var lookup = new PartsLookup(Fake(), Models());
+
+        var answer = await lookup.FindAsync("LCR", 2023, null, null, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal("parts", answer.Outcome);
+        Assert.Equal("522122", answer.ModelNo);
+    }
+
+    [Fact]
+    public async Task NeverUsesAModelNumberTheDatabaseDoesNotCarry()
+    {
+        // The lcr-2016 card states 522199, which the database does not hold.
+        var lookup = new PartsLookup(Fake(), Models());
+
+        var answer = await lookup.FindAsync("LCR", 2016, null, null, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal("needs_year", answer.Outcome);
+        Assert.Empty(answer.Parts);
+    }
+
+    [Fact]
+    public async Task DoesNotLoseTheTurnWhenTheManualsRefuse()
+    {
+        var lookup = new PartsLookup(Fake(), RefusingModels());
+
+        var answer = await lookup.FindAsync("LCR", 2023, null, null, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal("needs_year", answer.Outcome);
     }
 
     [Fact]
     public async Task SaysTheProductIsUnknownWhenNothingMatches()
     {
-        var lookup = new PartsLookup(Fake());
+        var lookup = new PartsLookup(Fake(), Models());
 
         var answer = await lookup.FindAsync("ZZ999", null, null, null, null, TestContext.Current.CancellationToken);
 
@@ -128,6 +164,12 @@ public sealed class PartsLookupTests
     }
 
     /// <summary>A stand-in for DAB, holding the shapes the F63 really returns.</summary>
+    private static ModelIndex Models()
+        => new(LcrShapes.FacetRead(), LcrShapes.Vocabulary(), Fake());
+
+    private static ModelIndex RefusingModels()
+        => new(LcrShapes.RefusingFacetRead(), LcrShapes.Vocabulary(), Fake());
+
     private static ToolInvoker Fake(Action<IReadOnlyDictionary<string, object?>>? seen = null)
         => (toolId, arguments, _) =>
         {
@@ -150,7 +192,9 @@ public sealed class PartsLookupTests
             return Rows($$"""{"ModelNo":"{{exact}}","ModelName":"SOLE F63 2016"}""");
         }
 
-        if (arguments.TryGetValue("Name", out var name) && (string?)name == "LCR")
+        var name = arguments.TryGetValue("Name", out var value) ? (string?)value : null;
+
+        if (string.Equals(name, "LCR", StringComparison.OrdinalIgnoreCase))
         {
             return Rows(
                 """{"ModelNo":"522110","ModelName":"LCR","ModelDesc":"FG, SOLE,  TREADMILL LCR"}""",
@@ -161,7 +205,7 @@ public sealed class PartsLookupTests
                 """{"ModelNo":"522126","ModelName":"LCR","ModelDesc":"SOLE, LCR BIKE"}""");
         }
 
-        return (string?)name == "F63"
+        return string.Equals(name, "F63", StringComparison.OrdinalIgnoreCase)
             ? Rows(
                 """{"ModelNo":"563286","ModelName":"F63"}""",
                 """{"ModelNo":"563812","ModelName":"SOLE F63 2013"}""",
@@ -181,6 +225,13 @@ public sealed class PartsLookupTests
         if (model == "563818" && search == "bearing")
         {
             return Rows();
+        }
+
+        if (model == "522122")
+        {
+            return Rows(
+                """{"SpNo":"CRC010203-01","Description":"Console Overlay-LCR","Qty":1,"TotalRows":3}""",
+                """{"SpNo":"CRC010204-02","Description":"Console Board Assembly","Qty":1,"TotalRows":3}""");
         }
 
         return model is "563816" or "563818"

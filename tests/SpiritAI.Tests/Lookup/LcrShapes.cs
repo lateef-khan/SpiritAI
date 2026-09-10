@@ -21,7 +21,11 @@ internal static class LcrShapes
 {
     /// <summary>Every model slug the knowledge base publishes.</summary>
     internal static readonly string[] Slugs =
-        ["lcr-2011", "lcr-2013", "lcr-2016", "lcr-2019", "lcr-2023", "lcr-2026", "srvo", "f63-2019"];
+    [
+        "lcr-2011", "lcr-2013", "lcr-2016", "lcr-2019", "lcr-2023", "lcr-2026",
+        "srvo",
+        "f63-2013", "f63-2015", "f63-2016", "f63-2019",
+    ];
 
     /// <summary>The years the manuals cover the LCR in.</summary>
     internal static readonly int[] LcrYears = [2011, 2013, 2016, 2019, 2023, 2026];

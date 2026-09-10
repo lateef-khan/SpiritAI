@@ -21,7 +21,7 @@ namespace SpiritAI.Lookup;
 /// </para>
 /// </remarks>
 /// <param name="invoke">The seam that calls one DAB tool.</param>
-public sealed class PartsLookup(ToolInvoker invoke)
+public sealed class PartsLookup(ToolInvoker invoke, ModelIndex models)
 {
     /// <summary>The tool ids <c>spirit.yaml</c> aliases these DAB tools under.</summary>
     private const string FindModel = "find_model";
@@ -32,6 +32,7 @@ public sealed class PartsLookup(ToolInvoker invoke)
     private const int Cap = 20;
 
     private readonly ToolInvoker _invoke = invoke;
+    private readonly ModelIndex _models = models;
 
     /// <summary>Finds the parts of one machine.</summary>
     /// <param name="productName">A product name such as <c>F63</c>, or nothing.</param>
@@ -98,37 +99,25 @@ public sealed class PartsLookup(ToolInvoker invoke)
             return (models[0], null);
         }
 
-        if (year is { } asked)
+        if (year is { } asked && ModelYear.Pick(models, asked) is { } picked)
         {
-            if (ModelYear.Pick(models, asked) is { } picked)
-            {
-                return (picked, null);
-            }
-
-            var offered = ModelYear.Years(models);
-
-            return (null, new PartsAnswer(
-                "needs_year",
-                null,
-                null,
-                [],
-                0,
-                offered,
-                $"'{name}' has no {asked} version. It was built in "
-                + $"{string.Join(", ", offered)}."));
+            return (picked, null);
         }
 
-        var years = ModelYear.Years(models);
+        // The database names a year for some rows and not others: of the six the LCR covers, one.
+        // So when its own names cannot answer, the manuals do — and their answer is checked back
+        // against these rows before it is used.
+        var documented = await _models.FindAsync(name, year, cancellationToken).ConfigureAwait(false);
 
-        return (null, new PartsAnswer(
-            "needs_year",
-            null,
-            null,
-            [],
-            0,
-            years,
-            $"'{name}' covers {models.Count} model numbers and their parts differ. Ask which year "
-            + "the machine was built."));
+        if (documented is { Outcome: "model", ModelNo: { Length: > 0 } resolved }
+            && models.FirstOrDefault(model => model.ModelNo == resolved) is { } confirmed)
+        {
+            return (confirmed, null);
+        }
+
+        var offered = documented.Years.Count > 0 ? documented.Years : ModelYear.Years(models);
+
+        return (null, new PartsAnswer("needs_year", null, null, [], 0, offered, documented.Note));
     }
 
     /// <summary>Reads one model's parts.</summary>
