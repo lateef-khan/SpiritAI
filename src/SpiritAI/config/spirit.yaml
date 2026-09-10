@@ -65,6 +65,7 @@ agents:
   defaults:
     model: { ref: reply }
     knowledge: { mode: tool, limit: 5, citations: true, scoped: true }
+    compaction: { strategy: context_window, trigger: { tokens: 300000 }, keep: 6, foldResultChars: 300 }
     instructions: |
       You are Spirit's agent. Spirit makes commercial fitness equipment. You serve Spirit
       staff and Spirit dealers with service, parts, and equipment questions.
