@@ -23,6 +23,9 @@ public sealed class UnitLookup(ToolInvoker invoke)
     /// <summary>How many characters of a serial name the model.</summary>
     private const int ModelDigits = 6;
 
+    /// <summary>The most rows one call to search_parts can answer.</summary>
+    private const int PartsTop = 100;
+
     private readonly ToolInvoker _invoke = invoke
         ?? throw new ArgumentNullException(nameof(invoke));
 
@@ -66,7 +69,7 @@ public sealed class UnitLookup(ToolInvoker invoke)
 
         var history = ReadAsync("get_service_history_by_sn", new() { ["SerialNo"] = serial }, cancellationToken);
 
-        var parts = ReadAsync("get_parts_by_sn", new() { ["SerialNo"] = serial }, cancellationToken);
+        var parts = ReadAsync("search_parts", new() { ["SerialNo"] = serial, ["Top"] = PartsTop }, cancellationToken);
         
         var warranty = ReadAsync(
             "read_records",

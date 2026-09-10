@@ -47,7 +47,7 @@ public sealed class UnitLookupTests
 
     private const string PartsJson = """
     {
-      "entity": "GetPartsBySn",
+      "entity": "SearchParts",
       "status": "success",
       "value": { "value": [
         {
@@ -134,6 +134,22 @@ public sealed class UnitLookupTests
     }
 
     [Fact]
+    public async Task SearchPartsFillsTheModelsPartsList()
+    {
+        var unit = await Lookup().ReadUnitAsync(Serial, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(unit);
+        Assert.DoesNotContain(UnitSection.Parts, unit.Unavailable);
+
+        var part = Assert.Single(unit.Parts!);
+
+        Assert.Equal("J99A0002", part.SpNo);
+        Assert.Null(part.DyacoNo);
+        Assert.Equal("HARDWARE KIT", part.Description);
+        Assert.Equal(1, part.Quantity);
+    }
+
+    [Fact]
     public async Task JobsAreTheCallsThatAreNotClosed()
     {
         var unit = await Lookup().ReadUnitAsync(Serial, TestContext.Current.CancellationToken);
@@ -171,6 +187,37 @@ public sealed class UnitLookupTests
     }
 
     [Fact]
+    public async Task SearchPartsIsCalledWithOnlyTheSerialAndTheRowCap()
+    {
+        IReadOnlyDictionary<string, object?>? sent = null;
+
+        var lookup = new UnitLookup((toolId, arguments, _) =>
+        {
+            if (toolId == "search_parts")
+            {
+                sent = arguments;
+            }
+
+            return ValueTask.FromResult(Json(toolId switch
+            {
+                "get_service_history_by_sn" => HistoryJson,
+                "search_parts" => PartsJson,
+                _ => WarrantyJson,
+            }));
+        });
+
+        await lookup.ReadUnitAsync(Serial, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(sent);
+        Assert.Equal(Serial, sent!["SerialNo"] as string);
+        Assert.Equal(100, sent["Top"] as int?);
+
+        // search_parts errors with 51070 unless exactly one of SerialNo, ModelNo and Name is given.
+        Assert.False(sent.ContainsKey("ModelNo"));
+        Assert.False(sent.ContainsKey("Name"));
+    }
+
+    [Fact]
     public async Task OneToolFailingNamesItsSectionAndLeavesTheRest()
     {
         var unit = await Lookup(parts: ErrorJson).ReadUnitAsync(Serial, TestContext.Current.CancellationToken);
@@ -185,7 +232,7 @@ public sealed class UnitLookupTests
     [Fact]
     public async Task OneToolThrowingIsTreatedTheSameWay()
     {
-        var lookup = new UnitLookup((toolId, _, _) => toolId == "get_parts_by_sn"
+        var lookup = new UnitLookup((toolId, _, _) => toolId == "search_parts"
             ? throw new HttpRequestException("DAB is not answering.")
             : ValueTask.FromResult(Json(toolId switch
             {
@@ -211,6 +258,18 @@ public sealed class UnitLookupTests
     }
 
     [Fact]
+    public async Task BothToolsThrowingIsAlsoNotFound()
+    {
+        var lookup = new UnitLookup((toolId, _, _) => toolId is "get_service_history_by_sn" or "search_parts"
+            ? throw new HttpRequestException("DAB is not answering.")
+            : ValueTask.FromResult(Json(WarrantyJson)));
+
+        var unit = await lookup.ReadUnitAsync(Serial, TestContext.Current.CancellationToken);
+
+        Assert.Null(unit);
+    }
+
+    [Fact]
     public async Task AToolWrappingItsRowsInContentIsReadTheSameWay()
     {
         var wrapped = JsonSerializer.SerializeToElement(
@@ -219,7 +278,7 @@ public sealed class UnitLookupTests
         var lookup = new UnitLookup((toolId, _, _) => ValueTask.FromResult(toolId switch
         {
             "get_service_history_by_sn" => wrapped,
-            "get_parts_by_sn" => Json(PartsJson),
+            "search_parts" => Json(PartsJson),
             _ => Json(WarrantyJson),
         }));
 
@@ -258,14 +317,14 @@ public sealed class UnitLookupTests
 
     /// <summary>A lookup whose tools answer canned payloads.</summary>
     /// <param name="history">What <c>get_service_history_by_sn</c> answers.</param>
-    /// <param name="parts">What <c>get_parts_by_sn</c> answers.</param>
+    /// <param name="parts">What <c>search_parts</c> answers.</param>
     /// <param name="warranty">What <c>read_records</c> answers.</param>
     /// <returns>The lookup under test.</returns>
     private static UnitLookup Lookup(string? history = null, string? parts = null, string? warranty = null)
         => new((toolId, _, _) => ValueTask.FromResult(Json(toolId switch
         {
             "get_service_history_by_sn" => history ?? HistoryJson,
-            "get_parts_by_sn" => parts ?? PartsJson,
+            "search_parts" => parts ?? PartsJson,
             _ => warranty ?? WarrantyJson,
         })));
 
