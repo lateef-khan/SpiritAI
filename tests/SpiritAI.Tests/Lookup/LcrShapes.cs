@@ -13,9 +13,8 @@ namespace SpiritAI.Tests.Lookup;
 /// </summary>
 /// <remarks>
 /// Six model years in the knowledge base, six rows in the parts database, and the two sets do not
-/// line up: the database names a year for one row. Both <see cref="ModelIndex"/> and
-/// <see cref="PartsLookup"/> are judged against the same shapes, so they live here rather than in
-/// either test file.
+/// line up: the database names a year for one row. <see cref="ModelIndex"/> is judged against
+/// these shapes, so they live in their own file rather than inside its test file.
 /// </remarks>
 internal static class LcrShapes
 {

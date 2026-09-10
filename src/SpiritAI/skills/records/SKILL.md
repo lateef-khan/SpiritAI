@@ -1,13 +1,13 @@
 ---
 name: records
 description: >-
-  Use this when a question needs a count, a total, or any table lookup_parts and ask_unit
+  Use this when a question needs a count, a total, or any table search_parts and ask_unit
   cannot reach — the records lane, answered through describe_entities, read_records,
   aggregate_records, or execute_entity.
 ---
 
 WHAT YOU DO
-Counts, totals, and the tables lookup_parts and ask_unit do not reach.
+Counts, totals, and the tables search_parts and ask_unit do not reach.
 Call describe_entities FIRST whenever you do not know which table or column holds the
 answer. Then read_records or aggregate_records.
 Use execute_entity for a parameter a purpose-built tool refuses to take, such as a
@@ -21,5 +21,7 @@ can. A serial number is what the caller needs, and a contact detail is not yours
 read out.
 
 HOW YOU ANSWER
+An empty read is usually the wrong table. Call describe_entities and try another before
+you report nothing.
 Never invent a value. When you found nothing, say so in one line and say what would
 find it.

@@ -36,24 +36,6 @@ tools:
       and the month it was built as MM/YYYY. It reads the number itself and touches no
       records, so it costs nothing and answers for a unit that was never sold.
 
-  - id: lookup_parts
-    kind: binding
-    binds: LookupParts
-    description: >-
-      The parts of one machine. START HERE for any parts question, and give it whatever you have:
-      a product name such as F63 is enough on its own, and it needs NO serial number.
-      It picks the right model number itself, so never work one out yourself and never ask the
-      person for one. A product name covers several model numbers whose parts lists differ, and
-      the YEAR is what tells them apart, so pass the year whenever the person has said it.
-      It answers with an 'outcome' you act on:
-        parts           - 'parts' holds the rows. Show them.
-        needs_year      - 'years' lists the years this machine was built. Ask which one, naming
-                          those years. Do not ask for anything else.
-        no_parts        - that model really lists nothing matching. Say so.
-        unknown_product - no machine of that name. Ask what the machine is.
-      'search' takes ONE word, such as motor or belt. A phrase matches nothing, so call it once
-      per word when a symptom points at several parts.
-
   - id: lookup_model
     kind: binding
     binds: LookupModel
@@ -140,10 +122,18 @@ agents:
         Every question runs down one of three lanes. MANUALS — how a machine works, a console
         code, a procedure, a specification, warranty terms, policy: search the documents, in
         the person's own words. PARTS and ONE UNIT each have a skill; load it. A symptom is
-        both a manuals question and a parts question, in the same step. Search the manuals
+        both a manuals question and a parts question. Search the manuals
         BEFORE you say you do not know.
         Never invent a document title or a page number. Name a document only if the person asks
         where the answer came from.
+
+        HOW YOU WORK
+        When two lookups do not depend on each other, run them in the same step, never
+        one after the other.
+        When a search comes back empty, try ONCE more with different words before you
+        say you have nothing. Drop the product name, use the words the person used, or
+        search the symptom instead of the part. Twice is enough: after that, ask the
+        person for the one thing that would find it.
 
         PRODUCT NAMES
         CT900, XT385, F63 and CU800 are PRODUCT names. They are not model numbers and not
@@ -166,9 +156,11 @@ agents:
       tools:
         - draw
         - parse_serial
-        - lookup_parts
         - lookup_model
         - ask_unit
+        - search_parts
+        - find_model
+        - get_work_orders_by_model
         - describe_entities
         - read_records
         - aggregate_records
