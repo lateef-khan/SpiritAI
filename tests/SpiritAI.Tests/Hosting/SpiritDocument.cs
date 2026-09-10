@@ -19,17 +19,6 @@ internal static class SpiritDocument
     internal static IReadOnlyDictionary<string, Slot> Slots()
         => Loaded.Value.State ?? throw new InvalidOperationException("spirit.yaml declares no state: block.");
 
-    /// <summary>The id of every agent the document declares.</summary>
-    internal static IReadOnlyList<string> AgentIds()
-        => [.. (Loaded.Value.Agents?.Items ?? []).Select(agent => agent.Id ?? string.Empty)];
-
-    /// <summary>What kind of tool one id is: <c>binding</c>, <c>agent</c> or <c>builtin</c>.</summary>
-    /// <param name="id">The tool's id.</param>
-    /// <returns>Its <c>kind</c>.</returns>
-    internal static string ToolKind(string id)
-        => (Loaded.Value.Tools ?? []).FirstOrDefault(tool => tool.Id == id)?.Kind
-            ?? throw new InvalidOperationException($"spirit.yaml declares no tool '{id}'.");
-
     private static Document Read()
     {
         var yaml = File.ReadAllText(
@@ -60,30 +49,6 @@ internal static class SpiritDocument
     internal sealed class Document
     {
         public Dictionary<string, Slot>? State { get; set; }
-
-        public AgentsBlock? Agents { get; set; }
-
-        public List<Tool>? Tools { get; set; }
-    }
-
-    /// <summary>The <c>agents:</c> block.</summary>
-    internal sealed class AgentsBlock
-    {
-        public List<Agent>? Items { get; set; }
-    }
-
-    /// <summary>One declared agent.</summary>
-    internal sealed class Agent
-    {
-        public string? Id { get; set; }
-    }
-
-    /// <summary>One declared tool.</summary>
-    internal sealed class Tool
-    {
-        public string? Id { get; set; }
-
-        public string? Kind { get; set; }
     }
 
     /// <summary>One declared state slot.</summary>
