@@ -5,11 +5,6 @@ namespace SpiritAI.Lookup;
 /// <summary>
 /// Finds the machines one customer owns, straight from the tool the agent uses.
 /// </summary>
-/// <remarks>
-/// This is the customer half of the unit desk, in code. It lives beside <see cref="UnitLookup"/>
-/// rather than inside it because the two answer different questions — one starts from a machine,
-/// this one starts from a person — and because <c>UnitLookup</c> was already at the file limit.
-/// </remarks>
 /// <param name="invoke">The seam that calls one DAB tool.</param>
 public sealed class CustomerLookup(ToolInvoker invoke)
 {

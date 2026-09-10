@@ -34,8 +34,6 @@ public sealed partial record ModelYear(string ModelNo, string Name, int? Year)
     {
         var text = name ?? string.Empty;
 
-        // The name is the better source, so it is asked first and answers alone when it can. The
-        // description is a fallback, never a tie-breaker.
         return new ModelYear(modelNo, text, YearIn(text) ?? YearIn(description));
     }
 

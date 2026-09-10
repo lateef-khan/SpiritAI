@@ -6,20 +6,6 @@ namespace SpiritAI.Lookup;
 /// <summary>
 /// Finds the parts of one machine, from whatever the person happened to say.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The whole job is picking the right model number before asking for parts, and that is why this
-/// is code. A product name covers several model numbers, one per year, and their lists are wildly
-/// different: of the nine an F63 covers, one holds five lines and another holds two hundred and
-/// nineteen. Searching by the name alone lands on whichever the database returns first, which is
-/// often one of the near-empty ones, and the answer then looks complete and is not.
-/// </para>
-/// <para>
-/// So the order is fixed here: a serial number carries its own model number, a year names one, and
-/// with neither the caller is told which years exist rather than being left to invent a way
-/// forward.
-/// </para>
-/// </remarks>
 /// <param name="invoke">The seam that calls one DAB tool.</param>
 public sealed class PartsLookup(ToolInvoker invoke, ModelIndex models)
 {

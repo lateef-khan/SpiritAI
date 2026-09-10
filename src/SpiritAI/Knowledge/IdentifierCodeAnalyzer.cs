@@ -8,26 +8,6 @@ namespace SpiritAI.Knowledge;
 /// <summary>
 /// Decides which words of a question the answer must carry.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This is a claim about the words Spirit's own documents use, not about knowledge bases in
-/// general, which is why it lives here and not in AgentCore. AgentCore ships one analyzer,
-/// <c>none</c>, which requires nothing.
-/// </para>
-/// <para>
-/// Two rules. A token shaped like a code is required — <c>e33</c>, <c>ol1</c>, <c>ct900</c>,
-/// <c>40t</c>, <c>e95s</c>, <c>sb1200</c>. Every shape rule demands at least one digit, so no
-/// English word can match one. A token with no digit at all is required only when the knowledge
-/// base's own product list holds it, because <c>lcr</c> and <c>belt</c> are the same shape and only
-/// the list can tell them apart.
-/// </para>
-/// <para>
-/// A term this returns is mandatory inside the analyzer's own prefetch leg. That leg is fused with
-/// an unfiltered one, so a term lifts the cards carrying it and does not drop the cards that do
-/// not. If good answers still start going missing, set <c>analyzer: none</c> in <c>spirit.yaml</c>
-/// and see whether they come back.
-/// </para>
-/// </remarks>
 /// <param name="products">
 /// The product names the knowledge base publishes, read fresh on every query so a vocabulary
 /// refresh takes effect without a restart. Absent, or empty, and only the shape rules apply.

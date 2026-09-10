@@ -10,19 +10,6 @@ namespace SpiritAI.Lookup;
 /// <summary>
 /// Turns a product name and a year into one model number, out of the manuals.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Every lookup here is a filter on <c>facets.model</c>, never a search. A model year is a keyword:
-/// asking a ranked search for "the model number for the LCR 2023" returns the 2026 card first,
-/// because two adjacent years read as near-identical to an embedding. Filtering returns the cards
-/// of that year, one of which states the number.
-/// </para>
-/// <para>
-/// A number the manuals state is confirmed against the parts database before it is returned. A card
-/// that is stale, or mistyped, then reads as <c>no_record</c> rather than sending a parts lookup to
-/// a machine nobody built.
-/// </para>
-/// </remarks>
 /// <param name="cards">
 /// Reads cards by facet, or <see langword="null"/> when the knowledge base serves no such
 /// capability. The caller asks the knowledge port for it; a store that cannot filter answers none.

@@ -3,11 +3,6 @@ namespace SpiritAI.Lookup;
 /// <summary>
 /// Which machine a product name and a year name, and the model number it carries.
 /// </summary>
-/// <remarks>
-/// The knowledge base is the authority on which years a machine exists in: it holds a card set per
-/// model year, and the parts database records a year for one LCR row in six. So this answers the
-/// year question, and a parts lookup never does.
-/// </remarks>
 /// <param name="Outcome">
 /// <c>model</c> when <see cref="ModelNo"/> is known and the parts database confirms it.
 /// <c>needs_year</c> when the product covers several years and none was named, or the named one
