@@ -153,21 +153,21 @@ public sealed class UnitLookup(ToolInvoker invoke)
         var first = rows[0];
 
         return new OrderDocument(
-            Text(first, "OrderNumber") ?? orderNumber,
-            Number(first, "ServiceId") ?? 0,
-            Number(first, "OrderId"),
-            Text(first, "OrderType"),
-            Moment(first, "OrderDate"),
-            Moment(first, "AppointDate"),
-            Moment(first, "Shippeddate"),
-            Moment(first, "ClosedDate"),
-            Text(first, "Tech"),
-            Text(first, "ISPName"),
-            Text(first, "ISPStatus"),
-            Text(first, "DealerNo"),
-            Text(first, "Trackno"),
-            Text(first, "Notes"),
-            [.. rows.Where(row => Text(row, "PartNo") is not null).Select(LineOf)]);
+            DabRow.Text(first, "OrderNumber") ?? orderNumber,
+            DabRow.Number(first, "ServiceId") ?? 0,
+            DabRow.Number(first, "OrderId"),
+            DabRow.Text(first, "OrderType"),
+            DabRow.Moment(first, "OrderDate"),
+            DabRow.Moment(first, "AppointDate"),
+            DabRow.Moment(first, "Shippeddate"),
+            DabRow.Moment(first, "ClosedDate"),
+            DabRow.Text(first, "Tech"),
+            DabRow.Text(first, "ISPName"),
+            DabRow.Text(first, "ISPStatus"),
+            DabRow.Text(first, "DealerNo"),
+            DabRow.Text(first, "Trackno"),
+            DabRow.Text(first, "Notes"),
+            [.. rows.Where(row => DabRow.Text(row, "PartNo") is not null).Select(LineOf)]);
     }
 
     /// <summary>Calls one tool and reads its rows, or nothing when it refused.</summary>
@@ -217,13 +217,13 @@ public sealed class UnitLookup(ToolInvoker invoke)
         return new UnitHeader(
             serial,
             modelNo,
-            (call is { } c ? Number(c, "ModelVersion") : null) ?? (piece is { } p ? Number(p, "ModelVersion") : null),
-            (call is { } c2 ? Text(c2, "ModelName") : null) ?? (piece is { } p2 ? Text(p2, "ModelName") : null),
-            call is { } c3 ? Text(c3, "FG") : null,
-            call is { } c4 && Flag(c4, "Sole") is true,
-            call is { } c5 ? Text(c5, "MfgDate") : null,
-            call is { } c6 ? Moment(c6, "PurchasedDate") : null,
-            call is { } c7 ? Moment(c7, "SetupDate") : null);
+            (call is { } c ? DabRow.Number(c, "ModelVersion") : null) ?? (piece is { } p ? DabRow.Number(p, "ModelVersion") : null),
+            (call is { } c2 ? DabRow.Text(c2, "ModelName") : null) ?? (piece is { } p2 ? DabRow.Text(p2, "ModelName") : null),
+            call is { } c3 ? DabRow.Text(c3, "FG") : null,
+            call is { } c4 && DabRow.Flag(c4, "Sole") is true,
+            call is { } c5 ? DabRow.Text(c5, "MfgDate") : null,
+            call is { } c6 ? DabRow.Moment(c6, "PurchasedDate") : null,
+            call is { } c7 ? DabRow.Moment(c7, "SetupDate") : null);
     }
 
     /// <summary>Reads one service call.</summary>
@@ -231,9 +231,9 @@ public sealed class UnitLookup(ToolInvoker invoke)
     /// <returns>The call, as the panel lists it.</returns>
     private static UnitJob JobOf(JsonElement row)
     {
-        var serviceId = Number(row, "ServiceId") ?? 0;
-        var orderId = Number(row, "OrderId");
-        var word = Text(row, "CaseStatus") ?? Text(row, "ServiceStatus");
+        var serviceId = DabRow.Number(row, "ServiceId") ?? 0;
+        var orderId = DabRow.Number(row, "OrderId");
+        var word = DabRow.Text(row, "CaseStatus") ?? DabRow.Text(row, "ServiceStatus");
 
         return new UnitJob(
             orderId is { } order ? $"{serviceId}-{order}" : serviceId.ToString(CultureInfo.InvariantCulture),
@@ -241,11 +241,11 @@ public sealed class UnitLookup(ToolInvoker invoke)
             orderId,
             StatusOf(word),
             word,
-            Moment(row, "CallDate"),
-            Moment(row, "ServiceDate"),
-            Text(row, "ServiceRep"),
-            Text(row, "Description"),
-            Text(row, "Solution"));
+            DabRow.Moment(row, "CallDate"),
+            DabRow.Moment(row, "ServiceDate"),
+            DabRow.Text(row, "ServiceRep"),
+            DabRow.Text(row, "Description"),
+            DabRow.Text(row, "Solution"));
     }
 
     /// <summary>Reads the word a row spells its state with.</summary>
@@ -260,13 +260,13 @@ public sealed class UnitLookup(ToolInvoker invoke)
     /// <param name="row">One row of the parts rowset.</param>
     /// <returns>The part.</returns>
     private static UnitPart PartOf(JsonElement row)
-        => new(Text(row, "SpNo") ?? string.Empty, Text(row, "DyacoNo"), Text(row, "Description"), Number(row, "Qty"));
+        => new(DabRow.Text(row, "SpNo") ?? string.Empty, DabRow.Text(row, "DyacoNo"), DabRow.Text(row, "Description"), DabRow.Number(row, "Qty"));
 
     /// <summary>Reads one part line off a work order.</summary>
     /// <param name="row">One row of the work order rowset.</param>
     /// <returns>The line.</returns>
     private static OrderLine LineOf(JsonElement row)
-        => new(Text(row, "PartNo"), Text(row, "PartDesc"), Number(row, "ItemShipped"), Flag(row, "IsReturned") is true);
+        => new(DabRow.Text(row, "PartNo"), DabRow.Text(row, "PartDesc"), DabRow.Number(row, "ItemShipped"), DabRow.Flag(row, "IsReturned") is true);
 
     /// <summary>Counts each of the model's warranty periods forward from the purchase date.</summary>
     /// <remarks>
@@ -288,7 +288,7 @@ public sealed class UnitLookup(ToolInvoker invoke)
             return null;
         }
 
-        var row = rows.FirstOrDefault(r => version is null || Number(r, "Version") == version);
+        var row = rows.FirstOrDefault(r => version is null || DabRow.Number(r, "Version") == version);
 
         if (row.ValueKind != JsonValueKind.Object)
         {
@@ -315,7 +315,7 @@ public sealed class UnitLookup(ToolInvoker invoke)
                 ("Electronics", "Electronics"),
                 ("Console", "Console"),
             }
-            .Select(term => (term.Item1, Days: Number(row, term.Item2)))
+            .Select(term => (term.Item1, Days: DabRow.Number(row, term.Item2)))
             .Where(term => term.Days is > 0)
             .Select(term =>
             {
@@ -324,75 +324,5 @@ public sealed class UnitLookup(ToolInvoker invoke)
                 return new WarrantyTerm(term.Item1, term.Days!.Value, expires, expires is { } end ? end > today : null);
             }),
         ];
-    }
-
-    /// <summary>Reads a string column, treating an empty one as absent.</summary>
-    private static string? Text(JsonElement row, string name)
-        => row.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString() is { Length: > 0 } text ? text : null
-            : null;
-
-    /// <summary>Reads a whole-number column.</summary>
-    private static int? Number(JsonElement row, string name)
-        => row.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
-            && value.TryGetInt32(out var number)
-            ? number
-            : null;
-
-    /// <summary>Reads a boolean column.</summary>
-    private static bool? Flag(JsonElement row, string name)
-        => row.TryGetProperty(name, out var value)
-            ? value.ValueKind switch
-            {
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                _ => null,
-            }
-            : null;
-
-    /// <summary>
-    /// Reads a date column.
-    /// </summary>
-    /// <remarks>
-    /// The database holds these with no time zone on them, so a zone has to be assumed to make a
-    /// <see cref="DateTimeOffset" /> at all. UTC is assumed, which keeps every row consistent with
-    /// every other; treat the time of day as indicative rather than exact.
-    /// </remarks>
-    /// <param name="row">The row.</param>
-    /// <param name="name">The column.</param>
-    /// <returns>The moment, or <see langword="null"/> when the column holds no date.</returns>
-    private static DateTimeOffset? Moment(JsonElement row, string name)
-        => Text(row, name) is { } text
-            && DateTime.TryParse(
-                text,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal,
-                out var parsed)
-            ? new DateTimeOffset(parsed, TimeSpan.Zero)
-            : null;
-}
-
-/// <summary>Small helpers this file would otherwise repeat.</summary>
-internal static class LookupSpanExtensions
-{
-    /// <summary>Whether a span is one or more ASCII digits and nothing else.</summary>
-    /// <param name="span">The span.</param>
-    /// <returns><see langword="true"/> when it is.</returns>
-    public static bool ContainsOnlyDigits(this ReadOnlySpan<char> span)
-    {
-        if (span.IsEmpty)
-        {
-            return false;
-        }
-
-        foreach (var character in span)
-        {
-            if (!char.IsAsciiDigit(character))
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 }
