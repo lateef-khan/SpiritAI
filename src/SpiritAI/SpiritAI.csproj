@@ -31,6 +31,7 @@
 
   <ItemGroup>
     <Content Include="config/spirit.yaml" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="skills/**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

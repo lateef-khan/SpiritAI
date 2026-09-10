@@ -39,7 +39,7 @@ public static class AgentCoreExtensions
 
         builder.Services
             .AddOptions<AgentCoreOptions>()
-            .Configure<IServiceProvider>(Configure);
+            .Configure<IServiceProvider, IHostEnvironment>(Configure);
 
         return builder;
     }
@@ -52,8 +52,10 @@ public static class AgentCoreExtensions
     /// <see cref="PartsLookup"/> reaches the tool registry, and the registry is what these options
     /// are being read to build.
     /// </param>
-    private static void Configure(AgentCoreOptions options, IServiceProvider services)
+    /// <param name="environment">Locates the skills folder relative to the host, not the working directory.</param>
+    private static void Configure(AgentCoreOptions options, IServiceProvider services, IHostEnvironment environment)
         => options
+            .UseSkills(Path.Combine(environment.ContentRootPath, "skills"))
             .UseKnowledgeQueryAnalyzers(new IdentifierCodeAnalyzer(
                 () => IdentifierCodeAnalyzer.ProductsIn(services.GetService<VocabularyCache>())))
             .Bind(
