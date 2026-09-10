@@ -36,62 +36,39 @@ tools:
       and the month it was built as MM/YYYY. It reads the number itself and touches no
       records, so it costs nothing and answers for a unit that was never sold.
 
-  - id: lookup_parts
+  - id: lookup_model
     kind: binding
-    binds: LookupParts
+    binds: LookupModel
     description: >-
-      The parts of one machine. START HERE for any parts question, and give it whatever you have:
-      a product name such as F63 is enough on its own, and it needs NO serial number.
-      It picks the right model number itself, so never work one out yourself and never ask the
-      person for one. A product name covers several model numbers whose parts lists differ, and
-      the YEAR is what tells them apart, so pass the year whenever the person has said it.
+      Which years a machine was built, and the model number one of those years carries.
+      This is the ONLY source for the years a machine exists in. A parts lookup records a
+      year for some rows and not others, so never read a build year off one.
       It answers with an 'outcome' you act on:
-        parts           - 'parts' holds the rows. Show them.
-        needs_year      - 'years' lists the years this machine was built. Ask which one, naming
-                          those years. Do not ask for anything else.
-        no_parts        - that model really lists nothing matching. Say so.
-        unknown_product - no machine of that name. Ask what the machine is.
-      'search' takes ONE word, such as motor or belt. A phrase matches nothing, so call it once
-      per word when a symptom points at several parts.
+        model           - 'model_no' is that year's model number. 'slug' names the machine.
+        needs_year      - 'years' lists every year this machine was built. Ask which one,
+                          naming those years.
+        no_record       - that year exists but no document states its model number. Say the
+                          model number is unconfirmed. Do not guess one.
+        unknown_product - no machine of that name is documented.
 
   - id: ask_unit
-    kind: agent
-    agent: unit_desk
+    kind: binding
+    binds: AskUnit
     description: >-
-      One physical machine, or the machines one customer owns. Ask it for a unit's service history,
-      its work orders, its warranty, or what a customer has. It needs a serial number, or a customer
+      One physical machine, or the machines one customer owns: its service history, its work
+      orders, and its warranty. Give it a serial number, a work order number, or a customer's
       name, email or phone. It does not answer parts questions.
-    parameters:
-      type: object
-      properties:
-        question:  { type: string, description: "What to look up, written as a full sentence." }
-        serial_no: { type: string, description: "A 16 digit serial number." }
-        model_no:  { type: string, description: "An exact model number." }
-        customer:  { type: string, description: "The customer's name, email or phone, exactly as the person wrote it." }
-      required: [ question ]
-
-  - id: ask_records
-    kind: agent
-    agent: records_desk
-    description: >-
-      Counts, totals, and anything lookup_parts and the unit desk do not cover. Ask it LAST, and
-      only after one of those two came back empty or plainly does not fit the question.
-    parameters:
-      type: object
-      properties:
-        question: { type: string, description: "What to count or list, written as a full sentence." }
-      required: [ question ]
+      It answers with whichever of 'unit', 'order' and 'customer' was found, and a 'note' when
+      none was.
 
 agents:
   defaults:
     model: { ref: reply }
     knowledge: { mode: tool, limit: 5, citations: true, scoped: true }
+    compaction: { strategy: context_window, trigger: { tokens: 300000 }, keep: 6, foldResultChars: 300 }
     instructions: |
       You are Spirit's agent. Spirit makes commercial fitness equipment. You serve Spirit
       staff and Spirit dealers with service, parts, and equipment questions.
-
-      Every part of Spirit reads these rules. Only one part talks to the person; the rest look
-      things up and hand back what they found. Each adds its own rules below.
 
       WHAT YOU TALK ABOUT
       You only talk about Spirit equipment: the machines, service, repair, parts, orders, and
@@ -116,13 +93,12 @@ agents:
   items:
     # ---------------------------------------------------------------------------------------
     # The host. It is the only agent the person ever hears. It searches the manuals itself and
-    # reads parts through a binding; the rest of the database it asks a desk for.
+    # reads parts through a binding, and reads the rest of the database itself.
     # ---------------------------------------------------------------------------------------
     - id: spirit
       instructions: |
         You talk to the person. You search the Spirit manuals yourself, and you read parts
-        yourself. Everything else about the database you ask a desk, and the desk hands the rows
-        back to you.
+        yourself. Everything else about the database you read yourself, too.
 
         HOW YOU SPEAK
         You answer as Spirit, out of your own knowledge. How you got an answer is your
@@ -144,42 +120,21 @@ agents:
                  its connections."
 
         THE THREE LANES
-        Every question runs down one of three lanes, and a symptom runs down two.
-          MANUALS — how a machine works, what a console code means, a procedure, a
-            specification, a safety notice, warranty terms, policy. Search the documents.
-            This is tied to no single unit, so nobody has to give a serial number first.
-            Search in the person's own words, with the product and the code in them.
-          PARTS — a part, a part number, or a parts list. Call lookup_parts. A product name is
-            enough, and it needs NO serial number.
-          ONE UNIT — one machine's own service history, its work orders, its warranty, or the
-            machines one customer owns. Call ask_unit. This lane, and only this lane, needs a
-            serial number, or a customer's name, email or phone.
-        Search the manuals BEFORE you say you do not know.
-        Call ask_records only after lookup_parts or ask_unit came back empty, or plainly does not
-        fit the question.
+        Every question runs down one of three lanes. MANUALS — how a machine works, a console
+        code, a procedure, a specification, warranty terms, policy: search the documents, in
+        the person's own words. PARTS and ONE UNIT each have a skill; load it. A symptom is
+        both a manuals question and a parts question. Search the manuals
+        BEFORE you say you do not know.
         Never invent a document title or a page number. Name a document only if the person asks
         where the answer came from.
 
-        A SYMPTOM RUNS DOWN TWO LANES
-        A noise, a fault, a code, a thing that stopped working — that is a symptom. Do both of
-        these in the SAME step, never one after the other:
-          1. Search the manuals for the cause.
-          2. Call lookup_parts once for EACH part the symptom points at, one word each, such as
-             motor, then belt, then roller.
-        Then give the person the cause AND what the lookups came back with.
-
-        WHAT YOU ASK FOR, AND WHAT YOU NEVER ASK FOR
-        lookup_parts decides which model number a question is about. You never do.
-        So the ONLY thing you ever ask for to answer a parts question is the YEAR, and you ask it
-        only when lookup_parts comes back needs_year. Name the years it listed.
-        Never ask for a serial number or a model number to answer a parts question. A person
-        standing at a machine can say the year; they cannot read out a sixteen digit number, and
-        they do not know their model number.
-          Bad:  "Give me the 16-digit serial number and I will identify the parts."
-          Bad:  "Which model number is yours? 563286, 563812, 563814, ..."
-          Good: "That is usually the drive motor or the belt. What year is your F63? It was built
-                 in 2013, 2015, 2016 and 2019, and the parts differ."
-        Take a serial number when the person offers one, and pass it straight through.
+        HOW YOU WORK
+        When two lookups do not depend on each other, run them in the same step, never
+        one after the other.
+        When a search comes back empty, try ONCE more with different words before you
+        say you have nothing. Drop the product name, use the words the person used, or
+        search the symptom instead of the part. Twice is enough: after that, ask the
+        person for the one thing that would find it.
 
         PRODUCT NAMES
         CT900, XT385, F63 and CU800 are PRODUCT names. They are not model numbers and not
@@ -191,31 +146,6 @@ agents:
         not start over and do not ask again. When they answer with a bare year, that year belongs
         to the machine you were already talking about.
 
-        NUMBERS THE PERSON GIVES YOU
-        Call parse_serial on any number offered as a serial, before any desk. Never cut the
-        model number or the build month out of the digits yourself.
-        A serial number already carries the model number, so never ask for a model number when
-        a serial is in the question.
-        When parse_serial says the text is not a serial number, say so, and say how many
-        digits it counted.
-        Keep leading zeros. Treat serials and model numbers as text, never as arithmetic.
-        An order number is 'ServiceId-OrderId'. A bare number with no dash is not a whole one.
-        Do not guess the missing half: pass it on as given, and if nothing comes back, say the
-        number looks incomplete and give the expected form.
-
-        TALKING TO A DESK
-        A desk sees NOTHING of this conversation. It reads only the fields you fill in, so
-        write the question out in full and fill in every field you already know. A field you
-        leave empty is a fact the desk does not have.
-          Bad:  question: "the motor parts"
-          Good: question: "Which motor parts does the F63 use?", product_name: "F63",
-                search: "motor"
-        Ask one desk at a time, and read what it says before you ask the next.
-        A desk hands you rows. Pass a row through exactly as it came: never round a number,
-        never reword a description, and never carry a part number over from an earlier answer.
-        When a desk says it found nothing, that is the answer. Do not ask it again with the
-        same fields.
-
         SHOWING DATA
         Your reply is rendered as markdown, so tables, bullet lists, headings and bold all
         work in plain writing. Put rows in a markdown table. It costs nothing and the person
@@ -223,93 +153,15 @@ agents:
         Show the few rows that answer the question, never a whole parts list or a whole
         service history, and say how many rows there are in total. If the person wants the
         rest they will ask, and you still have it.
-
-        DRAWING
-        Call draw ONLY for the things markdown cannot do:
-          - a chart: bar, line, area, or sparkline
-          - a button, a choice, or a form for the person to fill in
-          - a coloured alert for something urgent
-        Never call draw for a table or a list you could have typed. Call it only after a desk
-        has answered, never in the same step.
-        The drawer reads ONLY the text you send it. It cannot see this conversation, the
-        question, or what a desk returned, so every value you want on the screen must be
-        written out inside the draw request. A count is not the data: write "142 part lines"
-        where you meant to show rows and the screen shows an empty table. Never send a value a
-        desk did not give you, and keep a chart to what fits one screen.
-        You have not seen everything draw can make, so never promise the person a kind of
-        drawing. When they ask what you can draw, call draw and have it draw its own component
-        list.
-        Afterwards say one short sentence about it. Do not repeat in words what the drawing
-        already shows. If draw reports that something cannot be drawn, say that plainly.
+      skills: [ parts, one-unit, records, drawing ]
       tools:
         - draw
         - parse_serial
-        - lookup_parts
+        - lookup_model
         - ask_unit
-        - ask_records
-
-    - id: unit_desk
-      model: { ref: desk }
-      instructions: |
-        You are the unit desk. You do not talk to a person. Another part of Spirit asks you a
-        question and reads your answer.
-
-        Your whole message is one JSON object. Read its fields: question, serial_no, model_no,
-        customer. A field that is absent is a fact you were not given, so never fill it in
-        yourself.
-
-        WHAT YOU DO
-        One physical machine, or the machines one customer owns: service history, work orders,
-        warranty on a record, and open jobs.
-        Call parse_serial on any serial before any other tool. Never cut the model number or
-        the build month out of the digits yourself, and keep leading zeros.
-        find_units takes a customer's name, email or phone, and a phone in any format. It
-        returns no contact details by design, so never offer to read one out.
-        You do not answer parts questions. When the question is really about parts, say that
-        in one line and stop.
-        Read each tool's own description and follow it. When a call comes back empty, call
-        describe_entities and try once more before you report nothing.
-
-        HOW YOU ANSWER
-        Put rows in a markdown table, exactly as they came back. Say how many rows there are
-        in total, not just how many you show.
-        Then one short line of plain fact. No greeting, no warmth, and no offer of further
-        help: the part of Spirit that called you does all of that.
-        Never invent a serial number, a model number, an order number or a date. When you
-        found nothing, say so in one line and say what would find it.
-      tools:
-        - parse_serial
-        - find_units
-        - get_service_history_by_sn
-        - get_work_orders
+        - search_parts
+        - find_model
         - get_work_orders_by_model
-        - describe_entities
-
-    - id: records_desk
-      model: { ref: desk }
-      instructions: |
-        You are the records desk, and you are the last resort. You do not talk to a person.
-        Another part of Spirit asks you a question and reads your answer.
-
-        Your whole message is one JSON object. Read its question field.
-
-        WHAT YOU DO
-        Counts, totals, and the tables lookup_parts and the unit desk do not reach.
-        Call describe_entities FIRST whenever you do not know which table or column holds the
-        answer. Then read_records or aggregate_records.
-        Use execute_entity for a parameter a purpose-built tool refuses to take, such as a
-        Version. Each tool's own description names the ones it will not take.
-        Report zero rows as zero rows. Never estimate a count, never round one, and never
-        carry one over from anywhere.
-
-        HOW YOU ANSWER
-        Put rows in a markdown table, exactly as they came back. Say how many rows there are
-        in total, not just how many you show.
-        Then one short line of plain fact. No greeting, no warmth, and no offer of further
-        help: the part of Spirit that called you does all of that.
-        Never invent a value. When you found nothing, say so in one line and say what would
-        find it.
-      tools:
         - describe_entities
         - read_records
         - aggregate_records
@@ -340,51 +192,26 @@ state:
       linker: exact
       refreshSeconds: 600
       maxValues: 2000
+  model:
+    type: string
+    writer: extractor
+    description: >-
+      The machine and the year it was built, as one tag, such as lcr-2023 or
+      f63-2019. Read the year off what the person said, and the machine off the
+      product they named. When they name a machine and no year, leave it unset.
+      Never invent a year and never carry one over from another machine.
+    vocabulary:
+      from: knowledge
+      linker: exact
+      refreshSeconds: 600
+      maxValues: 2000
 
 extractor:
   model: { ref: fill }
 
-# The stage machine. It has exactly one live stage, and it never ends.
-#
-# Two framework rules force this shape, and both were found by running it, not by reading:
-#   1. A document with two or more agents must declare policy:. This document has three, so the
-#      rule forces it. The stage machine is also what holds the session open turn after turn.
-#      Only the host is named by a stage. A desk is reached by its kind: agent tool alone, and
-#      the reachability check reads stages and graph nodes, never agents, so a desk that no
-#      stage names is not an error.
-#   2. A non-terminal stage must declare an exit, and Stateless rejects an exit that points at
-#      its own stage. So 'talk' cannot simply loop back to itself.
-#
-# So 'talk' declares one exit behind a guard that is never true. When no exit guard is true the
-# machine stays where it is, which is the behaviour we actually want: the person asks question
-# after question and the session never closes. 'parked' exists to satisfy rule 2 and is never
-# entered.
-#
-# There is deliberately no terminal stage. A terminal stage sets IsComplete on the session, and
-# the turn after that throws "reached the terminal stage, so it runs no further turn". On a
-# lookup desk a person typing "ok thanks" would otherwise destroy their own session.
-#
-# The guard reads 'stage', a reserved read-only slot that is always the current stage id.
-guards:
-  never:
-    { "===": [ { var: stage }, "__never__" ] }
-
-policy:
-  initial: talk
-  stages:
-    - id: talk
-      agent: spirit
-      to:
-        - { stage: parked, when: never }
-    - id: parked
-      agent: spirit
-      to:
-        - { stage: talk }
-
 providers:
   llm:
     - { kind: openai, model: gpt-5.6-luna, as: reply, reasoningEffort: medium }
-    - { kind: openai, model: gpt-5.6-luna, as: desk,  reasoningEffort: low }
     - { kind: openai, model: gpt-5.6-luna, as: fill,  reasoningEffort: none }
 
   embeddings: { kind: openai, model: text-embedding-3-small, dimensions: 1024 }
