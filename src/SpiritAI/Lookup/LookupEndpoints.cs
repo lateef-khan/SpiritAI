@@ -1,5 +1,7 @@
 using System.Text.Json;
 
+using AgentCore.Application.Ports;
+using AgentCore.Application.State;
 using AgentCore.Application.Tools.Registry;
 
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -48,6 +50,14 @@ public static class LookupEndpointRouteBuilderExtensions
         });
 
         services.AddSingleton(provider => new UnitLookup(provider.GetRequiredService<ToolInvoker>()));
+
+        // The knowledge port is asked for the facet read rather than the container: a store that
+        // cannot filter serves none, and asking the port is what still finds it once something
+        // wraps that store.
+        services.AddSingleton(provider => new ModelIndex(
+            provider.GetService<IKnowledgeRetrievalPort>()?.GetService<IKnowledgeFacetReadPort>(),
+            provider.GetRequiredService<VocabularyCache>(),
+            provider.GetRequiredService<ToolInvoker>()));
 
         return services;
     }

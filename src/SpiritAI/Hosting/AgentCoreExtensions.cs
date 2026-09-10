@@ -20,6 +20,9 @@ public static class AgentCoreExtensions
     /// <summary>The <c>binds:</c> name <c>spirit.yaml</c> gives the parts reader.</summary>
     public const string PartsBinding = "LookupParts";
 
+    /// <summary>The <c>binds:</c> name <c>spirit.yaml</c> gives the model reader.</summary>
+    public const string ModelBinding = "LookupModel";
+
     /// <summary>Registers AgentCore, carrying this host's analyzers and bindings.</summary>
     /// <param name="builder">The host being built.</param>
     /// <returns>The same builder, so a host chains its calls.</returns>
@@ -64,5 +67,13 @@ public static class AgentCoreExtensions
                     [Description("ONE word that narrows a long list, such as motor, belt or roller. A phrase matches nothing, so send one word and call again for the next.")] string? search,
                     CancellationToken cancellationToken)
                     => services.GetRequiredService<PartsLookup>()
-                        .FindAsync(productName, year, serialNo, modelNo, search, cancellationToken));
+                        .FindAsync(productName, year, serialNo, modelNo, search, cancellationToken))
+            .Bind(
+                ModelBinding,
+                (
+                    [Description("The product name, such as LCR or F63.")] string? productName,
+                    [Description("The year the machine was built, when the person has said it.")] int? year,
+                    CancellationToken cancellationToken)
+                    => services.GetRequiredService<ModelIndex>()
+                        .FindAsync(productName, year, cancellationToken));
 }
