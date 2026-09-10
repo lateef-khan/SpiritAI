@@ -183,3 +183,37 @@ public sealed record OrderDocument(
 /// <param name="Shipped">How many went out.</param>
 /// <param name="IsReturned">Whether the old one was asked back.</param>
 public sealed record OrderLine(string? PartNo, string? Description, int? Shipped, bool IsReturned);
+
+/// <summary>
+/// The machines one customer owns.
+/// </summary>
+/// <remarks>
+/// The desk this replaces returned no contact details, and neither does this: a serial number is
+/// what the caller needs, and a phone number is not theirs to read out.
+/// </remarks>
+/// <param name="Units">One row per machine, as the records hold them.</param>
+/// <param name="TotalRows">How many machines matched in all, before any cap.</param>
+/// <param name="Note">One line the agent may repeat about what happened.</param>
+public sealed record CustomerUnits(
+    IReadOnlyList<CustomerUnit> Units,
+    int TotalRows,
+    string Note);
+
+/// <summary>
+/// One machine a customer owns.
+/// </summary>
+/// <param name="SerialNo">The sixteen digit serial number.</param>
+/// <param name="ModelNo">The six digit model number.</param>
+/// <param name="ModelName">The model's name, as the records hold it.</param>
+/// <param name="PurchasedOn">When it was bought, or <see langword="null"/> when no record says.</param>
+/// <param name="SetUpOn">When it was set up, or <see langword="null"/> when no record says.</param>
+/// <param name="OpenOrders">How many work orders on this machine are still open.</param>
+/// <param name="TotalOrders">How many work orders it has had in all.</param>
+public sealed record CustomerUnit(
+    string SerialNo,
+    string? ModelNo,
+    string? ModelName,
+    DateTimeOffset? PurchasedOn,
+    DateTimeOffset? SetUpOn,
+    int? OpenOrders,
+    int? TotalOrders);
