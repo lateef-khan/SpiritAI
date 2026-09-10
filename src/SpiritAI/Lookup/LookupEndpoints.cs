@@ -50,6 +50,10 @@ public static class LookupEndpointRouteBuilderExtensions
         });
 
         services.AddSingleton(provider => new UnitLookup(provider.GetRequiredService<ToolInvoker>()));
+        services.AddSingleton(provider => new CustomerLookup(provider.GetRequiredService<ToolInvoker>()));
+        services.AddSingleton(provider => new UnitDesk(
+            provider.GetRequiredService<UnitLookup>(),
+            provider.GetRequiredService<CustomerLookup>()));
 
         services.AddSingleton(provider => new ModelIndex(
             provider.GetService<IKnowledgeRetrievalPort>()?.GetService<IKnowledgeFacetReadPort>(),

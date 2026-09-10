@@ -23,6 +23,9 @@ public static class AgentCoreExtensions
     /// <summary>The <c>binds:</c> name <c>spirit.yaml</c> gives the model reader.</summary>
     public const string ModelBinding = "LookupModel";
 
+    /// <summary>The <c>binds:</c> name <c>spirit.yaml</c> gives the unit reader.</summary>
+    public const string UnitBinding = "AskUnit";
+
     /// <summary>Registers AgentCore, carrying this host's analyzers and bindings.</summary>
     /// <param name="builder">The host being built.</param>
     /// <returns>The same builder, so a host chains its calls.</returns>
@@ -75,5 +78,14 @@ public static class AgentCoreExtensions
                     [Description("The year the machine was built, when the person has said it.")] int? year,
                     CancellationToken cancellationToken)
                     => services.GetRequiredService<ModelIndex>()
-                        .FindAsync(productName, year, cancellationToken));
+                        .FindAsync(productName, year, cancellationToken))
+            .Bind(
+                UnitBinding,
+                (
+                    [Description("A 16 digit serial number, when the person gave one.")] string? serialNo,
+                    [Description("A work order number, as in 845435-1.")] string? orderNumber,
+                    [Description("The customer's name, email or phone, exactly as the person wrote it.")] string? customer,
+                    CancellationToken cancellationToken)
+                    => services.GetRequiredService<UnitDesk>()
+                        .ReadAsync(serialNo, orderNumber, customer, cancellationToken));
 }

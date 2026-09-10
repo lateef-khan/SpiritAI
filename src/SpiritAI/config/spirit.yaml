@@ -70,20 +70,14 @@ tools:
         unknown_product - no machine of that name is documented.
 
   - id: ask_unit
-    kind: agent
-    agent: unit_desk
+    kind: binding
+    binds: AskUnit
     description: >-
-      One physical machine, or the machines one customer owns. Ask it for a unit's service history,
-      its work orders, its warranty, or what a customer has. It needs a serial number, or a customer
+      One physical machine, or the machines one customer owns: its service history, its work
+      orders, and its warranty. Give it a serial number, a work order number, or a customer's
       name, email or phone. It does not answer parts questions.
-    parameters:
-      type: object
-      properties:
-        question:  { type: string, description: "What to look up, written as a full sentence." }
-        serial_no: { type: string, description: "A 16 digit serial number." }
-        model_no:  { type: string, description: "An exact model number." }
-        customer:  { type: string, description: "The customer's name, email or phone, exactly as the person wrote it." }
-      required: [ question ]
+      It answers with whichever of 'unit', 'order' and 'customer' was found, and a 'note' when
+      none was.
 
   - id: ask_records
     kind: agent
@@ -274,43 +268,6 @@ agents:
         - lookup_model
         - ask_unit
         - ask_records
-
-    - id: unit_desk
-      model: { ref: desk }
-      instructions: |
-        You are the unit desk. You do not talk to a person. Another part of Spirit asks you a
-        question and reads your answer.
-
-        Your whole message is one JSON object. Read its fields: question, serial_no, model_no,
-        customer. A field that is absent is a fact you were not given, so never fill it in
-        yourself.
-
-        WHAT YOU DO
-        One physical machine, or the machines one customer owns: service history, work orders,
-        warranty on a record, and open jobs.
-        Call parse_serial on any serial before any other tool. Never cut the model number or
-        the build month out of the digits yourself, and keep leading zeros.
-        find_units takes a customer's name, email or phone, and a phone in any format. It
-        returns no contact details by design, so never offer to read one out.
-        You do not answer parts questions. When the question is really about parts, say that
-        in one line and stop.
-        Read each tool's own description and follow it. When a call comes back empty, call
-        describe_entities and try once more before you report nothing.
-
-        HOW YOU ANSWER
-        Put rows in a markdown table, exactly as they came back. Say how many rows there are
-        in total, not just how many you show.
-        Then one short line of plain fact. No greeting, no warmth, and no offer of further
-        help: the part of Spirit that called you does all of that.
-        Never invent a serial number, a model number, an order number or a date. When you
-        found nothing, say so in one line and say what would find it.
-      tools:
-        - parse_serial
-        - find_units
-        - get_service_history_by_sn
-        - get_work_orders
-        - get_work_orders_by_model
-        - describe_entities
 
     - id: records_desk
       model: { ref: desk }
