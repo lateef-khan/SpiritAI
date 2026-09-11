@@ -15,10 +15,6 @@ internal static class SpiritDocument
 {
     private static readonly Lazy<Document> Loaded = new(Read);
 
-    /// <summary>The state slots the document declares, by name.</summary>
-    internal static IReadOnlyDictionary<string, Slot> Slots()
-        => Loaded.Value.State ?? throw new InvalidOperationException("spirit.yaml declares no state: block.");
-
     /// <summary>The facets the search tool lets the agent narrow by.</summary>
     internal static IReadOnlyList<FilterableFacet> Filterable()
         => Loaded.Value.Providers?.Knowledge?.Scope?.Filterable
@@ -53,8 +49,6 @@ internal static class SpiritDocument
     /// <summary>As much of the document as these assertions read.</summary>
     internal sealed class Document
     {
-        public Dictionary<string, Slot>? State { get; set; }
-
         public Providers? Providers { get; set; }
     }
 
@@ -80,25 +74,5 @@ internal static class SpiritDocument
         public string? Key { get; set; }
 
         public string? Description { get; set; }
-    }
-
-    /// <summary>One declared state slot.</summary>
-    internal sealed class Slot
-    {
-        public string? Type { get; set; }
-
-        public string? Writer { get; set; }
-
-        public SlotVocabulary? Vocabulary { get; set; }
-    }
-
-    /// <summary>The <c>vocabulary:</c> block a slot may carry.</summary>
-    internal sealed class SlotVocabulary
-    {
-        public string? From { get; set; }
-
-        public string? Linker { get; set; }
-
-        public int RefreshSeconds { get; set; }
     }
 }

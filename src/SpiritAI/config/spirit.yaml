@@ -152,52 +152,9 @@ agents:
         - aggregate_records
         - execute_entity
 
-state:
-  code:
-    type: string
-    writer: extractor
-    description: >-
-      The error or fault code on the console, lowercase, such as e1, e3, e7,
-      or no-display. Leave it unset unless the person read a code off the screen.
-    vocabulary:
-      from: knowledge
-      linker: exact
-      refreshSeconds: 600
-      maxValues: 2000
-  product_line:
-    type: string
-    writer: extractor
-    description: >-
-      The kind of machine the person is asking about: treadmill, elliptical,
-      bike, climber, rower, or strength. Read it off the product they name, so
-      a CT900 is a treadmill and an SB700 is a bike. Leave it unset when the
-      question names no machine and no kind.
-    vocabulary:
-      from: knowledge
-      linker: exact
-      refreshSeconds: 600
-      maxValues: 2000
-  model:
-    type: string
-    writer: extractor
-    description: >-
-      The machine and the year it was built, as one tag, such as lcr-2023 or
-      f63-2019. Read the year off what the person said, and the machine off the
-      product they named. When they name a machine and no year, leave it unset.
-      Never invent a year and never carry one over from another machine.
-    vocabulary:
-      from: knowledge
-      linker: exact
-      refreshSeconds: 600
-      maxValues: 2000
-
-extractor:
-  model: { ref: fill }
-
 providers:
   llm:
     - { kind: openai, model: gpt-5.6-luna, as: reply, reasoningEffort: medium }
-    - { kind: openai, model: gpt-5.6-luna, as: fill,  reasoningEffort: none }
 
   embeddings: { kind: openai, model: text-embedding-3-small, dimensions: 1024 }
 
@@ -223,10 +180,6 @@ providers:
     scoreFloor: 0.35
     scope:
       template: "facets.{key}"
-      fromState: [code, product_line]
-      wildcard:
-        value: "*"
-        facets: [code, product_line]
       filterable:
         - key: model
           description: >-
@@ -240,11 +193,6 @@ providers:
             The only value is model-numbers. Set it when the person asks for a model number, a
             SKU, or the years a machine was made, so the search returns the model cards and
             nothing else. Leave it out for every other question.
-    ambiguity:
-      maxCandidates: 8
-      maxAsks: 2
-      probeDeadlineSeconds: 5
-      probeWaitMarginSeconds: 1
 
   call: { kind: telnyx-relay }
 
