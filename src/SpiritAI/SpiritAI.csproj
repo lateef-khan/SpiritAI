@@ -30,6 +30,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="config/spirit.yaml" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="skills/**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
