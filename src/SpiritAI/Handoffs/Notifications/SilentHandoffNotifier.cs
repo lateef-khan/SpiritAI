@@ -27,8 +27,4 @@ internal sealed class SilentHandoffNotifier : IHandoffNotifier
     /// <inheritdoc />
     public ValueTask MessageCreatedAsync(HandoffMessage message, CancellationToken cancellationToken)
         => ValueTask.CompletedTask;
-
-    /// <inheritdoc />
-    public ValueTask PresenceAsync(int staffOnline, CancellationToken cancellationToken)
-        => ValueTask.CompletedTask;
 }

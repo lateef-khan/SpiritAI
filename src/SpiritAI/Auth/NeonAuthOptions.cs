@@ -25,6 +25,14 @@ public sealed class NeonAuthOptions
     /// </summary>
     public string[] OpenPathPrefixes { get; set; } = [];
 
+    /// <summary>
+    /// Paths on which the token may arrive as <c>?access_token=</c> when there is no
+    /// <c>Authorization</c> header. A browser WebSocket cannot set a header, so the SignalR
+    /// JavaScript client sends the token in the query string instead. Nowhere else reads it
+    /// from there: a token in a URL lands in proxy and server logs.
+    /// </summary>
+    public string[] QueryTokenPathPrefixes { get; set; } = [];
+
     /// <summary>How far a token's clock may drift from ours before it is refused.</summary>
     public TimeSpan ClockSkew { get; set; } = TimeSpan.FromSeconds(60);
 

@@ -74,10 +74,4 @@ public interface IHandoffStore
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>Whether the chat had an open handoff to put it on.</returns>
     Task<bool> SetEmailAsync(string callId, string email, CancellationToken cancellationToken);
-
-    /// <summary>Marks the visitor as here, now.</summary>
-    /// <param name="callId">The chat.</param>
-    /// <param name="cancellationToken">Cancels the write.</param>
-    /// <returns>Whether the chat had an open handoff to mark.</returns>
-    Task<bool> TouchVisitorAsync(string callId, CancellationToken cancellationToken);
 }

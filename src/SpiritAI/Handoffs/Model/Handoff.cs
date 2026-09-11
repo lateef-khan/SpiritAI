@@ -35,9 +35,6 @@ public sealed class Handoff
     /// <summary>Where a reply goes when the visitor is not there to read it.</summary>
     public string? Email { get; set; }
 
-    /// <summary>The last moment the visitor's socket was seen.</summary>
-    public DateTimeOffset? VisitorSeenAt { get; set; }
-
     /// <summary>When the chat was handed back to the bot.</summary>
     public DateTimeOffset? DoneAt { get; set; }
 }

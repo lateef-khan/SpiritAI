@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 
 using SpiritAI.Handoffs.Model;
+using SpiritAI.RealTime.Presence;
 
 namespace SpiritAI.Database;
 
@@ -15,8 +16,8 @@ public sealed class SpiritDbContext(DbContextOptions<SpiritDbContext> options) :
     /// <summary>Every request for a person, open and closed.</summary>
     public DbSet<Handoff> Handoffs => Set<Handoff>();
 
-    /// <summary>Every open staff socket.</summary>
-    public DbSet<StaffPresence> StaffPresence => Set<StaffPresence>();
+    /// <summary>Every open socket, whoever is on it.</summary>
+    public DbSet<Presence> Presence => Set<Presence>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)

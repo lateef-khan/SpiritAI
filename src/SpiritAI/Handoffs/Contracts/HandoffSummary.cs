@@ -16,7 +16,6 @@ namespace SpiritAI.Handoffs.Contracts;
 /// <param name="Assignee">Who holds the chat, once somebody does.</param>
 /// <param name="ClaimedAt">When they took it.</param>
 /// <param name="Email">Where a reply goes when the visitor is not there to read it.</param>
-/// <param name="VisitorSeenAt">The last moment the visitor's socket was seen.</param>
 /// <param name="DoneAt">When the chat was handed back to the bot.</param>
 /// <param name="Title">The chat's title, when the call has one.</param>
 /// <param name="FirstLine">The first thing the visitor said, so the queue reads at a glance.</param>
@@ -31,7 +30,6 @@ public sealed record HandoffSummary(
     HandoffAssignee? Assignee,
     DateTimeOffset? ClaimedAt,
     string? Email,
-    DateTimeOffset? VisitorSeenAt,
     DateTimeOffset? DoneAt,
     string? Title,
     string? FirstLine,
@@ -57,7 +55,6 @@ public sealed record HandoffSummary(
             row is { AssigneeKey: { } key, AssigneeName: { } name } ? new HandoffAssignee(key, name) : null,
             row.ClaimedAt,
             row.Email,
-            row.VisitorSeenAt,
             row.DoneAt,
             call?.Title,
             firstLine,

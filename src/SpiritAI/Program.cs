@@ -2,10 +2,12 @@ using AgentCore.Hosting;
 using SpiritAI.Auth;
 using SpiritAI.Database;
 using SpiritAI.Handoffs;
+using SpiritAI.Handoffs.RealTime;
 using SpiritAI.Handoffs.Staff;
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
 using SpiritAI.PublicChat;
+using SpiritAI.RealTime;
 using SpiritAI.Threads;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,7 +22,11 @@ builder.Services.AddThreadSessions();
 
 builder.Services.AddSpiritDatabase(builder.Configuration);
 
+builder.Services.AddRealTime(builder.Configuration);
+
 builder.Services.AddHandoffs(builder.Configuration);
+
+builder.Services.AddHandoffRealTime();
 
 builder.Services.AddUnitLookup();
 
@@ -32,7 +38,14 @@ var publicChat = builder.Configuration.GetSection(PublicChatOptions.SectionName)
 // Configure with "Auth": { "Neon": { "BaseUrl": "https://ep-xxxx.neonauth.<region>.aws.neon.tech/neondb/auth" } }
 builder.Services.AddNeonAuth(
     builder.Configuration,
-    options => options.OpenPathPrefixes = publicChat.Enabled ? [publicChat.Pattern] : []);
+    options =>
+    {
+        // The hub admits visitors with no token, so it does its own check; see SpiritHub.
+        options.OpenPathPrefixes = publicChat.Enabled
+            ? [publicChat.Pattern, SpiritHub.Pattern]
+            : [SpiritHub.Pattern];
+        options.QueryTokenPathPrefixes = [SpiritHub.Pattern];
+    });
 
 var app = builder.Build();
 
@@ -56,6 +69,8 @@ app.MapPublicChat();
 app.MapThreads();
 
 app.MapStaffHandoffs();
+
+app.MapRealTime();
 
 app.MapLookup();
 

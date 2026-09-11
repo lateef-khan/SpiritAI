@@ -92,9 +92,6 @@ internal sealed class FakeHandoffStore(TimeProvider clock) : IHandoffStore
     public Task<bool> SetEmailAsync(string callId, string email, CancellationToken cancellationToken)
         => Task.FromResult(OnOpen(callId, row => row.Email = email));
 
-    public Task<bool> TouchVisitorAsync(string callId, CancellationToken cancellationToken)
-        => Task.FromResult(OnOpen(callId, row => row.VisitorSeenAt = clock.GetUtcNow()));
-
     private Handoff? Open(string callId)
         => Rows.SingleOrDefault(h => h.CallId == callId && h.Status != HandoffStatus.Done);
 

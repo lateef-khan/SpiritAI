@@ -132,18 +132,6 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
             .ConfigureAwait(false) == 1;
     }
 
-    /// <inheritdoc />
-    public async Task<bool> TouchVisitorAsync(string callId, CancellationToken cancellationToken)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(callId);
-
-        var now = clock.GetUtcNow();
-
-        return await _queries.Open(callId)
-            .ExecuteUpdateAsync(s => s.SetProperty(h => h.VisitorSeenAt, now), cancellationToken)
-            .ConfigureAwait(false) == 1;
-    }
-
     /// <summary>
     /// Inserts the waiting row, or, when another ask got in first, hands back the row it made.
     /// </summary>

@@ -210,7 +210,7 @@ public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<P
     }
 
     [Fact]
-    public async Task EmailAndVisitorTouchLandOnTheOpenRow()
+    public async Task EmailLandsOnTheOpenRow()
     {
         var callId = NewCallId();
         await fixture.MakeCallAsync(callId);
@@ -218,27 +218,18 @@ public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<P
         try
         {
             await using var database = fixture.Open();
-            var clock = new TestTimeProvider(Start);
-            var store = new HandoffStore(database, clock);
+            var store = new HandoffStore(database, new TestTimeProvider(Start));
 
             await store.AskAsync(callId, HandoffAskedBy.Visitor, null, Cancel);
 
             Assert.True(await store.SetEmailAsync(callId, "visitor@example.com", Cancel));
 
-            clock.Now += TimeSpan.FromMinutes(1);
-
-            Assert.True(await store.TouchVisitorAsync(callId, Cancel));
-
             var row = await store.OpenAsync(callId, Cancel);
 
             Assert.NotNull(row);
             Assert.Equal("visitor@example.com", row.Email);
-            Assert.Equal(clock.Now, row.VisitorSeenAt);
 
-            var nothingOpen = NewCallId();
-
-            Assert.False(await store.SetEmailAsync(nothingOpen, "visitor@example.com", Cancel));
-            Assert.False(await store.TouchVisitorAsync(nothingOpen, Cancel));
+            Assert.False(await store.SetEmailAsync(NewCallId(), "visitor@example.com", Cancel));
         }
         finally
         {

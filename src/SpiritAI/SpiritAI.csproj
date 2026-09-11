@@ -37,6 +37,11 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4" PrivateAssets="all" />
   </ItemGroup>
 
+  <!-- The SignalR backplane, so two Fly Machines share one hub. SignalR itself is in the shared framework. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="10.0.11" />
+  </ItemGroup>
+
   <ItemGroup>
     <Content Include="config/spirit.yaml" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="skills/**" CopyToOutputDirectory="PreserveNewest" />

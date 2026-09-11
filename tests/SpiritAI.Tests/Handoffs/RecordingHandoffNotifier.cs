@@ -27,9 +27,6 @@ internal sealed class RecordingHandoffNotifier : IHandoffNotifier
     public ValueTask MessageCreatedAsync(HandoffMessage message, CancellationToken cancellationToken)
         => Record("message.created", message);
 
-    public ValueTask PresenceAsync(int staffOnline, CancellationToken cancellationToken)
-        => Record("presence", staffOnline);
-
     private ValueTask Record(string name, object payload)
     {
         Pushed.Add((name, payload));

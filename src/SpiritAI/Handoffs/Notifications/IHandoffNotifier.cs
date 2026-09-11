@@ -3,8 +3,9 @@ using SpiritAI.Handoffs.Contracts;
 namespace SpiritAI.Handoffs.Notifications;
 
 /// <summary>
-/// The pushes of section 6.2 of the spec, server to client. The routes call these after a state
-/// change has committed; what carries them to a browser is behind this port.
+/// The handoff pushes of section 6.2 of the spec, server to client. The routes call these after a
+/// state change has committed; what carries them to a browser is behind this port. Presence is
+/// not here: the hub counts every kind of caller itself.
 /// </summary>
 public interface IHandoffNotifier
 {
@@ -34,9 +35,4 @@ public interface IHandoffNotifier
     /// <param name="message">The message.</param>
     /// <param name="cancellationToken">Cancels the push.</param>
     ValueTask MessageCreatedAsync(HandoffMessage message, CancellationToken cancellationToken);
-
-    /// <summary>How many staff are on a socket. To staff and to every chat.</summary>
-    /// <param name="staffOnline">The count.</param>
-    /// <param name="cancellationToken">Cancels the push.</param>
-    ValueTask PresenceAsync(int staffOnline, CancellationToken cancellationToken);
 }
