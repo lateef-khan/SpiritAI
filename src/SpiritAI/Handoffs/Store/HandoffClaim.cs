@@ -1,4 +1,6 @@
-namespace SpiritAI.Handoffs;
+using SpiritAI.Handoffs.Model;
+
+namespace SpiritAI.Handoffs.Store;
 
 /// <summary>
 /// The answer to a claim: how it went, and the row as it stands afterwards.

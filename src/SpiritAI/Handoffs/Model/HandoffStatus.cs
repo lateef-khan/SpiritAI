@@ -1,4 +1,4 @@
-namespace SpiritAI.Handoffs;
+namespace SpiritAI.Handoffs.Model;
 
 /// <summary>
 /// Where a handoff is in its life. Stored as lowercase text: <c>waiting</c>, <c>human</c>, <c>done</c>.

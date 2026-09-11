@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-using SpiritAI.Handoffs;
+using SpiritAI.Handoffs.Model;
 
 namespace SpiritAI.Database.Configurations;
 

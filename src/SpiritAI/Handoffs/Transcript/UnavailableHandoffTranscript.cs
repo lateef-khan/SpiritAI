@@ -1,6 +1,6 @@
 using Microsoft.Extensions.AI;
 
-namespace SpiritAI.Handoffs;
+namespace SpiritAI.Handoffs.Transcript;
 
 /// <summary>
 /// The <see cref="IHandoffTranscript"/> the host runs with until AgentCore can append between

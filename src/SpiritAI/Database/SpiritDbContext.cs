@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-using SpiritAI.Handoffs;
+using SpiritAI.Handoffs.Model;
 
 namespace SpiritAI.Database;
 

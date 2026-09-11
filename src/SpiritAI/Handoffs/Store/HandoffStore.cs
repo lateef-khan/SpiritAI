@@ -4,28 +4,21 @@ using Npgsql;
 
 using SpiritAI.Database;
 using SpiritAI.Database.Configurations;
+using SpiritAI.Handoffs.Model;
 
-namespace SpiritAI.Handoffs;
+namespace SpiritAI.Handoffs.Store;
 
 /// <summary>
-/// Every move a handoff makes, <c>waiting</c> → <c>human</c> → <c>done</c>, over <c>spirit.handoff</c>.
+/// The <see cref="IHandoffStore"/> over <c>spirit.handoff</c>, through EF Core.
 /// </summary>
-public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock)
+public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) : IHandoffStore
 {
     /// <summary>The most rows one list answers with.</summary>
     public const int MaxListSize = 100;
 
     private readonly HandoffQueries _queries = new(database);
 
-    /// <summary>
-    /// Asks for a person on a chat. A chat that already has an open handoff gets that one back;
-    /// two asks racing on one chat both get the row the first one made.
-    /// </summary>
-    /// <param name="callId">The chat.</param>
-    /// <param name="askedBy">Which side asked.</param>
-    /// <param name="reason">What the person is for, when the asker said.</param>
-    /// <param name="cancellationToken">Cancels the ask.</param>
-    /// <returns>The open row and its place in the line.</returns>
+    /// <inheritdoc />
     public async Task<HandoffTicket> AskAsync(
         string callId, HandoffAskedBy askedBy, string? reason, CancellationToken cancellationToken)
     {
@@ -41,13 +34,7 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock)
         return new HandoffTicket(row, position);
     }
 
-    /// <summary>Where a waiting chat stands in the line.</summary>
-    /// <param name="callId">The chat.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>
-    /// One for the front, or <see langword="null"/> when the chat is not waiting: it has no open
-    /// handoff, or a person already has it.
-    /// </returns>
+    /// <inheritdoc />
     public async Task<int?> PositionAsync(string callId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(callId);
@@ -59,10 +46,7 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock)
             : null;
     }
 
-    /// <summary>The chat's open handoff, waiting or with a person.</summary>
-    /// <param name="callId">The chat.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>The row, or <see langword="null"/> when the bot has the chat.</returns>
+    /// <inheritdoc />
     public Task<Handoff?> OpenAsync(string callId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(callId);
@@ -70,10 +54,7 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock)
         return _queries.OpenAsync(callId, cancellationToken);
     }
 
-    /// <summary>The chat's open handoff if it has one, else the one closed most recently.</summary>
-    /// <param name="callId">The chat.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>The row, or <see langword="null"/> when nobody was ever asked for.</returns>
+    /// <inheritdoc />
     public Task<Handoff?> LatestAsync(string callId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(callId);
@@ -81,27 +62,12 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock)
         return _queries.LatestAsync(callId, cancellationToken);
     }
 
-    /// <summary>The rows in one state: the queue, the chats being talked to, or the closed ones.</summary>
-    /// <param name="status">Which state.</param>
-    /// <param name="limit">How many at most, held to one through <see cref="MaxListSize"/>.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>
-    /// Oldest ask first, the order the queue is served in. Closed rows come newest close first
-    /// instead, so the chats just finished are at the top.
-    /// </returns>
+    /// <inheritdoc />
     public Task<IReadOnlyList<Handoff>> ListAsync(
         HandoffStatus status, int limit, CancellationToken cancellationToken)
         => _queries.ListAsync(status, limit, cancellationToken);
 
-    /// <summary>
-    /// Takes a waiting chat for one member of staff. One <c>UPDATE … WHERE</c>: of any number of
-    /// claims racing on one chat, exactly one wins.
-    /// </summary>
-    /// <param name="callId">The chat.</param>
-    /// <param name="staffKey">The claimant's caller key.</param>
-    /// <param name="staffName">The name the visitor will see.</param>
-    /// <param name="cancellationToken">Cancels the claim.</param>
-    /// <returns>How it went, with the row as it stands.</returns>
+    /// <inheritdoc />
     public async Task<HandoffClaim> ClaimAsync(
         string callId, string staffKey, string staffName, CancellationToken cancellationToken)
     {
@@ -139,10 +105,7 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock)
         return open is null ? HandoffClaim.NotWaiting() : HandoffClaim.AlreadyTaken(open);
     }
 
-    /// <summary>Closes the chat's open handoff, from waiting or from human. The row stays.</summary>
-    /// <param name="callId">The chat.</param>
-    /// <param name="cancellationToken">Cancels the close.</param>
-    /// <returns>Whether there was an open handoff to close.</returns>
+    /// <inheritdoc />
     public async Task<bool> DoneAsync(string callId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(callId);
@@ -158,11 +121,7 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock)
             .ConfigureAwait(false) == 1;
     }
 
-    /// <summary>Records where a reply goes when the visitor is not there to read it.</summary>
-    /// <param name="callId">The chat.</param>
-    /// <param name="email">The visitor's address.</param>
-    /// <param name="cancellationToken">Cancels the write.</param>
-    /// <returns>Whether the chat had an open handoff to put it on.</returns>
+    /// <inheritdoc />
     public async Task<bool> SetEmailAsync(string callId, string email, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(callId);
@@ -173,10 +132,7 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock)
             .ConfigureAwait(false) == 1;
     }
 
-    /// <summary>Marks the visitor as here, now.</summary>
-    /// <param name="callId">The chat.</param>
-    /// <param name="cancellationToken">Cancels the write.</param>
-    /// <returns>Whether the chat had an open handoff to mark.</returns>
+    /// <inheritdoc />
     public async Task<bool> TouchVisitorAsync(string callId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(callId);

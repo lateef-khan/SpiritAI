@@ -1,4 +1,4 @@
-namespace SpiritAI.Handoffs;
+namespace SpiritAI.Handoffs.Model;
 
 /// <summary>
 /// One request for a person on one chat: <c>spirit.handoff</c>.

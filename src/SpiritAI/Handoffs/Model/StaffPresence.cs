@@ -1,4 +1,4 @@
-namespace SpiritAI.Handoffs;
+namespace SpiritAI.Handoffs.Model;
 
 /// <summary>
 /// One open staff socket: <c>spirit.staff_presence</c>.

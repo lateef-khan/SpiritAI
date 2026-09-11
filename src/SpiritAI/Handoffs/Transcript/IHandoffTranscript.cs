@@ -1,6 +1,6 @@
 using Microsoft.Extensions.AI;
 
-namespace SpiritAI.Handoffs;
+namespace SpiritAI.Handoffs.Transcript;
 
 /// <summary>
 /// Puts a message of the human phase into the chat's own history, <c>call_message</c>.

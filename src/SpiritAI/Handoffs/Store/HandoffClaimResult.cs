@@ -1,4 +1,4 @@
-namespace SpiritAI.Handoffs;
+namespace SpiritAI.Handoffs.Store;
 
 /// <summary>
 /// How a claim went.

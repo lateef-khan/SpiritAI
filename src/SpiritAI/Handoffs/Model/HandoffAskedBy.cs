@@ -1,4 +1,4 @@
-namespace SpiritAI.Handoffs;
+namespace SpiritAI.Handoffs.Model;
 
 /// <summary>
 /// Which side asked for a person. Stored as lowercase text: <c>bot</c>, <c>visitor</c>.

@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 
-using SpiritAI.Handoffs;
+using SpiritAI.Handoffs.Model;
+using SpiritAI.Handoffs.Store;
 using SpiritAI.Tests.Auth;
 using SpiritAI.Tests.Database;
 
 using Xunit;
 
-namespace SpiritAI.Tests.Handoffs;
+namespace SpiritAI.Tests.Handoffs.Store;
 
 /// <summary>
 /// The flow of section 5 of the handoff spec, move by move, against real PostgreSQL.

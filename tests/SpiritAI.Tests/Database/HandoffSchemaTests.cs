@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 
 using Npgsql;
 
-using SpiritAI.Handoffs;
+using SpiritAI.Handoffs.Model;
 
 using Xunit;
 

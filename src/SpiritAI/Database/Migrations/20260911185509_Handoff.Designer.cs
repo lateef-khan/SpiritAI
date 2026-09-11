@@ -26,7 +26,7 @@ namespace SpiritAI.Database.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("SpiritAI.Handoffs.CallStub", b =>
+            modelBuilder.Entity("SpiritAI.Handoffs.Model.CallStub", b =>
                 {
                     b.Property<string>("CallId")
                         .HasColumnType("text")
@@ -40,7 +40,7 @@ namespace SpiritAI.Database.Migrations
                         });
                 });
 
-            modelBuilder.Entity("SpiritAI.Handoffs.Handoff", b =>
+            modelBuilder.Entity("SpiritAI.Handoffs.Model.Handoff", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -116,7 +116,7 @@ namespace SpiritAI.Database.Migrations
                         });
                 });
 
-            modelBuilder.Entity("SpiritAI.Handoffs.StaffPresence", b =>
+            modelBuilder.Entity("SpiritAI.Handoffs.Model.StaffPresence", b =>
                 {
                     b.Property<string>("ConnectionId")
                         .HasColumnType("text")
@@ -149,9 +149,9 @@ namespace SpiritAI.Database.Migrations
                     b.ToTable("staff_presence", "spirit");
                 });
 
-            modelBuilder.Entity("SpiritAI.Handoffs.Handoff", b =>
+            modelBuilder.Entity("SpiritAI.Handoffs.Model.Handoff", b =>
                 {
-                    b.HasOne("SpiritAI.Handoffs.CallStub", null)
+                    b.HasOne("SpiritAI.Handoffs.Model.CallStub", null)
                         .WithMany()
                         .HasForeignKey("CallId")
                         .OnDelete(DeleteBehavior.Cascade)

@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 
 using SpiritAI.Database;
+using SpiritAI.Handoffs.Model;
 
-namespace SpiritAI.Handoffs;
+namespace SpiritAI.Handoffs.Store;
 
 /// <summary>
 /// The reads over <c>spirit.handoff</c>: which row is open, where it stands, what the queue holds.
@@ -15,11 +16,11 @@ internal sealed class HandoffQueries(SpiritDbContext database)
     public IQueryable<Handoff> Open(string callId)
         => database.Handoffs.Where(h => h.CallId == callId && h.Status != HandoffStatus.Done);
 
-    /// <inheritdoc cref="HandoffStore.OpenAsync"/>
+    /// <inheritdoc cref="IHandoffStore.OpenAsync"/>
     public Task<Handoff?> OpenAsync(string callId, CancellationToken cancellationToken)
         => Open(callId).AsNoTracking().SingleOrDefaultAsync(cancellationToken);
 
-    /// <inheritdoc cref="HandoffStore.LatestAsync"/>
+    /// <inheritdoc cref="IHandoffStore.LatestAsync"/>
     public Task<Handoff?> LatestAsync(string callId, CancellationToken cancellationToken)
     {
         // The open row, if any, sorts before every closed one; the closed ones sort newest first.
@@ -31,7 +32,7 @@ internal sealed class HandoffQueries(SpiritDbContext database)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    /// <inheritdoc cref="HandoffStore.ListAsync"/>
+    /// <inheritdoc cref="IHandoffStore.ListAsync"/>
     public async Task<IReadOnlyList<Handoff>> ListAsync(
         HandoffStatus status, int limit, CancellationToken cancellationToken)
     {

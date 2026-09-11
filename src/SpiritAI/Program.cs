@@ -2,6 +2,7 @@ using AgentCore.Hosting;
 using SpiritAI.Auth;
 using SpiritAI.Database;
 using SpiritAI.Handoffs;
+using SpiritAI.Handoffs.Staff;
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
 using SpiritAI.PublicChat;
@@ -19,7 +20,7 @@ builder.Services.AddThreadSessions();
 
 builder.Services.AddSpiritDatabase(builder.Configuration);
 
-builder.Services.AddHandoffs();
+builder.Services.AddHandoffs(builder.Configuration);
 
 builder.Services.AddUnitLookup();
 
@@ -53,6 +54,8 @@ app.MapAgentCoreHost();
 app.MapPublicChat();
 
 app.MapThreads();
+
+app.MapStaffHandoffs();
 
 app.MapLookup();
 

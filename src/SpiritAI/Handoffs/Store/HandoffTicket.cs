@@ -1,4 +1,6 @@
-namespace SpiritAI.Handoffs;
+using SpiritAI.Handoffs.Model;
+
+namespace SpiritAI.Handoffs.Store;
 
 /// <summary>
 /// What an ask comes back with: the open row, and where the chat stands in the line.
