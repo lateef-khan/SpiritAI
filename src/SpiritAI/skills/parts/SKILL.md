@@ -26,6 +26,10 @@ row is one year the machine was built. A row that reads "not confirmed" means no
 confirmed that year's number. The Tag column (lcr-2023) is the exact value for the model
 filter on your next manuals search: copy it off the row, never build one from a name and
 a year.
+Once you have the tag, every manuals search about that machine carries it:
+  filters: [{ key: model, value: lcr-2023 }]
+The filters argument belongs to the manuals search only. find_model, search_parts, draw
+and parse_serial take no filters; never pass one to them.
 
 HOW YOU FIND THE PARTS
 1. A product name. Call search_parts with Name and Search. One call.
