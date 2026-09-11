@@ -1,6 +1,6 @@
 using System.Buffers;
 
-namespace SpiritAI.Handoffs.Visitors;
+namespace SpiritAI.PublicChat;
 
 /// <summary>
 /// Turns the random key the widget keeps in <c>localStorage</c> into the opaque key its calls are

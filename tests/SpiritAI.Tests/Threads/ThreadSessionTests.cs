@@ -100,26 +100,6 @@ public sealed class ThreadSessionTests
         Assert.Empty(world.Sessions.Reopened);
     }
 
-    /// <summary>Which calls have a live session, and which were asked to get one.</summary>
-    private sealed class FakeSessions : IThreadSessions
-    {
-        private readonly HashSet<string> _live = new(StringComparer.Ordinal);
-
-        public List<string> Reopened { get; } = [];
-
-        public void MarkLive(string callId) => _live.Add(callId);
-
-        public ValueTask<bool> IsLiveAsync(string callId, CancellationToken cancellationToken = default)
-            => ValueTask.FromResult(_live.Contains(callId));
-
-        public ValueTask ReopenAsync(string callId, CancellationToken cancellationToken = default)
-        {
-            Reopened.Add(callId);
-            _live.Add(callId);
-            return ValueTask.CompletedTask;
-        }
-    }
-
     private sealed class World : IAsyncDisposable
     {
         public const string OwnerSubject = "user_owner";

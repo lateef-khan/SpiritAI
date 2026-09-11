@@ -7,13 +7,14 @@ using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Store;
 
-namespace SpiritAI.Handoffs.Staff;
+namespace SpiritAI.Handoffs.Desk;
 
 /// <summary>
-/// Dresses a handoff row for the inbox with what the chat behind it holds: its title, the first
-/// thing the visitor said, and where it stands in the line.
+/// Dresses a handoff row with what the chat behind it holds: its title, the first thing the
+/// visitor said, and where it stands in the line. The inbox lists these, and a new ask is pushed
+/// to staff as one.
 /// </summary>
-internal static class InboxSummaries
+internal static class HandoffSummaries
 {
     /// <summary>Summarises every row of a listing.</summary>
     /// <remarks>

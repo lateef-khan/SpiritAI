@@ -263,6 +263,21 @@ public sealed class StaffHandoffEndpointTests
     }
 
     [Fact]
+    public async Task FinishingAWaitingChatMovesTheOnesBehindItUp()
+    {
+        await using var world = await StaffHandoffWorld.StartAsync();
+        var first = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        var second = await world.MakeChatAsync("Console dead", "the console will not turn on");
+        await world.AskAsync(first);
+        await world.AskAsync(second);
+
+        var response = await world.Staff.PostAsync($"{Handoff}/{first}/done");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Contains(("handoff.queue", (object)(second, 1)), world.Notifier.Pushed);
+    }
+
+    [Fact]
     public async Task FinishingAChatNobodyAskedOnIsNotFound()
     {
         await using var world = await StaffHandoffWorld.StartAsync();

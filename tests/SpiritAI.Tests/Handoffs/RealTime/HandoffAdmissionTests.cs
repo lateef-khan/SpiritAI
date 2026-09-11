@@ -8,7 +8,7 @@ using Microsoft.Extensions.Primitives;
 
 using SpiritAI.Handoffs;
 using SpiritAI.Handoffs.RealTime;
-using SpiritAI.Handoffs.Visitors;
+using SpiritAI.PublicChat;
 using SpiritAI.RealTime;
 using SpiritAI.Tests.Auth;
 using SpiritAI.Threads;

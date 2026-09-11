@@ -5,7 +5,7 @@ using AgentCore.Application.Ports;
 using Microsoft.Extensions.Options;
 
 using SpiritAI.Handoffs.Staff;
-using SpiritAI.Handoffs.Visitors;
+using SpiritAI.PublicChat;
 using SpiritAI.RealTime;
 using SpiritAI.Threads;
 

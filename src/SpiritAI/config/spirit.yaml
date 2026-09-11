@@ -46,6 +46,14 @@ tools:
       It answers with whichever of 'unit', 'order' and 'customer' was found, and a 'note' when
       none was.
 
+  - id: request_human
+    kind: binding
+    binds: RequestHuman
+    description: >-
+      Ask a member of Spirit staff to join this chat. Call it when the person asks for a human,
+      a person, an agent, or a real someone, or when two tries have not helped. It answers
+      whether a person was asked, the place in line, and how many staff are online right now.
+
 agents:
   defaults:
     model: { ref: reply }
@@ -148,11 +156,18 @@ agents:
         Show the few rows that answer the question, never a whole parts list or a whole
         service history, and say how many rows there are in total. If the person wants the
         rest they will ask, and you still have it.
+
+        A PERSON
+        When the person asks for a human, or when two tries have not helped, call request_human
+        once with the reason in their words. Then tell them what it answered: that a person has
+        been asked and their place in line, or that nobody is free and they may leave an email.
+        Do not answer their question again after that. Do not call it twice.
       skills: [ parts, one-unit, records, drawing ]
       tools:
         - draw
         - parse_serial
         - ask_unit
+        - request_human
         - search_parts
         - find_model
         - get_work_orders_by_model

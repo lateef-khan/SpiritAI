@@ -5,6 +5,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 
 using SpiritAI.Handoffs.Contracts;
+using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Notifications;
 using SpiritAI.Handoffs.Store;
@@ -136,7 +137,7 @@ public static class StaffHandoffEndpoints
                 .ListAsync(read, Math.Clamp(limit ?? DefaultPageSize, 1, HandoffStore.MaxListSize), cancellationToken)
                 .ConfigureAwait(false);
 
-            var items = await InboxSummaries.OfAsync(store, calls, rows, cancellationToken).ConfigureAwait(false);
+            var items = await HandoffSummaries.OfAsync(store, calls, rows, cancellationToken).ConfigureAwait(false);
 
             return TypedResults.Ok(new HandoffPage(items));
         });
@@ -156,7 +157,7 @@ public static class StaffHandoffEndpoints
                 return TypedResults.NotFound();
             }
 
-            return TypedResults.Ok(await InboxSummaries.OfAsync(store, calls, row, cancellationToken).ConfigureAwait(false));
+            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, calls, row, cancellationToken).ConfigureAwait(false));
         });
 
     /// <summary>The whole chat, in the shape the browser draws a thread from.</summary>
@@ -189,6 +190,7 @@ public static class StaffHandoffEndpoints
         ICallStore calls,
         IHandoffTranscript transcript,
         IHandoffNotifier notifier,
+        HandoffDesk desk,
         TimeProvider clock,
         ILoggerFactory loggers,
         string callId,
@@ -213,7 +215,10 @@ public static class StaffHandoffEndpoints
 
             await notifier.ClaimedAsync(callId, new HandoffAssignee(key, member.Name), cancellationToken).ConfigureAwait(false);
 
-            return TypedResults.Ok(await InboxSummaries.OfAsync(store, calls, claim.Row!, cancellationToken).ConfigureAwait(false));
+            // Everyone behind the chat just taken moved up one.
+            await desk.AnnounceQueueAsync(cancellationToken).ConfigureAwait(false);
+
+            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, calls, claim.Row!, cancellationToken).ConfigureAwait(false));
         });
 
     /// <summary>Puts the caller's words in a chat they hold.</summary>
@@ -282,6 +287,7 @@ public static class StaffHandoffEndpoints
         IHandoffStore store,
         IHandoffTranscript transcript,
         IHandoffNotifier notifier,
+        HandoffDesk desk,
         TimeProvider clock,
         ILoggerFactory loggers,
         string callId,
@@ -308,6 +314,9 @@ public static class StaffHandoffEndpoints
             }
 
             await notifier.DoneAsync(callId, cancellationToken).ConfigureAwait(false);
+
+            // A chat closed straight from waiting leaves the line; the ones behind it move up.
+            await desk.AnnounceQueueAsync(cancellationToken).ConfigureAwait(false);
 
             return TypedResults.NoContent();
         });

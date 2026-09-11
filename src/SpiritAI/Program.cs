@@ -4,6 +4,7 @@ using SpiritAI.Database;
 using SpiritAI.Handoffs;
 using SpiritAI.Handoffs.RealTime;
 using SpiritAI.Handoffs.Staff;
+using SpiritAI.Handoffs.Visitors;
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
 using SpiritAI.PublicChat;
@@ -40,9 +41,10 @@ builder.Services.AddNeonAuth(
     builder.Configuration,
     options =>
     {
-        // The hub admits visitors with no token, so it does its own check; see SpiritHub.
+        // Every public route sits under one prefix and checks the visitor's key itself. The hub
+        // admits visitors with no token, so it does its own check too; see SpiritHub.
         options.OpenPathPrefixes = publicChat.Enabled
-            ? [publicChat.Pattern, SpiritHub.Pattern]
+            ? [publicChat.PublicPrefix, SpiritHub.Pattern]
             : [SpiritHub.Pattern];
         options.QueryTokenPathPrefixes = [SpiritHub.Pattern];
     });
@@ -57,6 +59,8 @@ app.UseNeonAuthOnApi();
 
 app.UseThreadSessions();
 
+app.UseVisitorChat(publicChat.Pattern);
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -65,6 +69,10 @@ if (app.Environment.IsDevelopment())
 app.MapAgentCoreHost();
 
 app.MapPublicChat();
+
+app.MapPublicThreads();
+
+app.MapVisitorHandoffs();
 
 app.MapThreads();
 

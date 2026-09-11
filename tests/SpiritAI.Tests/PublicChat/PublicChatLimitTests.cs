@@ -16,7 +16,7 @@ using Xunit;
 namespace SpiritAI.Tests.PublicChat;
 
 /// <summary>
-/// The limits in front of the one route a stranger may reach.
+/// The limits in front of every route a stranger may reach.
 /// </summary>
 /// <remarks>
 /// Every request past this door spends model tokens, so these are a bill as much as an abuse
@@ -27,6 +27,7 @@ public sealed class PublicChatLimitTests
 {
     private const string Public = "/v1/public/chat/completions";
     private const string Slow = "/v1/public/chat/completions/slow";
+    private const string Handoff = "/v1/public/handoff";
 
     /// <summary>Long enough that three requests sent together overlap, short enough not to drag.</summary>
     private static readonly TimeSpan TurnDuration = TimeSpan.FromMilliseconds(750);
@@ -79,6 +80,21 @@ public sealed class PublicChatLimitTests
             var health = await client.GetAsync("/health", TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.OK, health.StatusCode);
         }
+    }
+
+    [Fact]
+    public async Task EveryPublicRouteSpendsTheSameAllowance()
+    {
+        using var host = await StartAsync(permits: 1);
+        var client = host.GetTestClient();
+
+        // A stranger who cannot reach the chat route must not find a fresh allowance on the
+        // handoff route beside it: the two are one door.
+        var allowed = await client.GetAsync(Handoff, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
+
+        var refused = await client.GetAsync(Public, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.TooManyRequests, refused.StatusCode);
     }
 
     [Fact]
@@ -141,6 +157,7 @@ public sealed class PublicChatLimitTests
                     app.UseEndpoints(endpoints =>
                     {
                         endpoints.MapGet(Public, () => Results.Ok("public"));
+                        endpoints.MapGet(Handoff, () => Results.Ok("handoff"));
                         endpoints.MapGet(Slow, async () =>
                         {
                             await Task.Delay(TurnDuration);
