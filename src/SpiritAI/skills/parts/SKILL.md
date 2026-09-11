@@ -19,15 +19,10 @@ Then give the person the cause AND what the lookups came back with.
 
 THE MODEL CARD
 Every product family has one card in the manuals whose body is a table with three columns:
-Year, Model number, Tag. To read it, search the manuals for "<product> model number" with
-  filters: [{ key: lookup, value: model-numbers }]
-That filter returns model cards and nothing else; the product name picks the family. Each
-row is one year the machine was built. A row that reads "not confirmed" means nobody has
-confirmed that year's number. The Tag column (lcr-2023) is the exact value for the model
-filter on your next manuals search: copy it off the row, never build one from a name and
-a year.
-Once you have the tag, every manuals search about that machine carries it:
-  filters: [{ key: model, value: lcr-2023 }]
+Year, Model number, Tag. The search's filters argument says how to reach it. Each row is one
+year the machine was built. A row that reads "not confirmed" means nobody has confirmed that
+year's number. The Tag column is the model filter for every manuals search about that
+machine; the Model number column is what you say out loud when asked for a SKU.
 The filters argument belongs to the manuals search only. find_model, search_parts, draw
 and parse_serial take no filters; never pass one to them.
 
