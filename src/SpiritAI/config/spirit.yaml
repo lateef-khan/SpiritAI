@@ -41,14 +41,16 @@ tools:
     binds: LookupModel
     description: >-
       Which years a machine was built, and the model number one of those years carries.
-      This is the ONLY source for the years a machine exists in. A parts lookup records a
-      year for some rows and not others, so never read a build year off one.
+      This is the ONLY source for the years a machine exists in, and the ONLY source for a
+      model number you tell a person. A parts lookup records a year for some rows and not
+      others, so never read a build year off one, and never read out a model number from one.
       It answers with an 'outcome' you act on:
         model           - 'model_no' is that year's model number. 'slug' names the machine.
         needs_year      - 'years' lists every year this machine was built. Ask which one,
                           naming those years.
-        no_record       - that year exists but no document states its model number. Say the
-                          model number is unconfirmed. Do not guess one.
+        no_record       - that year exists and nobody has confirmed its model number. Say the
+                          model number is not confirmed, and ask for the serial number off the
+                          frame. Do not guess one, and do not answer from a parts row instead.
         unknown_product - no machine of that name is documented.
 
   - id: ask_unit
@@ -242,6 +244,13 @@ providers:
       wildcard:
         value: "*"
         facets: [code, product_line]
+      filterable:
+        - key: model
+          description: >-
+            One machine and the year it was built, as one tag, such as lcr-2023 or f63-2019.
+            Set it only when the person has named a machine AND you know which year they mean.
+            A machine with no year names a different tag, so leave this out rather than guessing
+            a year onto it.
     ambiguity:
       maxCandidates: 8
       maxAsks: 2

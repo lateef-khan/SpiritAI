@@ -4,11 +4,12 @@ using System.Text.RegularExpressions;
 
 using AgentCore.Application.Ports;
 using AgentCore.Application.State;
+using AgentCore.Domain.Knowledge;
 
 namespace SpiritAI.Lookup;
 
 /// <summary>
-/// Turns a product name and a year into one model number, out of the manuals.
+/// Turns a product name and a year into one model number, out of the knowledge base.
 /// </summary>
 /// <param name="cards">
 /// Reads cards by facet, or <see langword="null"/> when the knowledge base serves no such
@@ -24,6 +25,9 @@ public sealed partial class ModelIndex(
     /// <summary>The payload path the model slug is stored at.</summary>
     private const string FacetPath = "facets.model";
 
+    /// <summary>The payload path the model number is stored at.</summary>
+    private const string ModelNumberPath = "facets.model_number";
+
     /// <summary>The state slot whose vocabulary carries every slug.</summary>
     private const string Slot = "model";
 
@@ -35,9 +39,6 @@ public sealed partial class ModelIndex(
 
     private readonly VocabularyCache _vocabulary = vocabulary;
     private readonly ToolInvoker _invoke = invoke;
-
-    [GeneratedRegex(@"(?<!\d)\d{6}(?!\d)")]
-    private static partial Regex SixDigits { get; }
 
     [GeneratedRegex("-(?<year>(?:19|20)[0-9]{2})(?:-ac)?$")]
     private static partial Regex TrailingYear { get; }
@@ -85,7 +86,7 @@ public sealed partial class ModelIndex(
         if (stated is null)
         {
             return new ModelAnswer(
-                "no_record", slug, null, years, $"No document states a model number for {slug}.");
+                "no_record", slug, null, years, $"Nobody has confirmed a model number for {slug}.");
         }
 
         return await CarriedByTheDatabaseAsync(wanted, stated, cancellationToken).ConfigureAwait(false)
@@ -97,6 +98,53 @@ public sealed partial class ModelIndex(
                 years,
                 $"The documents give {slug} model number {stated}, which the parts records do not "
                 + "carry. Treat it as unconfirmed.");
+    }
+
+    /// <summary>The model number the cards of one slug carry, or nothing.</summary>
+    /// <remarks>
+    /// The facet is a list, because a machine can carry several SKUs. Several is not an answer:
+    /// naming either would be a guess, so it reads the same as none and the caller asks for the
+    /// serial number instead.
+    /// </remarks>
+    private async Task<string?> StatedModelNoAsync(string slug, CancellationToken cancellationToken)
+    {
+        if (cards is null)
+        {
+            return null;
+        }
+
+        IReadOnlyList<KnowledgeCard> found;
+        try
+        {
+            found = await cards.ReadByFacetAsync(FacetPath, slug, Cap, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // A knowledge base that refuses is a model number nobody stated. The caller then says
+            // the number is unconfirmed, which is the answer it would have given anyway.
+            return null;
+        }
+
+        var numbers = found
+            .SelectMany(card => Stated(PayloadPath.Read(card.Extras, ModelNumberPath)))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        return numbers.Count == 1 ? numbers[0] : null;
+    }
+
+    /// <summary>The numbers one payload value holds, whether it stores one or a list.</summary>
+    private static IEnumerable<string> Stated(object? value)
+    {
+        IEnumerable<string> held = value switch
+        {
+            string one => [one],
+            IEnumerable<object?> many => many.OfType<string>(),
+            _ => [],
+        };
+
+        return held.Select(number => number.Trim()).Where(number => number.Length > 0);
     }
 
     /// <summary>Every slug the vocabulary holds for one product.</summary>
@@ -129,41 +177,6 @@ public sealed partial class ModelIndex(
         }
 
         return slugs.Count == 1 && years.Count == 0 ? slugs[0] : null;
-    }
-
-    /// <summary>The model number the cards of one slug state, or nothing.</summary>
-    private async Task<string?> StatedModelNoAsync(string slug, CancellationToken cancellationToken)
-    {
-        if (cards is null)
-        {
-            return null;
-        }
-
-        IReadOnlyList<AgentCore.Domain.Knowledge.KnowledgeCard> found;
-        try
-        {
-            found = await cards.ReadByFacetAsync(FacetPath, slug, Cap, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            // A knowledge base that refuses is a model number nobody stated. The caller then asks
-            // for the year, which is the answer it would have given anyway.
-            return null;
-        }
-
-        // A card written to state the model number says so in its own id. Its six digit number is
-        // the model number; a six digit number anywhere else is as likely to be a part.
-        var numbers = found
-            .Where(card => card.CardId.EndsWith("-model-overview", StringComparison.Ordinal)
-                || card.CardId.EndsWith("-model-number", StringComparison.Ordinal))
-            .SelectMany(card => SixDigits.Matches(card.Text).Select(match => match.Value))
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        // Several numbers on one overview card is a card that covers more than one machine. Naming
-        // either would be a guess.
-        return numbers.Count == 1 ? numbers[0] : null;
     }
 
     /// <summary>Whether the parts records carry one model number for one product.</summary>

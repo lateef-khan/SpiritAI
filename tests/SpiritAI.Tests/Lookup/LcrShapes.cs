@@ -1,8 +1,6 @@
 using System.Text.Json;
 
-using AgentCore.Application.Ports;
 using AgentCore.Application.State;
-using AgentCore.Domain.Knowledge;
 
 using SpiritAI.Lookup;
 
@@ -13,7 +11,7 @@ namespace SpiritAI.Tests.Lookup;
 /// </summary>
 /// <remarks>
 /// Six model years in the knowledge base, six rows in the parts database, and the two sets do not
-/// line up: the database names a year for one row. <see cref="ModelIndex"/> is judged against
+/// line up: the database names a year for one row only. <see cref="ModelIndex"/> is judged against
 /// these shapes, so they live in their own file rather than inside its test file.
 /// </remarks>
 internal static class LcrShapes
@@ -23,11 +21,33 @@ internal static class LcrShapes
     [
         "lcr-2011", "lcr-2013", "lcr-2016", "lcr-2019", "lcr-2023", "lcr-2026",
         "srvo",
+        "mt200-2022",
         "f63-2013", "f63-2015", "f63-2016", "f63-2019",
     ];
 
     /// <summary>The years the manuals cover the LCR in.</summary>
     internal static readonly int[] LcrYears = [2011, 2013, 2016, 2019, 2023, 2026];
+
+    /// <summary>
+    /// What each machine's cards carry at <c>facets.model_number</c>.
+    /// </summary>
+    /// <remarks>
+    /// The F63 is deliberately absent: a machine the knowledge base documents whose cards carry no
+    /// number at all is the state of 36 of the 197 machines, not an edge case. The LCR 2011 is
+    /// present and carries none, which must read the same way. The MT200 2022 carries two, which is
+    /// the real shape of the three machines the collection cannot settle to one SKU.
+    /// </remarks>
+    private static readonly Dictionary<string, string[]> Table = new(StringComparer.Ordinal)
+    {
+        ["lcr-2011"] = [],
+        ["lcr-2013"] = ["522112"],
+        ["lcr-2016"] = ["522199"],
+        ["lcr-2019"] = ["522118"],
+        ["lcr-2023"] = ["522122"],
+        ["lcr-2026"] = ["522126"],
+        ["srvo"] = ["520516"],
+        ["mt200-2022"] = ["720080", "720087"],
+    };
 
     /// <summary>The vocabulary cache a filled <c>model</c> slot leaves behind.</summary>
     internal static VocabularyCache Vocabulary()
@@ -37,11 +57,8 @@ internal static class LcrShapes
         return cache;
     }
 
-    /// <summary>Reads cards by facet, over the cards these six years actually hold.</summary>
-    internal static IKnowledgeFacetReadPort FacetRead() => new FakeFacetRead();
-
-    /// <summary>A facet read that refuses, as an unreachable knowledge base does.</summary>
-    internal static IKnowledgeFacetReadPort RefusingFacetRead() => new ThrowingFacetRead();
+    /// <summary>The knowledge base, answering a read of <c>facets.model</c>.</summary>
+    internal static FacetCards Cards() => new(Table);
 
     /// <summary>Answers <c>find_model</c> with the rows the live database returns.</summary>
     internal static ToolInvoker Invoker() => (toolId, arguments, _) =>
@@ -72,45 +89,4 @@ internal static class LcrShapes
     /// <summary>The envelope a DAB stored procedure wraps its rows in.</summary>
     private static string Rows(params string[] rows)
         => "{\"status\":\"success\",\"value\":{\"value\":[" + string.Join(",", rows) + "]}}";
-
-    private static KnowledgeCard Card(string cardId, string text)
-        => new() { CardId = cardId, Text = text, ViaLink = false };
-
-    /// <summary>The cards each model year holds, keyed by slug.</summary>
-    private sealed class FakeFacetRead : IKnowledgeFacetReadPort
-    {
-        public ValueTask<IReadOnlyList<KnowledgeCard>> ReadByFacetAsync(
-            string path, string value, int limit, CancellationToken cancellationToken = default)
-        {
-            IReadOnlyList<KnowledgeCard> cards = path != "facets.model"
-                ? []
-                : value switch
-                {
-                    // One card of the year states the number, and it says so in its own id.
-                    "lcr-2023" =>
-                    [
-                        Card("lcr-2023-belt-tension", "Tension the belt to 40 turns."),
-                        Card("lcr-2023-model-overview", "The LCR 2023 is model number 522122."),
-                    ],
-
-                    // A year the manuals cover and no card gives a number for.
-                    "lcr-2011" => [Card("lcr-2011-console-modes", "The console has four modes.")],
-
-                    // 522199 is not one of the six rows find_model returns for the LCR.
-                    "lcr-2016" => [Card("lcr-2016-model-overview", "The LCR 2016 is model number 522199.")],
-
-                    "srvo" => [Card("srvo-model-overview", "The SRVO is model number 520516.")],
-                    _ => [],
-                };
-
-            return ValueTask.FromResult(cards);
-        }
-    }
-
-    private sealed class ThrowingFacetRead : IKnowledgeFacetReadPort
-    {
-        public ValueTask<IReadOnlyList<KnowledgeCard>> ReadByFacetAsync(
-            string path, string value, int limit, CancellationToken cancellationToken = default)
-            => throw new InvalidOperationException("the knowledge base is unreachable.");
-    }
 }

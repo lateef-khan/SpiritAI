@@ -19,6 +19,11 @@ internal static class SpiritDocument
     internal static IReadOnlyDictionary<string, Slot> Slots()
         => Loaded.Value.State ?? throw new InvalidOperationException("spirit.yaml declares no state: block.");
 
+    /// <summary>The facets the search tool lets the agent narrow by.</summary>
+    internal static IReadOnlyList<FilterableFacet> Filterable()
+        => Loaded.Value.Providers?.Knowledge?.Scope?.Filterable
+            ?? throw new InvalidOperationException("spirit.yaml declares no scope.filterable block.");
+
     private static Document Read()
     {
         var yaml = File.ReadAllText(
@@ -49,6 +54,32 @@ internal static class SpiritDocument
     internal sealed class Document
     {
         public Dictionary<string, Slot>? State { get; set; }
+
+        public Providers? Providers { get; set; }
+    }
+
+    /// <summary>The <c>providers:</c> block, down to the scope.</summary>
+    internal sealed class Providers
+    {
+        public KnowledgeProvider? Knowledge { get; set; }
+    }
+
+    internal sealed class KnowledgeProvider
+    {
+        public KnowledgeScope? Scope { get; set; }
+    }
+
+    internal sealed class KnowledgeScope
+    {
+        public List<FilterableFacet>? Filterable { get; set; }
+    }
+
+    /// <summary>One facet the agent may filter its own search by.</summary>
+    internal sealed class FilterableFacet
+    {
+        public string? Key { get; set; }
+
+        public string? Description { get; set; }
     }
 
     /// <summary>One declared state slot.</summary>
