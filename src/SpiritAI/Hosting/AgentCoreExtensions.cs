@@ -17,9 +17,6 @@ public static class AgentCoreExtensions
     /// <summary>The <c>binds:</c> name <c>spirit.yaml</c> gives the serial reader.</summary>
     public const string SerialBinding = "ParseSerial";
 
-    /// <summary>The <c>binds:</c> name <c>spirit.yaml</c> gives the model reader.</summary>
-    public const string ModelBinding = "LookupModel";
-
     /// <summary>The <c>binds:</c> name <c>spirit.yaml</c> gives the unit reader.</summary>
     public const string UnitBinding = "AskUnit";
 
@@ -44,7 +41,7 @@ public static class AgentCoreExtensions
     /// <param name="services">
     /// The container. A binding reads its lookup out of this when the model calls the tool, which
     /// is long after everything is built: asking for one here instead would close a circle, because
-    /// <see cref="ModelIndex"/> reaches the tool registry, and the registry is what these options
+    /// <see cref="UnitDesk"/> reaches the tool registry, and the registry is what these options
     /// are being read to build.
     /// </param>
     /// <param name="environment">Locates the skills folder relative to the host, not the working directory.</param>
@@ -57,14 +54,6 @@ public static class AgentCoreExtensions
                 SerialBinding,
                 ([Description("The number the person offered as a serial number, exactly as they wrote it.")] string serial)
                     => SerialNumber.Parse(serial))
-            .Bind(
-                ModelBinding,
-                (
-                    [Description("The product name, such as LCR or F63.")] string? productName,
-                    [Description("The year the machine was built, when the person has said it.")] int? year,
-                    CancellationToken cancellationToken)
-                    => services.GetRequiredService<ModelIndex>()
-                        .FindAsync(productName, year, cancellationToken))
             .Bind(
                 UnitBinding,
                 (

@@ -1,7 +1,5 @@
 using System.Text.Json;
 
-using AgentCore.Application.Ports;
-using AgentCore.Application.State;
 using AgentCore.Application.Tools.Registry;
 
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -54,11 +52,6 @@ public static class LookupEndpointRouteBuilderExtensions
         services.AddSingleton(provider => new UnitDesk(
             provider.GetRequiredService<UnitLookup>(),
             provider.GetRequiredService<CustomerLookup>()));
-
-        services.AddSingleton(provider => new ModelIndex(
-            provider.GetService<IKnowledgeRetrievalPort>()?.GetService<IKnowledgeFacetReadPort>(),
-            provider.GetRequiredService<VocabularyCache>(),
-            provider.GetRequiredService<ToolInvoker>()));
 
         return services;
     }

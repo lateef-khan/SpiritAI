@@ -36,23 +36,6 @@ tools:
       and the month it was built as MM/YYYY. It reads the number itself and touches no
       records, so it costs nothing and answers for a unit that was never sold.
 
-  - id: lookup_model
-    kind: binding
-    binds: LookupModel
-    description: >-
-      Which years a machine was built, and the model number one of those years carries.
-      This is the ONLY source for the years a machine exists in, and the ONLY source for a
-      model number you tell a person. A parts lookup records a year for some rows and not
-      others, so never read a build year off one, and never read out a model number from one.
-      It answers with an 'outcome' you act on:
-        model           - 'model_no' is that year's model number. 'slug' names the machine.
-        needs_year      - 'years' lists every year this machine was built. Ask which one,
-                          naming those years.
-        no_record       - that year exists and nobody has confirmed its model number. Say the
-                          model number is not confirmed, and ask for the serial number off the
-                          frame. Do not guess one, and do not answer from a parts row instead.
-        unknown_product - no machine of that name is documented.
-
   - id: ask_unit
     kind: binding
     binds: AskUnit
@@ -160,7 +143,6 @@ agents:
       tools:
         - draw
         - parse_serial
-        - lookup_model
         - ask_unit
         - search_parts
         - find_model
