@@ -3,19 +3,22 @@ using AgentCore.Application.Ports;
 using Microsoft.Extensions.AI;
 
 using SpiritAI.Handoffs.Contracts;
+using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Notifications;
 using SpiritAI.Handoffs.RealTime;
 using SpiritAI.Handoffs.Store;
 using SpiritAI.Handoffs.Transcript;
 using SpiritAI.RealTime.Presence;
+using SpiritAI.Threads;
 
 namespace SpiritAI.Handoffs.Desk;
 
 /// <summary>
-/// The visitor's side of a handoff, section 5 of the spec: the ask, the wait, and the words said
-/// while waiting. Both the public routes and the bot's own tool come through here, so a chat joins
-/// the queue the same way whichever side asked.
+/// The conversation of a handoff, section 5 of the spec: the ask, the wait, and the words either
+/// side says while a person is on the way or on the chat. The public routes, the inbox's reply,
+/// and the bot's own tool all come through here, so a chat joins the queue the same way whichever
+/// side asked, and a reply reaches the visitor the same way wherever they are.
 /// </summary>
 public sealed class HandoffDesk(
     IHandoffStore handoffs,
@@ -23,10 +26,18 @@ public sealed class HandoffDesk(
     IHandoffTranscript transcript,
     IHandoffNotifier notifier,
     IPresenceStore presence,
-    TimeProvider clock)
+    IHandoffMailer mailer,
+    TimeProvider clock,
+    ILogger<HandoffDesk> logger)
 {
     /// <summary>The role a visitor's message is stored and pushed under.</summary>
     public const string VisitorRole = "user";
+
+    /// <summary>The role a member of staff's reply is stored and pushed under.</summary>
+    public const string StaffRole = "assistant";
+
+    /// <summary>The team a staff reply is signed with, under the name.</summary>
+    public const string StaffDetail = "Support";
 
     /// <summary>How many members of staff are on a socket right now.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
@@ -126,6 +137,74 @@ public sealed class HandoffDesk(
         await notifier.MessageCreatedAsync(created, cancellationToken).ConfigureAwait(false);
 
         return created;
+    }
+
+    /// <summary>
+    /// Puts a member of staff's words in the chat they hold, and mails them on when the visitor is
+    /// not there to read them.
+    /// </summary>
+    /// <param name="open">The chat's open row. The caller has checked it is this member's.</param>
+    /// <param name="member">Who is replying.</param>
+    /// <param name="text">The words.</param>
+    /// <param name="cancellationToken">Cancels the work.</param>
+    /// <returns>The message as it was pushed.</returns>
+    /// <exception cref="NotSupportedException">AgentCore cannot yet append between turns.</exception>
+    public async Task<HandoffMessage> StaffSaysAsync(
+        Handoff open, HandoffStaffMember member, string text, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(open);
+        ArgumentNullException.ThrowIfNull(member);
+        ArgumentException.ThrowIfNullOrEmpty(text);
+
+        var speaker = HandoffSpeaker.Human(member.Name, StaffDetail);
+        var at = clock.GetUtcNow();
+        var message = new ChatMessage(ChatRole.Assistant, text) { CreatedAt = at };
+        SpeakerProperty.Attach(message, speaker);
+
+        await transcript.AppendAsync(open.CallId, message, cancellationToken).ConfigureAwait(false);
+
+        var created = new HandoffMessage(open.CallId, StaffRole, text, speaker, at);
+
+        await notifier.MessageCreatedAsync(created, cancellationToken).ConfigureAwait(false);
+
+        if (open.Email is { } email && !await VisitorIsHereAsync(open.CallId, cancellationToken).ConfigureAwait(false))
+        {
+            await MailAsync(new HandoffReplyMail(email, open.CallId, member.Name, text), cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        return created;
+    }
+
+    /// <summary>Whether the chat's owner has a socket open right now.</summary>
+    /// <remarks>
+    /// A chat with no owner on record has nobody who could be here, so it counts as away and the
+    /// mail goes: the address on the row is the only way to reach whoever left it.
+    /// </remarks>
+    private async Task<bool> VisitorIsHereAsync(string callId, CancellationToken cancellationToken)
+    {
+        var call = await calls.GetAsync(callId, cancellationToken).ConfigureAwait(false);
+
+        return ThreadEnvelope.OwnerOf(call?.Custom) is { } owner
+            && await presence.IsOnlineAsync(owner, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Sends the reply on by mail, and swallows a miss.</summary>
+    /// <remarks>
+    /// By now the words are in the chat and on the socket. Mail is the bridge to a visitor who
+    /// left, not the record of what was said, so a bridge that is down costs a log line and never
+    /// the reply.
+    /// </remarks>
+    private async Task MailAsync(HandoffReplyMail mail, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await mailer.SendReplyAsync(mail, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception failure) when (failure is not OperationCanceledException)
+        {
+            logger.LogError(failure, "The reply on call {CallId} was not mailed.", mail.CallId);
+        }
     }
 
     /// <summary>

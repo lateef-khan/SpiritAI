@@ -1,9 +1,18 @@
 using AgentCore.Application.Calls.Memory;
 
+using Microsoft.Extensions.Logging.Abstractions;
+
+using SpiritAI.Handoffs;
+using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Desk;
+using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Model;
+using SpiritAI.Handoffs.RealTime;
+using SpiritAI.Handoffs.Transcript;
+using SpiritAI.PublicChat;
 using SpiritAI.Tests.Auth;
 using SpiritAI.Tests.RealTime;
+using SpiritAI.Threads;
 
 using Xunit;
 
@@ -14,6 +23,10 @@ namespace SpiritAI.Tests.Handoffs.Desk;
 /// </summary>
 public sealed class HandoffDeskTests
 {
+    private const string VisitorKey = "v1";
+
+    private static readonly HandoffStaffMember Dana = new() { Email = "dana@example.com", Name = "Dana R." };
+
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     private readonly TestTimeProvider _clock = new(new DateTimeOffset(2026, 9, 11, 9, 0, 0, TimeSpan.Zero));
@@ -21,19 +34,16 @@ public sealed class HandoffDeskTests
     private readonly InMemoryCallStore _calls;
     private readonly RecordingHandoffTranscript _transcript = new();
     private readonly RecordingHandoffNotifier _notifier = new();
+    private readonly FakePresenceStore _presence;
+    private readonly RecordingHandoffMailer _mailer = new();
     private readonly HandoffDesk _desk;
 
     public HandoffDeskTests()
     {
         _store = new FakeHandoffStore(_clock);
         _calls = new InMemoryCallStore(_clock);
-        _desk = new HandoffDesk(
-            _store,
-            _calls,
-            _transcript,
-            _notifier,
-            new FakePresenceStore(_clock, TimeSpan.FromSeconds(90)),
-            _clock);
+        _presence = new FakePresenceStore(_clock, TimeSpan.FromSeconds(90));
+        _desk = Desk(_mailer);
     }
 
     [Fact]
@@ -64,6 +74,75 @@ public sealed class HandoffDeskTests
         Assert.Empty(_notifier.Events);
     }
 
+    [Fact]
+    public async Task AReplyIsMailedWhenTheVisitorIsAwayAndLeftAnEmail()
+    {
+        var open = await TakenChatAsync(email: "pat@example.com");
+
+        var created = await _desk.StaffSaysAsync(open, Dana, "Try the tension bolt.", Cancel);
+
+        var mail = Assert.Single(_mailer.Sent);
+        Assert.Equal("pat@example.com", mail.To);
+        Assert.Equal(open.CallId, mail.CallId);
+        Assert.Equal("Dana R.", mail.StaffName);
+        Assert.Equal("Try the tension bolt.", mail.Text);
+
+        AssertStoredAndPushed(open.CallId, created);
+    }
+
+    [Fact]
+    public async Task NoMailWhileTheVisitorIsOnline()
+    {
+        var open = await TakenChatAsync(email: "pat@example.com");
+        await _presence.ConnectAsync(
+            "socket-1", VisitorPrincipal.KeyOf(VisitorKey), name: null, HandoffAdmission.VisitorKind, Cancel);
+
+        var created = await _desk.StaffSaysAsync(open, Dana, "Try the tension bolt.", Cancel);
+
+        Assert.Empty(_mailer.Sent);
+        AssertStoredAndPushed(open.CallId, created);
+    }
+
+    [Fact]
+    public async Task NoMailWithoutAnEmail()
+    {
+        var open = await TakenChatAsync(email: null);
+
+        var created = await _desk.StaffSaysAsync(open, Dana, "Try the tension bolt.", Cancel);
+
+        Assert.Empty(_mailer.Sent);
+        AssertStoredAndPushed(open.CallId, created);
+    }
+
+    [Fact]
+    public async Task AFailedSendNeverFailsTheReply()
+    {
+        var open = await TakenChatAsync(email: "pat@example.com");
+
+        var desk = Desk(new ThrowingHandoffMailer());
+
+        var created = await desk.StaffSaysAsync(open, Dana, "Try the tension bolt.", Cancel);
+
+        Assert.Equal("Try the tension bolt.", created.Text);
+        AssertStoredAndPushed(open.CallId, created);
+    }
+
+    /// <summary>The reply is in the transcript, signed, and was pushed as the message returned.</summary>
+    private void AssertStoredAndPushed(string callId, HandoffMessage created)
+    {
+        var (storedCall, stored) = Assert.Single(_transcript.Appended);
+        Assert.Equal(callId, storedCall);
+        Assert.Equal(created.Text, stored.Text);
+        Assert.Equal("Dana R.", SpeakerProperty.Read(stored)?.GetProperty("name").GetString());
+
+        Assert.Equal("assistant", created.Role);
+        Assert.Equal("human", created.Speaker?.Kind);
+        Assert.Contains(("message.created", (object)created), _notifier.Pushed);
+    }
+
+    private HandoffDesk Desk(IHandoffMailer mailer)
+        => new(_store, _calls, _transcript, _notifier, _presence, mailer, _clock, NullLogger<HandoffDesk>.Instance);
+
     /// <summary>Asks for a person on a new chat, a minute after the last ask, so the line has an order.</summary>
     private async Task<string> AskAsync()
     {
@@ -74,5 +153,20 @@ public sealed class HandoffDeskTests
         await _store.AskAsync(callId, HandoffAskedBy.Visitor, null, Cancel);
 
         return callId;
+    }
+
+    /// <summary>A visitor's chat that asked, was taken by Dana, and may have an email on it.</summary>
+    private async Task<Handoff> TakenChatAsync(string? email)
+    {
+        var callId = await AskAsync();
+        await _calls.SetCustomAsync(callId, ThreadEnvelope.Build(VisitorPrincipal.KeyOf(VisitorKey), null), Cancel);
+        await _store.ClaimAsync(callId, "user_dana", Dana.Name, Cancel);
+
+        if (email is not null)
+        {
+            await _store.SetEmailAsync(callId, email, Cancel);
+        }
+
+        return (await _store.OpenAsync(callId, Cancel))!;
     }
 }

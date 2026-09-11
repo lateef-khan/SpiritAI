@@ -25,9 +25,6 @@ public static class StaffHandoffEndpoints
     /// <summary>How many rows a listing holds when the caller asks for no size.</summary>
     public const int DefaultPageSize = 30;
 
-    /// <summary>The team a staff reply is signed with, under the name.</summary>
-    public const string StaffDetail = "Support";
-
     private const string One = $"{Pattern}/{{callId}}";
 
     /// <summary>Maps the inbox on <see cref="Pattern"/>.</summary>
@@ -226,9 +223,7 @@ public static class StaffHandoffEndpoints
         HttpContext http,
         IOptions<HandoffOptions> options,
         IHandoffStore store,
-        IHandoffTranscript transcript,
-        IHandoffNotifier notifier,
-        TimeProvider clock,
+        HandoffDesk desk,
         string callId,
         HandoffReplyRequest? body,
         CancellationToken cancellationToken)
@@ -254,14 +249,11 @@ public static class StaffHandoffEndpoints
                 return Problem(StatusCodes.Status403Forbidden, "Not yours.", $"{row.AssigneeName} has this chat.");
             }
 
-            var speaker = HandoffSpeaker.Human(member.Name, StaffDetail);
-            var at = clock.GetUtcNow();
-            var message = new ChatMessage(ChatRole.Assistant, text) { CreatedAt = at };
-            SpeakerProperty.Attach(message, speaker);
-
             try
             {
-                await transcript.AppendAsync(callId, message, cancellationToken).ConfigureAwait(false);
+                var created = await desk.StaffSaysAsync(row, member, text, cancellationToken).ConfigureAwait(false);
+
+                return TypedResults.Created($"{Pattern}/{callId}/messages", created);
             }
             catch (NotSupportedException)
             {
@@ -272,12 +264,6 @@ public static class StaffHandoffEndpoints
                     "Replies are not stored yet.",
                     "AgentCore cannot store a human reply yet.");
             }
-
-            var created = new HandoffMessage(callId, "assistant", text, speaker, at);
-
-            await notifier.MessageCreatedAsync(created, cancellationToken).ConfigureAwait(false);
-
-            return TypedResults.Created($"{Pattern}/{callId}/messages", created);
         });
 
     /// <summary>Hands the chat back to the bot, from waiting or from human.</summary>

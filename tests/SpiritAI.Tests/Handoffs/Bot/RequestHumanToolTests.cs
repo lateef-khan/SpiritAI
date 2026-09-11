@@ -1,5 +1,7 @@
 using AgentCore.Application.Calls.Memory;
 
+using Microsoft.Extensions.Logging.Abstractions;
+
 using SpiritAI.Handoffs.Bot;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Model;
@@ -33,7 +35,15 @@ public sealed class RequestHumanToolTests
         _presence = new FakePresenceStore(_clock, TimeSpan.FromSeconds(90));
         _tool = new RequestHumanTool(
             _current,
-            new HandoffDesk(_store, _calls, new RecordingHandoffTranscript(), _notifier, _presence, _clock));
+            new HandoffDesk(
+                _store,
+                _calls,
+                new RecordingHandoffTranscript(),
+                _notifier,
+                _presence,
+                new RecordingHandoffMailer(),
+                _clock,
+                NullLogger<HandoffDesk>.Instance));
     }
 
     [Fact]

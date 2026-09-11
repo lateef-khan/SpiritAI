@@ -2,6 +2,7 @@ using AgentCore.Hosting;
 using SpiritAI.Auth;
 using SpiritAI.Database;
 using SpiritAI.Handoffs;
+using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.RealTime;
 using SpiritAI.Handoffs.Staff;
 using SpiritAI.Handoffs.Visitors;
@@ -26,6 +27,8 @@ builder.Services.AddSpiritDatabase(builder.Configuration);
 builder.Services.AddRealTime(builder.Configuration);
 
 builder.Services.AddHandoffs(builder.Configuration);
+
+builder.Services.AddHandoffMail(builder.Configuration);
 
 builder.Services.AddHandoffRealTime();
 

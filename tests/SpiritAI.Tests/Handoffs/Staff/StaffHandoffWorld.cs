@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using SpiritAI.Auth;
 using SpiritAI.Handoffs;
 using SpiritAI.Handoffs.Desk;
+using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Notifications;
 using SpiritAI.Handoffs.Staff;
@@ -104,6 +105,7 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
                 services.AddSingleton<IHandoffTranscript>(transcript ?? recording);
                 services.AddSingleton<IHandoffNotifier>(notifier);
                 services.AddSingleton<IPresenceStore>(new FakePresenceStore(clock, TimeSpan.FromSeconds(90)));
+                services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());
                 services.AddScoped<HandoffDesk>();
             },
             app =>

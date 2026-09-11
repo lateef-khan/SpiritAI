@@ -52,6 +52,15 @@ Widget__AllowedOrigins__0 = "https://www.spiritfitness.com"
 # The SignalR backplane's Redis URL is a secret, not an env entry:
 #   fly secrets set RealTime__Redis=<Upstash connection string>
 
+# Mail is off until the sender domain is verified in Resend. To turn it on, the
+# API key is a secret:
+#   fly secrets set Handoff__Mail__ApiKey=<Resend API key>
+# and the rest goes in [env] above:
+#   Handoff__Mail__Enabled = "true"
+#   Handoff__Mail__From = "Spirit Support <support@spiritfitness.com>"
+#   Handoff__Mail__ReplyTo = "support@spiritfitness.com"
+# With Enabled on and From or the key missing, the host refuses to start.
+
 [http_service]
 internal_port = 8080
 force_https = true
