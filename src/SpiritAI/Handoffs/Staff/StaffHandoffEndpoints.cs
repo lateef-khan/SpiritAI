@@ -2,7 +2,6 @@ using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Options;
 
 using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Desk;
@@ -90,12 +89,12 @@ public static class StaffHandoffEndpoints
 
     /// <summary>Runs a route body for the member of staff behind the request, or refuses it.</summary>
     /// <param name="http">The request, carrying whoever the token named.</param>
-    /// <param name="options">The staff list.</param>
+    /// <param name="staff">Who counts as staff.</param>
     /// <param name="body">The route, given the caller's key and their entry in the list.</param>
     /// <returns>What the route answered, 401 when there is no caller, or 403 when they are not staff.</returns>
     private static async Task<IResult> ForStaffAsync(
         HttpContext http,
-        IOptions<HandoffOptions> options,
+        StaffGate staff,
         Func<string, HandoffStaffMember, Task<IResult>> body)
     {
         if (CallerPrincipal.KeyOf(http.User) is not { } key)
@@ -103,9 +102,9 @@ public static class StaffHandoffEndpoints
             return TypedResults.Unauthorized();
         }
 
-        if (StaffGate.MemberOf(http.User, options.Value) is not { } member)
+        if (await staff.MemberOfAsync(http.User, http.RequestAborted).ConfigureAwait(false) is not { } member)
         {
-            return Problem(StatusCodes.Status403Forbidden, "Not staff.", "This caller is not on the staff list.");
+            return Problem(StatusCodes.Status403Forbidden, "Not staff.", "This caller has no Neon sign-in.");
         }
 
         return await body(key, member).ConfigureAwait(false);
@@ -114,13 +113,13 @@ public static class StaffHandoffEndpoints
     /// <summary>The rows in one state, the queue by default.</summary>
     private static Task<IResult> ListAsync(
         HttpContext http,
-        IOptions<HandoffOptions> options,
+        StaffGate staff,
         IHandoffStore store,
         ICallStore calls,
         string? status,
         int? limit,
         CancellationToken cancellationToken)
-        => ForStaffAsync(http, options, async (_, _) =>
+        => ForStaffAsync(http, staff, async (_, _) =>
         {
             if (!HandoffSummary.TryReadStatus(status ?? HandoffSummary.StatusOf(HandoffStatus.Waiting), out var read))
             {
@@ -142,12 +141,12 @@ public static class StaffHandoffEndpoints
     /// <summary>The chat's open handoff, or the one closed most recently.</summary>
     private static Task<IResult> FetchAsync(
         HttpContext http,
-        IOptions<HandoffOptions> options,
+        StaffGate staff,
         IHandoffStore store,
         ICallStore calls,
         string callId,
         CancellationToken cancellationToken)
-        => ForStaffAsync(http, options, async (_, _) =>
+        => ForStaffAsync(http, staff, async (_, _) =>
         {
             if (await store.LatestAsync(callId, cancellationToken).ConfigureAwait(false) is not { } row)
             {
@@ -160,12 +159,12 @@ public static class StaffHandoffEndpoints
     /// <summary>The whole chat, in the shape the browser draws a thread from.</summary>
     private static Task<IResult> HistoryAsync(
         HttpContext http,
-        IOptions<HandoffOptions> options,
+        StaffGate staff,
         IHandoffStore store,
         ICallStore calls,
         string callId,
         CancellationToken cancellationToken)
-        => ForStaffAsync(http, options, async (_, _) =>
+        => ForStaffAsync(http, staff, async (_, _) =>
         {
             // A chat that never asked for a person is not staff's to read.
             if (await store.LatestAsync(callId, cancellationToken).ConfigureAwait(false) is null
@@ -182,7 +181,7 @@ public static class StaffHandoffEndpoints
     /// <summary>Takes a waiting chat for the caller.</summary>
     private static Task<IResult> ClaimAsync(
         HttpContext http,
-        IOptions<HandoffOptions> options,
+        StaffGate staff,
         IHandoffStore store,
         ICallStore calls,
         IHandoffTranscript transcript,
@@ -192,7 +191,7 @@ public static class StaffHandoffEndpoints
         ILoggerFactory loggers,
         string callId,
         CancellationToken cancellationToken)
-        => ForStaffAsync(http, options, async (key, member) =>
+        => ForStaffAsync(http, staff, async (key, member) =>
         {
             var claim = await store.ClaimAsync(callId, key, member.Name, cancellationToken).ConfigureAwait(false);
 
@@ -221,13 +220,13 @@ public static class StaffHandoffEndpoints
     /// <summary>Puts the caller's words in a chat they hold.</summary>
     private static Task<IResult> ReplyAsync(
         HttpContext http,
-        IOptions<HandoffOptions> options,
+        StaffGate staff,
         IHandoffStore store,
         HandoffDesk desk,
         string callId,
         HandoffReplyRequest? body,
         CancellationToken cancellationToken)
-        => ForStaffAsync(http, options, async (key, member) =>
+        => ForStaffAsync(http, staff, async (key, member) =>
         {
             if (body is not { Text: { } text } || string.IsNullOrWhiteSpace(text))
             {
@@ -269,7 +268,7 @@ public static class StaffHandoffEndpoints
     /// <summary>Hands the chat back to the bot, from waiting or from human.</summary>
     private static Task<IResult> FinishAsync(
         HttpContext http,
-        IOptions<HandoffOptions> options,
+        StaffGate staff,
         IHandoffStore store,
         IHandoffTranscript transcript,
         IHandoffNotifier notifier,
@@ -278,7 +277,7 @@ public static class StaffHandoffEndpoints
         ILoggerFactory loggers,
         string callId,
         CancellationToken cancellationToken)
-        => ForStaffAsync(http, options, async (_, _) =>
+        => ForStaffAsync(http, staff, async (_, _) =>
         {
             if (await store.OpenAsync(callId, cancellationToken).ConfigureAwait(false) is not { } row)
             {

@@ -3,14 +3,15 @@ using System.Security.Claims;
 using AgentCore.Application.Calls.Memory;
 
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
-using SpiritAI.Handoffs;
+using SpiritAI.Auth.Users;
 using SpiritAI.Handoffs.RealTime;
+using SpiritAI.Handoffs.Staff;
 using SpiritAI.PublicChat;
 using SpiritAI.RealTime;
 using SpiritAI.Tests.Auth;
+using SpiritAI.Tests.Auth.Users;
 using SpiritAI.Threads;
 
 using Xunit;
@@ -30,12 +31,9 @@ public sealed class HandoffAdmissionTests
 
     public HandoffAdmissionTests()
     {
-        var options = new HandoffOptions
-        {
-            Staff = [new HandoffStaffMember { Email = "dana@example.com", Name = "Dana R." }],
-        };
+        var staff = new StaffGate(new FakeUserDirectory(new AuthUser("user_dana", "Dana Rivera", "dana@example.com")));
 
-        _admission = new HandoffAdmission(_calls, Options.Create(options));
+        _admission = new HandoffAdmission(_calls, staff);
     }
 
     [Fact]

@@ -2,8 +2,6 @@ using System.Security.Claims;
 
 using AgentCore.Application.Ports;
 
-using Microsoft.Extensions.Options;
-
 using SpiritAI.Handoffs.Staff;
 using SpiritAI.PublicChat;
 using SpiritAI.RealTime;
@@ -16,7 +14,7 @@ namespace SpiritAI.Handoffs.RealTime;
 /// the staff group and may signal any chat. A visitor names a chat and their key, is checked to
 /// own that chat, joins its group, and may signal staff. Anyone else is left to another feature.
 /// </summary>
-public sealed class HandoffAdmission(ICallStore calls, IOptions<HandoffOptions> options) : IRealTimeAdmission
+public sealed class HandoffAdmission(ICallStore calls, StaffGate staff) : IRealTimeAdmission
 {
     /// <summary>The kind a member of staff is counted under.</summary>
     public const string StaffKind = "staff";
@@ -36,20 +34,24 @@ public sealed class HandoffAdmission(ICallStore calls, IOptions<HandoffOptions> 
         ArgumentNullException.ThrowIfNull(request);
 
         return request.User is { } user
-            ? ValueTask.FromResult(AdmitStaff(user))
+            ? AdmitStaffAsync(user, cancellationToken)
             : AdmitVisitorAsync(request.Query, cancellationToken);
     }
 
     /// <summary>
-    /// A signed-in caller who is on the staff list. One who is not gets <see langword="null"/>,
-    /// not a refusal: a dealer is not staff, but another feature may still know them.
+    /// A signed-in caller the gate knows. One it does not gets <see langword="null"/>, not a
+    /// refusal: another feature may still know them.
     /// </summary>
-    private RealTimeCaller? AdmitStaff(ClaimsPrincipal user)
+    private async ValueTask<RealTimeCaller?> AdmitStaffAsync(ClaimsPrincipal user, CancellationToken cancellationToken)
     {
-        var member = StaffGate.MemberOf(user, options.Value);
-        var key = CallerPrincipal.KeyOf(user);
+        if (CallerPrincipal.KeyOf(user) is not { } key)
+        {
+            return null;
+        }
 
-        if (member is null || key is null)
+        var member = await staff.MemberOfAsync(user, cancellationToken).ConfigureAwait(false);
+
+        if (member is null)
         {
             return null;
         }

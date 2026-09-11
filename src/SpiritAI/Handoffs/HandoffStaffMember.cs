@@ -1,13 +1,8 @@
 namespace SpiritAI.Handoffs;
 
 /// <summary>
-/// One person allowed to take a chat, as <see cref="HandoffOptions.Staff"/> lists them.
+/// One person allowed to take a chat, as <see cref="Staff.StaffGate"/> admits them.
 /// </summary>
-public sealed class HandoffStaffMember
-{
-    /// <summary>The address on their Neon sign-in. Matched without regard to case.</summary>
-    public string Email { get; set; } = string.Empty;
-
-    /// <summary>What the visitor sees above their replies.</summary>
-    public string Name { get; set; } = string.Empty;
-}
+/// <param name="Email">The address on their Neon sign-in.</param>
+/// <param name="Name">What the visitor sees above their replies.</param>
+public sealed record HandoffStaffMember(string Email, string Name);

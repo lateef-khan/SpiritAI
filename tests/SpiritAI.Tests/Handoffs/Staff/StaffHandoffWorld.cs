@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using SpiritAI.Auth;
+using SpiritAI.Auth.Users;
 using SpiritAI.Handoffs;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Mail;
@@ -19,6 +20,7 @@ using SpiritAI.Handoffs.Store;
 using SpiritAI.Handoffs.Transcript;
 using SpiritAI.RealTime.Presence;
 using SpiritAI.Tests.Auth;
+using SpiritAI.Tests.Auth.Users;
 using SpiritAI.Tests.RealTime;
 using SpiritAI.Tests.Threads;
 
@@ -68,7 +70,7 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
 
     public TestTimeProvider Clock { get; }
 
-    /// <summary>Dana R., first on the staff list.</summary>
+    /// <summary>Dana R., a person in the directory.</summary>
     public StaffCaller Staff { get; }
 
     /// <summary>Sam, second on the list, signed in with the address in another case.</summary>
@@ -94,11 +96,10 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
             kit,
             services =>
             {
-                services.Configure<HandoffOptions>(options => options.Staff =
-                [
-                    new HandoffStaffMember { Email = "dana@example.com", Name = "Dana R." },
-                    new HandoffStaffMember { Email = "sam@example.com", Name = "Sam" },
-                ]);
+                services.AddSingleton<IUserDirectory>(new FakeUserDirectory(
+                    new AuthUser("user_dana", "Dana Rivera", "dana@example.com"),
+                    new AuthUser("user_sam", "Sam", "sam@example.com")));
+                services.AddScoped<StaffGate>();
                 services.AddSingleton<TimeProvider>(clock);
                 services.AddSingleton<ICallStore>(calls);
                 services.AddSingleton<IHandoffStore>(store);

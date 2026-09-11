@@ -25,7 +25,7 @@ public sealed class HandoffDeskTests
 {
     private const string VisitorKey = "v1";
 
-    private static readonly HandoffStaffMember Dana = new() { Email = "dana@example.com", Name = "Dana R." };
+    private static readonly HandoffStaffMember Dana = new("dana@example.com", "Dana R.");
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
