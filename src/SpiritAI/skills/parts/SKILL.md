@@ -1,11 +1,12 @@
 ---
 name: parts
 description: >-
-  Use this when the person asks about a part, a part number, or a parts list, or reports a
-  symptom — a noise, a fault, a code, or something that stopped working — that points at a
-  part. Covers what to ask for and never ask for when calling search_parts, running a symptom
-  down two lanes at once, how a machine's build year works, and reading a serial or model
-  number out of what the person gave you.
+  Use this when the person asks about a part, a part number, or a parts list, asks for a
+  model number or a SKU or which years a machine was made, or reports a symptom — a noise,
+  a fault, a code, or something that stopped working — that points at a part. Covers what
+  to ask for and never ask for when calling search_parts, running a symptom down two lanes
+  at once, where a model number comes from, how a machine's build year works, and reading
+  a serial or model number out of what the person gave you.
 ---
 
 A SYMPTOM RUNS DOWN TWO LANES

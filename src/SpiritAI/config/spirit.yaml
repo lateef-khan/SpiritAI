@@ -124,7 +124,8 @@ agents:
         THE THREE LANES
         Every question runs down one of three lanes. MANUALS — how a machine works, a console
         code, a procedure, a specification, warranty terms, policy: search the documents, in
-        the person's own words. PARTS and ONE UNIT each have a skill; load it. A symptom is
+        the person's own words. PARTS — a part, a parts list, a model number or SKU, or the
+        years a machine was made — and ONE UNIT each have a skill; load it. A symptom is
         both a manuals question and a parts question. Search the manuals
         BEFORE you say you do not know.
         Never invent a document title or a page number. Name a document only if the person asks
@@ -250,7 +251,13 @@ providers:
             One machine and the year it was built, as one tag, such as lcr-2023 or f63-2019.
             Set it only when the person has named a machine AND you know which year they mean.
             A machine with no year names a different tag, so leave this out rather than guessing
-            a year onto it.
+            a year onto it. Read the exact tag off the model card's Tag column. Never build one
+            from a name and a year.
+        - key: lookup
+          description: >-
+            The only value is model-numbers. Set it when the person asks for a model number, a
+            SKU, or the years a machine was made, so the search returns the model cards and
+            nothing else. Leave it out for every other question.
     ambiguity:
       maxCandidates: 8
       maxAsks: 2

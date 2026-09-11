@@ -33,4 +33,16 @@ public sealed class KnowledgeFilterTests
             Assert.False(string.IsNullOrWhiteSpace(facet.Description));
         }
     }
+
+    [Fact]
+    public void TheLookupFilterNamesItsOnlyValue()
+    {
+        // kb.yaml declares `lookup` with exactly one legal value, model-numbers, carried by the
+        // product model cards and nothing else. The description is the only place the agent
+        // learns that value, so it has to spell it out.
+        var facet = Assert.Single(
+            SpiritDocument.Filterable(), entry => entry.Key == "lookup");
+
+        Assert.Contains("model-numbers", facet.Description, StringComparison.Ordinal);
+    }
 }
