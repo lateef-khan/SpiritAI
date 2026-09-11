@@ -49,7 +49,7 @@ tools:
 agents:
   defaults:
     model: { ref: reply }
-    knowledge: { mode: tool, limit: 5, citations: true, scoped: true }
+    knowledge: { mode: tool, limit: 5, citations: true, scoped: false }
     compaction: { strategy: context_window, trigger: { tokens: 300000 }, keep: 6, foldResultChars: 300 }
     instructions: |
       You are Spirit's agent. Spirit makes commercial fitness equipment. You serve Spirit
