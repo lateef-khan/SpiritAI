@@ -15,9 +15,10 @@ internal static class SpiritDocument
 {
     private static readonly Lazy<Document> Loaded = new(Read);
 
-    /// <summary>The state slots the document declares, by name.</summary>
-    internal static IReadOnlyDictionary<string, Slot> Slots()
-        => Loaded.Value.State ?? throw new InvalidOperationException("spirit.yaml declares no state: block.");
+    /// <summary>The facets the search tool lets the agent narrow by.</summary>
+    internal static IReadOnlyList<FilterableFacet> Filterable()
+        => Loaded.Value.Providers?.Knowledge?.Scope?.Filterable
+            ?? throw new InvalidOperationException("spirit.yaml declares no scope.filterable block.");
 
     private static Document Read()
     {
@@ -48,26 +49,30 @@ internal static class SpiritDocument
     /// <summary>As much of the document as these assertions read.</summary>
     internal sealed class Document
     {
-        public Dictionary<string, Slot>? State { get; set; }
+        public Providers? Providers { get; set; }
     }
 
-    /// <summary>One declared state slot.</summary>
-    internal sealed class Slot
+    /// <summary>The <c>providers:</c> block, down to the scope.</summary>
+    internal sealed class Providers
     {
-        public string? Type { get; set; }
-
-        public string? Writer { get; set; }
-
-        public SlotVocabulary? Vocabulary { get; set; }
+        public KnowledgeProvider? Knowledge { get; set; }
     }
 
-    /// <summary>The <c>vocabulary:</c> block a slot may carry.</summary>
-    internal sealed class SlotVocabulary
+    internal sealed class KnowledgeProvider
     {
-        public string? From { get; set; }
+        public KnowledgeScope? Scope { get; set; }
+    }
 
-        public string? Linker { get; set; }
+    internal sealed class KnowledgeScope
+    {
+        public List<FilterableFacet>? Filterable { get; set; }
+    }
 
-        public int RefreshSeconds { get; set; }
+    /// <summary>One facet the agent may filter its own search by.</summary>
+    internal sealed class FilterableFacet
+    {
+        public string? Key { get; set; }
+
+        public string? Description { get; set; }
     }
 }

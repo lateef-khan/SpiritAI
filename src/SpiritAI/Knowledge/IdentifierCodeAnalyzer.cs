@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 
 using AgentCore.Application.Knowledge;
-using AgentCore.Application.State;
 
 namespace SpiritAI.Knowledge;
 
@@ -17,9 +16,6 @@ public sealed partial class IdentifierCodeAnalyzer(Func<IReadOnlySet<string>>? p
 {
     /// <summary>The name <c>providers.knowledge.analyzer</c> selects this by.</summary>
     public const string AnalyzerName = "identifier-codes";
-
-    /// <summary>The state slot whose vocabulary carries the model slugs.</summary>
-    public const string ModelSlot = "model";
 
     private static readonly IReadOnlySet<string> NoProducts =
         new HashSet<string>(StringComparer.Ordinal);
@@ -61,14 +57,6 @@ public sealed partial class IdentifierCodeAnalyzer(Func<IReadOnlySet<string>>? p
                 .Where(product => product.Length > 0),
             StringComparer.Ordinal);
     }
-
-    /// <summary>Reads the product names out of the cache the vocabulary refresh writes into.</summary>
-    /// <param name="vocabulary">The cache, or <see langword="null"/> when the host registered none.</param>
-    /// <returns>The product names, or an empty set when the slot has never been read.</returns>
-    public static IReadOnlySet<string> ProductsIn(VocabularyCache? vocabulary)
-        => vocabulary?.Snapshot().TryGetValue(ModelSlot, out var view) == true
-            ? ProductsIn(view.Originals)
-            : NoProducts;
 
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException"><paramref name="query"/> is <see langword="null"/>.</exception>

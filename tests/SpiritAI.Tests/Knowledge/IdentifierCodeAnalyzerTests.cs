@@ -1,5 +1,3 @@
-using AgentCore.Application.State;
-
 using SpiritAI.Knowledge;
 
 using Xunit;
@@ -158,32 +156,6 @@ public sealed class IdentifierCodeAnalyzerTests
     [InlineData("xth-rails", "xth-rails")]
     public void DerivesAProductNameFromASlug(string slug, string expected)
         => Assert.Contains(expected, IdentifierCodeAnalyzer.ProductsIn([slug]));
-
-    [Fact]
-    public void ReadsTheProductsOutOfAFilledVocabularyCache()
-    {
-        VocabularyCache cache = new();
-        cache.Replace(IdentifierCodeAnalyzer.ModelSlot, ["lcr-2023", "lcr-2026", "f63-2019", "srvo"], 2000);
-
-        Assert.Equal(
-            ["f63", "lcr", "srvo"],
-            IdentifierCodeAnalyzer.ProductsIn(cache).Order(StringComparer.Ordinal));
-    }
-
-    [Fact]
-    public void ReadsNoProductWhenTheCacheHasNoModelSlot()
-    {
-        // The slot name here and the one spirit.yaml declares are the same string or this reads
-        // empty forever, and nothing anywhere says so.
-        VocabularyCache cache = new();
-        cache.Replace("product_line", ["treadmill", "bike"], 2000);
-
-        Assert.Empty(IdentifierCodeAnalyzer.ProductsIn(cache));
-    }
-
-    [Fact]
-    public void ReadsNoProductWhenTheHostRegisteredNoCache()
-        => Assert.Empty(IdentifierCodeAnalyzer.ProductsIn((VocabularyCache?)null));
 
     private static IdentifierCodeAnalyzer Analyzer() => new(() => Products);
 }

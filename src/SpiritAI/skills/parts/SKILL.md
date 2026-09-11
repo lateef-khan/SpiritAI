@@ -1,11 +1,12 @@
 ---
 name: parts
 description: >-
-  Use this when the person asks about a part, a part number, or a parts list, or reports a
-  symptom — a noise, a fault, a code, or something that stopped working — that points at a
-  part. Covers what to ask for and never ask for when calling search_parts, running a symptom
-  down two lanes at once, how a machine's build year works, and reading a serial or model
-  number out of what the person gave you.
+  Use this when the person asks about a part, a part number, or a parts list, asks for a
+  model number or a SKU or which years a machine was made, or reports a symptom — a noise,
+  a fault, a code, or something that stopped working — that points at a part. Covers what
+  to ask for and never ask for when calling search_parts, running a symptom down two lanes
+  at once, where a model number comes from, how a machine's build year works, and reading
+  a serial or model number out of what the person gave you.
 ---
 
 A SYMPTOM RUNS DOWN TWO LANES
@@ -16,20 +17,49 @@ these in the SAME step, never one after the other:
      belt, then roller.
 Then give the person the cause AND what the lookups came back with.
 
+THE MODEL CARD
+Every product family has one card in the manuals whose body is a table with three columns:
+Year, Model number, Tag. The search's filters argument says how to reach it. Each row is one
+year the machine was built. A row that reads "not confirmed" means nobody has confirmed that
+year's number. The Tag column is the model filter for every manuals search about that
+machine; the Model number column is what you say out loud when asked for a SKU.
+The filters argument belongs to the manuals search only. find_model, search_parts, draw
+and parse_serial take no filters; never pass one to them.
+
 HOW YOU FIND THE PARTS
 1. A product name. Call search_parts with Name and Search. One call.
 2. A product name AND a year. Call find_model with the product name and look for that
    year in the model names it returns. A row named "SOLE F63 2016" IS the 2016 machine;
-   use its model number and call search_parts with ModelNo. Only when no model name
-   carries the year does lookup_model decide it, as in step 4.
+   use its model number to call search_parts with ModelNo. That number is a key for your
+   own next lookup and nothing else. Only when no model name carries the year does the
+   model card decide it, as in step 4.
 3. OtherModelNos came back non-empty and no year has been given yet. The parts may
-   differ by year. Call lookup_model with the product name for the authoritative year
-   list from the manuals, and ask which year, naming those years.
-4. No model name carries the year the person gave. lookup_model with the name and year
-   gives a confirmed model number. Then call search_parts with ModelNo and Search.
+   differ by year. Read the model card and ask which year, naming the years in its rows.
+4. No model name carries the year the person gave. Read the model card; the row for the
+   person's year gives the model number. Then call search_parts with ModelNo and Search.
+   If the card has no row for that year, or the row reads "not confirmed", ask for the
+   serial number off the frame.
 5. A serial was offered. search_parts takes SerialNo directly.
 If a word finds nothing, try the next word for the same part before you conclude the
 machine does not list it: motor, then drive, then controller.
+
+A MODEL NUMBER YOU SAY OUT LOUD COMES FROM TWO PLACES, IN THIS ORDER
+When a person ASKS for a model number or a SKU:
+  1. Call find_model with the product name. If exactly one row's name carries the
+     person's year, as "SOLE F63 2016" does, say that row's model number. If the person
+     gave no year and the product has exactly one row, say that row's number.
+  2. Otherwise read the model card. Say only the number written in the row for the
+     person's year. If the person gave no year and the card has several rows, ask which
+     year, naming the rows. Do not say a number until you have the year.
+  3. If the row reads "not confirmed", or the card has no row for that year, say the model
+     number is not confirmed and ask for the serial number off the frame.
+Never pick the closest looking row. Never read out a number from a parts row whose name
+does not carry the person's year. Never build a number from a year.
+THE DIGITS IN A MODEL NUMBER DO NOT CARRY THE YEAR
+The parts records hold six rows for the LCR. Five are named just "LCR", and their model
+numbers end 10, 12, 16, 22 and 26. The one row that IS named with a year, "Sole LCR 2019",
+ends 18. So 18 is the 2019 machine and the pattern is broken.
+Never read a year out of a model number. Never build a model number out of a year.
 
 WHAT YOU ASK FOR, AND WHAT YOU NEVER ASK FOR
 The ONLY thing you ever ask for to answer a parts question is the YEAR, and only when a
@@ -44,11 +74,11 @@ they do not know their model number.
 Take a serial number when the person offers one, and pass it straight through.
 
 THE YEAR A MACHINE WAS BUILT
-The years a machine was built come from lookup_model. Never state a build year on the
-strength of a parts row. The records name a year for some machines and not others, and
+The years a machine was built are the rows on the model card. Never state a build year on
+the strength of a parts row. The records name a year for some machines and not others, and
 a machine missing from them was still built.
 That rule is about TELLING a person which years a machine exists in: that list always
-comes from lookup_model, never from a parts row. It is a different question from
+comes from the model card, never from a parts row. It is a different question from
 MATCHING a year the person already gave you to one of find_model's own model numbers,
 which is step 2 above — there you are not stating a build year, you are only reading
 which row the person's own year points at, so find_model's model names are fine to use.

@@ -36,21 +36,6 @@ tools:
       and the month it was built as MM/YYYY. It reads the number itself and touches no
       records, so it costs nothing and answers for a unit that was never sold.
 
-  - id: lookup_model
-    kind: binding
-    binds: LookupModel
-    description: >-
-      Which years a machine was built, and the model number one of those years carries.
-      This is the ONLY source for the years a machine exists in. A parts lookup records a
-      year for some rows and not others, so never read a build year off one.
-      It answers with an 'outcome' you act on:
-        model           - 'model_no' is that year's model number. 'slug' names the machine.
-        needs_year      - 'years' lists every year this machine was built. Ask which one,
-                          naming those years.
-        no_record       - that year exists but no document states its model number. Say the
-                          model number is unconfirmed. Do not guess one.
-        unknown_product - no machine of that name is documented.
-
   - id: ask_unit
     kind: binding
     binds: AskUnit
@@ -64,7 +49,7 @@ tools:
 agents:
   defaults:
     model: { ref: reply }
-    knowledge: { mode: tool, limit: 5, citations: true, scoped: true }
+    knowledge: { mode: tool, limit: 5, citations: true, scoped: false }
     compaction: { strategy: context_window, trigger: { tokens: 300000 }, keep: 6, foldResultChars: 300 }
     instructions: |
       You are Spirit's agent. Spirit makes commercial fitness equipment. You serve Spirit
@@ -122,11 +107,21 @@ agents:
         THE THREE LANES
         Every question runs down one of three lanes. MANUALS — how a machine works, a console
         code, a procedure, a specification, warranty terms, policy: search the documents, in
-        the person's own words. PARTS and ONE UNIT each have a skill; load it. A symptom is
+        the person's own words. PARTS — a part, a parts list, a model number or SKU, or the
+        years a machine was made — and ONE UNIT each have a skill; load it. A symptom is
         both a manuals question and a parts question. Search the manuals
         BEFORE you say you do not know.
         Never invent a document title or a page number. Name a document only if the person asks
         where the answer came from.
+
+        A NAMED MACHINE
+        Once the person has named a machine and a year, find its tag first, the way the Search
+        tool's filters argument tells you, and carry that filter on every Search about it from
+        then on. One lookup, then every search is narrow. Only Search takes filters.
+        Never ask for a model number or a serial number about a machine the person has already
+        named. If a year would settle it, ask for the year. A figure Spirit does not publish for
+        that machine is not on any unit's record either, so a serial number will not find it:
+        say the figure is not published, in one sentence, and offer what you can do next.
 
         HOW YOU WORK
         When two lookups do not depend on each other, run them in the same step, never
@@ -157,7 +152,6 @@ agents:
       tools:
         - draw
         - parse_serial
-        - lookup_model
         - ask_unit
         - search_parts
         - find_model
@@ -167,52 +161,9 @@ agents:
         - aggregate_records
         - execute_entity
 
-state:
-  code:
-    type: string
-    writer: extractor
-    description: >-
-      The error or fault code on the console, lowercase, such as e1, e3, e7,
-      or no-display. Leave it unset unless the person read a code off the screen.
-    vocabulary:
-      from: knowledge
-      linker: exact
-      refreshSeconds: 600
-      maxValues: 2000
-  product_line:
-    type: string
-    writer: extractor
-    description: >-
-      The kind of machine the person is asking about: treadmill, elliptical,
-      bike, climber, rower, or strength. Read it off the product they name, so
-      a CT900 is a treadmill and an SB700 is a bike. Leave it unset when the
-      question names no machine and no kind.
-    vocabulary:
-      from: knowledge
-      linker: exact
-      refreshSeconds: 600
-      maxValues: 2000
-  model:
-    type: string
-    writer: extractor
-    description: >-
-      The machine and the year it was built, as one tag, such as lcr-2023 or
-      f63-2019. Read the year off what the person said, and the machine off the
-      product they named. When they name a machine and no year, leave it unset.
-      Never invent a year and never carry one over from another machine.
-    vocabulary:
-      from: knowledge
-      linker: exact
-      refreshSeconds: 600
-      maxValues: 2000
-
-extractor:
-  model: { ref: fill }
-
 providers:
   llm:
     - { kind: openai, model: gpt-5.6-luna, as: reply, reasoningEffort: medium }
-    - { kind: openai, model: gpt-5.6-luna, as: fill,  reasoningEffort: none }
 
   embeddings: { kind: openai, model: text-embedding-3-small, dimensions: 1024 }
 
@@ -238,15 +189,22 @@ providers:
     scoreFloor: 0.35
     scope:
       template: "facets.{key}"
-      fromState: [code, product_line]
-      wildcard:
-        value: "*"
-        facets: [code, product_line]
-    ambiguity:
-      maxCandidates: 8
-      maxAsks: 2
-      probeDeadlineSeconds: 5
-      probeWaitMarginSeconds: 1
+      filterable:
+        - key: model
+          description: >-
+            One machine and the year it was built, as one tag, such as lcr-2023 or f63-2019.
+            Set it on every manuals search once the person has named a machine AND a year. A
+            machine with no year names a different tag, so leave this out rather than guessing a
+            year onto it.
+          resolve:
+            via: { key: lookup, value: model-numbers }
+            query: "<product> model number"
+            read: the Tag column of the row for the person's year
+        - key: lookup
+          description: >-
+            The only value is model-numbers. Set it when the person asks for a model number, a
+            SKU, or the years a machine was made, so the search returns the model cards and
+            nothing else. Leave it out for every other question.
 
   call: { kind: telnyx-relay }
 
