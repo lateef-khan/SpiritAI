@@ -16,6 +16,16 @@ export type InboxTab = "mine" | "unassigned" | "all";
 export type InboxCounts = Record<InboxTab, number>;
 
 /**
+ * The signed-in api, built once.
+ *
+ * A default parameter is re-evaluated on every render, so `api: HandoffsApi =
+ * createHandoffsApi(apiClient)` would hand the hook a new object each time — and since `api`
+ * sits in the load effect's dependency array, that new object would refire the effect on every
+ * render, forever. Building it once at module scope keeps the default stable across renders.
+ */
+const defaultApi = createHandoffsApi(apiClient);
+
+/**
  * Narrows a view's rows to one tab.
  *
  * @param rows The rows a view has loaded.
@@ -64,7 +74,7 @@ export function countHandoffs(rows: Handoff[], meKey: string): InboxCounts {
 export function useHandoffs(
   view: InboxView,
   meKey: string,
-  api: HandoffsApi = createHandoffsApi(apiClient),
+  api: HandoffsApi = defaultApi,
 ): {
   rows: Handoff[];
   counts: InboxCounts;
@@ -89,9 +99,9 @@ export function useHandoffs(
       try {
         const loaded =
           view === "open"
-            ? [...(await api.list("waiting")), ...(await api.list("human"))].sort(
-                (a, b) => a.askedAt.getTime() - b.askedAt.getTime(),
-              )
+            ? (await Promise.all([api.list("waiting"), api.list("human")]))
+                .flat()
+                .sort((a, b) => a.askedAt.getTime() - b.askedAt.getTime())
             : (await api.list("done")).sort(
                 (a, b) => (b.doneAt?.getTime() ?? 0) - (a.doneAt?.getTime() ?? 0),
               );

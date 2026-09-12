@@ -49,6 +49,8 @@ function dateOrNull(value: string | null): Date | null {
 function reviveHandoff(raw: WireHandoff): Handoff {
   return {
     ...raw,
+    // The generated type widens the wire's enum to `string`; the OpenAPI document is the source
+    // of truth for its actual members, so this trusts it rather than re-validating at runtime.
     status: raw.status as HandoffStatus,
     askedAt: new Date(raw.askedAt),
     claimedAt: dateOrNull(raw.claimedAt),

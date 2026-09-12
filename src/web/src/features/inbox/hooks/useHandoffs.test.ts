@@ -1,8 +1,14 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+import type { HandoffSummary } from "@/api/types.gen";
 
 import type { Handoff, HandoffsApi, HandoffStatus } from "../api/handoffsApi";
-import { countHandoffs, filterHandoffs, useHandoffs } from "./useHandoffs";
+
+vi.mock("@/api/sdk.gen", () => ({ listHandoffs: vi.fn() }));
+
+const { listHandoffs } = await import("@/api/sdk.gen");
+const { countHandoffs, filterHandoffs, useHandoffs } = await import("./useHandoffs");
 
 /**
  * `filterHandoffs` and `countHandoffs`, against a fixed set of rows.
@@ -109,5 +115,34 @@ describe("useHandoffs", () => {
     await waitFor(() => expect(view.result.current.error).not.toBeNull());
 
     expect(view.result.current.error?.message).toBe("nope");
+  });
+
+  it("loads once, not forever, when no api is passed", async () => {
+    // A default parameter re-evaluated on every render would hand the load effect a fresh `api`
+    // object each time, and since `api` sits in that effect's dependency list, a fresh object
+    // refires it. That bug looks exactly like this: `listHandoffs` keeps growing past two calls
+    // instead of settling at one call per status.
+    const wire: HandoffSummary = {
+      id: 1,
+      callId: "call-1",
+      status: "waiting",
+      askedBy: "Ada",
+      reason: null,
+      askedAt: "2026-09-10T09:00:00Z",
+      assignee: null,
+      claimedAt: null,
+      email: null,
+      doneAt: null,
+      title: null,
+      firstLine: null,
+      position: null,
+    };
+    vi.mocked(listHandoffs).mockResolvedValue({ data: { items: [wire] } } as never);
+
+    const view = renderHook(() => useHandoffs("open", MeKey));
+
+    await waitFor(() => expect(view.result.current.loading).toBe(false));
+
+    expect(listHandoffs).toHaveBeenCalledTimes(2);
   });
 });
