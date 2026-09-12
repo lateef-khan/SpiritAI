@@ -12,6 +12,15 @@ import {
 import { ThreadList } from "@/components/assistant-ui/thread-list";
 import { AccountMenu } from "@/features/auth/AccountMenu";
 
+/**
+ * `thread-list.tsx`'s own `data-slot` names for the two clicks that actually navigate: picking a
+ * thread, and starting a new one. Every other control in the list — the search input, a thread's
+ * "More" menu and its Rename/Archive/Delete items — sits inside the same list without matching
+ * either.
+ */
+const NAVIGATING_THREAD_LIST_SLOTS =
+  '[data-slot="aui_thread-list-item-trigger"], [data-slot="aui_thread-list-new"]';
+
 export function AgentCoreSidebar({
   inboxOpen,
   onOpenInbox,
@@ -35,8 +44,14 @@ export function AgentCoreSidebar({
         </SidebarMenu>
         {/* Picking a thread, or starting a new one, is `ThreadList`'s own click handling several
             layers down; catching the click on the way up is simpler than threading a callback
-            through every one of those layers. */}
-        <div onClickCapture={onOpenChat}>
+            through every one of those layers. The search box and a thread's "More" menu live in
+            the same list and must not send the view back to chat. */}
+        <div
+          onClickCapture={(event) => {
+            const target = event.target as Element;
+            if (target.closest(NAVIGATING_THREAD_LIST_SLOTS)) onOpenChat();
+          }}
+        >
           <ThreadList />
         </div>
       </SidebarContent>
