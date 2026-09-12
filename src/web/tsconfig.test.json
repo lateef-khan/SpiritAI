@@ -23,5 +23,5 @@
     "allowImportingTsExtensions": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo"
   },
-  "include": ["src/runtime/transport.ts", "src/**/*.test.ts", "src/**/*.test.tsx"]
+  "include": ["src/features/threads/transport.ts", "src/**/*.test.ts", "src/**/*.test.tsx"]
 }
