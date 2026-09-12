@@ -17,9 +17,16 @@ export type WireHandoff = HandoffSummary;
 /** The three states a handoff moves through. */
 export type HandoffStatus = "waiting" | "human" | "done";
 
-/** One handoff, with its dates as dates and its status narrowed. */
-export type Handoff = Omit<WireHandoff, "askedAt" | "claimedAt" | "doneAt" | "status"> & {
+/** Who raised the handoff. */
+export type HandoffAskedBy = "bot" | "visitor";
+
+/** One handoff, with its dates as dates and its status and askedBy narrowed. */
+export type Handoff = Omit<
+  WireHandoff,
+  "askedAt" | "claimedAt" | "doneAt" | "status" | "askedBy"
+> & {
   status: HandoffStatus;
+  askedBy: HandoffAskedBy;
   askedAt: Date;
   claimedAt: Date | null;
   doneAt: Date | null;
@@ -52,6 +59,7 @@ function reviveHandoff(raw: WireHandoff): Handoff {
     // The generated type widens the wire's enum to `string`; the OpenAPI document is the source
     // of truth for its actual members, so this trusts it rather than re-validating at runtime.
     status: raw.status as HandoffStatus,
+    askedBy: raw.askedBy as HandoffAskedBy,
     askedAt: new Date(raw.askedAt),
     claimedAt: dateOrNull(raw.claimedAt),
     doneAt: dateOrNull(raw.doneAt),

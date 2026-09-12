@@ -20,7 +20,11 @@ export function InboxScreen({ meKey }: { meKey: string }) {
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: "spirit-inbox" });
 
   if (isMobile) {
-    return <InboxPanel meKey={meKey} />;
+    return (
+      <div className="min-w-0 flex-1">
+        <InboxPanel meKey={meKey} />
+      </div>
+    );
   }
 
   return (

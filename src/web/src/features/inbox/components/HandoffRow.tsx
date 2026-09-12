@@ -43,7 +43,7 @@ export function HandoffRow({
         <RowAvatar email={handoff.email} />
 
         <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="truncate text-sm font-semibold">{title}</p>
+          <span className="block truncate text-sm font-semibold">{title}</span>
 
           <div className="flex items-baseline justify-between gap-2">
             <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
@@ -57,9 +57,9 @@ export function HandoffRow({
           <RowTags handoff={handoff} />
 
           {handoff.reason ? (
-            <p className="mt-1.5 rounded-md bg-aui-warning/10 px-2 py-1 text-[12.5px] italic text-muted-foreground">
+            <span className="mt-1.5 block rounded-md bg-aui-warning/10 px-2 py-1 text-[12.5px]">
               {handoff.reason}
-            </p>
+            </span>
           ) : null}
         </div>
       </div>
@@ -107,7 +107,11 @@ function RowTags({ handoff }: { handoff: Handoff }) {
   const tags: ReactNode[] = [];
 
   if (handoff.status === "waiting" && handoff.position !== null) {
-    tags.push(<Badge key="position">#{handoff.position} in line</Badge>);
+    tags.push(
+      <Badge key="position" className="bg-aui-warning/15 text-aui-warning font-medium">
+        #{handoff.position} in line
+      </Badge>,
+    );
   }
 
   if (handoff.status === "done") {

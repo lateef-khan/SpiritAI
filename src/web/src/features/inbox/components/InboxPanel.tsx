@@ -16,7 +16,7 @@ import { InboxTabs } from "./InboxTabs";
 export function InboxPanel({ meKey }: { meKey: string }) {
   const [view, setView] = useState<InboxView>("open");
   const [tab, setTab] = useState<InboxTab>("all");
-  const [oldestFirst, setOldestFirst] = useState(true);
+  const [reversed, setReversed] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const { rows, counts, loading, error } = useHandoffs(view, meKey);
@@ -25,15 +25,24 @@ export function InboxPanel({ meKey }: { meKey: string }) {
   // rather than showing nothing.
   const effectiveTab: InboxTab = view === "done" && tab === "unassigned" ? "all" : tab;
   const filtered = filterHandoffs(rows, effectiveTab, meKey);
-  const ordered = oldestFirst ? filtered : [...filtered].reverse();
+
+  // `useHandoffs` loads `open` oldest-first and `done` newest-first, so the same `reversed` flag
+  // reads as the opposite `oldestFirst` sense on each view.
+  const oldestFirst = view === "open" ? !reversed : reversed;
+  const ordered = reversed ? [...filtered].reverse() : filtered;
+
+  function handleViewChange(next: InboxView) {
+    setView(next);
+    setReversed(false);
+  }
 
   return (
     <div className="flex h-full flex-col border-r">
       <InboxHeader
         view={view}
-        onViewChange={setView}
+        onViewChange={handleViewChange}
         oldestFirst={oldestFirst}
-        onToggleOrder={() => setOldestFirst((current) => !current)}
+        onToggleOrder={() => setReversed((current) => !current)}
       />
 
       <InboxTabs view={view} tab={effectiveTab} onTabChange={setTab} counts={counts} />

@@ -119,8 +119,9 @@ export function App() {
   const isMobile = useIsMobile();
   const [view, setView] = useState<View>("chat");
 
-  // `AuthGate` renders its children only once a session exists, so by the time this reads, the
-  // session `AuthGate` itself is holding is already resolved to the same signed-in user.
+  // `App` is `AuthGate`'s parent, so this runs before the session resolves and `meKey` is
+  // `"user:"` on that render; `meKey` is only consumed once `AuthGate` lets its children through,
+  // by which point the session has resolved to the signed-in user.
   const { data } = useSession();
   const meKey = callerKeyOf(data?.user.id ?? "");
 

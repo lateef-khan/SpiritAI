@@ -56,7 +56,8 @@ export function InboxHeader({
         >
           <ArrowUpDownIcon />
         </TooltipIconButton>
-        <TooltipIconButton tooltip="Hide the list" onClick={() => {}}>
+        {/* The collapse lands with the chat column in a later step. */}
+        <TooltipIconButton tooltip="Hide the list" onClick={() => {}} disabled>
           <PanelLeftCloseIcon />
         </TooltipIconButton>
       </div>

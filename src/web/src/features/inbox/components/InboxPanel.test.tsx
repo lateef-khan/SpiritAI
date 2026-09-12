@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { HandoffSummary } from "@/api/types.gen";
@@ -95,5 +95,51 @@ describe("InboxPanel", () => {
     render(<InboxPanel meKey={MeKey} />);
 
     expect(await screen.findByText("host refused")).toBeTruthy();
+  });
+
+  it("orders the done view newest first until the sort is toggled", async () => {
+    const older = wire({
+      id: 1,
+      status: "done",
+      doneAt: "2026-09-12T11:00:00",
+      title: "Older, done first ended",
+    });
+    const newer = wire({
+      id: 2,
+      status: "done",
+      doneAt: "2026-09-12T12:00:00",
+      title: "Newer, done last ended",
+    });
+
+    vi.mocked(listHandoffs).mockImplementation(
+      (options) =>
+        Promise.resolve({
+          data: { items: options?.query?.status === "done" ? [older, newer] : [] },
+        }) as never,
+    );
+
+    const { container } = render(<InboxPanel meKey={MeKey} />);
+
+    await screen.findByText("No conversations.");
+
+    // Radix opens a dropdown on a key press as readily as on a pointer, and happy-dom has no
+    // pointer.
+    fireEvent.keyDown(screen.getByRole("button", { name: "Open" }), { key: "Enter" });
+    fireEvent.click(await screen.findByText("Done"));
+
+    await screen.findByText("Newer, done last ended");
+
+    const rowTitles = () =>
+      Array.from(container.querySelectorAll("li")).map((li) => li.textContent);
+
+    expect(rowTitles()[0]).toContain("Newer, done last ended");
+    expect(rowTitles()[1]).toContain("Older, done first ended");
+    expect(screen.getByRole("button", { name: "Newest first" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Newest first" }));
+
+    expect(rowTitles()[0]).toContain("Older, done first ended");
+    expect(rowTitles()[1]).toContain("Newer, done last ended");
+    expect(screen.getByRole("button", { name: "Oldest first" })).toBeTruthy();
   });
 });

@@ -1,5 +1,4 @@
-import { cleanup } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { HandoffSummary } from "@/api/types.gen";
 
@@ -16,14 +15,13 @@ vi.mock("@/api/sdk.gen", () => ({ listHandoffs: vi.fn() }));
 const { listHandoffs } = await import("@/api/sdk.gen");
 const { createHandoffsApi, callerKeyOf } = await import("./handoffsApi");
 
-afterEach(cleanup);
 beforeEach(() => vi.resetAllMocks());
 
 const wire = (over: Partial<HandoffSummary> = {}): HandoffSummary => ({
   id: 1,
   callId: "call-1",
   status: "waiting",
-  askedBy: "Ada",
+  askedBy: "visitor",
   reason: null,
   askedAt: "2026-09-10T09:00:00Z",
   assignee: null,
