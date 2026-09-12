@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Thread } from "@/components/assistant-ui/thread";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +13,9 @@ import {
   useThreadSession,
 } from "./features/threads/AgentCoreThreadListAdapter";
 import { authFetch } from "@/features/auth/authFetch";
+import { useSession } from "@/features/auth/authClient";
+import { callerKeyOf } from "@/features/inbox/api/handoffsApi";
+import { InboxScreen } from "@/features/inbox/components/InboxScreen";
 import { ThreadUnitPanel } from "@/features/unit/ThreadUnitPanel";
 import {
   ResizableHandle,
@@ -21,6 +26,9 @@ import {
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PanelRightIcon } from "lucide-react";
+
+/** Which of the two screens the main area shows. */
+type View = "chat" | "inbox";
 
 /**
  * The route the text endpoint answers on.
@@ -109,6 +117,12 @@ export function App() {
     adapter: threads,
   });
   const isMobile = useIsMobile();
+  const [view, setView] = useState<View>("chat");
+
+  // `AuthGate` renders its children only once a session exists, so by the time this reads, the
+  // session `AuthGate` itself is holding is already resolved to the same signed-in user.
+  const { data } = useSession();
+  const meKey = callerKeyOf(data?.user.id ?? "");
 
   return (
     <AuthGate>
@@ -117,8 +131,18 @@ export function App() {
         <TooltipProvider>
           <SidebarProvider>
             <div className="flex h-dvh w-full">
-              <AgentCoreSidebar />
-              {isMobile ? <ChatAndUnitSheet /> : <ChatAndUnit />}
+              <AgentCoreSidebar
+                inboxOpen={view === "inbox"}
+                onOpenInbox={() => setView("inbox")}
+                onOpenChat={() => setView("chat")}
+              />
+              {view === "inbox" ? (
+                <InboxScreen meKey={meKey} />
+              ) : isMobile ? (
+                <ChatAndUnitSheet />
+              ) : (
+                <ChatAndUnit />
+              )}
             </div>
           </SidebarProvider>
         </TooltipProvider>
