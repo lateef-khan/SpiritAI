@@ -1,5 +1,6 @@
 using System.ComponentModel;
 
+using AgentCore.Application.Tools;
 using AgentCore.AspNetCore.DependencyInjection;
 using AgentCore.Hosting;
 
@@ -70,12 +71,13 @@ public static class AgentCoreExtensions
                 RequestHumanBinding,
                 async (
                     [Description("Why the person needs a human, in one sentence, in the person's own words.")] string reason,
+                    ToolCallScope scope,
                     CancellationToken cancellationToken) =>
                 {
-                    await using var scope = services.GetRequiredService<IServiceScopeFactory>().CreateAsyncScope();
+                    await using var container = services.GetRequiredService<IServiceScopeFactory>().CreateAsyncScope();
 
-                    return await scope.ServiceProvider.GetRequiredService<RequestHumanTool>()
-                        .AskAsync(reason, cancellationToken)
+                    return await container.ServiceProvider.GetRequiredService<RequestHumanTool>()
+                        .AskAsync(scope.CallId, reason, cancellationToken)
                         .ConfigureAwait(false);
                 });
 }

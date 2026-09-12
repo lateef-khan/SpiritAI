@@ -126,3 +126,25 @@ describe("authFetch", () => {
     expect(init.body).toBe("{}");
   });
 });
+
+describe("authFetch given a Request", () => {
+  test("keeps the headers the Request already carries", async () => {
+    // The generated client builds a Request and hands it over with no init. Headers passed as
+    // init replace the Request's own, so the token has to join them rather than stand alone.
+    getSession.mockResolvedValue(LIVE);
+
+    const request = new Request("http://localhost/v1/threads/t1", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+
+    await authFetch(request);
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    const headers = new Headers(init.headers);
+
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(headers.get("Authorization")).toBe("Bearer jwt-abc");
+  });
+});

@@ -2,7 +2,6 @@ using System.Net;
 
 using AgentCore.Application.Calls.Memory;
 using AgentCore.Application.Ports;
-using AgentCore.Application.Transcript;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
@@ -117,7 +116,7 @@ public sealed class PublicThreadEndpointTests
     {
         private readonly IHost _host;
 
-        private World(IHost host, InMemoryCallStore calls)
+        private World(IHost host, ICallStore calls)
         {
             _host = host;
             Calls = calls;
@@ -126,7 +125,7 @@ public sealed class PublicThreadEndpointTests
             Anonymous = Caller(null);
         }
 
-        public InMemoryCallStore Calls { get; }
+        public ICallStore Calls { get; }
 
         public VisitorCaller Visitor { get; }
 
@@ -138,7 +137,7 @@ public sealed class PublicThreadEndpointTests
 
         public static async Task<World> StartAsync()
         {
-            InMemoryCallStore calls = new();
+            ICallStore calls = new InMemoryCallStore();
 
             var host = await ThreadTestHost.StartAsync(
                 new NeonAuthTestKit(),
@@ -161,10 +160,8 @@ public sealed class PublicThreadEndpointTests
 
             await Calls.CreateAsync(callId, TestContext.Current.CancellationToken);
             await Calls.SetCustomAsync(callId, ThreadEnvelope.Build(ownerKey, app: null), TestContext.Current.CancellationToken);
-            await Calls.AppendAsync([
-                new CallMessage(callId, 0, 0, new ChatMessage(ChatRole.User, said), "m0"),
-                new CallMessage(callId, 1, 0, new ChatMessage(ChatRole.Assistant, "Let me check."), "m1"),
-            ]);
+            await Calls.AppendMessageAsync(callId, new ChatMessage(ChatRole.User, said), TestContext.Current.CancellationToken);
+            await Calls.AppendMessageAsync(callId, new ChatMessage(ChatRole.Assistant, "Let me check."), TestContext.Current.CancellationToken);
 
             return callId;
         }

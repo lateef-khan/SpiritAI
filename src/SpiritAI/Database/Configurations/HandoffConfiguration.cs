@@ -57,7 +57,7 @@ internal sealed class HandoffConfiguration : IEntityTypeConfiguration<Handoff>
 
         builder.HasIndex(h => new { h.Status, h.AskedAt }).HasDatabaseName(QueueIndex);
 
-        // The cascade means AgentCore's retention sweep of public.call cleans up after us.
+        // The cascade means AgentCore's retention sweep of agentcore.call cleans up after us.
         builder.HasOne<CallStub>()
             .WithMany()
             .HasForeignKey(h => h.CallId)

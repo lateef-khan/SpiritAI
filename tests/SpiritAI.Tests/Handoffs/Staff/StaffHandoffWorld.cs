@@ -17,7 +17,6 @@ using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Notifications;
 using SpiritAI.Handoffs.Staff;
 using SpiritAI.Handoffs.Store;
-using SpiritAI.Handoffs.Transcript;
 using SpiritAI.RealTime.Presence;
 using SpiritAI.Tests.Auth;
 using SpiritAI.Tests.Auth.Users;
@@ -29,8 +28,8 @@ using Xunit;
 namespace SpiritAI.Tests.Handoffs.Staff;
 
 /// <summary>
-/// The inbox routes on a test server: a real token check in front, the real desk, fakes for every
-/// port behind, and the four callers a test needs.
+/// The inbox routes on a test server: a real token check in front, the real desk, the in-memory
+/// call store, fakes for every other port behind, and the four callers a test needs.
 /// </summary>
 internal sealed class StaffHandoffWorld : IAsyncDisposable
 {
@@ -42,15 +41,13 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
         IHost host,
         NeonAuthTestKit kit,
         FakeHandoffStore store,
-        InMemoryCallStore calls,
-        RecordingHandoffTranscript transcript,
+        ICallStore calls,
         RecordingHandoffNotifier notifier,
         TestTimeProvider clock)
     {
         _host = host;
         Store = store;
         Calls = calls;
-        Transcript = transcript;
         Notifier = notifier;
         Clock = clock;
         Staff = new StaffCaller(host.GetTestClient(), kit.Token(subject: "user_dana", email: "dana@example.com"));
@@ -61,10 +58,8 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
 
     public FakeHandoffStore Store { get; }
 
-    public InMemoryCallStore Calls { get; }
-
-    /// <summary>What the routes appended. Empty when the world was started with another transcript.</summary>
-    public RecordingHandoffTranscript Transcript { get; }
+    /// <summary>The chats, and every word the routes put in them.</summary>
+    public ICallStore Calls { get; }
 
     public RecordingHandoffNotifier Notifier { get; }
 
@@ -82,14 +77,12 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
     public StaffCaller Anonymous { get; }
 
     /// <summary>Starts the server.</summary>
-    /// <param name="transcript">What the routes append to, when a test wants something other than the recorder.</param>
-    public static async Task<StaffHandoffWorld> StartAsync(IHandoffTranscript? transcript = null)
+    public static async Task<StaffHandoffWorld> StartAsync()
     {
         var kit = new NeonAuthTestKit();
         TestTimeProvider clock = new(Start);
         FakeHandoffStore store = new(clock);
-        InMemoryCallStore calls = new(clock);
-        RecordingHandoffTranscript recording = new();
+        ICallStore calls = new InMemoryCallStore(clock);
         RecordingHandoffNotifier notifier = new();
 
         var host = await ThreadTestHost.StartAsync(
@@ -103,7 +96,6 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
                 services.AddSingleton<TimeProvider>(clock);
                 services.AddSingleton<ICallStore>(calls);
                 services.AddSingleton<IHandoffStore>(store);
-                services.AddSingleton<IHandoffTranscript>(transcript ?? recording);
                 services.AddSingleton<IHandoffNotifier>(notifier);
                 services.AddSingleton<IPresenceStore>(new FakePresenceStore(clock, TimeSpan.FromSeconds(90)));
                 services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());
@@ -116,7 +108,7 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
                 app.UseEndpoints(endpoints => endpoints.MapStaffHandoffs());
             });
 
-        return new StaffHandoffWorld(host, kit, store, calls, recording, notifier, clock);
+        return new StaffHandoffWorld(host, kit, store, calls, notifier, clock);
     }
 
     /// <summary>Makes a titled chat with one finished turn in it, the way a real one would have.</summary>
@@ -126,10 +118,8 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
 
         await Calls.CreateAsync(callId, TestContext.Current.CancellationToken);
         await Calls.RenameAsync(callId, title, TestContext.Current.CancellationToken);
-        await Calls.AppendAsync([
-            new CallMessage(callId, 0, 0, new ChatMessage(ChatRole.User, said), "m0"),
-            new CallMessage(callId, 1, 0, new ChatMessage(ChatRole.Assistant, "Let me check."), "m1"),
-        ]);
+        await Calls.AppendMessageAsync(callId, new ChatMessage(ChatRole.User, said), TestContext.Current.CancellationToken);
+        await Calls.AppendMessageAsync(callId, new ChatMessage(ChatRole.Assistant, "Let me check."), TestContext.Current.CancellationToken);
 
         return callId;
     }
@@ -140,6 +130,10 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
         Clock.Now += TimeSpan.FromMinutes(1);
         await Store.AskAsync(callId, HandoffAskedBy.Visitor, null, TestContext.Current.CancellationToken);
     }
+
+    /// <summary>The last word in a chat, as the store holds it.</summary>
+    public async Task<CallMessage> LastWordAsync(string callId)
+        => (await Calls.ReadAsync(callId, TestContext.Current.CancellationToken))[^1];
 
     public async ValueTask DisposeAsync()
     {

@@ -14,7 +14,6 @@ using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Notifications;
 using SpiritAI.Handoffs.RealTime;
 using SpiritAI.Handoffs.Store;
-using SpiritAI.Handoffs.Transcript;
 using SpiritAI.Handoffs.Visitors;
 using SpiritAI.PublicChat;
 using SpiritAI.RealTime.Presence;
@@ -30,7 +29,8 @@ namespace SpiritAI.Tests.Handoffs.Visitors;
 
 /// <summary>
 /// The visitor's handoff routes on a test server: the real token check leaving them open, the
-/// real desk, fakes for every port under it, and the three widgets a test needs.
+/// real desk, the in-memory call store, fakes for every other port under it, and the three widgets
+/// a test needs.
 /// </summary>
 internal sealed class VisitorHandoffWorld : IAsyncDisposable
 {
@@ -41,8 +41,7 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
     private VisitorHandoffWorld(
         IHost host,
         FakeHandoffStore store,
-        InMemoryCallStore calls,
-        RecordingHandoffTranscript transcript,
+        ICallStore calls,
         RecordingHandoffNotifier notifier,
         FakePresenceStore presence,
         TestTimeProvider clock)
@@ -50,7 +49,6 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
         _host = host;
         Store = store;
         Calls = calls;
-        Transcript = transcript;
         Notifier = notifier;
         Presence = presence;
         Clock = clock;
@@ -61,10 +59,8 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
 
     public FakeHandoffStore Store { get; }
 
-    public InMemoryCallStore Calls { get; }
-
-    /// <summary>What the desk appended. Empty when the world was started with another transcript.</summary>
-    public RecordingHandoffTranscript Transcript { get; }
+    /// <summary>The chats, and every word the desk put in them.</summary>
+    public ICallStore Calls { get; }
 
     public RecordingHandoffNotifier Notifier { get; }
 
@@ -81,13 +77,11 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
     public VisitorCaller Anonymous { get; }
 
     /// <summary>Starts the server.</summary>
-    /// <param name="transcript">What the desk appends to, when a test wants something other than the recorder.</param>
-    public static async Task<VisitorHandoffWorld> StartAsync(IHandoffTranscript? transcript = null)
+    public static async Task<VisitorHandoffWorld> StartAsync()
     {
         TestTimeProvider clock = new(Start);
         FakeHandoffStore store = new(clock);
-        InMemoryCallStore calls = new(clock);
-        RecordingHandoffTranscript recording = new();
+        ICallStore calls = new InMemoryCallStore(clock);
         RecordingHandoffNotifier notifier = new();
         FakePresenceStore presence = new(clock, TimeSpan.FromSeconds(90));
 
@@ -98,7 +92,6 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
                 services.AddSingleton<TimeProvider>(clock);
                 services.AddSingleton<ICallStore>(calls);
                 services.AddSingleton<IHandoffStore>(store);
-                services.AddSingleton<IHandoffTranscript>(transcript ?? recording);
                 services.AddSingleton<IHandoffNotifier>(notifier);
                 services.AddSingleton<IPresenceStore>(presence);
                 services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());
@@ -112,7 +105,7 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
             },
             options => options.OpenPathPrefixes = ["/v1/public"]);
 
-        return new VisitorHandoffWorld(host, store, calls, recording, notifier, presence, clock);
+        return new VisitorHandoffWorld(host, store, calls, notifier, presence, clock);
     }
 
     /// <summary>Makes a chat one widget owns, with one finished turn in it.</summary>
@@ -122,13 +115,15 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
 
         await Calls.CreateAsync(callId, TestContext.Current.CancellationToken);
         await Calls.SetCustomAsync(callId, ThreadEnvelope.Build(owner.Key!, app: null), TestContext.Current.CancellationToken);
-        await Calls.AppendAsync([
-            new CallMessage(callId, 0, 0, new ChatMessage(ChatRole.User, said), "m0"),
-            new CallMessage(callId, 1, 0, new ChatMessage(ChatRole.Assistant, "Let me check."), "m1"),
-        ]);
+        await Calls.AppendMessageAsync(callId, new ChatMessage(ChatRole.User, said), TestContext.Current.CancellationToken);
+        await Calls.AppendMessageAsync(callId, new ChatMessage(ChatRole.Assistant, "Let me check."), TestContext.Current.CancellationToken);
 
         return callId;
     }
+
+    /// <summary>Every word in a chat, as the store holds it.</summary>
+    public async Task<IReadOnlyList<CallMessage>> WordsAsync(string callId)
+        => await Calls.ReadAsync(callId, TestContext.Current.CancellationToken);
 
     /// <summary>Puts this many members of staff on a socket, each a different person.</summary>
     public async Task StaffOnlineAsync(int count)

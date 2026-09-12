@@ -8,7 +8,7 @@ public sealed class Handoff
     /// <summary>The database's own number for the row.</summary>
     public long Id { get; set; }
 
-    /// <summary>The chat this is about, in AgentCore's <c>public.call</c>.</summary>
+    /// <summary>The chat this is about, in AgentCore's <c>agentcore.call</c>.</summary>
     public required string CallId { get; set; }
 
     /// <summary>Waiting for a person, with one, or done.</summary>

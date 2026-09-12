@@ -1,3 +1,7 @@
+using AgentCore.Application.Configuration.Schema;
+using AgentCore.Application.Ports;
+using AgentCore.Application.Secrets;
+using AgentCore.Infrastructure.Calls.Postgres;
 using AgentCore.Infrastructure.Database.Postgres;
 
 using Microsoft.EntityFrameworkCore;
@@ -58,11 +62,30 @@ public sealed class PostgresFixture : IAsyncLifetime
         return new SpiritDbContext(options.Options);
     }
 
-    /// <summary>Writes a row into AgentCore's <c>public.call</c> for a handoff to point at.</summary>
+    /// <summary>
+    /// Opens AgentCore's own PostgreSQL call store on the database, the way the host does: through
+    /// the <c>postgres</c> adapter, with the connection string handed over as the one secret it
+    /// reads. Skips the calling test when there is no database.
+    /// </summary>
+    /// <returns>The store, which the caller disposes; it owns a pool of its own.</returns>
+    public async Task<ICallStore> OpenCallStoreAsync()
+    {
+        if (_connectionString is null)
+        {
+            Assert.Skip($"No database. Set {SecretVariable} to the output of `just db-url` to run this.");
+        }
+
+        return await new PostgresCallStoreAdapter().OpenAsync(
+            new VendorProviderConfiguration { Kind = PostgresCallStoreAdapter.ProviderKind },
+            new OneSecret(KnownSecrets.PostgresConnectionStringName, _connectionString),
+            TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Writes a row into AgentCore's <c>agentcore.call</c> for a handoff to point at.</summary>
     /// <param name="callId">The call to make. Every other column has a default.</param>
     public async Task MakeCallAsync(string callId)
     {
-        await using var insert = Source.CreateCommand("INSERT INTO public.call (call_id) VALUES ($1)");
+        await using var insert = Source.CreateCommand("INSERT INTO agentcore.call (call_id) VALUES ($1)");
         insert.Parameters.AddWithValue(callId);
         await insert.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
     }
@@ -71,7 +94,7 @@ public sealed class PostgresFixture : IAsyncLifetime
     /// <param name="callId">The call to delete.</param>
     public async Task DeleteCallAsync(string callId)
     {
-        await using var delete = Source.CreateCommand("DELETE FROM public.call WHERE call_id = $1");
+        await using var delete = Source.CreateCommand("DELETE FROM agentcore.call WHERE call_id = $1");
         delete.Parameters.AddWithValue(callId);
         await delete.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
     }
@@ -99,4 +122,11 @@ public sealed class PostgresFixture : IAsyncLifetime
     }
 
     private static string? Present(string? value) => value is { Length: > 0 } ? value : null;
+
+    /// <summary>A resolver that holds one secret and nothing else.</summary>
+    private sealed class OneSecret(string held, string value) : ISecretResolverPort
+    {
+        public ValueTask<string?> TryResolveAsync(string name, CancellationToken cancellationToken = default)
+            => ValueTask.FromResult(string.Equals(name, held, StringComparison.Ordinal) ? value : null);
+    }
 }

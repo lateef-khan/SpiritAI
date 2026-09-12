@@ -19,7 +19,9 @@ public static class HandoffRealTimeExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddSingleton<IRealTimeAdmission, HandoffAdmission>();
+        // Scoped, not singleton: the gate under it reads the directory through the database
+        // context, and the hub resolves its admissions inside the scope of each invocation.
+        services.AddScoped<IRealTimeAdmission, HandoffAdmission>();
 
         services.Replace(ServiceDescriptor.Singleton<IHandoffNotifier, HandoffNotifier>());
 

@@ -31,7 +31,6 @@ namespace SpiritAI.Database.Migrations
                     assignee_name = table.Column<string>(type: "text", nullable: true),
                     claimed_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     email = table.Column<string>(type: "text", nullable: true),
-                    visitor_seen_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     done_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
@@ -42,26 +41,27 @@ namespace SpiritAI.Database.Migrations
                     table.ForeignKey(
                         name: "FK_handoff_call_call_id",
                         column: x => x.call_id,
-                        principalSchema: "public",
+                        principalSchema: "agentcore",
                         principalTable: "call",
                         principalColumn: "call_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "staff_presence",
+                name: "presence",
                 schema: "spirit",
                 columns: table => new
                 {
                     connection_id = table.Column<string>(type: "text", nullable: false),
-                    staff_key = table.Column<string>(type: "text", nullable: false),
-                    staff_name = table.Column<string>(type: "text", nullable: false),
+                    caller_key = table.Column<string>(type: "text", nullable: false),
+                    caller_name = table.Column<string>(type: "text", nullable: true),
+                    kind = table.Column<string>(type: "text", nullable: false),
                     connected_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
                     seen_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_staff_presence", x => x.connection_id);
+                    table.PrimaryKey("PK_presence", x => x.connection_id);
                 });
 
             migrationBuilder.CreateIndex(
@@ -77,6 +77,12 @@ namespace SpiritAI.Database.Migrations
                 schema: "spirit",
                 table: "handoff",
                 columns: new[] { "status", "asked_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "presence_kind_seen_at",
+                schema: "spirit",
+                table: "presence",
+                columns: new[] { "kind", "seen_at" });
         }
 
         /// <inheritdoc />
@@ -87,7 +93,7 @@ namespace SpiritAI.Database.Migrations
                 schema: "spirit");
 
             migrationBuilder.DropTable(
-                name: "staff_presence",
+                name: "presence",
                 schema: "spirit");
         }
     }

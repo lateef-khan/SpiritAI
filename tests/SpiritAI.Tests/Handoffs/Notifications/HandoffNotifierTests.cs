@@ -88,7 +88,7 @@ public sealed class HandoffNotifierTests
     [Fact]
     public async Task MessageCreatedGoesToStaffAndTheMessagesChat()
     {
-        var message = new HandoffMessage("c1", "assistant", "On my way.", HandoffSpeaker.Human("Dana R.", "Support"), At);
+        var message = new HandoffMessage("c1", "m7", "assistant", "On my way.", HandoffSpeaker.Human("Dana R.", "Support"), At);
 
         await _notifier.MessageCreatedAsync(message, Cancel);
 

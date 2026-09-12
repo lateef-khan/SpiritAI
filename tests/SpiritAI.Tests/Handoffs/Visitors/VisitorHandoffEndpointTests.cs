@@ -159,10 +159,11 @@ public sealed class VisitorHandoffEndpointTests
         Assert.Equal("Still there?", created.Text);
         Assert.Null(created.Speaker);
 
-        var (storedCall, stored) = Assert.Single(world.Transcript.Appended);
-        Assert.Equal(callId, storedCall);
-        Assert.Equal(ChatRole.User, stored.Role);
-        Assert.Equal("Still there?", stored.Text);
+        var stored = (await world.WordsAsync(callId))[^1];
+        Assert.Equal(created.MessageId, stored.MessageId);
+        Assert.Equal(ChatRole.User, stored.Content.Role);
+        Assert.Equal("Still there?", stored.Content.Text);
+        Assert.Null(SpeakerProperty.Read(stored.Content));
 
         var (name, payload) = Assert.Single(world.Notifier.Pushed, push => push.Event == "message.created");
         Assert.Equal("message.created", name);
@@ -180,7 +181,8 @@ public sealed class VisitorHandoffEndpointTests
         var response = await world.Visitor.PostAsync($"{Handoff}/{callId}/messages", new { text = "Still there?" });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Empty(world.Transcript.Appended);
+        // The chat still holds only the turn it was made with.
+        Assert.Equal(2, (await world.WordsAsync(callId)).Count);
     }
 
     [Fact]
@@ -193,19 +195,5 @@ public sealed class VisitorHandoffEndpointTests
         var response = await world.Visitor.PostAsync($"{Handoff}/{callId}/messages", new { text = "   " });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task AMessageWithNowhereToGoIsUnavailable()
-    {
-        await using var world = await VisitorHandoffWorld.StartAsync(transcript: new RefusingHandoffTranscript());
-        var callId = await world.MakeChatAsync(world.Visitor);
-        await world.Visitor.PostAsync(Handoff, new { callId });
-
-        var response = await world.Visitor.PostAsync($"{Handoff}/{callId}/messages", new { text = "Still there?" });
-
-        // The words are the whole point of the request. With nowhere to put them, nothing happened.
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-        Assert.DoesNotContain("message.created", world.Notifier.Events);
     }
 }

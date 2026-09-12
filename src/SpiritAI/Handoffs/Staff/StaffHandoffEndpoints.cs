@@ -59,8 +59,7 @@ public static class StaffHandoffEndpoints
             .Produces<HandoffMessage>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict)
-            .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         endpoints.MapPost($"{One}/done", FinishAsync)
             .Describe("finishHandoff")
@@ -184,11 +183,9 @@ public static class StaffHandoffEndpoints
         StaffGate staff,
         IHandoffStore store,
         ICallStore calls,
-        IHandoffTranscript transcript,
         IHandoffNotifier notifier,
         HandoffDesk desk,
         TimeProvider clock,
-        ILoggerFactory loggers,
         string callId,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (key, member) =>
@@ -207,7 +204,7 @@ public static class StaffHandoffEndpoints
                     break;
             }
 
-            await NoteAsync(transcript, clock, loggers, callId, $"{member.Name} joined", cancellationToken).ConfigureAwait(false);
+            await NoteAsync(calls, clock, callId, $"{member.Name} joined", cancellationToken).ConfigureAwait(false);
 
             await notifier.ClaimedAsync(callId, new HandoffAssignee(key, member.Name), cancellationToken).ConfigureAwait(false);
 
@@ -248,21 +245,9 @@ public static class StaffHandoffEndpoints
                 return Problem(StatusCodes.Status403Forbidden, "Not yours.", $"{row.AssigneeName} has this chat.");
             }
 
-            try
-            {
-                var created = await desk.StaffSaysAsync(row, member, text, cancellationToken).ConfigureAwait(false);
+            var created = await desk.StaffSaysAsync(row, member, text, cancellationToken).ConfigureAwait(false);
 
-                return TypedResults.Created($"{Pattern}/{callId}/messages", created);
-            }
-            catch (NotSupportedException)
-            {
-                // The reply is the whole point of the request. With nowhere to put the words,
-                // nothing happened, and the caller must hear that rather than a 201.
-                return Problem(
-                    StatusCodes.Status503ServiceUnavailable,
-                    "Replies are not stored yet.",
-                    "AgentCore cannot store a human reply yet.");
-            }
+            return TypedResults.Created($"{Pattern}/{callId}/messages", created);
         });
 
     /// <summary>Hands the chat back to the bot, from waiting or from human.</summary>
@@ -270,11 +255,10 @@ public static class StaffHandoffEndpoints
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
-        IHandoffTranscript transcript,
+        ICallStore calls,
         IHandoffNotifier notifier,
         HandoffDesk desk,
         TimeProvider clock,
-        ILoggerFactory loggers,
         string callId,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (_, _) =>
@@ -295,7 +279,7 @@ public static class StaffHandoffEndpoints
 
             if (leaving is not null)
             {
-                await NoteAsync(transcript, clock, loggers, callId, $"{leaving} left", cancellationToken).ConfigureAwait(false);
+                await NoteAsync(calls, clock, callId, $"{leaving} left", cancellationToken).ConfigureAwait(false);
             }
 
             await notifier.DoneAsync(callId, cancellationToken).ConfigureAwait(false);
@@ -307,17 +291,9 @@ public static class StaffHandoffEndpoints
         });
 
     /// <summary>Writes one of the host's own lines, "joined" or "left", into the chat.</summary>
-    /// <remarks>
-    /// These lines are decoration on a state change that has already committed. When AgentCore
-    /// cannot take them yet, the claim or the close still happened, so the route must not report
-    /// it as a failure: the miss is logged and the route answers as if the line had landed. A staff
-    /// reply is not decoration and does not come through here; <see cref="ReplyAsync"/> lets the
-    /// same refusal become a 503.
-    /// </remarks>
     private static async Task NoteAsync(
-        IHandoffTranscript transcript,
+        ICallStore calls,
         TimeProvider clock,
-        ILoggerFactory loggers,
         string callId,
         string text,
         CancellationToken cancellationToken)
@@ -325,15 +301,7 @@ public static class StaffHandoffEndpoints
         var line = new ChatMessage(ChatRole.Assistant, text) { CreatedAt = clock.GetUtcNow() };
         SpeakerProperty.Attach(line, HandoffSpeaker.System());
 
-        try
-        {
-            await transcript.AppendAsync(callId, line, cancellationToken).ConfigureAwait(false);
-        }
-        catch (NotSupportedException unavailable)
-        {
-            loggers.CreateLogger(typeof(StaffHandoffEndpoints))
-                .LogWarning(unavailable, "The line '{Text}' was not written to call {CallId}.", text, callId);
-        }
+        await calls.AppendMessageAsync(callId, line, cancellationToken).ConfigureAwait(false);
     }
 
     private static ProblemHttpResult Problem(int statusCode, string title, string detail)

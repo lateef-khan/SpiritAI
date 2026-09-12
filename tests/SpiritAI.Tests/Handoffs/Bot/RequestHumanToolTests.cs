@@ -1,4 +1,5 @@
 using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Ports;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -22,10 +23,9 @@ public sealed class RequestHumanToolTests
 
     private readonly TestTimeProvider _clock = new(new DateTimeOffset(2026, 9, 11, 9, 0, 0, TimeSpan.Zero));
     private readonly FakeHandoffStore _store;
-    private readonly InMemoryCallStore _calls;
+    private readonly ICallStore _calls;
     private readonly RecordingHandoffNotifier _notifier = new();
     private readonly FakePresenceStore _presence;
-    private readonly FakeCurrentCall _current = new();
     private readonly RequestHumanTool _tool;
 
     public RequestHumanToolTests()
@@ -34,11 +34,9 @@ public sealed class RequestHumanToolTests
         _calls = new InMemoryCallStore(_clock);
         _presence = new FakePresenceStore(_clock, TimeSpan.FromSeconds(90));
         _tool = new RequestHumanTool(
-            _current,
             new HandoffDesk(
                 _store,
                 _calls,
-                new RecordingHandoffTranscript(),
                 _notifier,
                 _presence,
                 new RecordingHandoffMailer(),
@@ -52,11 +50,9 @@ public sealed class RequestHumanToolTests
         var callId = Guid.NewGuid().ToString("N");
         await _calls.CreateAsync(callId, Cancel);
         await _presence.ConnectAsync("socket-1", "user:dana", "Dana R.", HandoffAdmission.StaffKind, Cancel);
-        _current.CallId = callId;
 
-        var answer = await _tool.AskAsync("they want a real person", Cancel);
+        var answer = await _tool.AskAsync(callId, "they want a real person", Cancel);
 
-        Assert.True(answer.Ok);
         Assert.Equal(1, answer.Position);
         Assert.Equal(1, answer.StaffOnline);
         Assert.Equal(RequestHumanTool.AskedNote, answer.Note);
@@ -74,24 +70,10 @@ public sealed class RequestHumanToolTests
     {
         var callId = Guid.NewGuid().ToString("N");
         await _calls.CreateAsync(callId, Cancel);
-        _current.CallId = callId;
 
-        var answer = await _tool.AskAsync("they want a real person", Cancel);
+        var answer = await _tool.AskAsync(callId, "they want a real person", Cancel);
 
-        Assert.True(answer.Ok);
         Assert.Equal(0, answer.StaffOnline);
         Assert.Equal(RequestHumanTool.NobodyFreeNote, answer.Note);
-    }
-
-    [Fact]
-    public async Task OutsideAnyChatTheToolAsksNobody()
-    {
-        var answer = await _tool.AskAsync("they want a real person", Cancel);
-
-        Assert.False(answer.Ok);
-        Assert.Null(answer.Position);
-        Assert.Equal(RequestHumanTool.NoCallNote, answer.Note);
-        Assert.Empty(_store.Rows);
-        Assert.Empty(_notifier.Events);
     }
 }

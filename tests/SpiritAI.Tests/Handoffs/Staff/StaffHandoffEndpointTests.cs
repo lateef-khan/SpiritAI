@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text.Json;
 
+using Microsoft.Extensions.AI;
+
 using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Staff;
@@ -124,10 +126,10 @@ public sealed class StaffHandoffEndpointTests
 
         Assert.Contains("handoff.claimed", world.Notifier.Events);
 
-        var (noteCall, note) = Assert.Single(world.Transcript.Appended);
-        Assert.Equal(callId, noteCall);
-        Assert.Equal("Dana R. joined", note.Text);
-        Assert.Equal("system", SpeakerProperty.Read(note)?.GetProperty("kind").GetString());
+        var note = await world.LastWordAsync(callId);
+        Assert.Equal(ChatRole.Assistant, note.Content.Role);
+        Assert.Equal("Dana R. joined", note.Content.Text);
+        Assert.Equal("system", SpeakerProperty.Read(note.Content)?.GetProperty("kind").GetString());
     }
 
     [Fact]
@@ -196,9 +198,11 @@ public sealed class StaffHandoffEndpointTests
         Assert.Equal("human", created.Speaker?.Kind);
         Assert.Equal("Dana R.", created.Speaker?.Name);
 
-        var (_, stored) = world.Transcript.Appended[^1];
-        Assert.Equal("Try the tension bolt.", stored.Text);
-        Assert.Equal("Dana R.", SpeakerProperty.Read(stored)?.GetProperty("name").GetString());
+        var stored = await world.LastWordAsync(callId);
+        Assert.Equal(created.MessageId, stored.MessageId);
+        Assert.Equal(ChatRole.Assistant, stored.Content.Role);
+        Assert.Equal("Try the tension bolt.", stored.Content.Text);
+        Assert.Equal("Dana R.", SpeakerProperty.Read(stored.Content)?.GetProperty("name").GetString());
 
         Assert.Contains("message.created", world.Notifier.Events);
     }
@@ -217,36 +221,6 @@ public sealed class StaffHandoffEndpointTests
     }
 
     [Fact]
-    public async Task AReplyWithNowhereToGoIsUnavailable()
-    {
-        await using var world = await StaffHandoffWorld.StartAsync(transcript: new RefusingHandoffTranscript());
-        var callId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
-        await world.AskAsync(callId);
-        await world.Staff.PostAsync($"{Handoff}/{callId}/claim");
-
-        var response = await world.Staff.PostAsync($"{Handoff}/{callId}/messages", new { text = "Hello" });
-
-        // The words are the whole point of the request. With nowhere to put them, nothing happened.
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-        Assert.DoesNotContain("message.created", world.Notifier.Events);
-    }
-
-    [Fact]
-    public async Task AClaimStillWinsWhenItsLineHasNowhereToGo()
-    {
-        await using var world = await StaffHandoffWorld.StartAsync(transcript: new RefusingHandoffTranscript());
-        var callId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
-        await world.AskAsync(callId);
-
-        var response = await world.Staff.PostAsync($"{Handoff}/{callId}/claim");
-
-        // The row already moved to human. Reporting that as a failure would leave the caller
-        // believing the chat is still free.
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(HandoffStatus.Human, Assert.Single(world.Store.Rows).Status);
-    }
-
-    [Fact]
     public async Task FinishingHandsTheChatBackAndSaysGoodbye()
     {
         await using var world = await StaffHandoffWorld.StartAsync();
@@ -259,7 +233,7 @@ public sealed class StaffHandoffEndpointTests
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal(HandoffStatus.Done, Assert.Single(world.Store.Rows).Status);
         Assert.Contains("handoff.done", world.Notifier.Events);
-        Assert.Equal("Dana R. left", world.Transcript.Appended[^1].Message.Text);
+        Assert.Equal("Dana R. left", (await world.LastWordAsync(callId)).Content.Text);
     }
 
     [Fact]

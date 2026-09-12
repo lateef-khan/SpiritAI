@@ -18,12 +18,14 @@ namespace SpiritAI.Handoffs.Desk;
 /// The conversation of a handoff, section 5 of the spec: the ask, the wait, and the words either
 /// side says while a person is on the way or on the chat. The public routes, the inbox's reply,
 /// and the bot's own tool all come through here, so a chat joins the queue the same way whichever
-/// side asked, and a reply reaches the visitor the same way wherever they are.
+/// side asked, and a reply reaches the visitor the same way wherever they are. Every word of the
+/// human phase goes into the chat's own history through <see cref="ICallStore.AppendMessageAsync"/>,
+/// so the bot's next turn after Done reads the human phase: AgentCore re-reads the call when
+/// <c>next_ordinal</c> moved.
 /// </summary>
 public sealed class HandoffDesk(
     IHandoffStore handoffs,
     ICallStore calls,
-    IHandoffTranscript transcript,
     IHandoffNotifier notifier,
     IPresenceStore presence,
     IHandoffMailer mailer,
@@ -115,7 +117,6 @@ public sealed class HandoffDesk(
     /// The message as it was pushed, or <see langword="null"/> when the bot has the chat and the
     /// words belong on the chat route instead.
     /// </returns>
-    /// <exception cref="NotSupportedException">AgentCore cannot yet append between turns.</exception>
     public async Task<HandoffMessage?> VisitorSaysAsync(string callId, string text, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(callId);
@@ -128,11 +129,11 @@ public sealed class HandoffDesk(
 
         var at = clock.GetUtcNow();
 
-        await transcript
-            .AppendAsync(callId, new ChatMessage(ChatRole.User, text) { CreatedAt = at }, cancellationToken)
+        var row = await calls
+            .AppendMessageAsync(callId, new ChatMessage(ChatRole.User, text) { CreatedAt = at }, cancellationToken)
             .ConfigureAwait(false);
 
-        var created = new HandoffMessage(callId, VisitorRole, text, Speaker: null, at);
+        var created = new HandoffMessage(callId, row.MessageId, VisitorRole, text, Speaker: null, at);
 
         await notifier.MessageCreatedAsync(created, cancellationToken).ConfigureAwait(false);
 
@@ -148,7 +149,6 @@ public sealed class HandoffDesk(
     /// <param name="text">The words.</param>
     /// <param name="cancellationToken">Cancels the work.</param>
     /// <returns>The message as it was pushed.</returns>
-    /// <exception cref="NotSupportedException">AgentCore cannot yet append between turns.</exception>
     public async Task<HandoffMessage> StaffSaysAsync(
         Handoff open, HandoffStaffMember member, string text, CancellationToken cancellationToken)
     {
@@ -161,9 +161,9 @@ public sealed class HandoffDesk(
         var message = new ChatMessage(ChatRole.Assistant, text) { CreatedAt = at };
         SpeakerProperty.Attach(message, speaker);
 
-        await transcript.AppendAsync(open.CallId, message, cancellationToken).ConfigureAwait(false);
+        var row = await calls.AppendMessageAsync(open.CallId, message, cancellationToken).ConfigureAwait(false);
 
-        var created = new HandoffMessage(open.CallId, StaffRole, text, speaker, at);
+        var created = new HandoffMessage(open.CallId, row.MessageId, StaffRole, text, speaker, at);
 
         await notifier.MessageCreatedAsync(created, cancellationToken).ConfigureAwait(false);
 

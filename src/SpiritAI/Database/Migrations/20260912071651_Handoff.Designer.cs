@@ -12,8 +12,8 @@ using SpiritAI.Database;
 namespace SpiritAI.Database.Migrations
 {
     [DbContext(typeof(SpiritDbContext))]
-    [Migration("20260911205837_Presence")]
-    partial class Presence
+    [Migration("20260912071651_Handoff")]
+    partial class Handoff
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -34,7 +34,7 @@ namespace SpiritAI.Database.Migrations
 
                     b.HasKey("CallId");
 
-                    b.ToTable("call", "public", t =>
+                    b.ToTable("call", "agentcore", t =>
                         {
                             t.ExcludeFromMigrations();
                         });

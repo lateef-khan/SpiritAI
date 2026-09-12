@@ -31,7 +31,7 @@ namespace SpiritAI.Database.Migrations
 
                     b.HasKey("CallId");
 
-                    b.ToTable("call", "public", t =>
+                    b.ToTable("call", "agentcore", t =>
                         {
                             t.ExcludeFromMigrations();
                         });

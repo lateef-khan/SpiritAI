@@ -52,8 +52,7 @@ public static class VisitorHandoffEndpoints
             .Describe("sendVisitorMessage")
             .Produces<HandoffMessage>(StatusCodes.Status201Created)
             .Produces(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict)
-            .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         return endpoints;
     }
@@ -184,23 +183,7 @@ public static class VisitorHandoffEndpoints
                 return Problem(StatusCodes.Status400BadRequest, "The request cannot be read.", "text must be a non-blank string.");
             }
 
-            HandoffMessage? created;
-
-            try
-            {
-                created = await desk.VisitorSaysAsync(callId, text, cancellationToken).ConfigureAwait(false);
-            }
-            catch (NotSupportedException)
-            {
-                // The words are the whole point of the request. With nowhere to put them, nothing
-                // happened, and the widget must hear that rather than a 201.
-                return Problem(
-                    StatusCodes.Status503ServiceUnavailable,
-                    "Messages are not stored yet.",
-                    "AgentCore cannot store a visitor message outside a turn yet.");
-            }
-
-            if (created is null)
+            if (await desk.VisitorSaysAsync(callId, text, cancellationToken).ConfigureAwait(false) is not { } created)
             {
                 return Problem(StatusCodes.Status409Conflict, "The assistant has this chat.", "Send it there.");
             }

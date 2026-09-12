@@ -80,7 +80,10 @@ export async function authFetch(input: RequestInfo | URL, init?: RequestInit): P
     throw new NotSignedInError("Signed in, but Neon issued no access token for this session.");
   }
 
-  const headers = new Headers(init?.headers);
+  const headers = new Headers(
+    init?.headers ?? (input instanceof Request ? input.headers : undefined),
+  );
+  
   headers.set("Authorization", `Bearer ${token}`);
 
   const response = await fetch(input, { ...init, headers });

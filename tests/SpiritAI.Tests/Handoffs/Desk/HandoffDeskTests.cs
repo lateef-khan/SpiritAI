@@ -1,5 +1,7 @@
 using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Ports;
 
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using SpiritAI.Handoffs;
@@ -31,8 +33,7 @@ public sealed class HandoffDeskTests
 
     private readonly TestTimeProvider _clock = new(new DateTimeOffset(2026, 9, 11, 9, 0, 0, TimeSpan.Zero));
     private readonly FakeHandoffStore _store;
-    private readonly InMemoryCallStore _calls;
-    private readonly RecordingHandoffTranscript _transcript = new();
+    private readonly ICallStore _calls;
     private readonly RecordingHandoffNotifier _notifier = new();
     private readonly FakePresenceStore _presence;
     private readonly RecordingHandoffMailer _mailer = new();
@@ -70,7 +71,7 @@ public sealed class HandoffDeskTests
         var said = await _desk.VisitorSaysAsync(callId, "Still there?", Cancel);
 
         Assert.Null(said);
-        Assert.Empty(_transcript.Appended);
+        Assert.Empty(await _calls.ReadAsync(callId, Cancel));
         Assert.Empty(_notifier.Events);
     }
 
@@ -87,7 +88,7 @@ public sealed class HandoffDeskTests
         Assert.Equal("Dana R.", mail.StaffName);
         Assert.Equal("Try the tension bolt.", mail.Text);
 
-        AssertStoredAndPushed(open.CallId, created);
+        await AssertStoredAndPushedAsync(open.CallId, created);
     }
 
     [Fact]
@@ -100,7 +101,7 @@ public sealed class HandoffDeskTests
         var created = await _desk.StaffSaysAsync(open, Dana, "Try the tension bolt.", Cancel);
 
         Assert.Empty(_mailer.Sent);
-        AssertStoredAndPushed(open.CallId, created);
+        await AssertStoredAndPushedAsync(open.CallId, created);
     }
 
     [Fact]
@@ -111,7 +112,7 @@ public sealed class HandoffDeskTests
         var created = await _desk.StaffSaysAsync(open, Dana, "Try the tension bolt.", Cancel);
 
         Assert.Empty(_mailer.Sent);
-        AssertStoredAndPushed(open.CallId, created);
+        await AssertStoredAndPushedAsync(open.CallId, created);
     }
 
     [Fact]
@@ -124,16 +125,17 @@ public sealed class HandoffDeskTests
         var created = await desk.StaffSaysAsync(open, Dana, "Try the tension bolt.", Cancel);
 
         Assert.Equal("Try the tension bolt.", created.Text);
-        AssertStoredAndPushed(open.CallId, created);
+        await AssertStoredAndPushedAsync(open.CallId, created);
     }
 
-    /// <summary>The reply is in the transcript, signed, and was pushed as the message returned.</summary>
-    private void AssertStoredAndPushed(string callId, HandoffMessage created)
+    /// <summary>The reply is in the chat, signed, and was pushed as the message returned.</summary>
+    private async Task AssertStoredAndPushedAsync(string callId, HandoffMessage created)
     {
-        var (storedCall, stored) = Assert.Single(_transcript.Appended);
-        Assert.Equal(callId, storedCall);
-        Assert.Equal(created.Text, stored.Text);
-        Assert.Equal("Dana R.", SpeakerProperty.Read(stored)?.GetProperty("name").GetString());
+        var stored = Assert.Single(await _calls.ReadAsync(callId, Cancel));
+        Assert.Equal(created.MessageId, stored.MessageId);
+        Assert.Equal(ChatRole.Assistant, stored.Content.Role);
+        Assert.Equal(created.Text, stored.Content.Text);
+        Assert.Equal("Dana R.", SpeakerProperty.Read(stored.Content)?.GetProperty("name").GetString());
 
         Assert.Equal("assistant", created.Role);
         Assert.Equal("human", created.Speaker?.Kind);
@@ -141,7 +143,7 @@ public sealed class HandoffDeskTests
     }
 
     private HandoffDesk Desk(IHandoffMailer mailer)
-        => new(_store, _calls, _transcript, _notifier, _presence, mailer, _clock, NullLogger<HandoffDesk>.Instance);
+        => new(_store, _calls, _notifier, _presence, mailer, _clock, NullLogger<HandoffDesk>.Instance);
 
     /// <summary>Asks for a person on a new chat, a minute after the last ask, so the line has an order.</summary>
     private async Task<string> AskAsync()
