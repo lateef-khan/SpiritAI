@@ -1,7 +1,7 @@
 import { useAui, useAuiState } from "@assistant-ui/react";
 import { useMemo } from "react";
 
-import { flatten } from "@/runtime/AgentCoreRuntime";
+import { flatten } from "@/features/threads/AgentCoreRuntime";
 
 import { UnitPanel } from "./UnitPanel";
 

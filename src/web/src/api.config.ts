@@ -1,6 +1,6 @@
 import type { CreateClientConfig } from "./api/client.gen";
 
-import { authFetch } from "@/auth/authFetch";
+import { authFetch } from "@/features/auth/authFetch";
 
 /**
  * How every generated call reaches the host.

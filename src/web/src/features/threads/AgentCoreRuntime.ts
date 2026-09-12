@@ -19,7 +19,7 @@ import {
   type TurnState,
   type WireMessage,
 } from "./transport.ts";
-import { authFetch } from "@/auth/authFetch";
+import { authFetch } from "@/features/auth/authFetch";
 
 /**
  * The bridge between assistant-ui and AgentCore's OpenAI-compatible endpoint.

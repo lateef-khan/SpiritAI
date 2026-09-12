@@ -1,6 +1,6 @@
 "use client";
 
-import type { Speaker } from "@/runtime/transport";
+import type { Speaker } from "@/features/threads/transport";
 import { useAuiState } from "@assistant-ui/react";
 import { BotIcon, HeadsetIcon, ServerIcon } from "lucide-react";
 import type { FC } from "react";
@@ -8,7 +8,7 @@ import type { FC } from "react";
 /**
  * The name on an answer, when it was not the model that wrote it.
  *
- * Nothing populates this yet — see `Speaker` in runtime/transport.ts for the contract AgentCore
+ * Nothing populates this yet — see `Speaker` in features/threads/transport.ts for the contract AgentCore
  * would emit. Until it does, `useSpeaker` returns `null` and this renders nothing, which is exactly
  * what an app with one speaker should show.
  *

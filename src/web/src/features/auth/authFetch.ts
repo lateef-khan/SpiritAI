@@ -83,7 +83,7 @@ export async function authFetch(input: RequestInfo | URL, init?: RequestInit): P
   const headers = new Headers(
     init?.headers ?? (input instanceof Request ? input.headers : undefined),
   );
-  
+
   headers.set("Authorization", `Bearer ${token}`);
 
   const response = await fetch(input, { ...init, headers });

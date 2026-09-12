@@ -1,11 +1,11 @@
 import { Hidden, Thread } from "@/components/assistant-ui/thread";
 import { LauncherBubble } from "@/components/assistant-ui/elements/launcher-bubble";
-import { GenerativeUiDataUI } from "@/components/chat/GenerativeUiDataUI";
+import { GenerativeUiDataUI } from "@/features/chat/GenerativeUiDataUI";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useAgentCoreRuntime } from "./runtime/AgentCoreRuntime";
+import { useAgentCoreRuntime } from "./features/threads/AgentCoreRuntime";
 
 /**
  * The embeddable form of the chat: a bubble on someone else's page that opens into a panel.

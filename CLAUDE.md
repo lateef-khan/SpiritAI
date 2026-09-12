@@ -79,9 +79,10 @@ Say which one applies in your report.
 - `src/SpiritAI/Auth/` — sign-in. Verifies the Neon Auth token on `/v1`; see below.
   `Auth/Users/` reads who has a sign-in from `neon_auth."user"`, behind `IUserDirectory`.
 - `src/SpiritAI/Threads/` — the thread list, as REST over AgentCore's call store; see below.
-- `src/web/` — React + Vite chat frontend (assistant-ui). The MSBuild target
-  `BuildClientApp` in `SpiritAI.csproj` runs `npm ci && npm run build` and Vite writes
-  the bundle into `src/SpiritAI/wwwroot/chat/` (gitignored).
+- `src/web/` — React + Vite chat frontend (assistant-ui); features live under
+  `src/web/src/features/`. The MSBuild target `BuildClientApp` in `SpiritAI.csproj`
+  runs `npm ci && npm run build` and Vite writes the bundle into
+  `src/SpiritAI/wwwroot/chat/` (gitignored).
 
 ## Conventions
 

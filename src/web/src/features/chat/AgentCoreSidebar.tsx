@@ -1,7 +1,7 @@
 import type * as React from "react";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarRail } from "@/components/ui/sidebar";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
-import { AccountMenu } from "@/auth/AccountMenu";
+import { AccountMenu } from "@/features/auth/AccountMenu";
 
 export function AgentCoreSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (

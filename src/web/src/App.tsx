@@ -2,16 +2,16 @@ import { Thread } from "@/components/assistant-ui/thread";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider, useRemoteThreadListRuntime } from "@assistant-ui/react";
-import { AgentCoreSidebar } from "@/components/chat/AgentCoreSidebar";
-import { AuthGate } from "@/auth/AuthGate";
-import { GenerativeUiDataUI } from "@/components/chat/GenerativeUiDataUI";
-import { useAgentCoreRuntime } from "./runtime/AgentCoreRuntime";
+import { AgentCoreSidebar } from "@/features/chat/AgentCoreSidebar";
+import { AuthGate } from "@/features/auth/AuthGate";
+import { GenerativeUiDataUI } from "@/features/chat/GenerativeUiDataUI";
+import { useAgentCoreRuntime } from "./features/threads/AgentCoreRuntime";
 import {
   createAgentCoreThreadListAdapter,
   useThreadSession,
-} from "./runtime/AgentCoreThreadListAdapter";
-import { authFetch } from "@/auth/authFetch";
-import { ThreadUnitPanel } from "@/components/unit/ThreadUnitPanel";
+} from "./features/threads/AgentCoreThreadListAdapter";
+import { authFetch } from "@/features/auth/authFetch";
+import { ThreadUnitPanel } from "@/features/unit/ThreadUnitPanel";
 import {
   ResizableHandle,
   ResizablePanel,

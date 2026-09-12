@@ -484,7 +484,7 @@ const StoppedRunNotice: FC = () => {
  * How long the turn took, under the answer.
  *
  * Reads `message.metadata.timing`, which nothing fills in by default — see `newTurnClock` in
- * runtime/AgentCoreRuntime.ts, which is what puts it there.
+ * features/threads/AgentCoreRuntime.ts, which is what puts it there.
  */
 const MessageTimingFooter: FC = () => {
   const timing = useMessageTiming();
