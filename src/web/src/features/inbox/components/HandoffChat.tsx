@@ -6,12 +6,14 @@ import {
   type AppendMessage,
   type ExportedMessageRepository,
 } from "@assistant-ui/react";
-import { ChevronLeftIcon } from "lucide-react";
+import { ChevronLeftIcon, PanelRightIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Hidden, Thread, type ThreadComponents } from "@/components/assistant-ui/thread";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { HostRefusedError } from "@/lib/apiClient";
 
 import { createHandoffsApi, type Handoff } from "../api/handoffsApi";
@@ -19,6 +21,7 @@ import { useHandoffMessages } from "../hooks/useHandoffMessages";
 import { HandoffChatHeader } from "./HandoffChatHeader";
 import { HandoffComposer } from "./HandoffComposer";
 import { HandoffComposerContext } from "./HandoffComposerContext";
+import { HandoffContextPanel } from "./HandoffContextPanel";
 
 type HistoryMessage = ExportedMessageRepository["messages"][number]["message"];
 
@@ -47,9 +50,11 @@ export function HandoffChat({
 }) {
   const { history, loading, error, reload } = useHandoffMessages(handoff.callId);
   const [now] = useState(() => new Date());
+  const isMobile = useIsMobile();
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex items-center border-b">
         {onBack ? <BackButton onBack={onBack} /> : null}
         <div className="min-w-0 flex-1">
@@ -57,15 +62,33 @@ export function HandoffChat({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1">
-        {loading ? (
-          <MessagesSkeleton />
-        ) : error ? (
-          <p className="p-3.5 text-sm text-destructive">{error}</p>
-        ) : (
-          <HandoffThread handoff={handoff} meKey={meKey} history={history} reload={reload} />
-        )}
+        <div className="min-h-0 flex-1">
+          {loading ? (
+            <MessagesSkeleton />
+          ) : error ? (
+            <p className="p-3.5 text-sm text-destructive">{error}</p>
+          ) : (
+            <HandoffThread handoff={handoff} meKey={meKey} history={history} reload={reload} />
+          )}
+        </div>
+
+        {isMobile ? (
+          <Sheet>
+            <SheetTrigger className="absolute end-3 top-3 z-10 rounded-md border bg-background p-1.5">
+              <PanelRightIcon className="size-4" />
+              <span className="sr-only">Show the context</span>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-80 p-0">
+              <SheetTitle className="sr-only">Context</SheetTitle>
+              <HandoffContextPanel handoff={handoff} history={history} />
+            </SheetContent>
+          </Sheet>
+        ) : null}
       </div>
+
+      {isMobile ? null : (
+        <HandoffContextPanel handoff={handoff} history={history} className="w-80 shrink-0 border-l" />
+      )}
     </div>
   );
 }
