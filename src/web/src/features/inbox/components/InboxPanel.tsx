@@ -3,7 +3,12 @@ import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import type { Handoff } from "../api/handoffsApi";
-import { filterHandoffs, useHandoffs, type InboxTab, type InboxView } from "../hooks/useHandoffs";
+import {
+  filterHandoffs,
+  type InboxCounts,
+  type InboxTab,
+  type InboxView,
+} from "../hooks/useHandoffs";
 import { HandoffRow } from "./HandoffRow";
 import { InboxHeader } from "./InboxHeader";
 import { InboxTabs } from "./InboxTabs";
@@ -12,24 +17,34 @@ import { InboxTabs } from "./InboxTabs";
  * The conversations column: every handoff waiting on, or already claimed by, a person.
  *
  * Width and placement are the parent's call — this only ever fills the height it is given, the
- * same contract `UnitPanel` uses for the column on the chat's other side. Which row reads as
- * picked, and what a click on one does, both belong to the parent: this only ever draws the state
- * it is handed and reports a click back.
+ * same contract `UnitPanel` uses for the column on the chat's other side. The rows, which view is
+ * loaded, and which one reads as picked are all the parent's state; this only ever draws what it
+ * is handed, reports a click back, and asks to change the view. The Mine/Unassigned/All split and
+ * the sort order stay local, since neither needs to survive a row pick or a reload.
  */
 export function InboxPanel({
   meKey,
+  view,
+  onViewChange,
+  rows,
+  counts,
+  loading,
+  error,
   selectedId,
   onSelect,
 }: {
   meKey: string;
+  view: InboxView;
+  onViewChange: (view: InboxView) => void;
+  rows: Handoff[];
+  counts: InboxCounts;
+  loading: boolean;
+  error: Error | null;
   selectedId: number | null;
-  onSelect: (row: Handoff | null) => void;
+  onSelect: (row: Handoff) => void;
 }) {
-  const [view, setView] = useState<InboxView>("open");
   const [tab, setTab] = useState<InboxTab>("all");
   const [reversed, setReversed] = useState(false);
-
-  const { rows, counts, loading, error } = useHandoffs(view, meKey);
 
   // The done view has no unassigned rows, so a tab choice made in the open view falls back to all
   // rather than showing nothing.
@@ -42,9 +57,8 @@ export function InboxPanel({
   const ordered = reversed ? [...filtered].reverse() : filtered;
 
   function handleViewChange(next: InboxView) {
-    setView(next);
     setReversed(false);
-    onSelect(null);
+    onViewChange(next);
   }
 
   return (

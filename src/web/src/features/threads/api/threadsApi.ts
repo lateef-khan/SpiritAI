@@ -9,7 +9,7 @@ import {
   updateThread,
 } from "@/api/sdk.gen";
 import type { ThreadCreated, ThreadPage, ThreadStatus, ThreadSummary } from "@/api/types.gen";
-import { apiClient, createApiClient, type FetchLike } from "@/apiClient";
+import { apiClient, createApiClient, type FetchLike } from "@/lib/apiClient";
 import { reviveHistory } from "@/lib/history";
 
 /**

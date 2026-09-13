@@ -98,7 +98,7 @@ describe("HandoffChat", () => {
     vi.setSystemTime(new Date("2026-09-12T12:53:00"));
     vi.mocked(getHandoffMessages).mockResolvedValue({ data: Transcript } as never);
 
-    render(<HandoffChat handoff={handoff()} />);
+    render(<HandoffChat handoff={handoff()} meKey="user:dana" onChanged={() => {}} />);
 
     // The load effect resolves through real promises even under fake timers; advancing the fake
     // clock by zero still pumps the microtask queue so that resolution reaches state.
@@ -125,6 +125,8 @@ describe("HandoffChat", () => {
     render(
       <HandoffChat
         handoff={handoff({ status: "human", assignee: { key: "user:dana", name: "Dana" } })}
+        meKey="user:other"
+        onChanged={() => {}}
       />,
     );
 
@@ -137,6 +139,8 @@ describe("HandoffChat", () => {
     render(
       <HandoffChat
         handoff={handoff({ status: "done", assignee: { key: "user:dana", name: "Dana" } })}
+        meKey="user:dana"
+        onChanged={() => {}}
       />,
     );
 

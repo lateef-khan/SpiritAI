@@ -1,5 +1,5 @@
-import { createClient, createConfig, type Client } from "./api/client";
-import { client } from "./api/client.gen";
+import { createClient, createConfig, type Client } from "../api/client";
+import { client } from "../api/client.gen";
 
 /**
  * The generated client, and the one thing that is not generated about it.
@@ -15,7 +15,9 @@ import { client } from "./api/client.gen";
  * The status is on the object as well as in the message. A caller telling 404 from 500 is telling
  * "no unit carries that number" from "the database is down", and those are different things to put
  * on a screen; reading it back out of the sentence would be the kind of parsing that breaks the
- * first time the sentence is reworded.
+ * first time the sentence is reworded. `title` carries the same distinction for a problem-detail
+ * body: a 409 the inbox raises names who beat the caller to a claim, and that name belongs on the
+ * object rather than buried in a message string a caller would have to parse back out.
  */
 export class HostRefusedError extends Error {
   /**
@@ -23,10 +25,12 @@ export class HostRefusedError extends Error {
    *
    * @param status The status the host answered with.
    * @param path What was asked for.
+   * @param title The problem-detail body's `title`, or `null` when the host sent none.
    */
   constructor(
     readonly status: number,
     path: string,
+    readonly title: string | null = null,
   ) {
     super(`the host answered ${status} for ${path}.`);
     this.name = "HostRefusedError";
@@ -35,6 +39,35 @@ export class HostRefusedError extends Error {
 
 /** The part of `fetch` this app injects. `authFetch` is one, and so is a test's stand-in. */
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+/**
+ * Reads a refused response's `title`, when it sent one.
+ *
+ * A problem-detail body is the only shape this looks for; a plain 401 or 404 with an empty body,
+ * or a body of some other content type, answers `null` rather than throwing a second time on top
+ * of the refusal it is already reporting.
+ *
+ * @param response The refused response, not yet read.
+ * @returns The body's `title`, or `null`.
+ */
+async function titleOf(response: Response): Promise<string | null> {
+  if (!(response.headers.get("content-type") ?? "").startsWith("application/problem+json")) {
+    return null;
+  }
+
+  try {
+    const body: unknown = await response.clone().json();
+
+    return typeof body === "object" &&
+      body !== null &&
+      "title" in body &&
+      typeof body.title === "string"
+      ? body.title
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Makes a refused request throw, with the status in the message.
@@ -48,11 +81,11 @@ export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promis
  * @returns The same client.
  */
 function refusalsThrow(target: Client): Client {
-  target.interceptors.response.use((response, request) => {
+  target.interceptors.response.use(async (response, request) => {
     if (!response.ok) {
       const { pathname, search } = new URL(request.url);
 
-      throw new HostRefusedError(response.status, `${pathname}${search}`);
+      throw new HostRefusedError(response.status, `${pathname}${search}`, await titleOf(response));
     }
 
     return response;

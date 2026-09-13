@@ -10,9 +10,15 @@ import type { HandoffSummary } from "@/api/types.gen";
  * wire strings become dates (or stay null), and that the status a caller asks for is the status
  * that reaches the query.
  */
-vi.mock("@/api/sdk.gen", () => ({ listHandoffs: vi.fn(), getHandoffMessages: vi.fn() }));
+vi.mock("@/api/sdk.gen", () => ({
+  listHandoffs: vi.fn(),
+  getHandoffMessages: vi.fn(),
+  claimHandoff: vi.fn(),
+  finishHandoff: vi.fn(),
+}));
 
-const { listHandoffs, getHandoffMessages } = await import("@/api/sdk.gen");
+const { listHandoffs, getHandoffMessages, claimHandoff, finishHandoff } =
+  await import("@/api/sdk.gen");
 const { createHandoffsApi, callerKeyOf } = await import("./handoffsApi");
 
 beforeEach(() => vi.resetAllMocks());
@@ -104,6 +110,36 @@ describe("createHandoffsApi messages", () => {
     expect(revived.id).toBe("call-1:0");
     expect(revived.role).toBe("assistant");
     expect(revived.content).toEqual([{ type: "text", text: "on my way" }]);
+  });
+});
+
+describe("createHandoffsApi claim", () => {
+  it("revives the claimed handoff, dates and all", async () => {
+    vi.mocked(claimHandoff).mockResolvedValue({
+      data: wire({
+        status: "human",
+        assignee: { key: "user:dana", name: "Dana" },
+        claimedAt: "2026-09-12T12:50:00",
+      }),
+    } as never);
+
+    const handoff = await createHandoffsApi().claim("call-1");
+
+    expect(handoff.status).toBe("human");
+    expect(handoff.assignee?.name).toBe("Dana");
+    expect(handoff.claimedAt).toEqual(new Date("2026-09-12T12:50:00"));
+  });
+});
+
+describe("createHandoffsApi finish", () => {
+  it("calls finishHandoff with the callId", async () => {
+    vi.mocked(finishHandoff).mockResolvedValue({ data: undefined } as never);
+
+    await createHandoffsApi().finish("call-1");
+
+    expect(finishHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({ path: { callId: "call-1" } }),
+    );
   });
 });
 

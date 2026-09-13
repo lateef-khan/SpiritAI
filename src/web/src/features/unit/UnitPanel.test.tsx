@@ -2,7 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { OrderDocument, UnitDocument } from "@/api/types.gen";
-import { HostRefusedError } from "@/apiClient";
+import { HostRefusedError } from "@/lib/apiClient";
 import type { Said } from "@/hooks/useIdentifiers";
 
 import { UnitPanel } from "./UnitPanel";

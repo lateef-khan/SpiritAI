@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getOrder, getUnit } from "@/api/sdk.gen";
 import type { OrderDocument, UnitDocument } from "@/api/types.gen";
-import { HostRefusedError } from "@/apiClient";
+import { HostRefusedError } from "@/lib/apiClient";
 import type { Identifier } from "@/hooks/useIdentifiers";
 
 /**

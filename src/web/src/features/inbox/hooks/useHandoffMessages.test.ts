@@ -14,7 +14,7 @@ function historyOf(headId: string): ExportedMessageRepository {
 describe("useHandoffMessages", () => {
   it("makes no call when no call is selected", () => {
     const messages = vi.fn();
-    const api: HandoffsApi = { list: vi.fn(), messages };
+    const api: HandoffsApi = { list: vi.fn(), messages, claim: vi.fn(), finish: vi.fn() };
 
     const view = renderHook(() => useHandoffMessages(null, api));
 
@@ -26,6 +26,8 @@ describe("useHandoffMessages", () => {
     const api: HandoffsApi = {
       list: vi.fn(),
       messages: vi.fn().mockResolvedValue(historyOf("call-1:0")),
+      claim: vi.fn(),
+      finish: vi.fn(),
     };
 
     const view = renderHook(() => useHandoffMessages("call-1", api));
@@ -44,7 +46,7 @@ describe("useHandoffMessages", () => {
       (callId: string) =>
         new Promise<ExportedMessageRepository>((resolve) => resolvers.set(callId, resolve)),
     );
-    const api: HandoffsApi = { list: vi.fn(), messages };
+    const api: HandoffsApi = { list: vi.fn(), messages, claim: vi.fn(), finish: vi.fn() };
 
     const view = renderHook(({ callId }) => useHandoffMessages(callId, api), {
       initialProps: { callId: "call-1" },

@@ -75,7 +75,12 @@ describe("filterHandoffs", () => {
 
 /** A `HandoffsApi` that answers from a fixed table, keyed by the status it was asked for. */
 function fakeApi(byStatus: Partial<Record<HandoffStatus, Handoff[]>>): HandoffsApi {
-  return { list: async (status) => byStatus[status] ?? [], messages: async () => notNeeded() };
+  return {
+    list: async (status) => byStatus[status] ?? [],
+    messages: async () => notNeeded(),
+    claim: async () => notNeeded(),
+    finish: async () => notNeeded(),
+  };
 }
 
 /** Fails a test that reaches a route it has no business calling. */
@@ -116,6 +121,8 @@ describe("useHandoffs", () => {
     const api: HandoffsApi = {
       list: async () => Promise.reject(new Error("nope")),
       messages: async () => notNeeded(),
+      claim: async () => notNeeded(),
+      finish: async () => notNeeded(),
     };
 
     const view = renderHook(() => useHandoffs("open", MeKey, api));

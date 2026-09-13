@@ -1,7 +1,7 @@
 import type { ExportedMessageRepository } from "@assistant-ui/react";
-import { getHandoffMessages, listHandoffs } from "@/api/sdk.gen";
+import { claimHandoff, finishHandoff, getHandoffMessages, listHandoffs } from "@/api/sdk.gen";
 import type { HandoffSummary } from "@/api/types.gen";
-import { apiClient } from "@/apiClient";
+import { apiClient } from "@/lib/apiClient";
 import type { Client } from "@/api/client";
 import { reviveHistory } from "@/lib/history";
 
@@ -38,6 +38,8 @@ export type Handoff = Omit<
 export type HandoffsApi = {
   list(status: HandoffStatus): Promise<Handoff[]>;
   messages(callId: string): Promise<ExportedMessageRepository>;
+  claim(callId: string): Promise<Handoff>;
+  finish(callId: string): Promise<void>;
 };
 
 /**
@@ -86,6 +88,13 @@ export function createHandoffsApi(client: Client = apiClient): HandoffsApi {
       reviveHistory(
         (await getHandoffMessages({ client, throwOnError: true, path: { callId } })).data,
       ),
+
+    claim: async (callId) =>
+      reviveHandoff((await claimHandoff({ client, throwOnError: true, path: { callId } })).data),
+
+    finish: async (callId) => {
+      await finishHandoff({ client, throwOnError: true, path: { callId } });
+    },
   };
 }
 

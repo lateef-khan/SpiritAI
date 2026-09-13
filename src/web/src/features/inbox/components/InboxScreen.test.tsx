@@ -11,10 +11,14 @@ import type { HandoffSummary } from "@/api/types.gen";
  * panel into the chat pane, not the network underneath. `@/hooks/use-mobile` is mocked separately
  * per test, since `InboxScreen` reads it to choose which of the two layouts to render.
  */
-vi.mock("@/api/sdk.gen", () => ({ listHandoffs: vi.fn(), getHandoffMessages: vi.fn() }));
+vi.mock("@/api/sdk.gen", () => ({
+  listHandoffs: vi.fn(),
+  getHandoffMessages: vi.fn(),
+  claimHandoff: vi.fn(),
+}));
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: vi.fn(() => false) }));
 
-const { listHandoffs, getHandoffMessages } = await import("@/api/sdk.gen");
+const { listHandoffs, getHandoffMessages, claimHandoff } = await import("@/api/sdk.gen");
 const { useIsMobile } = await import("@/hooks/use-mobile");
 const { InboxScreen } = await import("./InboxScreen");
 
@@ -86,6 +90,45 @@ describe("InboxScreen", () => {
     expect(screen.getByText("Started 15 min ago")).toBeTruthy();
   });
 
+  it("takes a waiting handoff and reflects the claim in the badge and the Mine count", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-12T12:53:00"));
+
+    const claimed = wire({ status: "human", assignee: { key: MeKey, name: "Dana" } });
+    let claimedFlag = false;
+    vi.mocked(listHandoffs).mockImplementation((options) => {
+      if (options?.query?.status === "waiting") {
+        return Promise.resolve({ data: { items: claimedFlag ? [] : [wire()] } }) as never;
+      }
+      return Promise.resolve({
+        data: { items: claimedFlag ? [claimed] : [] },
+      }) as never;
+    });
+    vi.mocked(getHandoffMessages).mockResolvedValue({ data: Transcript } as never);
+    vi.mocked(claimHandoff).mockImplementation(() => {
+      claimedFlag = true;
+      return Promise.resolve({ data: claimed }) as never;
+    });
+
+    render(<InboxScreen meKey={MeKey} />);
+
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    fireEvent.click(screen.getByText("Treadmill belt slips at 8 mph"));
+
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Take" }));
+    });
+
+    expect(screen.getByText("You have this chat")).toBeTruthy();
+
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    expect(screen.getByRole("tab", { name: /Mine/ }).textContent).toContain("1");
+  });
+
   it("clears the pick when the view changes underneath it", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-12T12:53:00"));
@@ -112,9 +155,57 @@ describe("InboxScreen", () => {
     // pointer.
     fireEvent.keyDown(screen.getByRole("button", { name: "Open" }), { key: "Enter" });
     await act(() => vi.advanceTimersByTimeAsync(0));
-    fireEvent.click(screen.getByText("Done"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Done" }));
 
     expect(screen.getByText("Pick a conversation.")).toBeTruthy();
+  });
+
+  it("orders the done view newest first until the sort is toggled", async () => {
+    const older = wire({
+      id: 1,
+      status: "done",
+      doneAt: "2026-09-12T11:00:00",
+      email: null,
+      title: "Older, done first ended",
+    });
+    const newer = wire({
+      id: 2,
+      status: "done",
+      doneAt: "2026-09-12T12:00:00",
+      email: null,
+      title: "Newer, done last ended",
+    });
+
+    vi.mocked(listHandoffs).mockImplementation(
+      (options) =>
+        Promise.resolve({
+          data: { items: options?.query?.status === "done" ? [older, newer] : [] },
+        }) as never,
+    );
+
+    const { container } = render(<InboxScreen meKey={MeKey} />);
+
+    await screen.findByText("No conversations.");
+
+    // Radix opens a dropdown on a key press as readily as on a pointer, and happy-dom has no
+    // pointer.
+    fireEvent.keyDown(screen.getByRole("button", { name: "Open" }), { key: "Enter" });
+    fireEvent.click(await screen.findByText("Done"));
+
+    await screen.findByText("Newer, done last ended");
+
+    const rowTitles = () =>
+      Array.from(container.querySelectorAll("li")).map((li) => li.textContent);
+
+    expect(rowTitles()[0]).toContain("Newer, done last ended");
+    expect(rowTitles()[1]).toContain("Older, done first ended");
+    expect(screen.getByRole("button", { name: "Newest first" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Newest first" }));
+
+    expect(rowTitles()[0]).toContain("Older, done first ended");
+    expect(rowTitles()[1]).toContain("Newer, done last ended");
+    expect(screen.getByRole("button", { name: "Oldest first" })).toBeTruthy();
   });
 
   it("on mobile, a row click fills the width with the chat, and Back returns to the list", async () => {
