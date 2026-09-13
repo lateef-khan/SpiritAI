@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Thread } from "@/components/assistant-ui/thread";
+import { ContextRail } from "@/components/ContextRail";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider, useRemoteThreadListRuntime } from "@assistant-ui/react";
@@ -14,9 +15,10 @@ import {
 } from "./features/threads/AgentCoreThreadListAdapter";
 import { authFetch } from "@/features/auth/authFetch";
 import { useSession } from "@/features/auth/authClient";
-import { callerKeyOf } from "@/features/inbox/api/handoffsApi";
+import { callerKeyOf, type Handoff } from "@/features/inbox/api/handoffsApi";
 import { InboxScreen } from "@/features/inbox/components/InboxScreen";
-import { ThreadUnitPanel } from "@/features/unit/ThreadUnitPanel";
+import { useHandoffMessages } from "@/features/inbox/hooks/useHandoffMessages";
+import { ThreadContextPanel } from "@/features/unit/ThreadContextPanel";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -56,36 +58,6 @@ function useThreadRuntime() {
 }
 
 /**
- * The conversation and the unit panel, side by side.
- */
-function ChatAndUnit() {
-  const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: "spirit-chat-unit" });
-
-  return (
-    <ResizablePanelGroup
-      orientation="horizontal"
-      className="min-w-0 flex-1"
-      defaultLayout={defaultLayout}
-      onLayoutChanged={onLayoutChanged}
-    >
-      <ResizablePanel id="chat" minSize="22rem">
-        <Thread />
-      </ResizablePanel>
-      <ResizableHandle />
-      <ResizablePanel
-        id="unit"
-        defaultSize="20rem"
-        minSize="16rem"
-        maxSize="40rem"
-        groupResizeBehavior="preserve-pixel-size"
-      >
-        <ThreadUnitPanel className="border-l-0" />
-      </ResizablePanel>
-    </ResizablePanelGroup>
-  );
-}
-
-/**
  * The same two, on a narrow screen.
  *
  * There is no room for two columns, so the unit panel becomes a `Sheet` and there is no divider
@@ -104,13 +76,21 @@ function ChatAndUnitSheet() {
         </SheetTrigger>
         <SheetContent side="right" className="w-80 p-0">
           <SheetTitle className="sr-only">Unit</SheetTitle>
-          <ThreadUnitPanel className="border-l-0" />
+          <ThreadContextPanel className="border-l-0" />
         </SheetContent>
       </Sheet>
     </>
   );
 }
 
+/**
+ * The app: the sidebar, one main pane, and the context rail.
+ *
+ * The rail is the one unchanging column whatever the main pane shows — an agent thread reads
+ * the unit off the live conversation, a picked handoff reads the visitor and the unit off the
+ * shared transcript load, and with no pick yet the rail says so. The inbox mirrors its pick up
+ * here for the rail; the transcript loads once here for both the chat and the rail.
+ */
 export function App() {
   const runtime = useRemoteThreadListRuntime({
     runtimeHook: useThreadRuntime,
@@ -118,12 +98,22 @@ export function App() {
   });
   const isMobile = useIsMobile();
   const [view, setView] = useState<View>("chat");
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: "spirit-shell" });
 
   // `App` is `AuthGate`'s parent, so this runs before the session resolves and `meKey` is
   // `"user:"` on that render; `meKey` is only consumed once `AuthGate` lets its children through,
   // by which point the session has resolved to the signed-in user.
   const { data } = useSession();
   const meKey = callerKeyOf(data?.user.id ?? "");
+
+  const [selectedHandoff, setSelectedHandoff] = useState<Handoff | null>(null);
+  const handleInboxSelection = useCallback((handoff: Handoff | null) => {
+    setSelectedHandoff(handoff);
+  }, []);
+  // Gated on the inbox view: nothing selected — or nothing shown — loads nothing.
+  const transcript = useHandoffMessages(
+    view === "inbox" ? (selectedHandoff?.callId ?? null) : null,
+  );
 
   return (
     <AuthGate>
@@ -137,12 +127,49 @@ export function App() {
                 onOpenInbox={() => setView("inbox")}
                 onOpenChat={() => setView("chat")}
               />
-              {view === "inbox" ? (
-                <InboxScreen meKey={meKey} />
-              ) : isMobile ? (
-                <ChatAndUnitSheet />
+              {isMobile ? (
+                view === "inbox" ? (
+                  <InboxScreen
+                    meKey={meKey}
+                    transcript={transcript}
+                    onSelectionChange={handleInboxSelection}
+                  />
+                ) : (
+                  <ChatAndUnitSheet />
+                )
               ) : (
-                <ChatAndUnit />
+                <ResizablePanelGroup
+                  orientation="horizontal"
+                  className="min-w-0 flex-1"
+                  defaultLayout={defaultLayout}
+                  onLayoutChanged={onLayoutChanged}
+                >
+                  <ResizablePanel id="main" minSize="24rem">
+                    {view === "inbox" ? (
+                      <InboxScreen
+                        meKey={meKey}
+                        transcript={transcript}
+                        onSelectionChange={handleInboxSelection}
+                      />
+                    ) : (
+                      <Thread />
+                    )}
+                  </ResizablePanel>
+                  <ResizableHandle />
+                  <ResizablePanel
+                    id="context"
+                    defaultSize="20rem"
+                    minSize="16rem"
+                    maxSize="40rem"
+                    groupResizeBehavior="preserve-pixel-size"
+                  >
+                    <ContextRail
+                      mode={view === "inbox" ? "handoff" : "thread"}
+                      handoff={selectedHandoff}
+                      history={transcript.history}
+                    />
+                  </ResizablePanel>
+                </ResizablePanelGroup>
               )}
             </div>
           </SidebarProvider>

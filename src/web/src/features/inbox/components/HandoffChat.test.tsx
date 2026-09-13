@@ -1,19 +1,18 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { reviveHistory } from "@/lib/history";
+
 import type { Handoff } from "../api/handoffsApi";
+import { HandoffChat } from "./HandoffChat";
 
 /**
- * The chat pane, against a mocked wire.
+ * The chat pane, fed a revived transcript.
  *
- * `@/api/sdk.gen` is mocked the same way `InboxPanel.test.tsx` mocks `listHandoffs`: what is
- * worth holding in place here is what one transcript reads as once `useHandoffMessages` has
- * revived it, not the network underneath.
+ * History arrives as a prop from the load the context rail reads too, so the tests build it
+ * with `reviveHistory` instead of mocking the wire: what is worth holding in place here is
+ * what one transcript reads as, not the network underneath.
  */
-vi.mock("@/api/sdk.gen", () => ({ getHandoffMessages: vi.fn() }));
-
-const { getHandoffMessages } = await import("@/api/sdk.gen");
-const { HandoffChat } = await import("./HandoffChat");
 
 const Transcript = {
   headId: "call-1:2",
@@ -93,6 +92,31 @@ afterEach(() => {
 });
 
 /**
+ * The wire fixtures predate the generated history type; revival only reads their dates.
+ */
+function historyOf(fixture: { headId: string; messages: object[] }) {
+  return reviveHistory(fixture as never);
+}
+
+function chat(
+  wire: { headId: string; messages: object[] },
+  over: Partial<Handoff> = {},
+  meKey = "user:dana",
+) {
+  render(
+    <HandoffChat
+      handoff={handoff(over)}
+      history={historyOf(wire)}
+      loading={false}
+      error={null}
+      reload={() => {}}
+      meKey={meKey}
+      onChanged={() => {}}
+    />,
+  );
+}
+
+/**
  * A claimed chat after the backend stopped merging one turn's rows: the host's joined/left lines
  * and the staff reply arrive as three assistant messages with three speakers, not one jammed
  * "Dana joinedHi, I'm Dana.Dana left" under the wrong name.
@@ -169,13 +193,8 @@ describe("HandoffChat", () => {
   it("shows the wait time, the transcript in order, and who joined, for a waiting handoff", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-12T12:53:00"));
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: Transcript } as never);
 
-    render(<HandoffChat handoff={handoff()} meKey="user:dana" onChanged={() => {}} />);
-
-    // The load effect resolves through real promises even under fake timers; advancing the fake
-    // clock by zero still pumps the microtask queue so that resolution reaches state.
-    await act(() => vi.advanceTimersByTimeAsync(0));
+    chat(Transcript);
 
     expect(screen.getByText("Hi, I'm Dana from Spirit service.")).toBeTruthy();
     expect(screen.getByText("Started 15 min ago")).toBeTruthy();
@@ -193,42 +212,21 @@ describe("HandoffChat", () => {
   });
 
   it("shows who has the chat once it is claimed", async () => {
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: Transcript } as never);
-
-    render(
-      <HandoffChat
-        handoff={handoff({ status: "human", assignee: { key: "user:dana", name: "Dana" } })}
-        meKey="user:other"
-        onChanged={() => {}}
-      />,
-    );
+    chat(Transcript, { status: "human", assignee: { key: "user:dana", name: "Dana" } }, "user:other");
 
     expect(await screen.findByText("Dana has this chat")).toBeTruthy();
   });
 
   it("shows the chat is back with Spirit once it is done", async () => {
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: Transcript } as never);
-
-    render(
-      <HandoffChat
-        handoff={handoff({ status: "done", assignee: { key: "user:dana", name: "Dana" } })}
-        meKey="user:dana"
-        onChanged={() => {}}
-      />,
-    );
+    chat(Transcript, { status: "done", assignee: { key: "user:dana", name: "Dana" } });
 
     expect(await screen.findByText("Back with Spirit")).toBeTruthy();
   });
 
   it("names the visitor, the model, and staff on their own messages", async () => {
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: ClaimedTranscript } as never);
-
-    render(
-      <HandoffChat
-        handoff={handoff({ status: "human", assignee: { key: "user:dana", name: "Dana" } })}
-        meKey="user:dana"
-        onChanged={() => {}}
-      />,
+    chat(
+      ClaimedTranscript,
+      { status: "human", assignee: { key: "user:dana", name: "Dana" } },
     );
 
     expect(await screen.findByText("Visitor")).toBeTruthy();
@@ -237,14 +235,9 @@ describe("HandoffChat", () => {
   });
 
   it("draws joined lines as notes with no message actions", async () => {
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: ClaimedTranscript } as never);
-
-    render(
-      <HandoffChat
-        handoff={handoff({ status: "human", assignee: { key: "user:dana", name: "Dana" } })}
-        meKey="user:dana"
-        onChanged={() => {}}
-      />,
+    chat(
+      ClaimedTranscript,
+      { status: "human", assignee: { key: "user:dana", name: "Dana" } },
     );
 
 
@@ -255,14 +248,9 @@ describe("HandoffChat", () => {
   });
 
   it("draws staff replies as bubbles on the support side", async () => {
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: ClaimedTranscript } as never);
-
-    render(
-      <HandoffChat
-        handoff={handoff({ status: "human", assignee: { key: "user:dana", name: "Dana" } })}
-        meKey="user:dana"
-        onChanged={() => {}}
-      />,
+    chat(
+      ClaimedTranscript,
+      { status: "human", assignee: { key: "user:dana", name: "Dana" } },
     );
 
     // The staff reply is a bubble of its own, not bare text and not a system note.
@@ -277,14 +265,9 @@ describe("HandoffChat", () => {
 
   it("offers no retry on a staff reply", async () => {
     // The staff reply is the last message, so its action bar is the one drawn.
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: ClaimedTranscript } as never);
-
-    render(
-      <HandoffChat
-        handoff={handoff({ status: "human", assignee: { key: "user:dana", name: "Dana" } })}
-        meKey="user:dana"
-        onChanged={() => {}}
-      />,
+    chat(
+      ClaimedTranscript,
+      { status: "human", assignee: { key: "user:dana", name: "Dana" } },
     );
 
     await screen.findByText("Hi, I'm Dana.");
@@ -296,9 +279,7 @@ describe("HandoffChat", () => {
       headId: "call-9:1",
       messages: ClaimedTranscript.messages.slice(0, 2),
     };
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: waiting } as never);
-
-    render(<HandoffChat handoff={handoff()} meKey="user:dana" onChanged={() => {}} />);
+    chat(waiting);
 
     // The model's answer is last, so its action bar is the one drawn — with retry.
     await screen.findByText("Let me find someone.");

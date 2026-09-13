@@ -1,21 +1,21 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { replyToHandoff } from "@/api/sdk.gen";
 import { HostRefusedError } from "@/lib/apiClient";
+import { reviveHistory } from "@/lib/history";
 
 import type { Handoff } from "../api/handoffsApi";
+import { HandoffChat } from "./HandoffChat";
 
 /**
- * The reply box, against a mocked wire.
+ * The reply box, fed a revived transcript.
  *
- * `@/api/sdk.gen` is mocked the same way `HandoffChat.test.tsx` mocks it; what is worth holding in
- * place here is what the box under one transcript looks like and sends in each handoff state, not
- * the network underneath.
+ * History arrives as a prop from the load the context rail reads too; the reply itself still
+ * goes out over the mocked wire. A reload after sending is the parent's to honor, so the send
+ * test rerenders with the answered transcript the way the parent would.
  */
-vi.mock("@/api/sdk.gen", () => ({ getHandoffMessages: vi.fn(), replyToHandoff: vi.fn() }));
-
-const { getHandoffMessages, replyToHandoff } = await import("@/api/sdk.gen");
-const { HandoffChat } = await import("./HandoffChat");
+vi.mock("@/api/sdk.gen", () => ({ replyToHandoff: vi.fn() }));
 
 const Transcript = {
   headId: "call-1:0",
@@ -53,6 +53,32 @@ function handoff(over: Partial<Handoff> = {}): Handoff {
   };
 }
 
+/**
+ * The wire fixtures predate the generated history type; revival only reads their dates.
+ */
+function historyOf(fixture: { headId: string; messages: object[] }) {
+  return reviveHistory(fixture as never);
+}
+
+function chat(
+  wire: { headId: string; messages: object[] },
+  over: Partial<Handoff>,
+  meKey: string,
+  reload: () => void = () => {},
+) {
+  return render(
+    <HandoffChat
+      handoff={handoff(over)}
+      history={historyOf(wire)}
+      loading={false}
+      error={null}
+      reload={reload}
+      meKey={meKey}
+      onChanged={() => {}}
+    />,
+  );
+}
+
 afterEach(() => cleanup());
 
 describe("HandoffComposer", () => {
@@ -80,22 +106,15 @@ describe("HandoffComposer", () => {
         },
       ],
     };
-    vi.mocked(getHandoffMessages)
-      .mockResolvedValueOnce({ data: Transcript } as never)
-      .mockResolvedValueOnce({ data: TranscriptAfterReply } as never);
     vi.mocked(replyToHandoff).mockResolvedValue({ data: undefined } as never);
 
-    render(
-      <HandoffChat
-        handoff={handoff({
-          status: "human",
-          assignee: { key: "user:dana", name: "Dana" },
-          email: "lorrie@northwind.example",
-        })}
-        meKey="user:dana"
-        onChanged={() => {}}
-      />,
-    );
+    const reload = vi.fn();
+    const owned = {
+      status: "human",
+      assignee: { key: "user:dana", name: "Dana" },
+      email: "lorrie@northwind.example",
+    } as const;
+    const { rerender } = chat(Transcript, owned, "user:dana", reload);
 
     const input = await screen.findByLabelText("Reply");
     fireEvent.change(input, { target: { value: "Sure, one sec." } });
@@ -106,12 +125,27 @@ describe("HandoffComposer", () => {
     // shell rather than beside the button.
     expect(await screen.findByRole("button", { name: "Send message" })).toBeTruthy();
 
-    await waitFor(() => expect(getHandoffMessages).toHaveBeenCalledTimes(2));
-    expect(replyToHandoff).toHaveBeenCalledWith(
-      expect.objectContaining({
-        path: { callId: "call-1" },
-        body: { text: "Sure, one sec." },
-      }),
+    await waitFor(() =>
+      expect(replyToHandoff).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: { callId: "call-1" },
+          body: { text: "Sure, one sec." },
+        }),
+      ),
+    );
+    expect(reload).toHaveBeenCalled();
+
+    // The parent honors the reload with the answered transcript.
+    rerender(
+      <HandoffChat
+        handoff={handoff(owned)}
+        history={historyOf(TranscriptAfterReply)}
+        loading={false}
+        error={null}
+        reload={reload}
+        meKey="user:dana"
+        onChanged={() => {}}
+      />,
     );
 
     // The composer's own textarea still holds "Sure, one sec." until it clears, so scope the
@@ -123,15 +157,7 @@ describe("HandoffComposer", () => {
   });
 
   it("disables the box and explains itself while the chat is still waiting", async () => {
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: Transcript } as never);
-
-    render(
-      <HandoffChat
-        handoff={handoff({ status: "waiting" })}
-        meKey="user:dana"
-        onChanged={() => {}}
-      />,
-    );
+    chat(Transcript, { status: "waiting" }, "user:dana");
 
     const input = await screen.findByLabelText("Reply");
     expect(input).toHaveProperty("disabled", true);
@@ -139,14 +165,10 @@ describe("HandoffComposer", () => {
   });
 
   it("disables the box for someone who does not have the chat", async () => {
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: Transcript } as never);
-
-    render(
-      <HandoffChat
-        handoff={handoff({ status: "human", assignee: { key: "user:dana", name: "Dana" } })}
-        meKey="user:other"
-        onChanged={() => {}}
-      />,
+    chat(
+      Transcript,
+      { status: "human", assignee: { key: "user:dana", name: "Dana" } },
+      "user:other",
     );
 
     const input = await screen.findByLabelText("Reply");
@@ -158,15 +180,7 @@ describe("HandoffComposer", () => {
   });
 
   it("shows no box once the chat is back with Spirit", async () => {
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: Transcript } as never);
-
-    render(
-      <HandoffChat
-        handoff={handoff({ status: "done", assignee: { key: "user:dana", name: "Dana" } })}
-        meKey="user:dana"
-        onChanged={() => {}}
-      />,
-    );
+    chat(Transcript, { status: "done", assignee: { key: "user:dana", name: "Dana" } }, "user:dana");
 
     await screen.findByText(
       "This chat is back with Spirit. The next message gets a normal bot answer.",
@@ -174,17 +188,14 @@ describe("HandoffComposer", () => {
   });
 
   it("shows the host's refusal under the box when nobody has the chat any more", async () => {
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: Transcript } as never);
     vi.mocked(replyToHandoff).mockRejectedValue(
       new HostRefusedError(409, "/v1/handoff/call-1/reply", "Nobody has this chat."),
     );
 
-    render(
-      <HandoffChat
-        handoff={handoff({ status: "human", assignee: { key: "user:dana", name: "Dana" } })}
-        meKey="user:dana"
-        onChanged={() => {}}
-      />,
+    chat(
+      Transcript,
+      { status: "human", assignee: { key: "user:dana", name: "Dana" } },
+      "user:dana",
     );
 
     const input = await screen.findByLabelText("Reply");

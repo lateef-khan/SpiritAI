@@ -17,7 +17,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { HostRefusedError } from "@/lib/apiClient";
 
 import { createHandoffsApi, type Handoff } from "../api/handoffsApi";
-import { useHandoffMessages } from "../hooks/useHandoffMessages";
 import { HandoffChatHeader } from "./HandoffChatHeader";
 import { HandoffComposer } from "./HandoffComposer";
 import { HandoffComposerContext } from "./HandoffComposerContext";
@@ -33,28 +32,36 @@ const COMPONENTS: ThreadComponents = { Welcome: Hidden, Composer: HandoffCompose
 /**
  * One handoff's transcript.
  *
- * The pane is read-only until the viewer takes the chat: before that, and once someone else has
- * it, the composer only explains why it will not send. Once the viewer holds it, the same pane
- * also sends — a reply goes out through the handoffs api and the transcript reloads to show it.
+ * The transcript arrives as props from the one `useHandoffMessages` load the context rail
+ * reads too. The pane itself is read-only until the viewer takes the chat: before that, and
+ * once someone else has it, the composer only explains why it will not send. Once the viewer
+ * holds it, the same pane also sends — a reply goes out through the handoffs api and the
+ * transcript reloads to show it. On mobile the context rail becomes a sheet over this pane.
  */
 export function HandoffChat({
   handoff,
+  history,
+  loading,
+  error,
+  reload,
   meKey,
   onChanged,
   onBack,
 }: {
   handoff: Handoff;
+  history: ExportedMessageRepository | null;
+  loading: boolean;
+  error: string | null;
+  reload: () => void;
   meKey: string;
   onChanged(next: Handoff): void;
   onBack?: () => void;
 }) {
-  const { history, loading, error, reload } = useHandoffMessages(handoff.callId);
   const [now] = useState(() => new Date());
   const isMobile = useIsMobile();
 
   return (
-    <div className="flex h-full min-h-0">
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+    <div className="relative flex h-full flex-col">
       <div className="flex items-center border-b">
         {onBack ? <BackButton onBack={onBack} /> : null}
         <div className="min-w-0 flex-1">
@@ -62,33 +69,28 @@ export function HandoffChat({
         </div>
       </div>
 
-        <div className="min-h-0 flex-1">
-          {loading ? (
-            <MessagesSkeleton />
-          ) : error ? (
-            <p className="p-3.5 text-sm text-destructive">{error}</p>
-          ) : (
-            <HandoffThread handoff={handoff} meKey={meKey} history={history} reload={reload} />
-          )}
-        </div>
-
-        {isMobile ? (
-          <Sheet>
-            <SheetTrigger className="absolute end-3 top-3 z-10 rounded-md border bg-background p-1.5">
-              <PanelRightIcon className="size-4" />
-              <span className="sr-only">Show the context</span>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-80 p-0">
-              <SheetTitle className="sr-only">Context</SheetTitle>
-              <HandoffContextPanel handoff={handoff} history={history} />
-            </SheetContent>
-          </Sheet>
-        ) : null}
+      <div className="min-h-0 flex-1">
+        {loading ? (
+          <MessagesSkeleton />
+        ) : error ? (
+          <p className="p-3.5 text-sm text-destructive">{error}</p>
+        ) : (
+          <HandoffThread handoff={handoff} meKey={meKey} history={history} reload={reload} />
+        )}
       </div>
 
-      {isMobile ? null : (
-        <HandoffContextPanel handoff={handoff} history={history} className="w-80 shrink-0 border-l" />
-      )}
+      {isMobile ? (
+        <Sheet>
+          <SheetTrigger className="absolute end-3 top-3 z-10 rounded-md border bg-background p-1.5">
+            <PanelRightIcon className="size-4" />
+            <span className="sr-only">Show the context</span>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-80 p-0">
+            <SheetTitle className="sr-only">Context</SheetTitle>
+            <HandoffContextPanel handoff={handoff} history={history} />
+          </SheetContent>
+        </Sheet>
+      ) : null}
     </div>
   );
 }
@@ -124,7 +126,7 @@ function HandoffThread({
 }: {
   handoff: Handoff;
   meKey: string;
-  history: ReturnType<typeof useHandoffMessages>["history"];
+  history: ExportedMessageRepository | null;
   reload: () => void;
 }) {
   const messages = useMemo(() => history?.messages.map((item) => item.message) ?? [], [history]);

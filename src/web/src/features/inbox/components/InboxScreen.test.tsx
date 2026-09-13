@@ -2,25 +2,27 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { HandoffSummary } from "@/api/types.gen";
+import { reviveHistory } from "@/lib/history";
+
+import { InboxScreen } from "./InboxScreen";
 
 /**
  * The screen, against a mocked wire.
  *
- * `@/api/sdk.gen` is mocked the same way `InboxPanel.test.tsx` and `HandoffChat.test.tsx` mock
- * it: what is worth holding in place here is that a row click carries the picked handoff from the
- * panel into the chat pane, not the network underneath. `@/hooks/use-mobile` is mocked separately
- * per test, since `InboxScreen` reads it to choose which of the two layouts to render.
+ * `listHandoffs` is mocked the same way `InboxPanel.test.tsx` mocks it, and the picked chat's
+ * transcript arrives revived rather than over the wire: what is worth holding in place here is
+ * that a row click carries the picked handoff from the panel into the chat pane, not the
+ * network underneath. `@/hooks/use-mobile` is mocked separately per test, since `InboxScreen`
+ * reads it to choose which of the two layouts to render.
  */
 vi.mock("@/api/sdk.gen", () => ({
   listHandoffs: vi.fn(),
-  getHandoffMessages: vi.fn(),
   claimHandoff: vi.fn(),
 }));
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: vi.fn(() => false) }));
 
-const { listHandoffs, getHandoffMessages, claimHandoff } = await import("@/api/sdk.gen");
+const { listHandoffs, claimHandoff } = await import("@/api/sdk.gen");
 const { useIsMobile } = await import("@/hooks/use-mobile");
-const { InboxScreen } = await import("./InboxScreen");
 
 const MeKey = "user:dana";
 
@@ -60,6 +62,21 @@ const Transcript = {
   ],
 };
 
+function screenWithTranscript() {
+  render(
+    <InboxScreen
+      meKey={MeKey}
+      transcript={{
+        history: reviveHistory(Transcript as never),
+        loading: false,
+        error: null,
+        reload: () => {},
+      }}
+      onSelectionChange={() => {}}
+    />,
+  );
+}
+
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
@@ -77,9 +94,8 @@ describe("InboxScreen", () => {
           data: { items: options?.query?.status === "waiting" ? [wire()] : [] },
         }) as never,
     );
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: Transcript } as never);
 
-    render(<InboxScreen meKey={MeKey} />);
+    screenWithTranscript();
 
     await act(() => vi.advanceTimersByTimeAsync(0));
 
@@ -104,13 +120,12 @@ describe("InboxScreen", () => {
         data: { items: claimedFlag ? [claimed] : [] },
       }) as never;
     });
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: Transcript } as never);
     vi.mocked(claimHandoff).mockImplementation(() => {
       claimedFlag = true;
       return Promise.resolve({ data: claimed }) as never;
     });
 
-    render(<InboxScreen meKey={MeKey} />);
+    screenWithTranscript();
 
     await act(() => vi.advanceTimersByTimeAsync(0));
 
@@ -139,9 +154,8 @@ describe("InboxScreen", () => {
           data: { items: options?.query?.status === "waiting" ? [wire()] : [] },
         }) as never,
     );
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: Transcript } as never);
 
-    render(<InboxScreen meKey={MeKey} />);
+    screenWithTranscript();
 
     await act(() => vi.advanceTimersByTimeAsync(0));
 
@@ -183,7 +197,13 @@ describe("InboxScreen", () => {
         }) as never,
     );
 
-    const { container } = render(<InboxScreen meKey={MeKey} />);
+    const { container } = render(
+      <InboxScreen
+        meKey={MeKey}
+        transcript={{ history: null, loading: false, error: null, reload: () => {} }}
+        onSelectionChange={() => {}}
+      />,
+    );
 
     await screen.findByText("No conversations.");
 
@@ -216,9 +236,8 @@ describe("InboxScreen", () => {
           data: { items: options?.query?.status === "waiting" ? [wire()] : [] },
         }) as never,
     );
-    vi.mocked(getHandoffMessages).mockResolvedValue({ data: Transcript } as never);
 
-    render(<InboxScreen meKey={MeKey} />);
+    screenWithTranscript();
 
     await screen.findByText("Treadmill belt slips at 8 mph");
 

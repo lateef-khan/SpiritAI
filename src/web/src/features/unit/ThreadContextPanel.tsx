@@ -6,13 +6,14 @@ import { flatten } from "@/features/threads/AgentCoreRuntime";
 import { UnitPanel } from "./UnitPanel";
 
 /**
- * The panel, wired to the open thread.
+ * The thread's context beside the conversation.
  *
- * Separate from {@link UnitPanel} for the same reason `transport.ts` is separate from the runtime:
- * everything worth testing about the panel is what it does with a list of turns, and a list of
- * turns needs no React tree with an assistant runtime in it.
+ * Currently the unit panel, and separate from {@link UnitPanel} for the same reason
+ * `transport.ts` is separate from the runtime: everything worth testing about the panel is
+ * what it does with a list of turns, and a list of turns needs no React tree with an
+ * assistant runtime in it.
  */
-export function ThreadUnitPanel({ className }: { className?: string }) {
+export function ThreadContextPanel({ className }: { className?: string }) {
   const aui = useAui();
   const messages = useAuiState((state) => state.thread.messages);
   const isRunning = useAuiState((state) => state.thread.isRunning);

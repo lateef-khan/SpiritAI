@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import type { ExportedMessageRepository } from "@assistant-ui/react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -17,13 +18,28 @@ import { InboxPanel } from "./InboxPanel";
  * The inbox, in place of the chat.
  *
  * Owns the list — which view is loaded, its rows, and which row is picked — so a later reload can
- * refresh the rows without losing track of the one on screen. On desktop the conversations column
- * sits beside a main pane, sized and resized the same way `ChatAndUnit`'s two panels are; the main
- * pane shows the picked handoff's chat, or asks for a pick when none is made yet. On mobile there
- * is no room for a second pane, so a pick swaps the panel out for the chat, full width, and
- * `HandoffChat`'s own back button swaps it back.
+ * refresh the rows without losing track of the one on screen. Every pick is mirrored up through
+ * `onSelectionChange` for the context rail, which owns no selection of its own. The picked
+ * handoff's transcript arrives as `transcript`, the one load the rail reads too. On desktop the
+ * conversations column sits beside a main pane, sized and resized the same way `ChatAndUnit`'s
+ * two panels are; the main pane shows the picked handoff's chat, or asks for a pick when none is
+ * made yet. On mobile there is no room for a second pane, so a pick swaps the panel out for the
+ * chat, full width, and `HandoffChat`'s own back button swaps it back.
  */
-export function InboxScreen({ meKey }: { meKey: string }) {
+export function InboxScreen({
+  meKey,
+  transcript,
+  onSelectionChange,
+}: {
+  meKey: string;
+  transcript: {
+    history: ExportedMessageRepository | null;
+    loading: boolean;
+    error: string | null;
+    reload: () => void;
+  };
+  onSelectionChange(handoff: Handoff | null): void;
+}) {
   const isMobile = useIsMobile();
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: "spirit-inbox" });
 
@@ -44,6 +60,12 @@ export function InboxScreen({ meKey }: { meKey: string }) {
   const live = rows.find((row) => row.id === selectedId) ?? null;
   if (live && !loading && live !== pinned) setPinned(live);
   const selected = loading ? (pinned ?? live) : (live ?? pinned);
+
+  // The context rail lives above this screen, so the pick is mirrored up for it — including a
+  // reload that refreshes the picked row under a new object.
+  useEffect(() => {
+    onSelectionChange(selected);
+  }, [selected, onSelectionChange]);
 
   function handleSelect(row: Handoff) {
     setSelectedId(row.id);
@@ -86,6 +108,10 @@ export function InboxScreen({ meKey }: { meKey: string }) {
           <HandoffChat
             key={selected.id}
             handoff={selected}
+            history={transcript.history}
+            loading={transcript.loading}
+            error={transcript.error}
+            reload={transcript.reload}
             meKey={meKey}
             onChanged={handleChanged}
             onBack={clearSelection}
@@ -100,7 +126,7 @@ export function InboxScreen({ meKey }: { meKey: string }) {
   return (
     <ResizablePanelGroup
       orientation="horizontal"
-      className="min-w-0 flex-1"
+      className="h-full min-w-0 flex-1"
       defaultLayout={defaultLayout}
       onLayoutChanged={onLayoutChanged}
     >
@@ -114,6 +140,10 @@ export function InboxScreen({ meKey }: { meKey: string }) {
           <HandoffChat
             key={selected.id}
             handoff={selected}
+            history={transcript.history}
+            loading={transcript.loading}
+            error={transcript.error}
+            reload={transcript.reload}
             meKey={meKey}
             onChanged={handleChanged}
           />
