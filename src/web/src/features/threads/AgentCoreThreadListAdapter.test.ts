@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 import { AssistantMessageStream, type AssistantStream } from "assistant-stream";
 import { createAgentCoreThreadListAdapter } from "./AgentCoreThreadListAdapter.ts";
-import type { ThreadsApi, WireThread } from "./threadsApi.ts";
+import type { ThreadsApi, WireThread } from "./api/threadsApi.ts";
 
 /**
  * One thread as the host writes it.

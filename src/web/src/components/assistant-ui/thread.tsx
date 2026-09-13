@@ -89,6 +89,7 @@ export type ThreadComponents = {
   ReasoningGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined;
   Sources?: ComponentType | undefined;
   Timing?: ComponentType | undefined;
+  Composer?: ComponentType | undefined;
 };
 
 export type ThreadProps = {
@@ -151,7 +152,8 @@ export const Thread: FC<ThreadProps> = ({ components = EMPTY_COMPONENTS }) => {
 };
 
 const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
-  const { Welcome = ThreadWelcome } = useContext(ThreadComponentsContext);
+  const { Welcome = ThreadWelcome, Composer: ComposerComponent = Composer } =
+    useContext(ThreadComponentsContext);
 
   return (
     <ThreadPrimitive.Root
@@ -194,7 +196,7 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
             <ThreadScrollToBottom />
             <ComposerDraft />
             <ThreadFollowupSuggestions />
-            <Composer />
+            <ComposerComponent />
             <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
               <ThreadSuggestions />
             </AuiIf>

@@ -1,14 +1,16 @@
-import { listHandoffs } from "@/api/sdk.gen";
+import type { ExportedMessageRepository } from "@assistant-ui/react";
+import { getHandoffMessages, listHandoffs } from "@/api/sdk.gen";
 import type { HandoffSummary } from "@/api/types.gen";
 import { apiClient } from "@/apiClient";
 import type { Client } from "@/api/client";
+import { reviveHistory } from "@/lib/history";
 
 /**
  * Everything the inbox asks the host about handoffs.
  *
- * The generated client already builds the request and parses the body; the one thing left for
- * this module to do is turn the wire's three date strings back into `Date`s, the same seam
- * `threadsApi.ts` keeps for threads.
+ * The generated client already builds the request and parses the body; what is left for this
+ * module to do is turn the wire's three date strings on a handoff back into `Date`s, and revive
+ * a transcript's messages the same way `threadsApi.ts` does for a thread.
  */
 
 /** One handoff, exactly as the host writes it. */
@@ -35,6 +37,7 @@ export type Handoff = Omit<
 /** Every question the inbox asks about handoffs. */
 export type HandoffsApi = {
   list(status: HandoffStatus): Promise<Handoff[]>;
+  messages(callId: string): Promise<ExportedMessageRepository>;
 };
 
 /**
@@ -77,6 +80,11 @@ export function createHandoffsApi(client: Client = apiClient): HandoffsApi {
     list: async (status) =>
       (await listHandoffs({ client, throwOnError: true, query: { status } })).data.items.map(
         reviveHandoff,
+      ),
+
+    messages: async (callId) =>
+      reviveHistory(
+        (await getHandoffMessages({ client, throwOnError: true, path: { callId } })).data,
       ),
   };
 }

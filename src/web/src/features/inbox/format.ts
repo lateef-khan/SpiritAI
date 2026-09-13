@@ -1,7 +1,24 @@
+import type { Handoff } from "./api/handoffsApi";
+
 /**
  * How the inbox writes time. Local time throughout: a handoff is worked by whoever is signed in,
  * in their own timezone, not the visitor's.
  */
+
+/**
+ * The heading a handoff reads by, wherever one is needed.
+ *
+ * A visitor's email is the most identifying thing about them, so it wins when there is one; a
+ * title or the conversation's first line are the fallbacks the host sends when there is no email
+ * yet.
+ *
+ * @param handoff The handoff to title.
+ * @returns The email, title, or first line, in that order, or `"Untitled"` when the handoff has
+ * none of them.
+ */
+export function handoffTitle(handoff: Pick<Handoff, "email" | "title" | "firstLine">): string {
+  return handoff.email ?? handoff.title ?? handoff.firstLine ?? "Untitled";
+}
 
 /**
  * How many whole minutes separate two instants.

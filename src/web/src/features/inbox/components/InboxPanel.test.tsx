@@ -66,7 +66,7 @@ describe("InboxPanel", () => {
         }) as never,
     );
 
-    render(<InboxPanel meKey={MeKey} />);
+    render(<InboxPanel meKey={MeKey} selectedId={null} onSelect={() => {}} />);
 
     // The load effect resolves through real promises even under fake timers; advancing the fake
     // clock by zero still pumps the microtask queue so that resolution reaches state.
@@ -84,7 +84,7 @@ describe("InboxPanel", () => {
   it("says so when there are no conversations", async () => {
     vi.mocked(listHandoffs).mockResolvedValue({ data: { items: [] } } as never);
 
-    render(<InboxPanel meKey={MeKey} />);
+    render(<InboxPanel meKey={MeKey} selectedId={null} onSelect={() => {}} />);
 
     expect(await screen.findByText("No conversations.")).toBeTruthy();
   });
@@ -92,7 +92,7 @@ describe("InboxPanel", () => {
   it("reports the error from a refused request", async () => {
     vi.mocked(listHandoffs).mockRejectedValue(new Error("host refused"));
 
-    render(<InboxPanel meKey={MeKey} />);
+    render(<InboxPanel meKey={MeKey} selectedId={null} onSelect={() => {}} />);
 
     expect(await screen.findByText("host refused")).toBeTruthy();
   });
@@ -120,7 +120,7 @@ describe("InboxPanel", () => {
         }) as never,
     );
 
-    const { container } = render(<InboxPanel meKey={MeKey} />);
+    const { container } = render(<InboxPanel meKey={MeKey} selectedId={null} onSelect={() => {}} />);
 
     await screen.findByText("No conversations.");
 

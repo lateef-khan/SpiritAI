@@ -75,7 +75,12 @@ describe("filterHandoffs", () => {
 
 /** A `HandoffsApi` that answers from a fixed table, keyed by the status it was asked for. */
 function fakeApi(byStatus: Partial<Record<HandoffStatus, Handoff[]>>): HandoffsApi {
-  return { list: async (status) => byStatus[status] ?? [] };
+  return { list: async (status) => byStatus[status] ?? [], messages: async () => notNeeded() };
+}
+
+/** Fails a test that reaches a route it has no business calling. */
+function notNeeded(): never {
+  throw new Error("not needed for this test");
 }
 
 describe("useHandoffs", () => {
@@ -108,7 +113,10 @@ describe("useHandoffs", () => {
   });
 
   it("reports the error from a refused request", async () => {
-    const api: HandoffsApi = { list: async () => Promise.reject(new Error("nope")) };
+    const api: HandoffsApi = {
+      list: async () => Promise.reject(new Error("nope")),
+      messages: async () => notNeeded(),
+    };
 
     const view = renderHook(() => useHandoffs("open", MeKey, api));
 

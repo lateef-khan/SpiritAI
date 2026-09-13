@@ -1,5 +1,5 @@
 import type { ExportedMessageRepository } from "@assistant-ui/react";
-import type { WireMessage } from "./transport.ts";
+import type { WireMessage } from "../transport.ts";
 import {
   createThread,
   deleteThread,
@@ -8,14 +8,9 @@ import {
   listThreads,
   updateThread,
 } from "@/api/sdk.gen";
-import type {
-  ThreadCreated,
-  ThreadHistory,
-  ThreadPage,
-  ThreadStatus,
-  ThreadSummary,
-} from "@/api/types.gen";
+import type { ThreadCreated, ThreadPage, ThreadStatus, ThreadSummary } from "@/api/types.gen";
 import { apiClient, createApiClient, type FetchLike } from "@/apiClient";
+import { reviveHistory } from "@/lib/history";
 
 /**
  * Everything the browser asks the host about threads, with no assistant-ui in sight.
@@ -40,9 +35,6 @@ export type WireThreadPage = ThreadPage;
 /** What a thread's creation answers with. */
 export type WireThreadCreated = ThreadCreated;
 
-/** The conversation as the host sends it, before its dates are dates. */
-export type WireHistory = ThreadHistory;
-
 /** Every question the browser asks about threads. */
 export type ThreadsApi = {
   list(after?: string): Promise<WireThreadPage>;
@@ -54,29 +46,6 @@ export type ThreadsApi = {
   /** Asks the host to name a thread from words the browser holds, reading it back as it is written. */
   title(remoteId: string, messages: readonly WireMessage[]): AsyncIterable<string>;
 };
-
-/**
- * Turns the wire's dates back into dates.
- *
- * assistant-ui refuses a message whose `createdAt` is a string, and JSON has no date type, so
- * something has to do this. Doing it here rather than in the adapter keeps every wire concern on
- * one side of the seam.
- *
- * @param raw The body the host sent.
- * @returns The same conversation, with real `Date`s on it.
- */
-export function reviveHistory(raw: WireHistory): ExportedMessageRepository {
-  return {
-    ...(raw.headId != null ? { headId: raw.headId } : {}),
-    messages: raw.messages.map((item) => ({
-      parentId: item.parentId,
-      message: {
-        ...item.message,
-        createdAt: new Date(item.message.createdAt),
-      },
-    })) as ExportedMessageRepository["messages"],
-  };
-}
 
 /**
  * Binds the thread routes to one way of sending a request.

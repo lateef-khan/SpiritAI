@@ -6,7 +6,7 @@ import {
   type ThreadHistoryAdapter,
 } from "@assistant-ui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createThreadsApi, type ThreadsApi, type WireThread } from "./threadsApi.ts";
+import { createThreadsApi, type ThreadsApi, type WireThread } from "./api/threadsApi.ts";
 import { flatten } from "./AgentCoreRuntime.ts";
 
 /**

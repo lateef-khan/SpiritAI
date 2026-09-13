@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 
+import type { Handoff } from "../api/handoffsApi";
 import { filterHandoffs, useHandoffs, type InboxTab, type InboxView } from "../hooks/useHandoffs";
 import { HandoffRow } from "./HandoffRow";
 import { InboxHeader } from "./InboxHeader";
@@ -11,13 +12,22 @@ import { InboxTabs } from "./InboxTabs";
  * The conversations column: every handoff waiting on, or already claimed by, a person.
  *
  * Width and placement are the parent's call — this only ever fills the height it is given, the
- * same contract `UnitPanel` uses for the column on the chat's other side.
+ * same contract `UnitPanel` uses for the column on the chat's other side. Which row reads as
+ * picked, and what a click on one does, both belong to the parent: this only ever draws the state
+ * it is handed and reports a click back.
  */
-export function InboxPanel({ meKey }: { meKey: string }) {
+export function InboxPanel({
+  meKey,
+  selectedId,
+  onSelect,
+}: {
+  meKey: string;
+  selectedId: number | null;
+  onSelect: (row: Handoff | null) => void;
+}) {
   const [view, setView] = useState<InboxView>("open");
   const [tab, setTab] = useState<InboxTab>("all");
   const [reversed, setReversed] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const { rows, counts, loading, error } = useHandoffs(view, meKey);
 
@@ -34,6 +44,7 @@ export function InboxPanel({ meKey }: { meKey: string }) {
   function handleViewChange(next: InboxView) {
     setView(next);
     setReversed(false);
+    onSelect(null);
   }
 
   return (
@@ -61,7 +72,7 @@ export function InboxPanel({ meKey }: { meKey: string }) {
                 <HandoffRow
                   handoff={row}
                   selected={row.id === selectedId}
-                  onSelect={() => setSelectedId(row.id)}
+                  onSelect={() => onSelect(row)}
                 />
               </li>
             ))}

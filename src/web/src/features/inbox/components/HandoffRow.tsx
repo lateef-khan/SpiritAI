@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import type { Handoff } from "../api/handoffsApi";
-import { clockTime, minutesBetween } from "../format";
+import { clockTime, handoffTitle, minutesBetween } from "../format";
 
 /**
  * One conversation, as it reads in the list.
  *
- * Selection is local to `InboxPanel`; nothing else reacts to it yet, so this row only ever
- * reports a click and takes back whether it is the current one.
+ * The screen owns which handoff is selected; this row only ever reports a click and receives
+ * back whether it is the current one.
  */
 export function HandoffRow({
   handoff,
@@ -25,7 +25,7 @@ export function HandoffRow({
   onSelect: () => void;
 }) {
 
-  const title = handoff.email ?? handoff.title ?? handoff.firstLine ?? "Untitled";
+  const title = handoffTitle(handoff);
 
   return (
     <Button

@@ -10,9 +10,9 @@ import type { HandoffSummary } from "@/api/types.gen";
  * wire strings become dates (or stay null), and that the status a caller asks for is the status
  * that reaches the query.
  */
-vi.mock("@/api/sdk.gen", () => ({ listHandoffs: vi.fn() }));
+vi.mock("@/api/sdk.gen", () => ({ listHandoffs: vi.fn(), getHandoffMessages: vi.fn() }));
 
-const { listHandoffs } = await import("@/api/sdk.gen");
+const { listHandoffs, getHandoffMessages } = await import("@/api/sdk.gen");
 const { createHandoffsApi, callerKeyOf } = await import("./handoffsApi");
 
 beforeEach(() => vi.resetAllMocks());
@@ -74,6 +74,36 @@ describe("createHandoffsApi", () => {
     expect(listHandoffs).toHaveBeenCalledWith(
       expect.objectContaining({ query: { status: "done" } }),
     );
+  });
+});
+
+describe("createHandoffsApi messages", () => {
+  it("turns a message's createdAt into a Date, keeping its id, role, and text", async () => {
+    vi.mocked(getHandoffMessages).mockResolvedValue({
+      data: {
+        headId: "call-1:0",
+        messages: [
+          {
+            parentId: null,
+            message: {
+              id: "call-1:0",
+              role: "assistant",
+              content: [{ type: "text", text: "on my way" }],
+              createdAt: "2026-09-12T12:31:00",
+              metadata: { custom: {} },
+            },
+          },
+        ],
+      },
+    } as never);
+
+    const history = await createHandoffsApi().messages("call-1");
+    const revived = history.messages[0]!.message;
+
+    expect(revived.createdAt).toEqual(new Date("2026-09-12T12:31:00"));
+    expect(revived.id).toBe("call-1:0");
+    expect(revived.role).toBe("assistant");
+    expect(revived.content).toEqual([{ type: "text", text: "on my way" }]);
   });
 });
 
