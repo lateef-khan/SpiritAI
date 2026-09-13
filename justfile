@@ -23,6 +23,15 @@ pg_conn := "Host=localhost;Port=" + port + ";Database=" + database + ";Username=
 # environment — so the plain variable is never reached. This overrides that exact key instead.
 pg_secret := "AgentCore__Secrets__postgres-connection-string"
 
+# Personal values live in .env, git-ignored. See .env.example.
+set dotenv-load
+
+# The one developer the seed makes staff. Neon Auth owns the real table; locally it is a copy with
+# this row in it, so a signed-in browser passes the staff gate. The email must be the one you sign
+# in with; set SPIRIT_STAFF_EMAIL in .env when it is not your git email.
+staff_email := env_var_or_default("SPIRIT_STAFF_EMAIL", `git config user.email`)
+staff_name := env_var_or_default("SPIRIT_STAFF_NAME", `git config user.name`)
+
 # List the recipes.
 default:
     @just --list
@@ -69,6 +78,27 @@ db-url:
 db-shell:
     docker exec --interactive --tty {{container}} psql --username={{user}} --dbname={{database}}
 
-# Run the host against the throwaway PostgreSQL, on http://localhost:5299/chat.
+# Load dev/seed.pgsql: the staff sign-in and a few handoffs. Waits for the host to migrate first.
+db-seed:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    for _ in $(seq 1 180); do
+        if docker exec {{container}} psql --username={{user}} --dbname={{database}} --tuples-only --no-align \
+            --command="select to_regclass('spirit.handoff')" | grep -q handoff; then
+            docker exec --interactive {{container}} psql --username={{user}} --dbname={{database}} --quiet \
+                --set=ON_ERROR_STOP=1 --set=staff_email='{{staff_email}}' --set=staff_name='{{staff_name}}' \
+                < dev/seed.pgsql
+            echo "Seeded {{database}}: {{staff_email}} is staff, and the inbox has rows."
+            exit 0
+        fi
+        sleep 1
+    done
+
+    echo "spirit.handoff never appeared; is the host running?" >&2
+    exit 1
+
+# Run the host on http://localhost:5299/chat against the throwaway PostgreSQL, and seed it once it has migrated.
 run: db-up
+    (just db-seed &)
     cd src/SpiritAI && env "{{pg_secret}}={{pg_conn}}" dotnet run --launch-profile spirit

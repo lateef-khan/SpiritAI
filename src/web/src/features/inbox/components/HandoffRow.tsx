@@ -24,7 +24,8 @@ export function HandoffRow({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const title = handoff.title ?? handoff.firstLine ?? "Untitled";
+
+  const title = handoff.email ?? handoff.title ?? handoff.firstLine ?? "Untitled";
 
   return (
     <Button
@@ -80,9 +81,7 @@ function OverLine({ handoff }: { handoff: Handoff }) {
       </span>
 
       {handoff.status === "waiting" ? (
-        <span className="tabular-nums">
-          Waiting {minutesBetween(handoff.askedAt, new Date())} min
-        </span>
+        <span className="tabular-nums">{minutesBetween(handoff.askedAt, new Date())} min</span>
       ) : (
         <span className="inline-flex items-center gap-1">
           <UserIcon className="size-3.5" />
@@ -106,27 +105,11 @@ function RowAvatar({ email }: { email: string | null }) {
 function RowTags({ handoff }: { handoff: Handoff }) {
   const tags: ReactNode[] = [];
 
-  if (handoff.status === "waiting" && handoff.position !== null) {
-    tags.push(
-      <Badge key="position" className="bg-aui-warning/15 text-aui-warning font-medium">
-        #{handoff.position} in line
-      </Badge>,
-    );
-  }
-
   if (handoff.status === "done") {
     const endedAt = handoff.claimedAt ?? handoff.doneAt;
     if (endedAt) {
       tags.push(<Badge key="waited">Waited {minutesBetween(handoff.askedAt, endedAt)} min</Badge>);
     }
-  }
-
-  if (handoff.email) {
-    tags.push(
-      <Badge key="email" variant="outline">
-        @{handoff.email}
-      </Badge>,
-    );
   }
 
   return tags.length > 0 ? <div className="mt-1.5 flex flex-wrap gap-1">{tags}</div> : null;

@@ -72,8 +72,8 @@ describe("InboxPanel", () => {
     // clock by zero still pumps the microtask queue so that resolution reaches state.
     await act(() => vi.advanceTimersByTimeAsync(0));
 
-    expect(screen.getByText("Waiting 14 min")).toBeTruthy();
-    expect(screen.getByText("#1 in line")).toBeTruthy();
+    expect(screen.getByText("14 min")).toBeTruthy();
+    expect(screen.getByText("lorrie@northwind.example")).toBeTruthy();
     expect(screen.getByText("Dana")).toBeTruthy();
 
     expect(screen.getByRole("tab", { name: "Mine 1" })).toBeTruthy();
@@ -102,12 +102,14 @@ describe("InboxPanel", () => {
       id: 1,
       status: "done",
       doneAt: "2026-09-12T11:00:00",
+      email: null,
       title: "Older, done first ended",
     });
     const newer = wire({
       id: 2,
       status: "done",
       doneAt: "2026-09-12T12:00:00",
+      email: null,
       title: "Newer, done last ended",
     });
 
