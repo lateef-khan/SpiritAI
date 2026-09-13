@@ -80,6 +80,7 @@ function fakeApi(byStatus: Partial<Record<HandoffStatus, Handoff[]>>): HandoffsA
     messages: async () => notNeeded(),
     claim: async () => notNeeded(),
     finish: async () => notNeeded(),
+    reply: async () => notNeeded(),
   };
 }
 
@@ -123,6 +124,7 @@ describe("useHandoffs", () => {
       messages: async () => notNeeded(),
       claim: async () => notNeeded(),
       finish: async () => notNeeded(),
+      reply: async () => notNeeded(),
     };
 
     const view = renderHook(() => useHandoffs("open", MeKey, api));

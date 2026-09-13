@@ -14,11 +14,22 @@ function historyOf(headId: string): ExportedMessageRepository {
 describe("useHandoffMessages", () => {
   it("makes no call when no call is selected", () => {
     const messages = vi.fn();
-    const api: HandoffsApi = { list: vi.fn(), messages, claim: vi.fn(), finish: vi.fn() };
+    const api: HandoffsApi = {
+      list: vi.fn(),
+      messages,
+      claim: vi.fn(),
+      finish: vi.fn(),
+      reply: vi.fn(),
+    };
 
     const view = renderHook(() => useHandoffMessages(null, api));
 
-    expect(view.result.current).toEqual({ history: null, loading: false, error: null });
+    expect(view.result.current).toEqual({
+      history: null,
+      loading: false,
+      error: null,
+      reload: expect.any(Function),
+    });
     expect(messages).not.toHaveBeenCalled();
   });
 
@@ -28,6 +39,7 @@ describe("useHandoffMessages", () => {
       messages: vi.fn().mockResolvedValue(historyOf("call-1:0")),
       claim: vi.fn(),
       finish: vi.fn(),
+      reply: vi.fn(),
     };
 
     const view = renderHook(() => useHandoffMessages("call-1", api));
@@ -46,7 +58,13 @@ describe("useHandoffMessages", () => {
       (callId: string) =>
         new Promise<ExportedMessageRepository>((resolve) => resolvers.set(callId, resolve)),
     );
-    const api: HandoffsApi = { list: vi.fn(), messages, claim: vi.fn(), finish: vi.fn() };
+    const api: HandoffsApi = {
+      list: vi.fn(),
+      messages,
+      claim: vi.fn(),
+      finish: vi.fn(),
+      reply: vi.fn(),
+    };
 
     const view = renderHook(({ callId }) => useHandoffMessages(callId, api), {
       initialProps: { callId: "call-1" },
@@ -61,5 +79,33 @@ describe("useHandoffMessages", () => {
     await act(() => Promise.resolve());
 
     expect(view.result.current.history).toEqual(historyOf("call-2:0"));
+  });
+
+  it("reloads without dropping the history already on screen", async () => {
+    const messages = vi
+      .fn()
+      .mockResolvedValueOnce(historyOf("call-1:0"))
+      .mockResolvedValueOnce(historyOf("call-1:1"));
+    const api: HandoffsApi = {
+      list: vi.fn(),
+      messages,
+      claim: vi.fn(),
+      finish: vi.fn(),
+      reply: vi.fn(),
+    };
+
+    const view = renderHook(() => useHandoffMessages("call-1", api));
+
+    await waitFor(() => expect(view.result.current.loading).toBe(false));
+    expect(view.result.current.history).toEqual(historyOf("call-1:0"));
+
+    act(() => view.result.current.reload());
+
+    expect(view.result.current.loading).toBe(false);
+    expect(view.result.current.history).toEqual(historyOf("call-1:0"));
+
+    await waitFor(() => expect(view.result.current.history).toEqual(historyOf("call-1:1")));
+
+    expect(messages).toHaveBeenCalledTimes(2);
   });
 });

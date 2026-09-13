@@ -1,5 +1,11 @@
 import type { ExportedMessageRepository } from "@assistant-ui/react";
-import { claimHandoff, finishHandoff, getHandoffMessages, listHandoffs } from "@/api/sdk.gen";
+import {
+  claimHandoff,
+  finishHandoff,
+  getHandoffMessages,
+  listHandoffs,
+  replyToHandoff,
+} from "@/api/sdk.gen";
 import type { HandoffSummary } from "@/api/types.gen";
 import { apiClient } from "@/lib/apiClient";
 import type { Client } from "@/api/client";
@@ -40,6 +46,7 @@ export type HandoffsApi = {
   messages(callId: string): Promise<ExportedMessageRepository>;
   claim(callId: string): Promise<Handoff>;
   finish(callId: string): Promise<void>;
+  reply(callId: string, text: string): Promise<void>;
 };
 
 /**
@@ -94,6 +101,10 @@ export function createHandoffsApi(client: Client = apiClient): HandoffsApi {
 
     finish: async (callId) => {
       await finishHandoff({ client, throwOnError: true, path: { callId } });
+    },
+
+    reply: async (callId, text) => {
+      await replyToHandoff({ client, throwOnError: true, path: { callId }, body: { text } });
     },
   };
 }

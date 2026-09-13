@@ -1,5 +1,5 @@
 import type { ExportedMessageRepository } from "@assistant-ui/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { createHandoffsApi, type HandoffsApi } from "../api/handoffsApi";
 
@@ -20,9 +20,14 @@ const defaultApi = createHandoffsApi();
  * null`. A row picked while an earlier load is still in flight must not let that earlier answer
  * land after the newer one — the effect's cleanup guards against that with a cancelled flag.
  *
+ * A `reload` re-runs the load for the same `callId` without clearing what is already on screen:
+ * `loading` only reports true while there is no history yet for this `callId`, so a reply that
+ * triggers a reload does not flash a skeleton over the transcript it is about to replace.
+ *
  * @param callId The handoff to load, or `null` when none is selected.
  * @param api The handoffs api to load from. Defaults to the signed-in one.
- * @returns The loaded transcript, or `null` before one is picked or while it loads.
+ * @returns The loaded transcript, or `null` before one is picked or while it loads, plus a way
+ * to ask again.
  */
 export function useHandoffMessages(
   callId: string | null,
@@ -31,12 +36,14 @@ export function useHandoffMessages(
   history: ExportedMessageRepository | null;
   loading: boolean;
   error: string | null;
+  reload: () => void;
 } {
+  const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<
-    | { for: string; history: ExportedMessageRepository }
-    | { for: string; error: string }
-    | null
+    { for: string; history: ExportedMessageRepository } | { for: string; error: string } | null
   >(null);
+
+  const reload = useCallback(() => setAttempt((n) => n + 1), []);
 
   useEffect(() => {
     if (callId === null) return;
@@ -61,12 +68,12 @@ export function useHandoffMessages(
     return () => {
       current = false;
     };
-  }, [callId, api]);
+  }, [callId, api, attempt]);
 
   const current = callId !== null && result?.for === callId ? result : null;
   const history = current && "history" in current ? current.history : null;
   const error = current && "error" in current ? current.error : null;
   const loading = callId !== null && current === null;
 
-  return { history, loading, error };
+  return { history, loading, error, reload };
 }

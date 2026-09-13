@@ -15,9 +15,10 @@ vi.mock("@/api/sdk.gen", () => ({
   getHandoffMessages: vi.fn(),
   claimHandoff: vi.fn(),
   finishHandoff: vi.fn(),
+  replyToHandoff: vi.fn(),
 }));
 
-const { listHandoffs, getHandoffMessages, claimHandoff, finishHandoff } =
+const { listHandoffs, getHandoffMessages, claimHandoff, finishHandoff, replyToHandoff } =
   await import("@/api/sdk.gen");
 const { createHandoffsApi, callerKeyOf } = await import("./handoffsApi");
 
@@ -139,6 +140,18 @@ describe("createHandoffsApi finish", () => {
 
     expect(finishHandoff).toHaveBeenCalledWith(
       expect.objectContaining({ path: { callId: "call-1" } }),
+    );
+  });
+});
+
+describe("createHandoffsApi reply", () => {
+  it("calls replyToHandoff with the callId and text", async () => {
+    vi.mocked(replyToHandoff).mockResolvedValue({ data: undefined } as never);
+
+    await createHandoffsApi().reply("call-1", "Hi from Dana");
+
+    expect(replyToHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({ path: { callId: "call-1" }, body: { text: "Hi from Dana" } }),
     );
   });
 });

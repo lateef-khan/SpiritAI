@@ -42,6 +42,7 @@ describe("useHandoffActions take", () => {
       messages: async () => notNeeded(),
       claim: async () => summary,
       finish: async () => notNeeded(),
+      reply: async () => notNeeded(),
     };
 
     const view = renderHook(() => useHandoffActions(api));
@@ -61,6 +62,7 @@ describe("useHandoffActions take", () => {
       messages: async () => notNeeded(),
       claim: async () => Promise.reject(new HostRefusedError(409, "/x", "Somebody has this chat.")),
       finish: async () => notNeeded(),
+      reply: async () => notNeeded(),
     };
 
     const view = renderHook(() => useHandoffActions(api));
@@ -78,6 +80,7 @@ describe("useHandoffActions take", () => {
       messages: async () => notNeeded(),
       claim: async () => Promise.reject(new Error("host refused")),
       finish: async () => notNeeded(),
+      reply: async () => notNeeded(),
     };
 
     const view = renderHook(() => useHandoffActions(api));
@@ -97,6 +100,7 @@ describe("useHandoffActions finish", () => {
       messages: async () => notNeeded(),
       claim: async () => notNeeded(),
       finish: async () => undefined,
+      reply: async () => notNeeded(),
     };
 
     const view = renderHook(() => useHandoffActions(api));
@@ -121,6 +125,7 @@ describe("useHandoffActions finish", () => {
         calls += 1;
         await first;
       },
+      reply: async () => notNeeded(),
     };
 
     const view = renderHook(() => useHandoffActions(api));
