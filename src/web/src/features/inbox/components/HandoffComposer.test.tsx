@@ -102,6 +102,9 @@ describe("HandoffComposer", () => {
     fireEvent.keyDown(input, { key: "Enter" });
 
     screen.getByText("This reply also goes to lorrie@northwind.example");
+    // The reply box shares the thread composer's send button, and the status line sits under the
+    // shell rather than beside the button.
+    expect(await screen.findByRole("button", { name: "Send message" })).toBeTruthy();
 
     await waitFor(() => expect(getHandoffMessages).toHaveBeenCalledTimes(2));
     expect(replyToHandoff).toHaveBeenCalledWith(
@@ -149,6 +152,9 @@ describe("HandoffComposer", () => {
     const input = await screen.findByLabelText("Reply");
     expect(input).toHaveProperty("disabled", true);
     expect(screen.getByText("Dana has this chat.")).toBeTruthy();
+    // The "who has it" line sits under the shell, not crowded beside the send button.
+    const shell = document.querySelector('[data-slot="aui_composer-shell"]');
+    expect(shell?.textContent ?? "").not.toContain("Dana has this chat.");
   });
 
   it("shows no box once the chat is back with Spirit", async () => {

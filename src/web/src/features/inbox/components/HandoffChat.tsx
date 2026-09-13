@@ -25,9 +25,7 @@ type HistoryMessage = ExportedMessageRepository["messages"][number]["message"];
 /** The signed-in api, built once so the pane does not allocate one per render. */
 const api = createHandoffsApi();
 
-// Slots are read by component identity, so this must stay one object across renders rather than
-// a literal written inline at the `Thread` call site.
-const COMPONENTS: ThreadComponents = { Welcome: Hidden, Composer: HandoffComposer };
+const COMPONENTS: ThreadComponents = { Welcome: Hidden, Composer: HandoffComposer, isTranscript: true };
 
 /**
  * One handoff's transcript.
@@ -114,9 +112,6 @@ function HandoffThread({
 
   const runtime = useExternalStoreRuntime({
     messages,
-    // `sending` covers only the reply POST, not a reply Spirit is composing, so it gates
-    // `send()` through `isSendDisabled` rather than driving `isRunning` and drawing an
-    // empty assistant bubble while the POST is in flight.
     isSendDisabled: sending,
     isDisabled: !canReply,
     onNew: async (message) => {

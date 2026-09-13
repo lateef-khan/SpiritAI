@@ -1,8 +1,6 @@
-import type { ReactNode } from "react";
 import { BotIcon, UserIcon } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -55,8 +53,6 @@ export function HandoffRow({
             </span>
           </div>
 
-          <RowTags handoff={handoff} />
-
           {handoff.reason ? (
             <span className="mt-1.5 block rounded-md bg-aui-warning/10 px-2 py-1 text-[12.5px]">
               {handoff.reason}
@@ -102,15 +98,3 @@ function RowAvatar({ email }: { email: string | null }) {
   );
 }
 
-function RowTags({ handoff }: { handoff: Handoff }) {
-  const tags: ReactNode[] = [];
-
-  if (handoff.status === "done") {
-    const endedAt = handoff.claimedAt ?? handoff.doneAt;
-    if (endedAt) {
-      tags.push(<Badge key="waited">Waited {minutesBetween(handoff.askedAt, endedAt)} min</Badge>);
-    }
-  }
-
-  return tags.length > 0 ? <div className="mt-1.5 flex flex-wrap gap-1">{tags}</div> : null;
-}

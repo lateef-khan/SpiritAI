@@ -1,14 +1,12 @@
 import { ComposerPrimitive } from "@assistant-ui/react";
-import { ArrowUpIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ComposerAction } from "@/components/assistant-ui/thread";
 
 import { useHandoffComposer } from "./HandoffComposerContext";
 
-// Matches the thread composer's shell and input classes (`thread.tsx`'s `Composer`), minus the
-// attachment dropzone and the attachment row this box never carries.
 const SHELL_CLASSNAME =
   "flex w-full flex-col gap-2 rounded-(--composer-radius) border bg-(--composer-bg) p-(--composer-padding)";
+
 const INPUT_CLASSNAME =
   "aui-composer-input caret-primary placeholder:text-muted-foreground/60 max-h-48 min-h-10 w-full resize-none bg-transparent px-2.5 py-1 text-base leading-6 outline-none";
 
@@ -55,17 +53,11 @@ export function HandoffComposer() {
             aria-label="Reply"
             disabled={disabled}
           />
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">{footer}</p>
-            <ComposerPrimitive.Send asChild>
-              <Button type="button" variant="default" size="icon" aria-label="Send">
-                <ArrowUpIcon className="size-4" />
-              </Button>
-            </ComposerPrimitive.Send>
-          </div>
+          <ComposerAction showAttachments={false} />
         </div>
       </ComposerPrimitive.Root>
-      {sendError ? <p className="text-xs text-destructive">{sendError}</p> : null}
+      <p className="text-xs text-muted-foreground px-1">{footer}</p>
+      {sendError ? <p className="text-xs text-destructive px-1">{sendError}</p> : null}
     </div>
   );
 }

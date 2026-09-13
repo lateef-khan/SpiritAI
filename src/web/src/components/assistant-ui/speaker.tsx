@@ -3,19 +3,12 @@
 import type { Speaker } from "@/features/threads/transport";
 import { useAuiState } from "@assistant-ui/react";
 import { BotIcon, HeadsetIcon, ServerIcon } from "lucide-react";
-import type { FC } from "react";
+import { createContext, useContext, type FC } from "react";
+
+export const TranscriptModeContext = createContext(false);
 
 /**
  * The name on an answer, when it was not the model that wrote it.
- *
- * Nothing populates this yet — see `Speaker` in features/threads/transport.ts for the contract AgentCore
- * would emit. Until it does, `useSpeaker` returns `null` and this renders nothing, which is exactly
- * what an app with one speaker should show.
- *
- * The shipped `elements-speaker-identity` is not used here. It takes an array of turns and renders
- * the whole conversation itself, bubbles and all, which suits the gallery demo and cannot be put
- * inside a `ThreadPrimitive.Messages` list that already owns its messages. This is the same idea at
- * the size the thread can actually use: one line, above one answer.
  */
 export function useSpeaker(): Speaker | null {
   return useAuiState((s) => {
@@ -47,11 +40,13 @@ const ICONS = {
 export const MessageSpeaker: FC = () => {
   const speaker = useSpeaker();
 
-  // The model is the default author. Labelling every answer "Assistant" is noise, so only a speaker
-  // the caller would not otherwise assume earns a line.
-  if (!speaker || speaker.kind === "agent") return null;
+  const isTranscript = useContext(TranscriptModeContext);
 
-  const Icon = ICONS[speaker.kind] ?? ICONS.agent;
+  const effective: Speaker | null = speaker ?? (isTranscript ? { kind: "agent", name: "Spirit" } : null);
+
+  if (!effective || (effective.kind === "agent" && !isTranscript)) return null;
+
+  const Icon = ICONS[effective.kind] ?? ICONS.agent;
 
   return (
     <div
@@ -59,8 +54,8 @@ export const MessageSpeaker: FC = () => {
       className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs"
     >
       <Icon aria-hidden className="size-3.5 shrink-0" />
-      <span className="font-medium">{speaker.name}</span>
-      {speaker.detail && <span className="text-foreground/40">· {speaker.detail}</span>}
+      <span className="font-medium">{effective.name}</span>
+      {effective.detail && <span className="text-foreground/40">· {effective.detail}</span>}
     </div>
   );
 };

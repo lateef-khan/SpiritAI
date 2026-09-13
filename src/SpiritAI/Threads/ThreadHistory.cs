@@ -135,13 +135,16 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
     private static IEnumerable<List<CallMessage>> Group(IReadOnlyList<CallMessage> rows)
     {
         List<CallMessage>? open = null;
+
         var openTurn = -1;
+
+        string? openSpeaker = null;
 
         foreach (var row in rows.OrderBy(row => row.Ordinal))
         {
             var agentSide = row.Content.Role == ChatRole.Assistant || row.Content.Role == ChatRole.Tool;
 
-            if (agentSide && open is not null && openTurn == row.TurnIndex)
+            if (agentSide && open is not null && openTurn == row.TurnIndex && openSpeaker == SpeakerKey(row))
             {
                 open.Add(row);
                 continue;
@@ -157,6 +160,7 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
             {
                 open = [row];
                 openTurn = row.TurnIndex;
+                openSpeaker = SpeakerKey(row);
             }
             else
             {
@@ -170,6 +174,10 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
         }
     }
 
+    /// <summary>Who a row speaks as, as the stored JSON spells it. No entry means the agent.</summary>
+    private static string? SpeakerKey(CallMessage row)
+        => SpeakerProperty.Read(row.Content)?.GetRawText();
+
     private static ThreadHistoryMessage Build(CallRecord call, List<CallMessage> turn)
     {
         var first = turn[0];
@@ -179,47 +187,56 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
         Dictionary<string, int> toolAt = new(StringComparer.Ordinal);
         List<ThreadSourcePart> sources = [];
         List<ThreadDataPart> drawn = [];
-        StringBuilder words = new();
+        List<string> utterances = [];
 
-        foreach (var content in turn.SelectMany(row => row.Content.Contents))
+        foreach (var row in turn)
         {
-            switch (content)
+            StringBuilder words = new();
+            foreach (var content in row.Content.Contents)
             {
-                case TextContent text:
-                    words.Append(text.Text);
-                    break;
+                switch (content)
+                {
+                    case TextContent text:
+                        words.Append(text.Text);
+                        break;
 
-                case FunctionCallContent called:
-                    toolAt[called.CallId] = tools.Count;
-                    tools.Add(ToolOf(called));
-                    break;
+                    case FunctionCallContent called:
+                        toolAt[called.CallId] = tools.Count;
+                        tools.Add(ToolOf(called));
+                        break;
 
-                case FunctionResultContent answered when toolAt.TryGetValue(answered.CallId, out var at):
-                    tools[at] = tools[at] with
-                    {
-                        Result = JsonSerializer.SerializeToElement(answered.Result, Json),
-                        IsError = answered.Exception is not null,
-                    };
-                    break;
+                    case FunctionResultContent answered when toolAt.TryGetValue(answered.CallId, out var at):
+                        tools[at] = tools[at] with
+                        {
+                            Result = JsonSerializer.SerializeToElement(answered.Result, Json),
+                            IsError = answered.Exception is not null,
+                        };
+                        break;
 
-                case SourceContent cited:
-                    sources.Add(SourceOf(cited));
-                    break;
+                    case SourceContent cited:
+                        sources.Add(SourceOf(cited));
+                        break;
 
-                case RenderContent render:
-                    drawn.Add(new ThreadDataPart(render.Name, render.Data));
-                    break;
+                    case RenderContent render:
+                        drawn.Add(new ThreadDataPart(render.Name, render.Data));
+                        break;
 
-                default:
-                    break;
+                    default:
+                        break;
+                }
+            }
+
+            if (words.Length > 0)
+            {
+                utterances.Add(words.ToString());
             }
         }
 
         List<ThreadPart> parts = [.. tools, .. sources];
 
-        if (words.Length > 0)
+        if (utterances.Count > 0)
         {
-            parts.Add(new ThreadTextPart(words.ToString()));
+            parts.Add(new ThreadTextPart(string.Join("\n\n", utterances)));
         }
 
         parts.AddRange(drawn);
