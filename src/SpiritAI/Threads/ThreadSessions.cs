@@ -32,7 +32,7 @@ internal sealed class AgentCoreThreadSessions(ICallSessions sessions) : IThreadS
         => await sessions.OpenAsync(callId, cancellationToken).ConfigureAwait(false);
 }
 
-/// <summary>Registers the seam the chat door reads.</summary>
+/// <summary>Registers the seam the turn's door reads.</summary>
 public static class ThreadSessionServiceCollectionExtensions
 {
     /// <summary>Adds the default <see cref="IThreadSessions"/>, over AgentCore's session table.</summary>
@@ -48,11 +48,11 @@ public static class ThreadSessionServiceCollectionExtensions
     }
 }
 
-/// <summary>The door in front of the chat endpoint.</summary>
+/// <summary>The door in front of the Responses endpoint.</summary>
 public static class ThreadSessionApplicationBuilderExtensions
 {
     /// <summary>The route this guards when the host names none.</summary>
-    public const string DefaultChatPattern = "/v1/chat/completions";
+    public const string DefaultResponsesPattern = "/v1/responses";
 
     /// <summary>
     /// Lets a turn continue a thread the caller owns, and refuses one that names anybody else's.
@@ -61,7 +61,7 @@ public static class ThreadSessionApplicationBuilderExtensions
     /// <param name="pattern">The route to guard.</param>
     /// <returns>The same application.</returns>
     public static IApplicationBuilder UseThreadSessions(
-        this IApplicationBuilder app, string pattern = DefaultChatPattern)
+        this IApplicationBuilder app, string pattern = DefaultResponsesPattern)
     {
         ArgumentNullException.ThrowIfNull(app);
         ArgumentException.ThrowIfNullOrEmpty(pattern);
@@ -75,9 +75,6 @@ public static class ThreadSessionApplicationBuilderExtensions
 /// </summary>
 internal sealed class ThreadSessionMiddleware(RequestDelegate next, string pattern)
 {
-    /// <summary>The header a turn names its thread in. AgentCore's own.</summary>
-    public const string SessionHeaderName = "X-AgentCore-Session";
-
     public async Task InvokeAsync(HttpContext context, ICallStore calls, IThreadSessions sessions)
     {
         if (!context.Request.Path.StartsWithSegments(pattern, StringComparison.OrdinalIgnoreCase))
@@ -86,7 +83,7 @@ internal sealed class ThreadSessionMiddleware(RequestDelegate next, string patte
             return;
         }
 
-        var namedThread = context.Request.Headers[SessionHeaderName].ToString();
+        var namedThread = await TurnConversation.ReadAsync(context.Request).ConfigureAwait(false);
 
         // A turn that names no thread is a new conversation, and AgentCore mints the call for it.
         // Nothing here has an opinion about that.

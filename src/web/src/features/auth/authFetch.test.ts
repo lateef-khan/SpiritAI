@@ -49,7 +49,7 @@ describe("authFetch", () => {
   test("signs the request with the session's token", async () => {
     getSession.mockResolvedValue(LIVE);
 
-    await authFetch("/v1/chat/completions", { method: "POST" });
+    await authFetch("/v1/responses", { method: "POST" });
 
     expect(sentAuthorization()).toBe("Bearer jwt-abc");
   });
@@ -57,8 +57,8 @@ describe("authFetch", () => {
   test("reuses the token instead of asking Neon per turn", async () => {
     getSession.mockResolvedValue(LIVE);
 
-    await authFetch("/v1/chat/completions");
-    await authFetch("/v1/chat/completions");
+    await authFetch("/v1/responses");
+    await authFetch("/v1/responses");
 
     expect(getSession).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -69,7 +69,7 @@ describe("authFetch", () => {
     // reads to the user as the page reloading.
     getSession.mockResolvedValue(LIVE_WITHOUT_TOKEN);
 
-    await expect(authFetch("/v1/chat/completions")).rejects.toBeInstanceOf(NotSignedInError);
+    await expect(authFetch("/v1/responses")).rejects.toBeInstanceOf(NotSignedInError);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(replace).not.toHaveBeenCalled();
   });
@@ -77,7 +77,7 @@ describe("authFetch", () => {
   test("goes to the door only when the session is really gone", async () => {
     getSession.mockResolvedValue(SIGNED_OUT);
 
-    await expect(authFetch("/v1/chat/completions")).rejects.toBeInstanceOf(NotSignedInError);
+    await expect(authFetch("/v1/responses")).rejects.toBeInstanceOf(NotSignedInError);
     expect(replace).toHaveBeenCalledWith("/chat/login.html");
   });
 
@@ -85,7 +85,7 @@ describe("authFetch", () => {
     getSession.mockResolvedValue(LIVE);
     fetchMock.mockResolvedValue(new Response("", { status: 401 }));
 
-    await expect(authFetch("/v1/chat/completions")).rejects.toBeInstanceOf(NotSignedInError);
+    await expect(authFetch("/v1/responses")).rejects.toBeInstanceOf(NotSignedInError);
 
     // Navigating here is what made every message reload the page: the login page saw a live
     // session and sent the browser straight back.
@@ -96,7 +96,7 @@ describe("authFetch", () => {
     getSession.mockResolvedValueOnce(LIVE).mockResolvedValue(SIGNED_OUT);
     fetchMock.mockResolvedValue(new Response("", { status: 401 }));
 
-    await expect(authFetch("/v1/chat/completions")).rejects.toBeInstanceOf(NotSignedInError);
+    await expect(authFetch("/v1/responses")).rejects.toBeInstanceOf(NotSignedInError);
     expect(replace).toHaveBeenCalledWith("/chat/login.html");
   });
 
@@ -104,7 +104,7 @@ describe("authFetch", () => {
     getSession.mockResolvedValue(LIVE_WITHOUT_TOKEN);
     token.mockResolvedValue({ data: { token: "jwt-from-endpoint" }, error: null });
 
-    await authFetch("/v1/chat/completions");
+    await authFetch("/v1/responses");
 
     expect(sentAuthorization()).toBe("Bearer jwt-from-endpoint");
   });
@@ -112,9 +112,9 @@ describe("authFetch", () => {
   test("passes the caller's own headers and body through", async () => {
     getSession.mockResolvedValue(LIVE);
 
-    await authFetch("/v1/chat/completions", {
+    await authFetch("/v1/responses", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-AgentCore-Session": "s1" },
+      headers: { "Content-Type": "application/json", "X-Test-Header": "s1" },
       body: "{}",
     });
 
@@ -122,7 +122,7 @@ describe("authFetch", () => {
     const headers = new Headers(init.headers);
 
     expect(headers.get("Content-Type")).toBe("application/json");
-    expect(headers.get("X-AgentCore-Session")).toBe("s1");
+    expect(headers.get("X-Test-Header")).toBe("s1");
     expect(init.body).toBe("{}");
   });
 });

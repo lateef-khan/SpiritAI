@@ -18,7 +18,7 @@
     Bump alongside AgentCore.
   -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.AI" Version="10.8.3" />
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.10.0" />
   </ItemGroup>
 
   <ItemGroup>

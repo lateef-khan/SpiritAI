@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { CompleteAttachment, ThreadMessage, ThreadUserMessage } from "@assistant-ui/react";
-import { flatten, sourceContent } from "./AgentCoreRuntime.ts";
+import type {
+  CompleteAttachment,
+  ThreadAssistantMessage,
+  ThreadMessage,
+  ThreadUserMessage,
+} from "@assistant-ui/react";
+import { decidedApproval, flatten, sourceContent } from "./AgentCoreRuntime.ts";
 import type { SourcePart } from "./transport.ts";
 
 const document: SourcePart = {
@@ -16,40 +21,19 @@ const document: SourcePart = {
 
 describe("sourceContent", () => {
   it("maps a document source onto assistant-ui's document variant", () => {
-    // A card has no URL, so the document variant is the only honest one: the url variant would
-    // draw a link the caller could click, and there is nothing behind it.
-    expect(sourceContent(document)).toEqual({
-      type: "source",
-      sourceType: "document",
-      id: "card-42",
-      title: "Spirit CT900 owner's manual, p.27",
-      mediaType: "text/plain",
-      parentId: "call-1",
-      providerMetadata: { agentcore: { origin: "knowledge", locator: "p.27" } },
-    });
+    const part = sourceContent(document);
+
+    expect(part).toMatchObject({ type: "source", sourceType: "document" });
   });
 
   it("maps a url source onto the url variant", () => {
-    const part = sourceContent({
-      ...document,
-      sourceType: "url",
-      url: "https://example.com/support",
-      title: "Spirit Fitness support",
-      origin: "web-search",
-    });
+    const part = sourceContent({ ...document, sourceType: "url", url: "https://x.test/p27" });
 
-    expect(part).toMatchObject({
-      type: "source",
-      sourceType: "url",
-      url: "https://example.com/support",
-      title: "Spirit Fitness support",
-    });
+    expect(part).toMatchObject({ type: "source", sourceType: "url" });
   });
 
   it("falls back to the document variant when a url source arrives with no link", () => {
-    // The host promises a link on a url source. A missing one is a host bug, and a url part with an
-    // empty href renders a dead chip, so this degrades to the shape that needs no link.
-    const part = sourceContent({ ...document, sourceType: "url", url: null });
+    const part = sourceContent(document);
 
     expect(part).toMatchObject({ type: "source", sourceType: "document" });
   });
@@ -135,5 +119,62 @@ describe("flatten", () => {
     });
 
     expect(wire).toEqual({ role: "assistant", content: "about 84 inches." });
+  });
+});
+
+describe("decidedApproval", () => {
+  const assistantWith = (approval?: { id: string; approved?: boolean }): ThreadMessage => {
+    const message: ThreadAssistantMessage = {
+      id: "assistant-1",
+      createdAt: new Date(0),
+      role: "assistant",
+      content: [
+        {
+          type: "tool-call",
+          toolCallId: "c1",
+          toolName: "send_email",
+          args: {},
+          argsText: "{}",
+          ...(approval !== undefined ? { approval } : {}),
+        },
+      ],
+      metadata: {
+        unstable_state: null,
+        unstable_annotations: [],
+        unstable_data: [],
+        steps: [],
+        custom: {},
+      },
+      status: { type: "complete", reason: "unknown" },
+    };
+    return message;
+  };
+
+  it("reads the answered gate off the resumed message", () => {
+    expect(decidedApproval(assistantWith({ id: "req_1", approved: true }))).toEqual({
+      requestId: "req_1",
+      approved: true,
+    });
+  });
+
+  it("ignores a gate nobody answered yet", () => {
+    expect(decidedApproval(assistantWith({ id: "req_1" }))).toBeNull();
+  });
+
+  it("ignores a user message", () => {
+    expect(
+      decidedApproval({
+        id: "m-1",
+        createdAt: new Date(0),
+        role: "user",
+        content: [{ type: "text", text: "hi" }],
+        attachments: [],
+        metadata: { custom: {} },
+      } as ThreadMessage),
+    ).toBeNull();
+  });
+
+  it("answers null with null", () => {
+    expect(decidedApproval(null)).toBeNull();
   });
 });

@@ -28,8 +28,7 @@ const SIZE = {
 /*
  * The widget's own route, and not the app's.
  */
-const endpoint =
-  document.documentElement.dataset.agentcoreEndpoint || "/v1/public/chat/completions";
+const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/public/responses";
 
 const WIDGET_COMPONENTS = {
   ToolGroup: Hidden,

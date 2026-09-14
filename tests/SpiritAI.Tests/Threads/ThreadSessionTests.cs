@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
-
+using System.Net.Http.Json;
 using AgentCore.Application.Calls.Memory;
 using AgentCore.Application.Ports;
 
@@ -19,20 +19,19 @@ using Xunit;
 namespace SpiritAI.Tests.Threads;
 
 /// <summary>
-/// The door in front of the chat endpoint, for a thread that was opened days ago.
+/// The door in front of the Responses endpoint, for a thread that was opened days ago.
 /// </summary>
 public sealed class ThreadSessionTests
 {
-    private const string Chat = "/v1/chat/completions";
-    private const string PublicChat = "/v1/public/chat/completions";
-    private const string SessionHeader = "X-AgentCore-Session";
+    private const string Responses = "/v1/responses";
+    private const string PublicResponses = "/v1/public/responses";
 
     [Fact]
     public async Task ATurnThatNamesNoThreadIsLetThrough()
     {
         await using var world = await World.StartAsync();
 
-        var response = await world.PostAsync(Chat, world.OwnerToken, thread: null);
+        var response = await world.PostAsync(world.OwnerToken, thread: null);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Empty(world.Sessions.Reopened);
@@ -44,7 +43,7 @@ public sealed class ThreadSessionTests
         await using var world = await World.StartAsync();
         var remoteId = await world.MakeThreadAsync(World.OwnerKey);
 
-        var response = await world.PostAsync(Chat, world.OwnerToken, remoteId);
+        var response = await world.PostAsync(world.OwnerToken, remoteId);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal([remoteId], world.Sessions.Reopened);
@@ -57,7 +56,7 @@ public sealed class ThreadSessionTests
         var remoteId = await world.MakeThreadAsync(World.OwnerKey);
         world.Sessions.MarkLive(remoteId);
 
-        var response = await world.PostAsync(Chat, world.OwnerToken, remoteId);
+        var response = await world.PostAsync(world.OwnerToken, remoteId);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Empty(world.Sessions.Reopened);
@@ -69,9 +68,9 @@ public sealed class ThreadSessionTests
         await using var world = await World.StartAsync();
         var remoteId = await world.MakeThreadAsync(World.OwnerKey);
 
-        var response = await world.PostAsync(Chat, world.StrangerToken, remoteId);
+        var response = await world.PostAsync(world.StrangerToken, remoteId);
 
-        // Without this the chat endpoint would happily continue the owner's conversation for
+        // Without this the endpoint would happily continue the owner's conversation for
         // anybody who names its id.
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Empty(world.Sessions.Reopened);
@@ -82,7 +81,7 @@ public sealed class ThreadSessionTests
     {
         await using var world = await World.StartAsync();
 
-        var response = await world.PostAsync(Chat, world.OwnerToken, "no-such-thread");
+        var response = await world.PostAsync(world.OwnerToken, "no-such-thread");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -94,7 +93,7 @@ public sealed class ThreadSessionTests
 
         // Nobody behind the public bubble is signed in, so there is no principal to check a claim
         // against. Guarding that route would close it to everyone.
-        var response = await world.PostAsync(PublicChat, token: null, thread: "anything at all");
+        var response = await world.PostPublicAsync(conversation: "anything at all");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Empty(world.Sessions.Reopened);
@@ -138,19 +137,36 @@ public sealed class ThreadSessionTests
             return callId;
         }
 
-        public Task<HttpResponseMessage> PostAsync(string url, string? token, string? thread)
+        public Task<HttpResponseMessage> PostAsync(string? token, string? thread)
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, url);
+            var request = new HttpRequestMessage(HttpMethod.Post, Responses);
 
             if (token is not null)
             {
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
 
-            if (thread is not null)
+            // A Responses turn names its thread in the body.
+            request.Content = JsonContent.Create(new
             {
-                request.Headers.TryAddWithoutValidation(SessionHeader, thread);
-            }
+                input = "hello",
+                stream = false,
+                conversation = thread,
+            });
+
+            return Client.SendAsync(request, TestContext.Current.CancellationToken);
+        }
+
+        public Task<HttpResponseMessage> PostPublicAsync(string? conversation)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, PublicResponses);
+
+            request.Content = JsonContent.Create(new
+            {
+                input = "hello",
+                stream = false,
+                conversation,
+            });
 
             return Client.SendAsync(request, TestContext.Current.CancellationToken);
         }
@@ -171,15 +187,15 @@ public sealed class ThreadSessionTests
                 app =>
                 {
                     app.UseNeonAuthOnApi();
-                    app.UseThreadSessions();
+                    app.UseThreadSessions(Responses);
                     app.UseRouting();
                     app.UseEndpoints(endpoints =>
                     {
-                        endpoints.MapPost(Chat, () => Results.Ok("ran"));
-                        endpoints.MapPost(PublicChat, () => Results.Ok("ran"));
+                        endpoints.MapPost(Responses, () => Results.Ok("ran"));
+                        endpoints.MapPost(PublicResponses, () => Results.Ok("ran"));
                     });
                 },
-                options => options.OpenPathPrefixes = [PublicChat]);
+                options => options.OpenPathPrefixes = [PublicResponses]);
 
             return new World(host, kit, store, sessions);
         }

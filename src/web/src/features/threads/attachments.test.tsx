@@ -21,7 +21,7 @@ function mount() {
   let runtime: AssistantRuntime | undefined;
 
   function Harness() {
-    runtime = useAgentCoreRuntime("/v1/chat/completions", () => {
+    runtime = useAgentCoreRuntime("/v1/responses", () => {
       throw new Error("no turn should run in this test");
     });
 

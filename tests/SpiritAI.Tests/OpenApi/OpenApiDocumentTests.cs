@@ -39,7 +39,7 @@ namespace SpiritAI.Tests.OpenApi;
 /// unbuildable in exactly the place it is needed most.
 /// </para>
 /// <para>
-/// Only the routes the browser generates a client for are mapped. AgentCore's chat endpoint is
+/// Only the routes the browser generates a client for are mapped. AgentCore's Responses endpoint is
 /// deliberately absent: it answers with an SSE stream that <c>transport.ts</c> reads by hand, and a
 /// generated client for it would be wrong rather than merely unused.
 /// </para>

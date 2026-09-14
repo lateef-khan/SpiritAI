@@ -25,8 +25,8 @@ namespace SpiritAI.Tests.PublicChat;
 /// </remarks>
 public sealed class PublicChatLimitTests
 {
-    private const string Public = "/v1/public/chat/completions";
-    private const string Slow = "/v1/public/chat/completions/slow";
+    private const string Public = "/v1/public/responses";
+    private const string Slow = "/v1/public/responses/slow";
     private const string Handoff = "/v1/public/handoff";
 
     /// <summary>Long enough that three requests sent together overlap, short enough not to drag.</summary>
@@ -74,7 +74,7 @@ public sealed class PublicChatLimitTests
 
         for (var i = 0; i < 5; i++)
         {
-            var signedIn = await client.GetAsync("/v1/chat/completions", TestContext.Current.CancellationToken);
+            var signedIn = await client.GetAsync("/v1/responses", TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.OK, signedIn.StatusCode);
 
             var health = await client.GetAsync("/health", TestContext.Current.CancellationToken);
@@ -163,7 +163,7 @@ public sealed class PublicChatLimitTests
                             await Task.Delay(TurnDuration);
                             return Results.Ok("slow");
                         });
-                        endpoints.MapGet("/v1/chat/completions", () => Results.Ok("private"));
+                        endpoints.MapGet("/v1/responses", () => Results.Ok("private"));
                         endpoints.MapGet("/health", () => Results.Ok("ok"));
                     });
                 }))

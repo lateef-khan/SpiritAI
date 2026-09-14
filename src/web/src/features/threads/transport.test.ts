@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, expect, it, test } from "vitest";
 import {
-  SessionHeader,
+  ContinuationNotFound,
+  ConversationField,
   foldSource,
   readEvent,
   runTurn,
@@ -9,14 +10,15 @@ import {
   wireMessages,
   type FetchLike,
   type Session,
+  type StreamChunk,
 } from "./transport.ts";
 
 /**
  * What the browser does over the wire.
  *
  * No network and no browser: every test drives `runTurn` with a fetch of its own, so the failures
- * these cover — a half-read event, a session id kept past the end of its call, a 404 for a call the
- * host forgot — are reproduced exactly rather than waited for.
+ * these cover — a half-read event, a conversation id kept past the end of its call, a 404 for a
+ * call the host forgot — are reproduced exactly rather than waited for.
  */
 
 // -------------------------------------------------------------------------------------------------
@@ -24,7 +26,7 @@ import {
 // -------------------------------------------------------------------------------------------------
 
 /** One recorded request. */
-type Sent = { session: string | null; body: unknown };
+type Sent = { conversation: string | null; body: unknown };
 
 /** Builds a response whose body arrives in exactly the pieces given. */
 function streaming(pieces: string[], headers: Record<string, string> = {}): Response {
@@ -55,10 +57,11 @@ function scripted(responses: Response[]): { fetch: FetchLike; sent: Sent[] } {
   let index = 0;
 
   const fetch: FetchLike = (_url, init) => {
-    const headers = (init.headers ?? {}) as Record<string, string>;
+    const body = JSON.parse(String(init.body)) as Record<string, unknown>;
     sent.push({
-      session: headers[SessionHeader] ?? null,
-      body: JSON.parse(String(init.body)),
+      conversation:
+        typeof body[ConversationField] === "string" ? (body[ConversationField] as string) : null,
+      body,
     });
 
     const response = responses[index++];
@@ -70,13 +73,41 @@ function scripted(responses: Response[]): { fetch: FetchLike; sent: Sent[] } {
 }
 
 /** One data event. */
-function event(payload: unknown): string {
-  return `data: ${JSON.stringify(payload)}\n\n`;
+function event(payload: unknown, eventName?: string): string {
+  return `${eventName ? `event: ${eventName}\n` : ""}data: ${JSON.stringify(payload)}\n\n`;
 }
 
-/** One chunk that carries text. */
+/** One text frame. */
 function delta(text: string): string {
-  return event({ choices: [{ delta: { content: text }, finish_reason: null }] });
+  return event(
+    {
+      type: "response.output_text.delta",
+      delta: text,
+    },
+    "response.output_text.delta",
+  );
+}
+
+/** The created event naming the conversation. */
+function created(conversation: string): string {
+  return event(
+    {
+      type: "response.created",
+      response: { id: "resp_1", conversation: { id: conversation } },
+    },
+    "response.created",
+  );
+}
+
+/** The closing event carrying the turn facts. */
+function completed(metadata: Record<string, string> = {}, conversation = "conv_1"): string {
+  return event(
+    {
+      type: "response.completed",
+      response: { id: "resp_1", conversation: { id: conversation }, metadata },
+    },
+    "response.completed",
+  );
 }
 
 /** Runs one turn to the end and collects every yield. */
@@ -84,16 +115,18 @@ async function collect(
   responses: Response[],
   session: Session,
   messages: { role: string; content: string }[] = [{ role: "user", content: "hi" }],
+  threadId?: string,
 ): Promise<{ yields: string[]; sent: Sent[] }> {
   const { fetch, sent } = scripted(responses);
   const yields: string[] = [];
 
   for await (const state of runTurn({
-    endpoint: "/v1/chat/completions",
+    endpoint: "/v1/responses",
     session,
-    messages: wireMessages(messages),
+    input: wireMessages(messages),
     abortSignal: new AbortController().signal,
     fetch,
+    ...(threadId ? { threadId } : {}),
   })) {
     yields.push(state.text);
   }
@@ -119,49 +152,74 @@ test("splitEvents returns nothing when no event is complete yet", () => {
   assert.equal(rest, "data: par");
 });
 
-test("readEvent ignores the terminator", () => {
-  assert.equal(readEvent("data: [DONE]"), null);
+test("readEvent parses every data line of one event", () => {
+  const chunks = readEvent(
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"hi"}',
+  );
+
+  assert.deepEqual(chunks, [{ type: "response.output_text.delta", delta: "hi" }]);
 });
 
 test("readEvent ignores a line that is not data", () => {
-  assert.equal(readEvent(": keep-alive"), null);
+  assert.deepEqual(readEvent(": keep-alive"), []);
+});
+
+test("readEvent skips half a JSON body split across reads", () => {
+  assert.deepEqual(readEvent('data: {"type":"response.output_text.del'), []);
 });
 
 // -------------------------------------------------------------------------------------------------
 // The request body.
 // -------------------------------------------------------------------------------------------------
 
-test("wireMessages drops a message left with no text", () => {
-  const wire = wireMessages([
-    { role: "user", content: "hello" },
-    { role: "assistant", content: "" },
-  ]);
+test("wireMessages sends the last user text", () => {
+  assert.equal(
+    wireMessages([
+      { role: "user", content: "first" },
+      { role: "assistant", content: "answer" },
+      { role: "user", content: "second" },
+    ]),
+    "second",
+  );
+});
 
-  assert.deepEqual(wire, [{ role: "user", content: "hello" }]);
+test("wireMessages answers empty when no user text remains", () => {
+  assert.equal(wireMessages([{ role: "assistant", content: "answer" }]), "");
 });
 
 // -------------------------------------------------------------------------------------------------
-// The session, which is the whole reason this file exists.
+// The conversation, which is the whole reason this file exists.
 // -------------------------------------------------------------------------------------------------
 
-test("the first turn names no session and keeps the one the host answers with", async () => {
+test("the first turn names no conversation and keeps the one the stream mints", async () => {
   const session: Session = { current: null };
 
   const { sent } = await collect(
-    [streaming([delta("hi")], { [SessionHeader]: "call-1" })],
+    [streaming([created("conv_1"), delta("hi"), completed()])],
     session,
   );
 
-  assert.equal(sent[0]!.session, null, "a first turn must not name a call that does not exist.");
-  assert.equal(session.current, "call-1");
+  assert.equal(
+    sent[0]!.conversation,
+    null,
+    "a first turn must not name a call that does not exist.",
+  );
+  assert.equal(session.current, "conv_1");
 });
 
-test("the next turn sends the session back", async () => {
-  const session: Session = { current: "call-1" };
+test("the next turn sends the conversation back", async () => {
+  const session: Session = { current: "conv_1" };
 
-  const { sent } = await collect([streaming([delta("again")])], session);
+  const { sent } = await collect(
+    [streaming([created("conv_1"), delta("again"), completed()])],
+    session,
+  );
 
-  assert.equal(sent[0]!.session, "call-1");
+  assert.equal(sent[0]!.conversation, "conv_1");
+  const body = sent[0]!.body as Record<string, unknown>;
+  assert.equal(body["input"], "hi");
+  assert.equal(body["stream"], true);
+  assert.ok(body["agentcore"], "the dialect member opts the stream into drawings and tools.");
 });
 
 test("a terminal turn lets the call go, so the next one opens a new call", async () => {
@@ -172,14 +230,8 @@ test("a terminal turn lets the call go, so the next one opens a new call", async
   await collect(
     [
       streaming(
-        [
-          delta("goodbye"),
-          event({
-            choices: [{ delta: {}, finish_reason: "stop" }],
-            agentcore: { is_terminal: true },
-          }),
-        ],
-        { [SessionHeader]: "call-1" },
+        [created("conv_1"), delta("goodbye"), completed({ is_terminal: "true" }, "conv_1")],
+        {},
       ),
     ],
     session,
@@ -194,20 +246,14 @@ test("a non-terminal turn keeps the call", async () => {
   await collect(
     [
       streaming(
-        [
-          delta("still here"),
-          event({
-            choices: [{ delta: {}, finish_reason: "stop" }],
-            agentcore: { is_terminal: false },
-          }),
-        ],
-        { [SessionHeader]: "call-1" },
+        [created("conv_1"), delta("still here"), completed({ is_terminal: "false" }, "conv_1")],
+        {},
       ),
     ],
     session,
   );
 
-  assert.equal(session.current, "call-1");
+  assert.equal(session.current, "conv_1");
 });
 
 test("a call the host has forgotten is started again rather than failing the turn", async () => {
@@ -217,21 +263,65 @@ test("a call the host has forgotten is started again rather than failing the tur
 
   const { yields, sent } = await collect(
     [
-      refusal(404, "no call named 'gone' is open on this host.", "session_not_found"),
-      streaming([delta("fresh start")], { [SessionHeader]: "call-2" }),
+      refusal(404, "no call opens under 'gone'.", ContinuationNotFound),
+      streaming([created("conv_2"), delta("fresh start"), completed({}, "conv_2")]),
     ],
     session,
   );
 
   assert.equal(sent.length, 2);
-  assert.equal(sent[0]!.session, "gone");
-  assert.equal(sent[1]!.session, null, "the retry must not name the call that is gone.");
-  assert.equal(session.current, "call-2");
+  assert.equal(sent[0]!.conversation, "gone");
+  assert.equal(sent[1]!.conversation, null, "the retry must not name the call that is gone.");
+  assert.equal(session.current, "conv_2");
   assert.deepEqual(yields, ["fresh start"]);
 });
 
-test("a 404 that is not a lost session is not retried", async () => {
-  const session: Session = { current: "call-1" };
+test("a thread-owned turn sends the thread and keeps nothing", async () => {
+  // The thread id is the conversation, so the reply's id is the call's own bookkeeping and is
+  // never adopted. A second id here would be a second id to keep in step forever.
+  const session: Session = { current: null };
+
+  const { sent } = await collect(
+    [streaming([created("other"), delta("hi"), completed()])],
+    session,
+    [{ role: "user", content: "hi" }],
+    "thread-7",
+  );
+
+  assert.equal(sent[0]!.conversation, "thread-7");
+  assert.equal(session.current, null);
+});
+
+test("a thread-owned 404 is not retried nameless", async () => {
+  // Retrying without the thread would file the call under a fresh id and orphan the thread.
+  const session: Session = { current: null };
+
+  const { fetch, sent } = scripted([
+    refusal(404, "no call opens under 'thread-7'.", ContinuationNotFound),
+  ]);
+
+  const drained: string[] = [];
+  await assert.rejects(
+    (async () => {
+      for await (const state of runTurn({
+        endpoint: "/v1/responses",
+        session,
+        input: "hi",
+        abortSignal: new AbortController().signal,
+        fetch,
+        threadId: "thread-7",
+      })) {
+        drained.push(state.text);
+      }
+    })(),
+    /no call opens under 'thread-7'/,
+  );
+  assert.deepEqual(drained, []);
+  assert.equal(sent.length, 1);
+});
+
+test("a 404 that is not a lost conversation is not retried", async () => {
+  const session: Session = { current: "conv_1" };
 
   await assert.rejects(
     () => collect([refusal(404, "the route is not mapped here.")], session),
@@ -240,7 +330,7 @@ test("a 404 that is not a lost session is not retried", async () => {
 });
 
 test("a refused turn surfaces what the host said", async () => {
-  const session: Session = { current: "call-1" };
+  const session: Session = { current: "conv_1" };
 
   await assert.rejects(
     () => collect([refusal(409, "this call is finished.", "turn_refused")], session),
@@ -256,7 +346,7 @@ test("the reply grows with each piece", async () => {
   const session: Session = { current: null };
 
   const { yields } = await collect(
-    [streaming([delta("Hel"), delta("lo "), delta("there")])],
+    [streaming([created("conv_1"), delta("Hel"), delta("lo "), delta("there"), completed()])],
     session,
   );
 
@@ -270,7 +360,10 @@ test("an event split across two reads is still read once, whole", async () => {
   const whole = delta("split me");
   const at = Math.floor(whole.length / 2);
 
-  const { yields } = await collect([streaming([whole.slice(0, at), whole.slice(at)])], session);
+  const { yields } = await collect(
+    [streaming([created("conv_1"), whole.slice(0, at), whole.slice(at), completed()])],
+    session,
+  );
 
   assert.deepEqual(yields, ["split me"]);
 });
@@ -278,43 +371,76 @@ test("an event split across two reads is still read once, whole", async () => {
 test("two events arriving in one read are both read", async () => {
   const session: Session = { current: null };
 
-  const { yields } = await collect([streaming([delta("one") + delta("two")])], session);
+  const { yields } = await collect(
+    [streaming([created("conv_1") + delta("one") + delta("two") + completed()])],
+    session,
+  );
 
   assert.deepEqual(yields, ["one", "onetwo"]);
 });
 
-test("the terminator ends the stream without becoming text", async () => {
-  const session: Session = { current: null };
-
-  const { yields } = await collect([streaming([delta("done"), "data: [DONE]\n\n"])], session);
-
-  assert.deepEqual(yields, ["done"]);
-});
-
-test("a chunk that carries no text yields nothing", async () => {
+test("a framework event without text yields nothing on its own", async () => {
   const session: Session = { current: null };
 
   const { yields } = await collect(
-    [streaming([event({ choices: [{ delta: { role: "assistant" } }] }), delta("after")])],
+    [
+      streaming([
+        created("conv_1"),
+        event(
+          {
+            type: "response.output_item.added",
+            item: { type: "message", status: "in_progress" },
+          },
+          "response.output_item.added",
+        ),
+        delta("after"),
+        completed(),
+      ]),
+    ],
     session,
   );
 
   assert.deepEqual(yields, ["after"]);
 });
 
+test("the closing event updates the stage and the reply id", async () => {
+  const session: Session = { current: null };
+  const states = [];
+  for await (const state of runTurn({
+    endpoint: "/v1/responses",
+    session,
+    input: "hi",
+    abortSignal: new AbortController().signal,
+    fetch: scripted([
+      streaming([
+        created("conv_1"),
+        delta("hi"),
+        completed({ stage_after: "followup", message_id: "msg_1" }, "conv_1"),
+      ]),
+    ]).fetch,
+  })) {
+    states.push(state);
+  }
+
+  const last = states[states.length - 1];
+  assert.equal(last!.stage, "followup");
+  assert.equal(last!.replyMessageId, "msg_1");
+});
+
 test("runTurn yields data parts alongside the text", async () => {
   const events = [
-    'data: {"choices":[{"delta":{"content":"here it is"}}]}\n\n',
+    created("conv_1"),
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"here it is"}\n\n',
     'data: {"agentcore_data":{"name":"chart","data":{"title":"Q3"}}}\n\n',
-    "data: [DONE]\n\n",
+    completed(),
   ];
 
   const session: Session = { current: null };
   const states = [];
   for await (const state of runTurn({
-    endpoint: "/v1/chat/completions",
+    endpoint: "/v1/responses",
     session,
-    messages: [{ role: "user", content: "chart it" }],
+    input: "chart it",
     abortSignal: new AbortController().signal,
     fetch: scripted([streaming(events)]).fetch,
   })) {
@@ -322,8 +448,8 @@ test("runTurn yields data parts alongside the text", async () => {
   }
 
   const last = states[states.length - 1];
-  assert.equal(last.text, "here it is");
-  assert.deepEqual(last.data, [{ name: "chart", data: { title: "Q3" } }]);
+  assert.equal(last!.text, "here it is");
+  assert.deepEqual(last!.data, [{ name: "chart", data: { title: "Q3" } }]);
 });
 
 test("a data part survives a later text-only yield", async () => {
@@ -331,16 +457,16 @@ test("a data part survives a later text-only yield", async () => {
   // blank it from the screen the moment the model spoke again.
   const events = [
     'data: {"agentcore_data":{"name":"chart","data":{"title":"Q3"}}}\n\n',
-    'data: {"choices":[{"delta":{"content":"and that is why"}}]}\n\n',
-    "data: [DONE]\n\n",
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"and that is why"}\n\n',
+    completed(),
   ];
 
   const session: Session = { current: null };
   const states = [];
   for await (const state of runTurn({
-    endpoint: "/v1/chat/completions",
+    endpoint: "/v1/responses",
     session,
-    messages: [{ role: "user", content: "chart it" }],
+    input: "chart it",
     abortSignal: new AbortController().signal,
     fetch: scripted([streaming(events)]).fetch,
   })) {
@@ -348,8 +474,8 @@ test("a data part survives a later text-only yield", async () => {
   }
 
   const last = states[states.length - 1];
-  assert.equal(last.text, "and that is why");
-  assert.deepEqual(last.data, [{ name: "chart", data: { title: "Q3" } }]);
+  assert.equal(last!.text, "and that is why");
+  assert.deepEqual(last!.data, [{ name: "chart", data: { title: "Q3" } }]);
 });
 
 // -------------------------------------------------------------------------------------------------
@@ -360,9 +486,9 @@ test("a data part survives a later text-only yield", async () => {
 async function states(events: string[]) {
   const collected = [];
   for await (const state of runTurn({
-    endpoint: "/v1/chat/completions",
+    endpoint: "/v1/responses",
     session: { current: null },
-    messages: [{ role: "user", content: "look it up" }],
+    input: "look it up",
     abortSignal: new AbortController().signal,
     fetch: scripted([streaming(events)]).fetch,
   })) {
@@ -376,116 +502,93 @@ test("runTurn yields a tool call before its result arrives", async () => {
   // The point of showing a tool at all is showing it while it runs, so the call half must reach the
   // screen on its own rather than waiting to be paired with a result.
   const collected = await states([
+    created("conv_1"),
     'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"call","arguments":{"what":"revenue"}}}\n\n',
-    "data: [DONE]\n\n",
+    completed(),
   ]);
 
-  const last = collected[collected.length - 1];
-  assert.deepEqual(last.tools, [
-    { callId: "c1", name: "read_records", arguments: { what: "revenue" } },
-  ]);
+  assert.equal(collected.length, 1);
+  assert.equal(collected[0]!.tools.length, 1);
+  assert.equal(collected[0]!.tools[0]!.name, "read_records");
+  assert.equal(collected[0]!.tools[0]!.result, undefined);
 });
 
 test("runTurn keeps a tool answer that is an object as an object", async () => {
-  // The host writes the answer as JSON rather than as text, so that the quotes inside it are not
-  // escaped and the panel can lay it out. A result read as a string would print those escapes raw.
   const collected = await states([
+    created("conv_1"),
     'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"call","arguments":{}}}\n\n',
     'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"result","result":{"entities":["it\'s"]},"failed":false}}\n\n',
-    "data: [DONE]\n\n",
+    completed(),
   ]);
 
-  const last = collected[collected.length - 1];
-  assert.deepEqual(last.tools[0].result, { entities: ["it's"] });
+  assert.deepEqual(collected[1]!.tools[0]!.result, { entities: ["it's"] });
 });
 
 test("runTurn folds a tool result onto the call it answers", async () => {
   const collected = await states([
+    created("conv_1"),
     'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"call","arguments":{"what":"revenue"}}}\n\n',
     'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"result","result":"42 rows","failed":false}}\n\n',
-    'data: {"choices":[{"delta":{"content":"there are 42."}}]}\n\n',
-    "data: [DONE]\n\n",
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"there are 42."}\n\n',
+    completed(),
   ]);
 
-  const last = collected[collected.length - 1];
-  assert.equal(last.text, "there are 42.");
-  assert.deepEqual(last.tools, [
-    {
-      callId: "c1",
-      name: "read_records",
-      arguments: { what: "revenue" },
-      result: "42 rows",
-      failed: false,
-    },
-  ]);
+  assert.equal(collected[2]!.text, "there are 42.");
+  assert.equal(collected[2]!.tools[0]!.result, "42 rows");
 });
 
 test("runTurn keeps a failed tool marked as failed", async () => {
   const collected = await states([
+    created("conv_1"),
     'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"call","arguments":{}}}\n\n',
     'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"result","result":"the table is gone","failed":true}}\n\n',
-    "data: [DONE]\n\n",
+    completed(),
   ]);
 
-  const last = collected[collected.length - 1];
-  assert.equal(last.tools[0]?.failed, true);
-  assert.equal(last.tools[0]?.result, "the table is gone");
+  assert.equal(collected[1]!.tools[0]!.failed, true);
 });
 
 test("runTurn keeps two tool calls apart and pairs each with its own result", async () => {
   const collected = await states([
+    created("conv_1"),
     'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"call","arguments":{}}}\n\n',
     'data: {"agentcore_tool":{"call_id":"c2","name":"aggregate_records","phase":"call","arguments":{}}}\n\n',
     'data: {"agentcore_tool":{"call_id":"c2","name":"aggregate_records","phase":"result","result":"second","failed":false}}\n\n',
     'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"result","result":"first","failed":false}}\n\n',
-    "data: [DONE]\n\n",
+    completed(),
   ]);
 
-  const last = collected[collected.length - 1];
-  assert.deepEqual(
-    last.tools.map((tool) => [tool.callId, tool.result]),
-    [
-      ["c1", "first"],
-      ["c2", "second"],
-    ],
-  );
+  assert.equal(collected[3]!.tools.length, 2);
+  assert.equal(collected[3]!.tools[0]!.result, "first");
+  assert.equal(collected[3]!.tools[1]!.result, "second");
 });
 
 test("a tool survives a later text-only yield", async () => {
-  // Same rule as a drawing: the runtime replaces message content on every yield, so a state that
-  // forgot the tool would blank it the moment the model spoke.
   const collected = await states([
+    created("conv_1"),
     'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"call","arguments":{}}}\n\n',
-    'data: {"choices":[{"delta":{"content":"one moment"}}]}\n\n',
-    "data: [DONE]\n\n",
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"one moment"}\n\n',
+    completed(),
   ]);
 
-  const last = collected[collected.length - 1];
-  assert.equal(last.text, "one moment");
-  assert.equal(last.tools.length, 1);
+  assert.equal(collected[1]!.tools.length, 1);
+  assert.equal(collected[1]!.text, "one moment");
 });
 
 test("a result for a call that never arrived is kept rather than dropped", async () => {
-  // It should not happen. If it ever does, showing the answer with no question beats showing
-  // nothing at all and leaving the caller wondering what the wait was for.
   const collected = await states([
+    created("conv_1"),
     'data: {"agentcore_tool":{"call_id":"c9","name":"read_records","phase":"result","result":"orphan","failed":false}}\n\n',
-    "data: [DONE]\n\n",
+    completed(),
   ]);
 
-  const last = collected[collected.length - 1];
-  assert.deepEqual(last.tools, [
-    { callId: "c9", name: "read_records", arguments: {}, result: "orphan", failed: false },
-  ]);
+  assert.equal(collected[0]!.tools.length, 1);
 });
 
 test("a turn that calls no tool yields an empty tool list", async () => {
-  const collected = await states([
-    'data: {"choices":[{"delta":{"content":"hello"}}]}\n\n',
-    "data: [DONE]\n\n",
-  ]);
+  const collected = await states([created("conv_1"), delta("plain answer"), completed()]);
 
-  assert.deepEqual(collected[collected.length - 1].tools, []);
+  assert.deepEqual(collected[0]!.tools, []);
 });
 
 // -------------------------------------------------------------------------------------------------
@@ -493,59 +596,115 @@ test("a turn that calls no tool yields an empty tool list", async () => {
 // -------------------------------------------------------------------------------------------------
 
 describe("foldSource", () => {
-  const frame = {
-    call_id: "call-1",
-    id: "card-42",
-    source_type: "document",
-    title: "Spirit CT900 owner's manual",
-    locator: "p.27",
-    url: null,
-    media_type: "text/plain",
-    origin: "knowledge",
-  };
-
-  it("reads one source off the wire", () => {
-    const [source] = foldSource([], frame);
-
-    expect(source).toEqual({
+  it("starts a source from its first frame", () => {
+    const sources = foldSource([], {
+      call_id: "c1",
       id: "card-42",
-      sourceType: "document",
-      title: "Spirit CT900 owner's manual",
+      source_type: "document",
+      title: "Spirit CT900 owner's manual, p.27",
       locator: "p.27",
-      url: null,
-      mediaType: "text/plain",
+      media_type: "text/plain",
       origin: "knowledge",
-      callId: "call-1",
     });
+
+    expect(sources).toHaveLength(1);
+    expect(sources[0]).toMatchObject({ id: "card-42", title: "Spirit CT900 owner's manual, p.27" });
   });
 
-  it("shows one chip when the same id is cited twice", () => {
-    // Two searches in one turn can return the same card. Two identical chips are noise.
-    const once = foldSource([], frame);
-    const twice = foldSource(once, { ...frame, title: "second" });
+  it("keeps a later frame for the same id over the earlier one", () => {
+    const first = foldSource([], { id: "card-42", title: "old" });
+    const second = foldSource(first, { id: "card-42", title: "new" });
 
-    expect(twice).toHaveLength(1);
-    expect(twice[0]?.title).toBe("second");
+    expect(second).toHaveLength(1);
+    expect(second[0]!.title).toBe("new");
   });
 
-  it("drops a frame with no id, because nothing can be kept in step without one", () => {
-    expect(foldSource([], { ...frame, id: undefined })).toHaveLength(0);
+  it("ignores a frame with no id", () => {
+    expect(foldSource([], { title: "no id" })).toEqual([]);
   });
 
-  it("treats an unknown source_type as a document, which needs no link", () => {
-    const [source] = foldSource([], { ...frame, source_type: "wat" });
-
-    expect(source?.sourceType).toBe("document");
-  });
-
-  it("keeps a url source's link", () => {
-    const [source] = foldSource([], {
-      ...frame,
+  it("reads a url source as a url", () => {
+    const sources = foldSource([], {
+      id: "page-1",
       source_type: "url",
-      url: "https://example.com/support",
+      url: "https://example.com/manual",
     });
 
-    expect(source?.sourceType).toBe("url");
-    expect(source?.url).toBe("https://example.com/support");
+    expect(sources[0]!.sourceType).toBe("url");
   });
+});
+
+describe("foldApproval", () => {
+  it("lands the ask on the tool it names", async () => {
+    const collected = await states([
+      created("conv_1"),
+      'data: {"agentcore_tool":{"call_id":"c1","name":"send_email","phase":"call","arguments":{"to":"a@b.com"}}}\n\n',
+      'data: {"agentcore_approval":{"request_id":"req_1","tool":"send_email","arguments":{"to":"a@b.com"}}}\n\n',
+      completed(),
+    ]);
+
+    expect(collected[1]!.tools).toHaveLength(1);
+    expect(collected[1]!.tools[0]).toMatchObject({
+      name: "send_email",
+      approval: { requestId: "req_1" },
+    });
+    expect(collected[1]!.tools[0]!.result).toBeUndefined();
+  });
+
+  it("keeps a gate whose call half never arrived", async () => {
+    const collected = await states([
+      created("conv_1"),
+      'data: {"agentcore_approval":{"request_id":"req_9","tool":"send_email","arguments":{}}}\n\n',
+      completed(),
+    ]);
+
+    expect(collected[0]!.tools).toHaveLength(1);
+    expect(collected[0]!.tools[0]!.approval).toEqual({ requestId: "req_9" });
+  });
+
+  it("ignores an ask with no request id", async () => {
+    const collected = await states([
+      created("conv_1"),
+      'data: {"agentcore_approval":{"tool":"send_email"}}\n\n',
+      completed(),
+    ]);
+
+    expect(collected[0]!.tools).toEqual([]);
+  });
+});
+
+test("an approval answer posts no words and names the request", async () => {
+  const session: Session = { current: "conv_1" };
+  const { fetch, sent } = scripted([streaming([created("conv_1"), delta("done."), completed()])]);
+  const drained: string[] = [];
+
+  for await (const state of runTurn({
+    endpoint: "/v1/responses",
+    session,
+    input: "anything",
+    abortSignal: new AbortController().signal,
+    fetch,
+    approval: { requestId: "req_1", approved: true },
+  })) {
+    drained.push(state.text);
+  }
+
+  assert.ok(drained.length > 0);
+
+  const body = sent[0]!.body as Record<string, unknown>;
+  expect(body["input"]).toEqual([]);
+  expect(body["conversation"]).toBe("conv_1");
+  expect(body["agentcore"]).toMatchObject({
+    approval: { request_id: "req_1", approved: true },
+  });
+});
+
+test("readEvent keeps the dialect frames apart from text frames", () => {
+  const [dialect] = readEvent('data: {"agentcore_tool":{"call_id":"c1"}}\n') as StreamChunk[];
+  const [text] = readEvent(
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"hi"}\n',
+  ) as StreamChunk[];
+
+  assert.ok(dialect!.agentcore_tool);
+  assert.equal(text!.type, "response.output_text.delta");
 });

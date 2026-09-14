@@ -2,46 +2,51 @@
  * Everything the chat UI does over the wire, with no React and no assistant-ui in sight.
  *
  * This file is separate from {@link ./AgentCoreRuntime.ts} so it can be tested. The parts that are
- * easy to get wrong here — a server-sent event split across two reads, a session id that outlives
- * the call it names, a 404 for a call the host forgot — all fail in ways a browser shows as a chat
- * that simply stops working, with nothing in any log. The hook is a thin wrapper over this.
+ * easy to get wrong here — a server-sent event split across two reads, a conversation id that
+ * outlives the call it names, a 404 for a call the host forgot — all fail in ways a browser shows
+ * as a chat that simply stops working, with nothing in any log. The hook is a thin wrapper over
+ * this.
  */
 
-/** The header that names the call, on the request and on the answer. */
-export const SessionHeader = "X-AgentCore-Session";
+/** The conversation id the reply files the turn under, on the request and on the answer. */
+export const ConversationField = "conversation";
 
 /**
  * The header naming the stage the turn speaks in.
  *
  * It arrives with the response headers, before the first token, which is the only reason the stage
- * can be shown while the turn is still running: the `agentcore` block that carries `stage_after`
- * rides the *last* chunk, so it says where the machine ended up, never where it is.
+ * can be shown while the turn is still running: the `metadata` block that carries `stage_after`
+ * rides the *last* event, so it says where the machine ended up, never where it is.
  */
 export const StageHeader = "X-AgentCore-Stage";
 
-/** The prefix every server-sent event carries. */
+/** The prefix every server-sent event's data line carries. */
 const DataPrefix = "data: ";
 
-/** The event that closes a stream. */
-const DoneEvent = "[DONE]";
+/** The closing event of a Responses stream. */
+const CompletedType = "response.completed";
 
-/** One message, in the only shape AgentCore's endpoint reads. */
+/** The code the endpoint answers when the named conversation is gone. */
+export const ContinuationNotFound = "continuation_not_found";
+
+/**
+ * One message, in the only shape the title route reads.
+ *
+ * The Responses endpoint itself takes only the last user text, but the title route still takes
+ * the thread's messages whole — so `flatten` keeps returning this, and `wireMessages` narrows
+ * it to the turn's words at the turn boundary.
+ */
 export type WireMessage = {
   readonly role: string;
   readonly content: string;
 };
-
 /**
  * Who produced a message, when that is not simply "the agent".
  *
- * Nothing sends this yet. It is declared here so the browser already has somewhere to put a human
- * rep the day AgentCore can hand a conversation to one: the wire, the runtime and the message
- * metadata are the three places that would otherwise all need changing at once, under time
- * pressure, while a customer is waiting on the other end of a live handoff.
- *
- * The contract AgentCore would emit, beside the OpenAI shape and alongside `agentcore`:
- *
- *     "agentcore_speaker": { "kind": "human", "name": "Dana R.", "detail": "Support" }
+ * Nothing on the Responses stream sends this yet. It is declared here so the browser already has
+ * somewhere to put a human rep the day AgentCore can hand a conversation to one: the runtime
+ * and the message metadata are the two places that would otherwise both need changing at once,
+ * under time pressure, while a customer is waiting on the other end of a live handoff.
  */
 export type Speaker = {
   /** `agent` is the model, `human` a real person, `system` the host speaking for itself. */
@@ -50,7 +55,6 @@ export type Speaker = {
   /** A role, team, or anything else worth showing under the name. Optional. */
   readonly detail?: string;
 };
-
 /** One thing the host asked the browser to draw. */
 export type RenderPart = {
   readonly name: string;
@@ -116,6 +120,14 @@ export type ToolPart = {
   readonly result?: unknown;
   /** Whether the tool failed. Absent while it is still running. */
   readonly failed?: boolean;
+  /** The approval gate waiting on the caller, when the host asks before running. */
+  readonly approval?: ApprovalAsk;
+};
+
+/** One tool call waiting on the caller: which request an answer carries back. */
+export type ApprovalAsk = {
+  /** The id the approval answer carries back. */
+  readonly requestId: string;
 };
 
 /** Everything one turn has produced so far. */
@@ -130,9 +142,9 @@ export type TurnState = {
   readonly stage: string | null;
   /** Whether the stage the turn moved to ends the call. Only ever true on the final state. */
   readonly isTerminal: boolean;
-  /** Who is speaking, when the host says. `null` means the agent, which is the only case today. */
+  /** Who is speaking, when the host says. Always null on Responses: kept for the handoff future. */
   readonly speaker: Speaker | null;
-  /** What the host called this reply, once it says. Null until the final chunk carries it. */
+  /** What the host called this reply, once it says. Null until the closing event carries it. */
   readonly replyMessageId: string | null;
 };
 
@@ -163,30 +175,48 @@ export type TurnOrigin = {
 export type TurnOptions = {
   readonly endpoint: string;
   readonly session: Session;
-  readonly messages: readonly WireMessage[];
+  /** The turn's words: the last user text, which the endpoint runs. */
+  readonly input: string;
   readonly abortSignal: AbortSignal;
   readonly fetch: FetchLike;
   /** Omitted by a caller that does not track its messages by name. */
   readonly origin?: TurnOrigin;
+  /** Answers a pending approval instead of sending words. */
+  readonly approval?: ApprovalAnswer;
+  /**
+   * The thread the turn belongs to, when a thread list owns it. Sent as the conversation the
+   * turn runs under, so the host files the call under the id the thread already has. Never
+   * taken from a reply: the reply's id is the call's own bookkeeping, not the thread's.
+   */
+  readonly threadId?: string;
 };
 
-/** What the endpoint adds beside the OpenAI shape on the last chunk of a stream. */
-type TurnInfo = {
-  session?: string;
-  stage_before?: string;
-  stage_after?: string;
-  is_terminal?: boolean;
+/** One approval answer: which request the caller answers, and whether the tool may run. */
+export type ApprovalAnswer = {
+  readonly requestId: string;
+  readonly approved: boolean;
+};
+
+/** What the endpoint files on the finished answer beside the Responses shape. */
+export type TurnMetadata = {
+  readonly call_id?: string;
+  readonly turn_index?: string;
+  readonly stage_before?: string;
+  readonly stage_after?: string;
+  readonly is_terminal?: string;
   /**
    * What the host called the reply it just wrote.
    *
    * Needed because the message an edit hangs off is usually a reply, and a reply has no name until
    * the host writes it — so this client cannot invent one and has to be told.
    */
-  message_id?: string;
+  readonly message_id?: string;
+  /** The pending approval asks, JSON-encoded, when the turn asked any. */
+  readonly approvals?: string;
 };
 
 /** One half of one tool call, as the endpoint writes it. */
-type ToolFrame = {
+export type ToolFrame = {
   call_id?: string;
   name?: string;
   phase?: string;
@@ -197,14 +227,31 @@ type ToolFrame = {
   failed?: boolean;
 };
 
-/** One chunk of a streamed answer. */
-type StreamChunk = {
-  choices?: { delta?: { content?: string }; finish_reason?: string | null }[];
-  agentcore?: TurnInfo;
-  agentcore_tool?: ToolFrame;
-  agentcore_data?: RenderPart;
-  agentcore_source?: SourceFrame;
-  agentcore_speaker?: Speaker;
+/** One tool call waiting on the caller, as the endpoint writes it. */
+export type ApprovalFrame = {
+  request_id?: string;
+  tool?: string;
+  arguments?: JsonObject;
+};
+
+/**
+ * One parsed data line of a Responses stream.
+ *
+ * Text arrives as `response.output_text.delta`; the turn facts arrive on `response.completed`;
+ * drawings, citations, tool halves and approval asks arrive as bare `agentcore_*` members with
+ * no `type`. Reads are guarded at use, not here: the browser never trusts the host's shape.
+ */
+export type StreamChunk = {
+  readonly type?: string;
+  readonly delta?: string;
+  readonly response?: {
+    readonly metadata?: TurnMetadata;
+    readonly conversation?: { readonly id?: string };
+  };
+  readonly agentcore_data?: RenderPart;
+  readonly agentcore_source?: SourceFrame;
+  readonly agentcore_tool?: ToolFrame;
+  readonly agentcore_approval?: ApprovalFrame;
 };
 
 /** The body of one refusal. */
@@ -213,17 +260,17 @@ type WireError = {
 };
 
 /**
- * Drops everything the endpoint cannot read.
- *
- * AgentCore's endpoint reads text and no other content part, and answers a request with no user
- * text at all with a 400. A message left empty by that filter would be one of those, so it goes.
+ * The last user text, which the endpoint runs. The call owns the history, so earlier turns stay
+ * on the host and a turn carries its own words alone; an edit is an origin, not a replay.
  */
-export function wireMessages(
-  messages: readonly { role: string; content: string }[],
-): WireMessage[] {
-  return messages
-    .map((message) => ({ role: message.role, content: message.content }))
-    .filter((message) => message.content.length > 0);
+export function wireMessages(messages: readonly WireMessage[]): string {
+  for (let at = messages.length - 1; at >= 0; at -= 1) {
+    const message = messages[at];
+    if (message && message.role === "user" && message.content.length > 0) {
+      return message.content;
+    }
+  }
+  return "";
 }
 
 /**
@@ -231,9 +278,6 @@ export function wireMessages(
  *
  * An event ends at a blank line and a read can end anywhere, so the tail of a read is very often
  * half an event. Returning it rather than parsing it is the whole job.
- *
- * @param buffer Everything read and not yet parsed.
- * @returns The complete events, and the remainder to prepend to the next read.
  */
 export function splitEvents(buffer: string): { events: string[]; rest: string } {
   const parts = buffer.split("\n\n");
@@ -241,24 +285,29 @@ export function splitEvents(buffer: string): { events: string[]; rest: string } 
   return { events: parts, rest };
 }
 
-/**
- * Reads one event.
- *
- * @param event One event, as it arrived.
- * @returns The chunk, or `null` for the terminator and for anything that is not a data line.
- */
-export function readEvent(event: string): StreamChunk | null {
-  const line = event.trim();
-  if (!line.startsWith(DataPrefix)) {
+/** Reads one event's data lines, skipping keep-alives and halves split across reads. */
+export function readEvent(event: string): StreamChunk[] {
+  const chunks: StreamChunk[] = [];
+  for (const line of event.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith(DataPrefix)) {
+      continue;
+    }
+    const parsed: unknown = safeParse(trimmed.slice(DataPrefix.length));
+    if (parsed && typeof parsed === "object") {
+      chunks.push(parsed as StreamChunk);
+    }
+  }
+  return chunks;
+}
+
+function safeParse(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    // Half a JSON body split across two reads: dropped here, reread whole on the next pass.
     return null;
   }
-
-  const payload = line.slice(DataPrefix.length);
-  if (payload === DoneEvent) {
-    return null;
-  }
-
-  return JSON.parse(payload) as StreamChunk;
 }
 
 /** Reads the failure the endpoint wrote, or falls back to the status line. */
@@ -275,20 +324,37 @@ async function failureOf(response: Response): Promise<{ message: string; code?: 
   return { message: `the request failed with status ${response.status}.` };
 }
 
-/** Posts one turn. */
+/** Posts one turn. Always streams: the UI draws the reply as it arrives. */
 function post(options: TurnOptions, session: string | null): Promise<Response> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (session) {
-    headers[SessionHeader] = session;
-  }
-
+  // A thread-owned turn names its thread as the conversation, so the host files the call under
+  // the id the thread list already has. A bare tab keeps its minted conversation in the session.
+  const conversation = options.threadId ?? session;
   return options.fetch(options.endpoint, {
     method: "POST",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      messages: options.messages,
+      ...(conversation ? { [ConversationField]: conversation } : {}),
+      input: options.approval ? [] : options.input,
       stream: true,
-      ...(options.origin ? { agentcore: options.origin } : {}),
+      // The dialect is opt-in: only a turn carrying `agentcore` gets the drawing, citation,
+      // tool-half and approval lines. `message_id` keeps the edit/anchor contract the chat
+      // endpoint had, so the runtime keeps sending the origin it already builds.
+      agentcore: {
+        ...(options.origin?.message_id
+          ? { message_id: options.origin.message_id }
+          : { message_id: crypto.randomUUID() }),
+        ...(options.origin && "parent_id" in options.origin
+          ? { parent_id: options.origin.parent_id }
+          : {}),
+        ...(options.approval
+          ? {
+              approval: {
+                request_id: options.approval.requestId,
+                approved: options.approval.approved,
+              },
+            }
+          : {}),
+      },
     }),
     signal: options.abortSignal,
   });
@@ -296,11 +362,6 @@ function post(options: TurnOptions, session: string | null): Promise<Response> {
 
 /**
  * Folds one tool frame into the list the state carries.
- *
- * @param tools What the turn has called so far.
- * @param frame The half that just arrived.
- * @returns A new list. Never the one passed in: the state yielded before this is read after it, so
- * a list mutated in place would change under a consumer that already has it.
  */
 export function foldTool(tools: readonly ToolPart[], frame: ToolFrame): readonly ToolPart[] {
   const callId = frame.call_id;
@@ -332,6 +393,35 @@ export function foldTool(tools: readonly ToolPart[], frame: ToolFrame): readonly
   const merged = [...tools];
   merged[index] = { ...tools[index], ...answered, arguments: tools[index].arguments };
   return merged;
+}
+
+/**
+ * Folds one approval ask into the tools the state carries, matched to its call.
+ *
+ * The ask arrives beside the call half rather than inside it, so it lands on the tool the
+ * request names — or on a bare row carrying the gate when the call half never arrived.
+ */
+export function foldApproval(
+  tools: readonly ToolPart[],
+  frame: ApprovalFrame,
+): readonly ToolPart[] {
+  const requestId = frame.request_id;
+  if (!requestId) {
+    return tools;
+  }
+
+  const name = frame.tool ?? requestId;
+  const at = tools.findIndex(
+    (tool) => tool.name === frame.tool && tool.approval === undefined && tool.result === undefined,
+  );
+  const ask: ApprovalAsk = { requestId };
+  if (at < 0) {
+    return [...tools, { callId: name, name, arguments: frame.arguments ?? {}, approval: ask }];
+  }
+
+  const next = [...tools];
+  next[at] = { ...tools[at], approval: ask };
+  return next;
 }
 
 /**
@@ -376,21 +466,23 @@ export function foldSource(
  * Each yield is the whole reply so far rather than the newest piece, because that is what the
  * runtime above renders.
  *
- * @param options What the turn needs.
- * @returns The reply, yielded once per piece that carries text or something to draw.
- * @throws Error The host refused the turn, or answered with no body.
+ * A thread-owned turn sends its thread id as the conversation and never touches the session:
+ * the thread already names the call, so adopting the reply's id would keep a second id in step
+ * for nothing. A bare tab has no thread and keeps the minted conversation in the session, so a
+ * second turn can send it back.
  */
 export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> {
   const { session } = options;
 
   let response = await post(options, session.current);
 
-  // The store does not survive a restart of the host, so an id from before one names a call that is
-  // gone. Starting a new call is what the caller wanted; failing the turn over an id they never saw
-  // is not.
-  if (response.status === 404) {
+  // Continuations live in AgentCore's store, which a restart wipes. An id from before one names
+  // a call that is gone; starting a new call is what the caller wanted, and failing the turn
+  // over an id they never saw is not. A thread-owned turn never retries: its conversation is
+  // the thread itself, minted by the thread list — retrying nameless would orphan it.
+  if (response.status === 404 && !options.threadId) {
     const failure = await failureOf(response);
-    if (failure.code !== "session_not_found") {
+    if (failure.code !== ContinuationNotFound) {
       throw new Error(failure.message);
     }
 
@@ -402,13 +494,6 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
     throw new Error((await failureOf(response)).message);
   }
 
-  // The answer names the call whether it started one or continued one, and the header arrives
-  // before the first token does.
-  const named = response.headers.get(SessionHeader);
-  if (named) {
-    session.current = named;
-  }
-
   if (!response.body) {
     throw new Error("the host answered with no body, so there is nothing to read.");
   }
@@ -416,7 +501,6 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
   // Named before the first token, so the very first yield already knows the stage.
   let stage = response.headers.get(StageHeader);
   let isTerminal = false;
-  let speaker: Speaker | null = null;
   let replyMessageId: string | null = null;
 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -439,65 +523,83 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
       pending = rest;
 
       for (const event of events) {
-        const chunk = readEvent(event);
-        if (!chunk) {
-          continue;
-        }
+        for (const chunk of readEvent(event)) {
+          const state = () => ({
+            text,
+            data,
+            tools,
+            sources,
+            stage,
+            isTerminal,
+            speaker: null,
+            replyMessageId,
+          });
+          // The closing event carries the turn facts: where the machine moved to, what it
+          // called the reply, and whether the call is over. It yields on its own only when it
+          // says something the stream has not already — a bare close otherwise just ends the
+          // turn without repeating the last words back.
+          const info = chunk.type === CompletedType ? chunk.response?.metadata : undefined;
+          const saysSomething =
+            info !== undefined &&
+            ((info.stage_after !== undefined && info.stage_after !== stage) ||
+              (info.message_id !== undefined && info.message_id !== replyMessageId) ||
+              (info.is_terminal !== undefined &&
+                ((info.is_terminal === "true") !== isTerminal || info.is_terminal === "true")));
+          if (info) {
+            stage = info.stage_after ?? stage;
+            if (info.is_terminal === "true") {
+              isTerminal = true;
+            } else if (info.is_terminal === "false") {
+              isTerminal = false;
+            }
+            replyMessageId = info.message_id ?? replyMessageId;
+            if (saysSomething) {
+              yield state();
+            }
+          }
 
-        // The last chunk of a finished call carries is_terminal. Holding on to the id past that
-        // point would answer the next message with a 409, so the call is let go and the next turn
-        // opens a new one.
-        if (chunk.agentcore?.is_terminal) {
-          session.current = null;
-        }
+          const rendered = chunk.agentcore_data;
+          if (rendered && typeof rendered.name === "string") {
+            // A new array each time: the yielded state is read after the yield, so the consumer must
+            // never see a list this loop keeps changing underneath it.
+            data = [...data, rendered];
+            yield state();
+          }
 
-        // The last chunk is the first place that knows where the machine moved to.
-        // Sticky: a handoff names the speaker once, and every chunk after it belongs to them.
-        speaker = chunk.agentcore_speaker ?? speaker;
+          const tool = chunk.agentcore_tool;
+          if (tool) {
+            tools = foldTool(tools, tool);
+            yield state();
+          }
 
-        const state = () => ({
-          text,
-          data,
-          tools,
-          sources,
-          stage,
-          isTerminal,
-          speaker,
-          replyMessageId,
-        });
+          const ask = chunk.agentcore_approval;
+          if (ask) {
+            tools = foldApproval(tools, ask);
+            yield state();
+          }
 
-        const info = chunk.agentcore;
-        if (info) {
-          stage = info.stage_after ?? stage;
-          isTerminal = info.is_terminal ?? isTerminal;
-          replyMessageId = info.message_id ?? replyMessageId;
-          yield state();
-        }
+          const source = chunk.agentcore_source;
+          if (source) {
+            sources = foldSource(sources, source);
+            yield state();
+          }
 
-        const rendered = chunk.agentcore_data;
-        if (rendered) {
-          // A new array each time: the yielded state is read after the yield, so the consumer must
-          // never see a list this loop keeps changing underneath it.
-          data = [...data, rendered];
-          yield state();
-        }
-
-        const tool = chunk.agentcore_tool;
-        if (tool) {
-          tools = foldTool(tools, tool);
-          yield state();
-        }
-
-        const source = chunk.agentcore_source;
-        if (source) {
-          sources = foldSource(sources, source);
-          yield state();
-        }
-
-        const delta = chunk.choices?.[0]?.delta?.content;
-        if (delta) {
-          text += delta;
-          yield state();
+          if (typeof chunk.delta === "string" && chunk.delta.length > 0) {
+            text += chunk.delta;
+            yield state();
+          }
+          // The minted conversation rides the created event; a continued one rides it too.
+          // Either way it is where the next turn belongs — unless the closing event already
+          // ended the call, in which case holding on would answer the next turn with a 409.
+          // A thread-owned turn skips all of this: its conversation is the thread itself.
+          if (!options.threadId) {
+            const named = chunk.response?.conversation?.id;
+            if (typeof named === "string" && named.length > 0 && !isTerminal) {
+              session.current = named;
+            } else if (isTerminal) {
+              session.current = null;
+            }
+          }
         }
       }
     }

@@ -46,7 +46,7 @@ internal sealed class VisitorChatMiddleware(RequestDelegate next, string pattern
             return;
         }
 
-        var namedChat = context.Request.Headers[ThreadSessionMiddleware.SessionHeaderName].ToString();
+        var namedChat = await TurnConversation.ReadAsync(context.Request).ConfigureAwait(false);
 
         // A turn that names no chat is a new conversation, and AgentCore mints the call for it.
         // Nothing here has an opinion about that.

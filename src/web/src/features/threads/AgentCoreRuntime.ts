@@ -13,6 +13,7 @@ import { useRef } from "react";
 import {
   runTurn,
   wireMessages,
+  type ApprovalAnswer,
   type Session,
   type SourcePart,
   type ToolPart,
@@ -123,9 +124,6 @@ function newTurnClock() {
 
 /**
  * Turns one reported tool into the content part assistant-ui draws it as.
- *
- * `result` is left off entirely while the tool is still running, because that absence is what the
- * kit reads as "running" — an empty string there would draw a finished tool that answered nothing.
  */
 function toolContent(tool: ToolPart) {
   return {
@@ -135,6 +133,7 @@ function toolContent(tool: ToolPart) {
     args: tool.arguments,
     argsText: JSON.stringify(tool.arguments, null, 2),
     ...(tool.result !== undefined ? { result: tool.result, isError: tool.failed === true } : {}),
+    ...(tool.approval ? { approval: { id: tool.approval.requestId } } : {}),
   };
 }
 
@@ -184,6 +183,14 @@ function hostMessageId(message: ThreadMessage): string | undefined {
 }
 
 /**
+ * One answered approval gate: which request the caller answered, and how.
+ */
+export type DecidedApproval = {
+  readonly requestId: string;
+  readonly approved: boolean;
+};
+
+/**
  * How a turn reaches the host.
  */
 export type TurnFetch = (url: string, init: RequestInit) => Promise<Response>;
@@ -196,6 +203,25 @@ export type TurnFetch = (url: string, init: RequestInit) => Promise<Response>;
  * so it has nowhere to ask and keeps the id itself.
  */
 export type ThreadSession = () => Promise<string>;
+
+/**
+ * Reads the approval the caller just answered, off the message the run is resuming.
+ */
+export function decidedApproval(message: ThreadMessage | null): DecidedApproval | null {
+  if (!message || message.role !== "assistant") {
+    return null;
+  }
+  for (const part of message.content) {
+    if (part.type !== "tool-call") {
+      continue;
+    }
+    const approval = (part as { approval?: { id?: unknown; approved?: unknown } }).approval;
+    if (approval && typeof approval.id === "string" && typeof approval.approved === "boolean") {
+      return { requestId: approval.id, approved: approval.approved };
+    }
+  }
+  return null;
+}
 
 /**
  * What the composer accepts when someone attaches a file.
@@ -233,14 +259,31 @@ export function useAgentCoreRuntime(
 ) {
   // A ref and not state: changing the session must never re-render, and the value has to be the
   // current one by the time the next turn reads it rather than on the next paint.
-  const session = useRef<Session>({ current: null });
+  const sessionRef = useRef<Session>({ current: null });
+  const session = sessionRef.current;
 
   const adapter: ChatModelAdapter = {
-    async *run({ messages, abortSignal }) {
+    async *run({ messages, abortSignal, unstable_getMessage }) {
       // Asked once per turn rather than held, and that is not laziness. A stage that ends a call
       // clears the id it was given, so a held one would go null part-way through a thread that is
-      // still perfectly open.
-      const named = openThread ? { current: await openThread() } : session.current;
+      // still perfectly open. A thread-owned turn uses the thread itself as the conversation, so
+      // the host files the call under the id the thread list already has.
+      const threadId = openThread ? await openThread() : undefined;
+      // The same object the widget reads, not a copy: the minted conversation must land back
+      // on the ref or the next turn starts a new call. A thread-owned turn never touches it.
+      const named: Session = openThread ? { current: null } : session;
+      const clock = newTurnClock();
+
+      // An approval answer resumes the paused turn rather than starting a new one: the run that
+      // asked is still open, and the part the caller answered names the request it answered.
+      const pending = decidedApproval(unstable_getMessage());
+      if (pending) {
+        yield* streamTurn(endpoint, named, threadId, "", abortSignal, fetchTurn, clock, {
+          requestId: pending.requestId,
+          approved: pending.approved,
+        });
+        return;
+      }
 
       // assistant-ui hands over the path from the root to the message being sent, so the last entry
       // is what the caller just said and the one before it is what that hangs off. On an edit the
@@ -248,13 +291,16 @@ export function useAgentCoreRuntime(
       // abandoned branch is not in this list at all.
       const parent = messages.at(-2);
 
-      const turn = runTurn({
+      yield* streamTurn(
         endpoint,
-        session: named,
-        messages: wireMessages(messages.map(flatten)),
+        named,
+        threadId,
+        wireMessages(messages.map(flatten)),
         abortSignal,
-        fetch: (url, init) => fetchTurn(url, init),
-        origin: {
+        fetchTurn,
+        clock,
+        undefined,
+        {
           message_id: messages.at(-1)?.id,
 
           // Null at the root of the call, which is what an edit of the first message asks for. A
@@ -262,60 +308,85 @@ export function useAgentCoreRuntime(
           // nothing there, which the host reads as a plain new turn.
           parent_id: parent ? (hostMessageId(parent) ?? parent.id) : null,
         },
-      });
-
-      const clock = newTurnClock();
-      let content: ChatModelRunResult["content"] = [];
-      let stage: ChatModelRunResult["metadata"] = undefined;
-
-      for await (const state of turn) {
-        clock.observe(state);
-
-        // `metadata.custom` is the one slot on a message that is the app's to define. Nothing on
-        // screen reads the stage or `isTerminal` — the caller is never shown which stage answered
-        // them — but both stay here because they cost one field each and the alternative is
-        // re-plumbing the runtime the day something does want them.
-        stage = {
-          custom: {
-            stage: state.stage,
-            isTerminal: state.isTerminal,
-            // Absent today. Carried anyway so a live handoff is a server change on its own.
-            speaker: state.speaker,
-
-            // The host's own name for this reply, kept ON the message rather than in a map beside
-            // it. The adapter never learns the id assistant-ui gives the message it is producing, so
-            // there is nothing to key a map on — and metadata rides the message through a branch
-            // switch and through the reload that restores it, which a map in a ref would not.
-            hostMessageId: state.replyMessageId,
-          },
-        };
-
-        // Every yield replaces the message content rather than adding to it, so each one repeats
-        // everything drawn so far. Drop the repeat and a later text-only yield erases the drawing.
-        // Tools first, and then the words: the host runs every tool before it speaks, so this is
-        // the order the turn actually happened in.
-        // Sources sit between the tools and the words: they are what the tools found, and the
-        // caller should read the answer last. Every yield replaces the whole content, so a source
-        // dropped from one yield would be erased from the message rather than merely not added.
-        content = [
-          ...state.tools.map(toolContent),
-          ...state.sources.map(sourceContent),
-          ...(state.text.length > 0 ? [{ type: "text" as const, text: state.text }] : []),
-          ...state.data.map((part) => ({
-            type: "data" as const,
-            name: part.name,
-            data: part.data,
-          })),
-        ];
-        yield { content, metadata: stage };
-      }
-
-      // A final yield carrying the same content, so the timing lands on the finished message
-      // without blanking what was already drawn — `content` is optional on the result, but
-      // omitting it here would make this yield the message's last word on its own content.
-      yield { content, metadata: { ...stage, timing: clock.finish() } };
+      );
     },
   };
 
   return useLocalRuntime(adapter, { adapters: { attachments } });
+}
+
+/**
+ * Streams one turn — words or one approval answer — and maps every state onto the message.
+ */
+async function* streamTurn(
+  endpoint: string,
+  session: Session,
+  threadId: string | undefined,
+  input: string,
+  abortSignal: AbortSignal,
+  fetchTurn: TurnFetch,
+  clock: ReturnType<typeof newTurnClock>,
+  approval: ApprovalAnswer | undefined,
+  origin?: { message_id?: string; parent_id?: string | null },
+): AsyncGenerator<ChatModelRunResult> {
+  const turn = runTurn({
+    endpoint,
+    session,
+    ...(threadId ? { threadId } : {}),
+    input,
+    abortSignal,
+    fetch: (url, init) => fetchTurn(url, init),
+    ...(origin ? { origin } : {}),
+    ...(approval ? { approval } : {}),
+  });
+
+  let content: ChatModelRunResult["content"] = [];
+  let stage: ChatModelRunResult["metadata"] = undefined;
+
+  for await (const state of turn) {
+    clock.observe(state);
+
+    stage = {
+      custom: {
+        stage: state.stage,
+        isTerminal: state.isTerminal,
+        speaker: state.speaker,
+
+        // The host's own name for this reply, kept ON the message rather than in a map beside
+        // it. The adapter never learns the id assistant-ui gives the message it is producing, so
+        // there is nothing to key a map on — and metadata rides the message through a branch
+        // switch and through the reload that restores it, which a map in a ref would not.
+        hostMessageId: state.replyMessageId,
+      },
+    };
+
+    // Every yield replaces the message content rather than adding to it, so each one repeats
+    // everything drawn so far. Drop the repeat and a later text-only yield erases the drawing.
+    content = [
+      ...state.tools.map(toolContent),
+      ...state.sources.map(sourceContent),
+      ...(state.text.length > 0 ? [{ type: "text" as const, text: state.text }] : []),
+      ...state.data.map((part) => ({
+        type: "data" as const,
+        name: part.name,
+        data: part.data,
+      })),
+    ];
+
+    // A tool still waiting on the caller holds the message at requires-action, which is what
+    // arms the kit's approval bar. Without it the run completes and the gate goes silent.
+    const waiting = state.tools.some((tool) => tool.approval && tool.result === undefined);
+    yield {
+      content,
+      ...(waiting
+        ? { status: { type: "requires-action" as const, reason: "tool-calls" as const } }
+        : {}),
+      metadata: stage,
+    };
+  }
+
+  // A final yield carrying the same content, so the timing lands on the finished message
+  // without blanking what was already drawn — `content` is optional on the result, but
+  // omitting it here would make this yield the message's last word on its own content.
+  yield { content, metadata: { ...stage, timing: clock.finish() } };
 }

@@ -18,9 +18,9 @@ public sealed class PublicChatOptions
     /// <summary>
     /// The route the widget posts a turn to. Under <see cref="PublicPrefix"/>.
     /// </summary>
-    public string Pattern { get; set; } = "/v1/public/chat/completions";
+    public string Pattern { get; set; } = "/v1/public/responses";
 
-    /// <summary>Whether the route is mapped at all. Turn it off and the widget stops working.</summary>
+    /// <summary>Whether the routes are mapped at all. Turn it off and the widget stops working.</summary>
     public bool Enabled { get; set; } = true;
 
     /// <summary>How many requests one caller may make per <see cref="WindowSeconds"/>.</summary>

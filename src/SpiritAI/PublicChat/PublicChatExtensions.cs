@@ -110,7 +110,7 @@ internal sealed class ConfigurePublicChatLimiter(IOptions<PublicChatOptions> opt
 public static class PublicChatEndpointExtensions
 {
     /// <summary>
-    /// Maps a second, unauthenticated chat endpoint, or nothing when the route is disabled.
+    /// Maps the unauthenticated chat endpoint, or nothing when the route is disabled.
     /// </summary>
     /// <param name="app">The application to map on.</param>
     /// <returns>The same application.</returns>
@@ -122,7 +122,7 @@ public static class PublicChatEndpointExtensions
 
         if (settings.Enabled)
         {
-            app.MapChatCompletions(settings.Pattern);
+            app.MapResponses(settings.Pattern);
         }
 
         return app;

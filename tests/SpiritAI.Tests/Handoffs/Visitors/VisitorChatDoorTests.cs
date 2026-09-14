@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 
 using AgentCore.Application.Calls.Memory;
@@ -29,8 +30,7 @@ namespace SpiritAI.Tests.Handoffs.Visitors;
 /// </summary>
 public sealed class VisitorChatDoorTests
 {
-    private const string PublicChat = "/v1/public/chat/completions";
-    private const string SessionHeader = "X-AgentCore-Session";
+    private const string PublicResponses = "/v1/public/responses";
     private const string VisitorKey = "widget-one";
 
     [Fact]
@@ -143,17 +143,20 @@ public sealed class VisitorChatDoorTests
 
         public Task<HttpResponseMessage> PostAsync(string? visitor, string? thread)
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, PublicChat);
+            var request = new HttpRequestMessage(HttpMethod.Post, PublicResponses);
 
             if (visitor is not null)
             {
                 request.Headers.TryAddWithoutValidation(VisitorPrincipal.Header, visitor);
             }
 
-            if (thread is not null)
+            // A Responses turn names its chat in the body.
+            request.Content = JsonContent.Create(new
             {
-                request.Headers.TryAddWithoutValidation(SessionHeader, thread);
-            }
+                input = "hello",
+                stream = false,
+                conversation = thread,
+            });
 
             return _client.SendAsync(request, TestContext.Current.CancellationToken);
         }
@@ -177,15 +180,18 @@ public sealed class VisitorChatDoorTests
                 app =>
                 {
                     app.UseNeonAuthOnApi();
-                    app.UseVisitorChat(PublicChat);
+                    app.UseVisitorChat(PublicResponses);
                     app.UseRouting();
-                    app.UseEndpoints(endpoints => endpoints.MapPost(PublicChat, (HttpContext http) =>
+                    app.UseEndpoints(endpoints =>
                     {
-                        turns.Add(http.Request.Headers[SessionHeader].ToString());
-                        return Results.Ok("ran");
-                    }));
+                        endpoints.MapPost(PublicResponses, () =>
+                        {
+                            turns.Add("responses");
+                            return Results.Ok("ran");
+                        });
+                    });
                 },
-                options => options.OpenPathPrefixes = [PublicChat]);
+                options => options.OpenPathPrefixes = [PublicResponses]);
 
             return new World(host, calls, handoffs, sessions, turns);
         }

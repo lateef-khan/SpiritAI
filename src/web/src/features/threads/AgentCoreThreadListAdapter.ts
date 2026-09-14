@@ -104,8 +104,8 @@ function useServerHistory(api: ThreadsApi): RuntimeAdapters {
  * Reads the call id a turn should run under, making the thread on the host if it has none yet.
  *
  * This is what ties a browser thread to an AgentCore call. `initialize` resolves to the id the host
- * minted, and that same id is what the turn sends as `X-AgentCore-Session`, so one conversation has
- * one id everywhere rather than two that have to be kept in step.
+ * minted, and that same id is what the turn sends as the Responses conversation, so one id names
+ * the thread and the call alike rather than two that have to be kept in step.
  *
  * @returns A function the runtime awaits once per turn.
  */

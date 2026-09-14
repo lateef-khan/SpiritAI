@@ -37,9 +37,9 @@ type View = "chat" | "inbox";
  *
  * It is read from the page rather than compiled in, because the host can move the endpoint —
  * `MapAgentCoreHost` takes a pattern — and a rebuilt bundle should not be the price of that. The
- * default is the one `MapChatCompletions` uses when a host names none.
+ * default is the one `MapResponses` uses when a host names none.
  */
-const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/chat/completions";
+const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/responses";
 
 /**
  * The thread list, on the host. Built once: swapping the adapter does not reload the list, so a
