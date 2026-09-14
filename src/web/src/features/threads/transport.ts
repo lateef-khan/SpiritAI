@@ -584,7 +584,7 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
             yield state();
           }
 
-          if (typeof chunk.delta === "string" && chunk.delta.length > 0) {
+          if (chunk.type === "response.output_text.delta" && typeof chunk.delta === "string" && chunk.delta.length > 0) {
             text += chunk.delta;
             yield state();
           }

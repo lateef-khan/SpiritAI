@@ -198,7 +198,7 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
             <ComposerDraft />
             <ThreadFollowupSuggestions />
             <ComposerComponent />
-            <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
+            <AuiIf condition={(s) => isNewChatView(s)}>
               <ThreadSuggestions />
             </AuiIf>
           </ThreadPrimitive.ViewportFooter>
@@ -298,7 +298,7 @@ const ThreadWelcome: FC = () => {
 
 const ThreadSuggestions: FC = () => {
   return (
-    <div className="aui-thread-welcome-suggestions flex w-full flex-wrap items-center justify-center gap-2 px-4">
+    <div className="aui-thread-welcome-suggestions flex w-full flex-wrap items-center justify-center gap-2 px-4 empty:hidden">
       <ThreadPrimitive.Suggestions>{() => <ThreadSuggestionItem />}</ThreadPrimitive.Suggestions>
     </div>
   );
@@ -600,7 +600,7 @@ const StaffMessage: FC = () => {
         <div className="mb-1 flex justify-end">
           <MessageSpeaker />
         </div>
-        <div className="aui-staff-message-content bg-primary text-primary-foreground rounded-xl px-4 py-2 wrap-break-word empty:hidden">
+        <div className="aui-staff-message-content bg-primary text-primary-foreground rounded-xl px-4 py-2 wrap-break-word empty:hidden ml-auto w-fit max-w-full">
           <MessagePrimitive.Parts components={{ Text: MarkdownText }} />
         </div>
       </div>
@@ -841,7 +841,12 @@ const UserMessage: FC = () => {
           <span className="font-medium">Visitor</span>
         </div>
       ) : null}
-        <div className="aui-user-message-content peer bg-muted text-foreground rounded-xl px-4 py-2 wrap-break-word empty:hidden">
+        <div
+          className={cn(
+            "aui-user-message-content peer rounded-xl px-4 py-2 wrap-break-word empty:hidden",
+            isTranscript ? "bg-muted text-foreground" : "bg-primary text-primary-foreground",
+          )}
+        >
           <MessagePrimitive.Parts components={{ File: UserFilePart, Image: UserImagePart }} />
         </div>
         {isTranscript ? null : (

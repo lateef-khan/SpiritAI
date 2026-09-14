@@ -402,6 +402,27 @@ test("a framework event without text yields nothing on its own", async () => {
 
   assert.deepEqual(yields, ["after"]);
 });
+test("a tool's argument delta never enters the reply text", async () => {
+  // The framework streams the raw tool-call JSON as function_call_arguments deltas. Those are
+  // not words, so the reply must not absorb them even though they ride `delta`.
+  const collected = await states([
+    created("conv_1"),
+    'data: {"agentcore_tool":{"call_id":"c1","name":"Search","phase":"call","arguments":{"userQuestion":"CT800"}}}\n\n',
+    event(
+      {
+        type: "response.function_call_arguments.delta",
+        delta: '{"userQuestion":"CT800 Spirit equipment: what the machine is"}',
+      },
+      "response.function_call_arguments.delta",
+    ),
+    delta("The CT800 is a treadmill."),
+    completed(),
+  ]);
+
+  const last = collected[collected.length - 1]!;
+  assert.equal(last.text, "The CT800 is a treadmill.");
+  assert.equal(last.tools.length, 1);
+});
 
 test("the closing event updates the stage and the reply id", async () => {
   const session: Session = { current: null };

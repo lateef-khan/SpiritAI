@@ -148,6 +148,26 @@ public sealed class ThreadHistoryTests
     }
 
     [Fact]
+    public void TwoStaffRepliesOnOneTurnStayTwoMessages()
+    {
+        var first = new ChatMessage(ChatRole.Assistant, "hello");
+        SpeakerProperty.Attach(first, HandoffSpeaker.Human("Matthew H.", "Support"));
+        var second = new ChatMessage(ChatRole.Assistant, "hello");
+        SpeakerProperty.Attach(second, HandoffSpeaker.Human("Matthew H.", "Support"));
+        var third = new ChatMessage(ChatRole.Assistant, "hello");
+        SpeakerProperty.Attach(third, HandoffSpeaker.Human("Matthew H.", "Support"));
+
+        // Each reply-box send is its own message. Same speaker, same turn index on the store rows,
+        // but merging them draws one bubble with the words stuck together.
+        var history = ThreadHistory.Of(Call, [Row(0, 7, first), Row(1, 7, second), Row(2, 7, third)]);
+
+        Assert.Equal(3, history.Messages.Count);
+        Assert.Equal("hello", TextOf(history.Messages[0]));
+        Assert.Equal("hello", TextOf(history.Messages[1]));
+        Assert.Equal("hello", TextOf(history.Messages[2]));
+    }
+
+    [Fact]
     public void ATurnThatFailedItsToolSaysSo()
     {
         var history = ThreadHistory.Of(Call, [

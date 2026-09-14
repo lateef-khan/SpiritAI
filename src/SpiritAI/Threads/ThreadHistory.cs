@@ -140,11 +140,17 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
 
         string? openSpeaker = null;
 
+        var openHuman = false;
+        
         foreach (var row in rows.OrderBy(row => row.Ordinal))
         {
             var agentSide = row.Content.Role == ChatRole.Assistant || row.Content.Role == ChatRole.Tool;
+            
+            var human = SpeakerKey(row) is { } key
+                && JsonDocument.Parse(key).RootElement.TryGetProperty("kind", out var kind)
+                && kind.GetString() == "human";
 
-            if (agentSide && open is not null && openTurn == row.TurnIndex && openSpeaker == SpeakerKey(row))
+            if (agentSide && open is not null && !human && !openHuman && openTurn == row.TurnIndex && openSpeaker == SpeakerKey(row))
             {
                 open.Add(row);
                 continue;
@@ -154,6 +160,7 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
             {
                 yield return open;
                 open = null;
+                openHuman = false;
             }
 
             if (agentSide)
@@ -161,6 +168,7 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
                 open = [row];
                 openTurn = row.TurnIndex;
                 openSpeaker = SpeakerKey(row);
+                openHuman = human;
             }
             else
             {
