@@ -33,9 +33,6 @@ staff_email := env_var_or_default("SPIRIT_STAFF_EMAIL", `git config user.email`)
 staff_name := env_var_or_default("SPIRIT_STAFF_NAME", `git config user.name`)
 
 # List the recipes.
-# TEMPORARY (2026-09-14): point at the AgentCore feat-harness worktree. Delete to revert to ../AgentCore.
-agentcore_root := "/mnt/HDD/Projects/AgentCore/.claude/worktrees/feat-harness"
-
 default:
     @just --list
 
@@ -104,4 +101,4 @@ db-seed:
 # Run the host on http://localhost:5299/chat against the throwaway PostgreSQL, and seed it once it has migrated.
 run: db-up
     (just db-seed &)
-    cd src/SpiritAI && env "{{pg_secret}}={{pg_conn}}" dotnet run --launch-profile spirit -p:AgentCoreRoot={{agentcore_root}}
+    cd src/SpiritAI && env "{{pg_secret}}={{pg_conn}}" dotnet run --launch-profile spirit

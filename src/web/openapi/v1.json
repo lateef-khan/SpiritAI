@@ -1170,9 +1170,6 @@
           },
           {
             "$ref": "#/components/schemas/ThreadPartThreadSourcePart"
-          },
-          {
-            "$ref": "#/components/schemas/ThreadPartThreadDataPart"
           }
         ],
         "discriminator": {
@@ -1180,28 +1177,7 @@
           "mapping": {
             "text": "#/components/schemas/ThreadPartThreadTextPart",
             "tool-call": "#/components/schemas/ThreadPartThreadToolCallPart",
-            "source": "#/components/schemas/ThreadPartThreadSourcePart",
-            "data": "#/components/schemas/ThreadPartThreadDataPart"
-          }
-        }
-      },
-      "ThreadPartThreadDataPart": {
-        "required": [
-          "name",
-          "data"
-        ],
-        "properties": {
-          "type": {
-            "enum": [
-              "data"
-            ],
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/JsonElement"
+            "source": "#/components/schemas/ThreadPartThreadSourcePart"
           }
         }
       },

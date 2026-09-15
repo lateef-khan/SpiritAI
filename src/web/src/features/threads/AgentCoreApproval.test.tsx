@@ -1,4 +1,5 @@
 import { Thread, type ThreadComponents } from "@/components/assistant-ui/thread";
+
 import { useAui } from "@assistant-ui/store";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
@@ -134,9 +135,10 @@ describe("the approval round-trip", () => {
   });
 
   test("Allow resumes with an approval answer and streams the reply", async () => {
+    const reply = ['t1 = TextContent("done.")', "root = Stack([t1])"].join("\n");
     const { fetch, sent } = scripted([
       streaming([created("conv_1"), toolCall(), approvalAsk(), completed()]),
-      streaming([created("conv_1"), delta("done."), completed()]),
+      streaming([created("conv_1"), delta(reply), completed()]),
     ]);
     const aui = mount(fetch);
 
@@ -158,11 +160,11 @@ describe("the approval round-trip", () => {
       agentcore: { approval: { request_id: "req_1", approved: true } },
     });
   });
-
   test("Deny answers false and the run ends", async () => {
+    const reply = ['t1 = TextContent("not sent.")', "root = Stack([t1])"].join("\n");
     const { fetch, sent } = scripted([
       streaming([created("conv_1"), toolCall(), approvalAsk(), completed()]),
-      streaming([created("conv_1"), delta("not sent."), completed()]),
+      streaming([created("conv_1"), delta(reply), completed()]),
     ]);
     const aui = mount(fetch);
 

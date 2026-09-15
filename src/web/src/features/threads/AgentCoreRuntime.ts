@@ -97,8 +97,7 @@ function newTurnClock() {
         length = state.text.length;
         totalChunks += 1;
       }
-      // The wire now reports every tool the host ran, drawing tools included, so this is the count
-      // itself rather than the drawings it used to be estimated from.
+      // The wire reports every tool the host ran, so this is the count itself.
       toolCallCount = state.tools.length;
     },
 
@@ -361,16 +360,11 @@ async function* streamTurn(
     };
 
     // Every yield replaces the message content rather than adding to it, so each one repeats
-    // everything drawn so far. Drop the repeat and a later text-only yield erases the drawing.
+    // the text so far. Assistant text now carries any OpenUI markup inline.
     content = [
       ...state.tools.map(toolContent),
       ...state.sources.map(sourceContent),
       ...(state.text.length > 0 ? [{ type: "text" as const, text: state.text }] : []),
-      ...state.data.map((part) => ({
-        type: "data" as const,
-        name: part.name,
-        data: part.data,
-      })),
     ];
 
     // A tool still waiting on the caller holds the message at requires-action, which is what
@@ -386,7 +380,7 @@ async function* streamTurn(
   }
 
   // A final yield carrying the same content, so the timing lands on the finished message
-  // without blanking what was already drawn — `content` is optional on the result, but
+  // without blanking what was already streamed — `content` is optional on the result, but
   // omitting it here would make this yield the message's last word on its own content.
   yield { content, metadata: { ...stage, timing: clock.finish() } };
 }

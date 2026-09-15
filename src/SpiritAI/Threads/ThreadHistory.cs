@@ -17,7 +17,6 @@ namespace SpiritAI.Threads;
 [JsonDerivedType(typeof(ThreadTextPart), "text")]
 [JsonDerivedType(typeof(ThreadToolCallPart), "tool-call")]
 [JsonDerivedType(typeof(ThreadSourcePart), "source")]
-[JsonDerivedType(typeof(ThreadDataPart), "data")]
 public abstract record ThreadPart;
 
 /// <summary>Words.</summary>
@@ -55,9 +54,6 @@ public sealed record ThreadSourceMetadata(ThreadSourceOrigin Agentcore);
 
 /// <summary>Which producer cited a source, and where inside it the citation sits.</summary>
 public sealed record ThreadSourceOrigin(string Origin, string Locator);
-
-/// <summary>Something the host asked the browser to draw.</summary>
-public sealed record ThreadDataPart(string Name, JsonElement Data) : ThreadPart;
 
 /// <summary>Whether a reply is still arriving.</summary>
 public sealed record ThreadMessageStatus(string Type);
@@ -131,7 +127,7 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
         return new ThreadHistory(parentId, messages);
     }
 
-    /// <summary>Gathers the rows that become one drawn message.</summary>
+    /// <summary>Gathers the rows that become one restored message.</summary>
     private static IEnumerable<List<CallMessage>> Group(IReadOnlyList<CallMessage> rows)
     {
         List<CallMessage>? open = null;
@@ -194,7 +190,6 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
         List<ThreadToolCallPart> tools = [];
         Dictionary<string, int> toolAt = new(StringComparer.Ordinal);
         List<ThreadSourcePart> sources = [];
-        List<ThreadDataPart> drawn = [];
         List<string> utterances = [];
 
         foreach (var row in turn)
@@ -225,10 +220,6 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
                         sources.Add(SourceOf(cited));
                         break;
 
-                    case RenderContent render:
-                        drawn.Add(new ThreadDataPart(render.Name, render.Data));
-                        break;
-
                     default:
                         break;
                 }
@@ -246,8 +237,6 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
         {
             parts.Add(new ThreadTextPart(string.Join("\n\n", utterances)));
         }
-
-        parts.AddRange(drawn);
 
         return new ThreadHistoryMessage(
             // Positional, because store 1 keeps no message id of its own. It is stable only for as

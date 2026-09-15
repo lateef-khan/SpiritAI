@@ -7,7 +7,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider, useRemoteThreadListRuntime } from "@assistant-ui/react";
 import { AgentCoreSidebar } from "@/features/chat/AgentCoreSidebar";
 import { AuthGate } from "@/features/auth/AuthGate";
-import { GenerativeUiDataUI } from "@/features/chat/GenerativeUiDataUI";
 import { useAgentCoreRuntime } from "./features/threads/AgentCoreRuntime";
 import {
   createAgentCoreThreadListAdapter,
@@ -118,7 +117,6 @@ export function App() {
   return (
     <AuthGate>
       <AssistantRuntimeProvider runtime={runtime}>
-        <GenerativeUiDataUI />
         <TooltipProvider>
           <SidebarProvider>
             <div className="flex h-dvh w-full">

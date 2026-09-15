@@ -448,57 +448,6 @@ test("the closing event updates the stage and the reply id", async () => {
   assert.equal(last!.replyMessageId, "msg_1");
 });
 
-test("runTurn yields data parts alongside the text", async () => {
-  const events = [
-    created("conv_1"),
-    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"here it is"}\n\n',
-    'data: {"agentcore_data":{"name":"chart","data":{"title":"Q3"}}}\n\n',
-    completed(),
-  ];
-
-  const session: Session = { current: null };
-  const states = [];
-  for await (const state of runTurn({
-    endpoint: "/v1/responses",
-    session,
-    input: "chart it",
-    abortSignal: new AbortController().signal,
-    fetch: scripted([streaming(events)]).fetch,
-  })) {
-    states.push(state);
-  }
-
-  const last = states[states.length - 1];
-  assert.equal(last!.text, "here it is");
-  assert.deepEqual(last!.data, [{ name: "chart", data: { title: "Q3" } }]);
-});
-
-test("a data part survives a later text-only yield", async () => {
-  // The runtime replaces message content on every yield, so a state that forgot the drawing would
-  // blank it from the screen the moment the model spoke again.
-  const events = [
-    'data: {"agentcore_data":{"name":"chart","data":{"title":"Q3"}}}\n\n',
-    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"and that is why"}\n\n',
-    completed(),
-  ];
-
-  const session: Session = { current: null };
-  const states = [];
-  for await (const state of runTurn({
-    endpoint: "/v1/responses",
-    session,
-    input: "chart it",
-    abortSignal: new AbortController().signal,
-    fetch: scripted([streaming(events)]).fetch,
-  })) {
-    states.push(state);
-  }
-
-  const last = states[states.length - 1];
-  assert.equal(last!.text, "and that is why");
-  assert.deepEqual(last!.data, [{ name: "chart", data: { title: "Q3" } }]);
-});
-
 // -------------------------------------------------------------------------------------------------
 // Tool calls. The host runs the tool, so both halves arrive as facts and neither asks for anything.
 // -------------------------------------------------------------------------------------------------

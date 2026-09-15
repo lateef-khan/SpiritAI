@@ -47,8 +47,13 @@ import {
   type ToolCallMessagePartComponent,
 } from "@assistant-ui/react";
 import { ComposerDraft } from "@/components/assistant-ui/draft";
+import { OpenUIAssistantMessagePart as OpenUIAssistantMessage } from "@/components/assistant-ui/openui-message";
 import { Regenerate } from "@/components/assistant-ui/regenerate";
-import { MessageSpeaker, TranscriptModeContext, useSpeaker } from "@/components/assistant-ui/speaker";
+import {
+  MessageSpeaker,
+  TranscriptModeContext,
+  useSpeaker,
+} from "@/components/assistant-ui/speaker";
 import { DayDivider } from "@/components/assistant-ui/elements/day-separator";
 import { ErrorState } from "@/components/assistant-ui/elements/error-state";
 import { MessageTiming as MessageTimingStats } from "@/components/assistant-ui/elements/message-timing";
@@ -82,6 +87,7 @@ export type ThreadGroupPart = MessagePrimitive.GroupedParts.GroupPart;
 export type ThreadComponents = {
   AssistantMessage?: ComponentType | undefined;
   Welcome?: ComponentType | undefined;
+  OpenUI?: ComponentType | undefined;
   ToolFallback?: ToolCallMessagePartComponent | undefined;
   ToolGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined;
   ReasoningGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined;
@@ -618,6 +624,7 @@ const StaffMessage: FC = () => {
 
 const AssistantMessage: FC = () => {
   const {
+    OpenUI: OpenUIComponent = OpenUIAssistantMessage,
     ToolFallback: ToolFallbackComponent = ToolFallback,
     ToolGroup,
     ReasoningGroup,
@@ -637,7 +644,7 @@ const AssistantMessage: FC = () => {
   const isTranscript = useContext(TranscriptModeContext);
 
   if (speaker?.kind === "system") return <SystemNote />;
-  
+
   // A staff reply is the support side talking, so in a transcript it gets that side's bubble
   // rather than the model's full-width answer layout.
   if (isTranscript && speaker?.kind === "human") return <StaffMessage />;
@@ -692,7 +699,7 @@ const AssistantMessage: FC = () => {
                 );
               }
               case "text":
-                return <MarkdownText />;
+                return <OpenUIComponent />;
               case "reasoning":
                 return <Reasoning {...part} />;
               case "tool-call":
@@ -833,14 +840,14 @@ const UserMessage: FC = () => {
           isTranscript ? "col-start-1" : "col-start-2",
         )}
       >
-      {isTranscript ? (
-        <div
-          data-slot="aui_user-message-author"
-          className="text-muted-foreground mb-1 flex items-center justify-start gap-1.5 text-xs"
-        >
-          <span className="font-medium">Visitor</span>
-        </div>
-      ) : null}
+        {isTranscript ? (
+          <div
+            data-slot="aui_user-message-author"
+            className="text-muted-foreground mb-1 flex items-center justify-start gap-1.5 text-xs"
+          >
+            <span className="font-medium">Visitor</span>
+          </div>
+        ) : null}
         <div
           className={cn(
             "aui-user-message-content peer rounded-xl px-4 py-2 wrap-break-word empty:hidden",

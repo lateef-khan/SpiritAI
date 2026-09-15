@@ -1,6 +1,5 @@
 import { Hidden, Thread } from "@/components/assistant-ui/thread";
 import { LauncherBubble } from "@/components/assistant-ui/elements/launcher-bubble";
-import { GenerativeUiDataUI } from "@/features/chat/GenerativeUiDataUI";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { XIcon } from "lucide-react";
@@ -60,7 +59,6 @@ export function Widget() {
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <GenerativeUiDataUI />
       <TooltipProvider>
         <div className="flex h-dvh w-full items-end justify-end p-3">
           {phase === "open" ? (

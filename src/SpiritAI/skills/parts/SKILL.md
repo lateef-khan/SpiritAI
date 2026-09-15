@@ -23,7 +23,7 @@ Year, Model number, Tag. The search's filters argument says how to reach it. Eac
 year the machine was built. A row that reads "not confirmed" means nobody has confirmed that
 year's number. The Tag column is the model filter for every manuals search about that
 machine; the Model number column is what you say out loud when asked for a SKU.
-The filters argument belongs to the manuals search only. find_model, search_parts, draw
+The filters argument belongs to the manuals search only. find_model, search_parts
 and parse_serial take no filters; never pass one to them.
 
 HOW YOU FIND THE PARTS

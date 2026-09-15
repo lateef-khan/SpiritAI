@@ -55,12 +55,6 @@ export type Speaker = {
   /** A role, team, or anything else worth showing under the name. Optional. */
   readonly detail?: string;
 };
-/** One thing the host asked the browser to draw. */
-export type RenderPart = {
-  readonly name: string;
-  readonly data: unknown;
-};
-
 /**
  * One source the host cited, as the browser holds it.
  *
@@ -133,7 +127,6 @@ export type ApprovalAsk = {
 /** Everything one turn has produced so far. */
 export type TurnState = {
   readonly text: string;
-  readonly data: readonly RenderPart[];
   /** Every tool this turn has called, in call order, each with its result once it has one. */
   readonly tools: readonly ToolPart[];
   /** Every source this turn cited, in cite order. */
@@ -238,7 +231,7 @@ export type ApprovalFrame = {
  * One parsed data line of a Responses stream.
  *
  * Text arrives as `response.output_text.delta`; the turn facts arrive on `response.completed`;
- * drawings, citations, tool halves and approval asks arrive as bare `agentcore_*` members with
+ * citations, tool halves and approval asks arrive as bare `agentcore_*` members with
  * no `type`. Reads are guarded at use, not here: the browser never trusts the host's shape.
  */
 export type StreamChunk = {
@@ -248,7 +241,6 @@ export type StreamChunk = {
     readonly metadata?: TurnMetadata;
     readonly conversation?: { readonly id?: string };
   };
-  readonly agentcore_data?: RenderPart;
   readonly agentcore_source?: SourceFrame;
   readonly agentcore_tool?: ToolFrame;
   readonly agentcore_approval?: ApprovalFrame;
@@ -336,7 +328,7 @@ function post(options: TurnOptions, session: string | null): Promise<Response> {
       ...(conversation ? { [ConversationField]: conversation } : {}),
       input: options.approval ? [] : options.input,
       stream: true,
-      // The dialect is opt-in: only a turn carrying `agentcore` gets the drawing, citation,
+      // The dialect is opt-in: only a turn carrying `agentcore` gets the citation,
       // tool-half and approval lines. `message_id` keeps the edit/anchor contract the chat
       // endpoint had, so the runtime keeps sending the origin it already builds.
       agentcore: {
@@ -506,7 +498,6 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let pending = "";
   let text = "";
-  let data: RenderPart[] = [];
   let tools: readonly ToolPart[] = [];
   let sources: readonly SourcePart[] = [];
 
@@ -526,7 +517,6 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
         for (const chunk of readEvent(event)) {
           const state = () => ({
             text,
-            data,
             tools,
             sources,
             stage,
@@ -558,14 +548,6 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
             }
           }
 
-          const rendered = chunk.agentcore_data;
-          if (rendered && typeof rendered.name === "string") {
-            // A new array each time: the yielded state is read after the yield, so the consumer must
-            // never see a list this loop keeps changing underneath it.
-            data = [...data, rendered];
-            yield state();
-          }
-
           const tool = chunk.agentcore_tool;
           if (tool) {
             tools = foldTool(tools, tool);
@@ -584,7 +566,11 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
             yield state();
           }
 
-          if (chunk.type === "response.output_text.delta" && typeof chunk.delta === "string" && chunk.delta.length > 0) {
+          if (
+            chunk.type === "response.output_text.delta" &&
+            typeof chunk.delta === "string" &&
+            chunk.delta.length > 0
+          ) {
             text += chunk.delta;
             yield state();
           }
