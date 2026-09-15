@@ -85,7 +85,7 @@ async function send(aui: Aui, text: string) {
 
 describe("the OpenUI text renderer", () => {
   test("a prose program draws through the Renderer, not the markdown fallback", async () => {
-    const lang = ['t1 = TextContent("Tighten the belt to spec.")', "root = Stack([t1])"].join("\n");
+    const lang = ['t1 = TextContent("Tighten the belt to spec.")', "root = Card([t1])"].join("\n");
     const { fetch } = scripted([streaming([created("conv_1"), delta(lang), completed()])]);
     const aui = mount(fetch);
     await send(aui, "how tight?");
@@ -96,7 +96,7 @@ describe("the OpenUI text renderer", () => {
   });
 
   test("an openui-lang program renders its components", async () => {
-    const lang = ['t1 = TextContent("Q3 revenue")', "root = Stack([t1])"].join("\n");
+    const lang = ['t1 = TextContent("Q3 revenue")', "root = Card([t1])"].join("\n");
     const { fetch } = scripted([streaming([created("conv_1"), delta(lang), completed()])]);
     const aui = mount(fetch);
     await send(aui, "show me revenue");
@@ -105,10 +105,10 @@ describe("the OpenUI text renderer", () => {
   });
 
   test("a click on a button sends its label back as the next user turn", async () => {
-    const lang = ['btn = Button("Approve")', "grp = Buttons([btn])", "root = Stack([grp])"].join(
+    const lang = ['btn = Button("Approve")', "grp = Buttons([btn])", "root = Card([grp])"].join(
       "\n",
     );
-    const reply = ['t1 = TextContent("done.")', "root = Stack([t1])"].join("\n");
+    const reply = ['t1 = TextContent("done.")', "root = Card([t1])"].join("\n");
     const { fetch, sent } = scripted([
       streaming([created("conv_1"), delta(lang), completed()]),
       streaming([created("conv_1"), delta(reply), completed()]),
@@ -121,16 +121,41 @@ describe("the OpenUI text renderer", () => {
       button.click();
     });
 
-    // Wrapped in prose, not bare JSON: the wire layer flattens a user message to its text, and the
-    // agent would otherwise read raw JSON as something the caller typed.
+    // Sent verbatim: a Button without an explicit Action fires continue_conversation with
+    // the label as the message, and the label is already caller-facing prose.
     await waitFor(() => {
-      expect(sent.some((text) => text.includes("clicked"))).toBe(true);
+      expect(sent.some((text) => text === "Approve")).toBe(true);
     });
-    expect(sent.find((text) => text.includes("clicked"))).toContain("Approve");
+  });
+
+  test("a follow-up click sends its text as the next user turn", async () => {
+    const lang = [
+      't1 = TextContent("CT800 overview")',
+      "followUps = FollowUpBlock([fu1, fu2])",
+      'fu1 = FollowUpItem("What years was it made?")',
+      'fu2 = FollowUpItem("Show me parts")',
+      "root = Card([t1, followUps])",
+    ].join("\n");
+    const reply = ['t1 = TextContent("done.")', "root = Card([t1])"].join("\n");
+    const { fetch, sent } = scripted([
+      streaming([created("conv_1"), delta(lang), completed()]),
+      streaming([created("conv_1"), delta(reply), completed()]),
+    ]);
+    const aui = mount(fetch);
+    await send(aui, "tell me about the ct800");
+
+    const followUp = await screen.findByRole("button", { name: "What years was it made?" });
+    await act(async () => {
+      followUp.click();
+    });
+
+    await waitFor(() => {
+      expect(sent.some((text) => text === "What years was it made?")).toBe(true);
+    });
   });
 
   test("the controls are inert while a turn is still running", async () => {
-    const lang = ['t1 = TextContent("Q3 revenue")', "root = Stack([t1])"].join("\n");
+    const lang = ['t1 = TextContent("Q3 revenue")', "root = Card([t1])"].join("\n");
     // No closing event: the stream never ends, so the thread stays running. The hold
     // keeps the fetch open the way a live SSE stream stays open mid-turn.
     let release!: () => void;
@@ -175,7 +200,7 @@ describe("the OpenUI text renderer", () => {
     const lang = [
       'btn = Button("Docs", Action([@OpenUrl("https://example.com/help")]))',
       "grp = Buttons([btn])",
-      "root = Stack([grp])",
+      "root = Card([grp])",
     ].join("\n");
     const { fetch, sent } = scripted([streaming([created("conv_1"), delta(lang), completed()])]);
     const opened: string[] = [];
@@ -203,7 +228,7 @@ describe("the OpenUI text renderer", () => {
     const lang = [
       'btn = Button("Run", Action([@OpenUrl("javascript:alert(1)")]))',
       "grp = Buttons([btn])",
-      "root = Stack([grp])",
+      "root = Card([grp])",
     ].join("\n");
     const { fetch, sent } = scripted([streaming([created("conv_1"), delta(lang), completed()])]);
     const opened: string[] = [];
@@ -232,7 +257,7 @@ describe("the OpenUI text renderer", () => {
     const lang = [
       't1 = TextContent("still here")',
       "wob = Wombat([t1])",
-      "root = Stack([t1])",
+      "root = Card([t1])",
     ].join("\n");
     const { fetch } = scripted([streaming([created("conv_1"), delta(lang), completed()])]);
     const aui = mount(fetch);

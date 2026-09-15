@@ -2,7 +2,7 @@
 
 import { useAui, useAuiState } from "@assistant-ui/react";
 import { Renderer, type ActionEvent } from "@openuidev/react-lang";
-import { openuiLibrary } from "@openuidev/react-ui";
+import { spiritChatLibrary } from "./spirit-chat-library";
 import type { FC } from "react";
 /**
  * One assistant text part through OpenUI, Renderer-only.
@@ -14,9 +14,10 @@ import type { FC } from "react";
  * `inert` gate stays on message scope — the part is complete the moment its text arrives
  * whole, while the message still streams. requires-action (approval gate) is running for
  * this purpose too: the turn is paused on the caller, not finished.
- * A click becomes the next user turn. `open_url` opens an http(s) link in a new tab and
- * sends nothing: the Renderer never navigates itself, and anything else for a scheme is
- * dropped.
+ * A `continue_conversation` click (FollowUpItem, ListItem action, bare Button) sends its
+ * text as the next user turn, verbatim: FollowUp text is already caller-facing prose.
+ * `open_url` opens an http(s) link in a new tab and sends nothing: the Renderer never
+ * navigates itself, and anything else for a scheme is dropped.
  */
 const OpenUIAssistantMessage: FC = () => {
   const text = useAuiState((s) => (s.part.type === "text" ? s.part.text : null));
@@ -44,15 +45,16 @@ const OpenUIAssistantMessage: FC = () => {
       return;
     }
 
+    // `continue_conversation` is what FollowUpItem, ListItem, and bare Buttons fire:
+    // the click text arrives as `humanFriendlyMessage` and becomes the next user turn.
+    // Anything else for a scheme is the model misbehaving: dropped.
+    if (event.type !== "continue_conversation") return;
     const label = event.humanFriendlyMessage?.trim();
-    const body =
-      label && label.length > 0 ? label : JSON.stringify({ type: event.type, ...event.params });
+    if (!label) return;
 
-    // Wrapped in prose. The wire layer flattens a user message to its text, and bare JSON would
-    // read to the agent as something the caller typed.
     aui.thread.append({
       role: "user",
-      content: [{ type: "text", text: `the caller clicked: ${body}` }],
+      content: [{ type: "text", text: label }],
     });
   };
 
@@ -66,7 +68,7 @@ const OpenUIAssistantMessage: FC = () => {
     >
       <Renderer
         response={text}
-        library={openuiLibrary}
+        library={spiritChatLibrary}
         isStreaming={partStatusType === "running"}
         onAction={onAction}
       />
