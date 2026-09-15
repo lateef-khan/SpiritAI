@@ -3,33 +3,26 @@
 import { useAui, useAuiState } from "@assistant-ui/react";
 import { Renderer, type ActionEvent } from "@openuidev/react-lang";
 import { spiritChatLibrary } from "./spirit-chat-library";
+import { MarkdownText } from "./markdown-text";
 import type { FC } from "react";
 /**
  * One assistant text part through OpenUI, Renderer-only.
- *
- * The reply is always an openui-lang program, so the part text goes straight to the
- * Renderer: no fence check, no markdown fallback. Blank-until-first-root is the loading
- * state — the parser returns null until `root` streams in, then reveals top-down.
- * Part scope, not message scope: the part text is already the whole reply so far. The
- * `inert` gate stays on message scope — the part is complete the moment its text arrives
- * whole, while the message still streams. requires-action (approval gate) is running for
- * this purpose too: the turn is paused on the caller, not finished.
- * A `continue_conversation` click (FollowUpItem, ListItem action, bare Button) sends its
- * text as the next user turn, verbatim: FollowUp text is already caller-facing prose.
- * `open_url` opens an http(s) link in a new tab and sends nothing: the Renderer never
- * navigates itself, and anything else for a scheme is dropped.
  */
 const OpenUIAssistantMessage: FC = () => {
   const text = useAuiState((s) => (s.part.type === "text" ? s.part.text : null));
+
   const partStatusType = useAuiState((s) =>
     s.part.type === "text" ? s.part.status.type : undefined,
   );
+
   const messageStatusType = useAuiState((s) =>
     s.message.role === "assistant" ? s.message.status?.type : undefined,
   );
+
   const isRunning = useAuiState(
     (state) => state.thread.isRunning || messageStatusType === "requires-action",
   );
+
   const aui = useAui();
 
   if (text === null) return null;
@@ -49,7 +42,9 @@ const OpenUIAssistantMessage: FC = () => {
     // the click text arrives as `humanFriendlyMessage` and becomes the next user turn.
     // Anything else for a scheme is the model misbehaving: dropped.
     if (event.type !== "continue_conversation") return;
+
     const label = event.humanFriendlyMessage?.trim();
+
     if (!label) return;
 
     aui.thread.append({
@@ -57,6 +52,15 @@ const OpenUIAssistantMessage: FC = () => {
       content: [{ type: "text", text: label }],
     });
   };
+
+  // Plain-text history predates the openui-lang cutover and has no `root` line, which the
+  // Renderer draws as nothing. Completed non-program text falls back to markdown; a still
+  // running part stays on the Renderer so partial programs keep their loading state.
+  const isProgram = /^\s*root\s*=/m.test(text);
+  
+  if (partStatusType !== "running" && !isProgram) {
+    return <MarkdownText />;
+  }
 
   return (
     // The guard above stops the click landing; `inert` stops the caller believing it did, and takes
