@@ -1,11 +1,16 @@
 import { Thread } from "@/components/assistant-ui/thread";
+// Warms the `React.lazy` chunk behind `openui-message` during collection, so
+// the tests measure rendering rather than first-compile. Static on purpose:
+// a dynamic `import()` here trips the 10s `beforeAll` hook timeout while the
+// `@openuidev/react-ui` graph compiles.
+import "@/components/assistant-ui/openui-renderer";
 
 import { useAui, type AssistantClient } from "@assistant-ui/store";
+import { useAgentCoreRuntime } from "../threads/AgentCoreRuntime.ts";
+import { type FetchLike } from "../threads/transport.ts";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
-import { useAgentCoreRuntime } from "../threads/AgentCoreRuntime.ts";
-import { type FetchLike } from "../threads/transport.ts";
 /**
  * The OpenUI text renderer, Renderer-only: every reply is one openui-lang program and the
  * part text goes straight to the Renderer. Plain prose lives inside a TextContent; the
@@ -254,11 +259,9 @@ describe("the OpenUI text renderer", () => {
   });
 
   test("an unknown component renders nothing rather than failing the message", async () => {
-    const lang = [
-      't1 = TextContent("still here")',
-      "wob = Wombat([t1])",
-      "root = Card([t1])",
-    ].join("\n");
+    const lang = ['t1 = TextContent("still here")', "wob = Wombat([t1])", "root = Card([t1])"].join(
+      "\n",
+    );
     const { fetch } = scripted([streaming([created("conv_1"), delta(lang), completed()])]);
     const aui = mount(fetch);
     await send(aui, "show me");

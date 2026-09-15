@@ -1,10 +1,13 @@
 "use client";
 
 import { useAui, useAuiState } from "@assistant-ui/react";
-import { Renderer, type ActionEvent } from "@openuidev/react-lang";
-import { spiritChatLibrary } from "./spirit-chat-library";
+import type { ActionEvent } from "@openuidev/react-lang";
+import { lazy, Suspense, type FC } from "react";
+import { TypingIndicator } from "./elements/typing-indicator";
 import { MarkdownText } from "./markdown-text";
-import type { FC } from "react";
+
+const OpenUIRenderer = lazy(() => import("./openui-renderer"));
+
 /**
  * One assistant text part through OpenUI, Renderer-only.
  */
@@ -57,7 +60,7 @@ const OpenUIAssistantMessage: FC = () => {
   // Renderer draws as nothing. Completed non-program text falls back to markdown; a still
   // running part stays on the Renderer so partial programs keep their loading state.
   const isProgram = /^\s*root\s*=/m.test(text);
-  
+
   if (partStatusType !== "running" && !isProgram) {
     return <MarkdownText />;
   }
@@ -70,12 +73,13 @@ const OpenUIAssistantMessage: FC = () => {
       data-agentcore-drawing=""
       className={isRunning ? "opacity-60" : undefined}
     >
-      <Renderer
-        response={text}
-        library={spiritChatLibrary}
-        isStreaming={partStatusType === "running"}
-        onAction={onAction}
-      />
+      <Suspense fallback={<TypingIndicator variant="bare" className="py-2" />}>
+        <OpenUIRenderer
+          response={text}
+          isStreaming={partStatusType === "running"}
+          onAction={onAction}
+        />
+      </Suspense>
     </div>
   );
 };
