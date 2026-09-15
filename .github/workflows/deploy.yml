@@ -38,6 +38,9 @@ jobs:
       - name: Frontend format check
         working-directory: src/web
         run: npm run format:check
+      - name: Frontend OpenUI skill freshness
+        working-directory: src/web
+        run: npm run gen:openui:check
 
       - name: Frontend lint
         working-directory: src/web
