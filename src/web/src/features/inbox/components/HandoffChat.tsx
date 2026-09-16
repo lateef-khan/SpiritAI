@@ -27,7 +27,11 @@ type HistoryMessage = ExportedMessageRepository["messages"][number]["message"];
 /** The signed-in api, built once so the pane does not allocate one per render. */
 const api = createHandoffsApi();
 
-const COMPONENTS: ThreadComponents = { Welcome: Hidden, Composer: HandoffComposer, isTranscript: true };
+const COMPONENTS: ThreadComponents = {
+  Welcome: Hidden,
+  Composer: HandoffComposer,
+  isTranscript: true,
+};
 
 /**
  * One handoff's transcript.

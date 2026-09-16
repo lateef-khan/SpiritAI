@@ -91,9 +91,7 @@ describe("HandoffContextPanel", () => {
 
     expect(screen.getByText("lorrie@northwind.example")).toBeTruthy();
     expect(await screen.findByText("SOLE WF80 2010")).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Handoff · Waiting · #1 in line" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Handoff · Waiting · #1 in line" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Handoff · Waiting · #1 in line" }));
     expect(

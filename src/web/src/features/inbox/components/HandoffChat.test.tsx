@@ -23,7 +23,10 @@ const Transcript = {
         id: "call-1:0",
         role: "user",
         content: [
-          { type: "text", text: "Hi, my CT800 belt slips when I go above 8 mph. It's about 2 years old." },
+          {
+            type: "text",
+            text: "Hi, my CT800 belt slips when I go above 8 mph. It's about 2 years old.",
+          },
         ],
         attachments: [],
         createdAt: "2026-09-12T12:31:00",
@@ -212,7 +215,11 @@ describe("HandoffChat", () => {
   });
 
   it("shows who has the chat once it is claimed", async () => {
-    chat(Transcript, { status: "human", assignee: { key: "user:dana", name: "Dana" } }, "user:other");
+    chat(
+      Transcript,
+      { status: "human", assignee: { key: "user:dana", name: "Dana" } },
+      "user:other",
+    );
 
     expect(await screen.findByText("Dana has this chat")).toBeTruthy();
   });
@@ -224,10 +231,7 @@ describe("HandoffChat", () => {
   });
 
   it("names the visitor, the model, and staff on their own messages", async () => {
-    chat(
-      ClaimedTranscript,
-      { status: "human", assignee: { key: "user:dana", name: "Dana" } },
-    );
+    chat(ClaimedTranscript, { status: "human", assignee: { key: "user:dana", name: "Dana" } });
 
     expect(await screen.findByText("Visitor")).toBeTruthy();
     expect(screen.getByText("Spirit")).toBeTruthy();
@@ -235,11 +239,7 @@ describe("HandoffChat", () => {
   });
 
   it("draws joined lines as notes with no message actions", async () => {
-    chat(
-      ClaimedTranscript,
-      { status: "human", assignee: { key: "user:dana", name: "Dana" } },
-    );
-
+    chat(ClaimedTranscript, { status: "human", assignee: { key: "user:dana", name: "Dana" } });
 
     const note = await screen.findByText("Dana joined");
     expect(note.closest('[data-slot="aui_system-note"]')).not.toBeNull();
@@ -248,10 +248,7 @@ describe("HandoffChat", () => {
   });
 
   it("draws staff replies as bubbles on the support side", async () => {
-    chat(
-      ClaimedTranscript,
-      { status: "human", assignee: { key: "user:dana", name: "Dana" } },
-    );
+    chat(ClaimedTranscript, { status: "human", assignee: { key: "user:dana", name: "Dana" } });
 
     // The staff reply is a bubble of its own, not bare text and not a system note.
     const reply = await screen.findByText("Hi, I'm Dana.");
@@ -265,10 +262,7 @@ describe("HandoffChat", () => {
 
   it("offers no retry on a staff reply", async () => {
     // The staff reply is the last message, so its action bar is the one drawn.
-    chat(
-      ClaimedTranscript,
-      { status: "human", assignee: { key: "user:dana", name: "Dana" } },
-    );
+    chat(ClaimedTranscript, { status: "human", assignee: { key: "user:dana", name: "Dana" } });
 
     await screen.findByText("Hi, I'm Dana.");
     expect(screen.queryByLabelText("Regenerate with a different model")).toBeNull();
@@ -284,5 +278,5 @@ describe("HandoffChat", () => {
     // The model's answer is last, so its action bar is the one drawn — with retry.
     await screen.findByText("Let me find someone.");
     expect(screen.getByLabelText("Regenerate with a different model")).toBeTruthy();
-});
+  });
 });

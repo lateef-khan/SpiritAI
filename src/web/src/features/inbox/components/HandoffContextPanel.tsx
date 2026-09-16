@@ -3,11 +3,7 @@ import { useMemo, useState } from "react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { flatten } from "@/features/threads/AgentCoreRuntime";
 import { UnitPanel } from "@/features/unit/UnitPanel";
 import type { Said } from "@/hooks/useIdentifiers";

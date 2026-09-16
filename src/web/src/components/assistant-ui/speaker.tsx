@@ -42,7 +42,8 @@ export const MessageSpeaker: FC = () => {
 
   const isTranscript = useContext(TranscriptModeContext);
 
-  const effective: Speaker | null = speaker ?? (isTranscript ? { kind: "agent", name: "Spirit" } : null);
+  const effective: Speaker | null =
+    speaker ?? (isTranscript ? { kind: "agent", name: "Spirit" } : null);
 
   if (!effective || (effective.kind === "agent" && !isTranscript)) return null;
 

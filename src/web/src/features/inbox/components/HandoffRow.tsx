@@ -22,7 +22,6 @@ export function HandoffRow({
   selected: boolean;
   onSelect: () => void;
 }) {
-
   const title = handoffTitle(handoff);
 
   return (
@@ -97,4 +96,3 @@ function RowAvatar({ email }: { email: string | null }) {
     </Avatar>
   );
 }
-
