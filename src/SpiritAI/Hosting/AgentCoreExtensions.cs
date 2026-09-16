@@ -1,8 +1,10 @@
 using System.ComponentModel;
 
+using AgentCore.Application.Tools;
 using AgentCore.AspNetCore.DependencyInjection;
 using AgentCore.Hosting;
 
+using SpiritAI.Handoffs.Bot;
 using SpiritAI.Knowledge;
 using SpiritAI.Lookup;
 
@@ -18,6 +20,12 @@ public static class AgentCoreExtensions
 
     /// <summary>The <c>binds:</c> name <c>spirit.yaml</c> gives the unit reader.</summary>
     public const string UnitBinding = "AskUnit";
+
+    /// <summary>The <c>binds:</c> name <c>spirit.yaml</c> gives the bot's door into the handoff queue.</summary>
+    public const string RequestHumanBinding = "RequestHuman";
+
+    /// <summary>The <c>entries:</c> key every route and store reads. Staff and visitors share it.</summary>
+    public const string Entry = "main";
 
     /// <summary>Registers AgentCore, carrying this host's analyzers and bindings.</summary>
     /// <param name="builder">The host being built.</param>
@@ -41,7 +49,8 @@ public static class AgentCoreExtensions
     /// The container. A binding reads its lookup out of this when the model calls the tool, which
     /// is long after everything is built: asking for one here instead would close a circle, because
     /// <see cref="UnitDesk"/> reaches the tool registry, and the registry is what these options
-    /// are being read to build.
+    /// are being read to build. <see cref="RequestHumanTool"/> is scoped, since the desk under it
+    /// holds the database context, so its binding opens a scope for the one call.
     /// </param>
     /// <param name="environment">Locates the skills folder relative to the host, not the working directory.</param>
     private static void Configure(AgentCoreOptions options, IServiceProvider services, IHostEnvironment environment)
@@ -60,5 +69,18 @@ public static class AgentCoreExtensions
                     [Description("The customer's name, email or phone, exactly as the person wrote it.")] string? customer,
                     CancellationToken cancellationToken)
                     => services.GetRequiredService<UnitDesk>()
-                        .ReadAsync(serialNo, orderNumber, customer, cancellationToken));
+                        .ReadAsync(serialNo, orderNumber, customer, cancellationToken))
+            .Bind(
+                RequestHumanBinding,
+                async (
+                    [Description("Why the person needs a human, in one sentence, in the person's own words.")] string reason,
+                    ToolCallScope scope,
+                    CancellationToken cancellationToken) =>
+                {
+                    await using var container = services.GetRequiredService<IServiceScopeFactory>().CreateAsyncScope();
+
+                    return await container.ServiceProvider.GetRequiredService<RequestHumanTool>()
+                        .AskAsync(scope.CallId, reason, cancellationToken)
+                        .ConfigureAwait(false);
+                });
 }

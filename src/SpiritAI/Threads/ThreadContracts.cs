@@ -102,8 +102,8 @@ public sealed record ThreadPage(IReadOnlyList<ThreadSummary> Threads, string? Ne
 /// The answer to a thread's creation, in the shape assistant-ui's <c>initialize</c> returns.
 /// </summary>
 /// <param name="RemoteId">
-/// The call id. It is the same string the chat endpoint knows as <c>X-AgentCore-Session</c>, on
-/// purpose: two ids for one conversation is two ids to keep in step forever.
+/// The call id. A turn sends it back as the Responses conversation, so one id names the thread
+/// and the call alike rather than two that have to be kept in step.
 /// </param>
 /// <param name="ExternalId">A consumer's own id for the call. Nothing sets one yet.</param>
 public sealed record ThreadCreated(string RemoteId, string? ExternalId);

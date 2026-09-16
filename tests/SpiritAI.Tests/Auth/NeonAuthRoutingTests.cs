@@ -32,7 +32,7 @@ public sealed class NeonAuthRoutingTests
     [InlineData("/chat/login.html", HttpStatusCode.OK)]
     [InlineData("/chat/", HttpStatusCode.OK)]
     // Closed: everything the agent answers on.
-    [InlineData("/v1/chat/completions", HttpStatusCode.Unauthorized)]
+    [InlineData("/v1/responses", HttpStatusCode.Unauthorized)]
     [InlineData("/v1/call", HttpStatusCode.Unauthorized)]
     [InlineData("/v1", HttpStatusCode.Unauthorized)]
     public async Task WithoutAToken(string path, HttpStatusCode expected)
@@ -47,11 +47,11 @@ public sealed class NeonAuthRoutingTests
     [Fact]
     public async Task AnOpenPrefixIsCarvedOutOfAGuardedOne()
     {
-        using var host = await StartAsync(openPrefixes: ["/v1/public/chat/completions"]);
+        using var host = await StartAsync(openPrefixes: ["/v1/public/responses"]);
 
         // The widget's route. It sits under /v1 with everything else and must still answer a
         // stranger, or the public bubble 401s on every message.
-        var response = await host.GetTestClient().GetAsync("/v1/public/chat/completions", TestContext.Current.CancellationToken);
+        var response = await host.GetTestClient().GetAsync("/v1/public/responses", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -59,9 +59,9 @@ public sealed class NeonAuthRoutingTests
     [Fact]
     public async Task TheCarveOutDoesNotOpenTheRestOfTheApi()
     {
-        using var host = await StartAsync(openPrefixes: ["/v1/public/chat/completions"]);
+        using var host = await StartAsync(openPrefixes: ["/v1/public/responses"]);
 
-        var response = await host.GetTestClient().GetAsync("/v1/chat/completions", TestContext.Current.CancellationToken);
+        var response = await host.GetTestClient().GetAsync("/v1/responses", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -82,7 +82,7 @@ public sealed class NeonAuthRoutingTests
     {
         using var host = await StartAsync();
 
-        var response = await host.GetTestClient().GetAsync("/v1/chat/completions", TestContext.Current.CancellationToken);
+        var response = await host.GetTestClient().GetAsync("/v1/responses", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Contains(response.Headers.WwwAuthenticate, header => header.Scheme == "Bearer");
@@ -98,7 +98,7 @@ public sealed class NeonAuthRoutingTests
         using var host = await StartAsync();
         var client = host.GetTestClient();
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "/v1/chat/completions");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/v1/responses");
         request.Headers.TryAddWithoutValidation("Authorization", header);
 
         var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -113,7 +113,7 @@ public sealed class NeonAuthRoutingTests
         using var host = await StartAsync(kit);
         var client = host.GetTestClient();
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "/v1/chat/completions");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/v1/responses");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", kit.Token());
 
         var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -165,9 +165,9 @@ public sealed class NeonAuthRoutingTests
                         endpoints.MapGet("/v1x/open", () => Results.Ok("open"));
                         endpoints.MapGet("/v1", () => Results.Ok("root"));
                         endpoints.MapGet("/v1/call", () => Results.Ok("call"));
-                        endpoints.MapGet("/v1/public/chat/completions", () => Results.Ok("public"));
+                        endpoints.MapGet("/v1/public/responses", () => Results.Ok("public"));
                         endpoints.MapGet(
-                            "/v1/chat/completions",
+                            "/v1/responses",
                             (HttpContext context) => Results.Content(
                                 context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous"));
                     });

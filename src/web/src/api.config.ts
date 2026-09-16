@@ -1,6 +1,6 @@
 import type { CreateClientConfig } from "./api/client.gen";
 
-import { authFetch } from "@/auth/authFetch";
+import { authFetch } from "@/features/auth/authFetch";
 
 /**
  * How every generated call reaches the host.
@@ -14,7 +14,7 @@ import { authFetch } from "@/auth/authFetch";
  *
  * `throwOnError` is not a preference. The client's default is to answer `{ data, error }` and never
  * throw, and the thread list adapter is built on a refusal being thrown — a thread list that
- * silently empties is the failure that whole seam exists to make visible. See `apiClient.ts` for
+ * silently empties is the failure that whole seam exists to make visible. See `lib/apiClient.ts` for
  * what is actually thrown.
  */
 export const createClientConfig: CreateClientConfig = (config) => ({

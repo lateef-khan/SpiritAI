@@ -1,11 +1,10 @@
 import { Hidden, Thread } from "@/components/assistant-ui/thread";
 import { LauncherBubble } from "@/components/assistant-ui/elements/launcher-bubble";
-import { GenerativeUiDataUI } from "@/components/chat/GenerativeUiDataUI";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useAgentCoreRuntime } from "./runtime/AgentCoreRuntime";
+import { useAgentCoreRuntime } from "./features/threads/AgentCoreRuntime";
 
 /**
  * The embeddable form of the chat: a bubble on someone else's page that opens into a panel.
@@ -28,8 +27,7 @@ const SIZE = {
 /*
  * The widget's own route, and not the app's.
  */
-const endpoint =
-  document.documentElement.dataset.agentcoreEndpoint || "/v1/public/chat/completions";
+const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/public/responses";
 
 const WIDGET_COMPONENTS = {
   ToolGroup: Hidden,
@@ -61,7 +59,6 @@ export function Widget() {
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <GenerativeUiDataUI />
       <TooltipProvider>
         <div className="flex h-dvh w-full items-end justify-end p-3">
           {phase === "open" ? (

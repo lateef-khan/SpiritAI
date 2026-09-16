@@ -9,11 +9,18 @@ public sealed class PublicChatOptions
     public const string SectionName = "PublicChat";
 
     /// <summary>
-    /// The route the widget posts to.
+    /// What every route a stranger may reach sits under: the chat, the public threads, and the
+    /// visitor's handoff routes. The limiter counts all of them against one allowance, and the
+    /// token check leaves all of them open.
     /// </summary>
-    public string Pattern { get; set; } = "/v1/public/chat/completions";
+    public string PublicPrefix { get; set; } = "/v1/public";
 
-    /// <summary>Whether the route is mapped at all. Turn it off and the widget stops working.</summary>
+    /// <summary>
+    /// The route the widget posts a turn to. Under <see cref="PublicPrefix"/>.
+    /// </summary>
+    public string Pattern { get; set; } = "/v1/public/responses";
+
+    /// <summary>Whether the routes are mapped at all. Turn it off and the widget stops working.</summary>
     public bool Enabled { get; set; } = true;
 
     /// <summary>How many requests one caller may make per <see cref="WindowSeconds"/>.</summary>

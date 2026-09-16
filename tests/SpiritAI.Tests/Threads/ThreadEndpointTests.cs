@@ -6,7 +6,6 @@ using System.Text.Json;
 
 using AgentCore.Application.Calls.Memory;
 using AgentCore.Application.Ports;
-using AgentCore.Application.Transcript;
 
 using Microsoft.Extensions.AI;
 
@@ -385,7 +384,7 @@ public sealed class ThreadEndpointTests
 
         private readonly IHost _host;
 
-        private World(IHost host, NeonAuthTestKit kit, InMemoryCallStore store)
+        private World(IHost host, NeonAuthTestKit kit, ICallStore store)
         {
             _host = host;
             Store = store;
@@ -401,12 +400,12 @@ public sealed class ThreadEndpointTests
         public Caller Anonymous { get; }
 
         /// <summary>The store behind the routes, so a test can put words in a thread.</summary>
-        public InMemoryCallStore Store { get; }
+        public ICallStore Store { get; }
 
         public static async Task<World> StartAsync()
         {
             var kit = new NeonAuthTestKit();
-            InMemoryCallStore store = new();
+            ICallStore store = new InMemoryCallStore();
 
             var host = await ThreadTestHost.StartAsync(
                 kit,
@@ -426,11 +425,11 @@ public sealed class ThreadEndpointTests
         }
 
         /// <summary>Writes one finished turn into store 1, the way a real turn would.</summary>
-        public ValueTask SayAsync(string remoteId, string said, string heard)
-            => Store.AppendAsync([
-                new CallMessage(remoteId, 0, 0, new ChatMessage(ChatRole.User, said), "m0"),
-                new CallMessage(remoteId, 1, 0, new ChatMessage(ChatRole.Assistant, heard), "m1"),
-            ]);
+        public async ValueTask SayAsync(string remoteId, string said, string heard)
+        {
+            await Store.AppendMessageAsync(remoteId, new ChatMessage(ChatRole.User, said), TestContext.Current.CancellationToken);
+            await Store.AppendMessageAsync(remoteId, new ChatMessage(ChatRole.Assistant, heard), TestContext.Current.CancellationToken);
+        }
 
         public async ValueTask DisposeAsync()
         {

@@ -6,9 +6,11 @@ using AgentCore.AspNetCore.Endpoints;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
+using SpiritAI.Hosting;
+
 namespace SpiritAI.PublicChat;
 
-/// <summary>Registers the public widget endpoint and the limiter in front of it.</summary>
+/// <summary>Registers the public widget endpoint and the limiter in front of every public route.</summary>
 public static class PublicChatServiceCollectionExtensions
 {
     /// <summary>Adds the public chat options and the rate limiter they configure.</summary>
@@ -49,7 +51,7 @@ public static class PublicChatServiceCollectionExtensions
     }
 }
 
-/// <summary>Builds the two limits the public route runs under.</summary>
+/// <summary>Builds the two limits every public route runs under.</summary>
 internal sealed class ConfigurePublicChatLimiter(IOptions<PublicChatOptions> options)
     : IConfigureOptions<RateLimiterOptions>
 {
@@ -99,7 +101,7 @@ internal sealed class ConfigurePublicChatLimiter(IOptions<PublicChatOptions> opt
 
     private static bool IsPublicChat(HttpContext context, PublicChatOptions settings)
         => settings.Enabled
-            && context.Request.Path.StartsWithSegments(settings.Pattern, StringComparison.OrdinalIgnoreCase);
+            && context.Request.Path.StartsWithSegments(settings.PublicPrefix, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Who the limit counts against.</summary>
     private static string CallerKey(HttpContext context)
@@ -110,7 +112,7 @@ internal sealed class ConfigurePublicChatLimiter(IOptions<PublicChatOptions> opt
 public static class PublicChatEndpointExtensions
 {
     /// <summary>
-    /// Maps a second, unauthenticated chat endpoint, or nothing when the route is disabled.
+    /// Maps the unauthenticated chat endpoint, or nothing when the route is disabled.
     /// </summary>
     /// <param name="app">The application to map on.</param>
     /// <returns>The same application.</returns>
@@ -122,7 +124,7 @@ public static class PublicChatEndpointExtensions
 
         if (settings.Enabled)
         {
-            app.MapChatCompletions(settings.Pattern);
+            app.MapResponses(settings.Pattern, AgentCoreExtensions.Entry);
         }
 
         return app;

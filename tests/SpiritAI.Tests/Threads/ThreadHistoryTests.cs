@@ -6,6 +6,8 @@ using AgentCore.Domain.Sources;
 
 using Microsoft.Extensions.AI;
 
+using SpiritAI.Handoffs.Contracts;
+using SpiritAI.Handoffs.Transcript;
 using SpiritAI.Threads;
 
 using Xunit;
@@ -112,6 +114,60 @@ public sealed class ThreadHistoryTests
     }
 
     [Fact]
+    public void ANewSpeakerStartsANewMessage()
+    {
+        var joined = new ChatMessage(ChatRole.Assistant, "Dana joined");
+        SpeakerProperty.Attach(joined, HandoffSpeaker.System());
+        var reply = new ChatMessage(ChatRole.Assistant, "Try the tension bolt.");
+        SpeakerProperty.Attach(reply, HandoffSpeaker.Human("Dana", "Support"));
+        var left = new ChatMessage(ChatRole.Assistant, "Dana left");
+        SpeakerProperty.Attach(left, HandoffSpeaker.System());
+
+        // The host's lines and the staff reply are consecutive assistant rows of one turn. Drawn
+        // as one message they read as "Dana joinedTry the tension bolt.Dana left" under one name.
+        var history = ThreadHistory.Of(Call, [Row(0, 7, joined), Row(1, 7, reply), Row(2, 7, left)]);
+
+        Assert.Equal(3, history.Messages.Count);
+        Assert.Equal("Dana joined", TextOf(history.Messages[0]));
+        Assert.Equal("Try the tension bolt.", TextOf(history.Messages[1]));
+        Assert.Equal("Dana left", TextOf(history.Messages[2]));
+        Assert.Equal("system", SpeakerKindOf(history.Messages[0]));
+        Assert.Equal("human", SpeakerKindOf(history.Messages[1]));
+        Assert.Equal("system", SpeakerKindOf(history.Messages[2]));
+    }
+
+    [Fact]
+    public void ConsecutiveRowsOfOneSpeakerJoinWithABreak()
+    {
+        var history = ThreadHistory.Of(Call, [
+            Row(0, 7, new ChatMessage(ChatRole.Assistant, "First.")),
+            Row(1, 7, new ChatMessage(ChatRole.Assistant, "Second.")),
+        ]);
+
+        Assert.Equal("First.\n\nSecond.", TextOf(Assert.Single(history.Messages)));
+    }
+
+    [Fact]
+    public void TwoStaffRepliesOnOneTurnStayTwoMessages()
+    {
+        var first = new ChatMessage(ChatRole.Assistant, "hello");
+        SpeakerProperty.Attach(first, HandoffSpeaker.Human("Matthew H.", "Support"));
+        var second = new ChatMessage(ChatRole.Assistant, "hello");
+        SpeakerProperty.Attach(second, HandoffSpeaker.Human("Matthew H.", "Support"));
+        var third = new ChatMessage(ChatRole.Assistant, "hello");
+        SpeakerProperty.Attach(third, HandoffSpeaker.Human("Matthew H.", "Support"));
+
+        // Each reply-box send is its own message. Same speaker, same turn index on the store rows,
+        // but merging them draws one bubble with the words stuck together.
+        var history = ThreadHistory.Of(Call, [Row(0, 7, first), Row(1, 7, second), Row(2, 7, third)]);
+
+        Assert.Equal(3, history.Messages.Count);
+        Assert.Equal("hello", TextOf(history.Messages[0]));
+        Assert.Equal("hello", TextOf(history.Messages[1]));
+        Assert.Equal("hello", TextOf(history.Messages[2]));
+    }
+
+    [Fact]
     public void ATurnThatFailedItsToolSaysSo()
     {
         var history = ThreadHistory.Of(Call, [
@@ -203,6 +259,29 @@ public sealed class ThreadHistoryTests
         // assistant-ui refuses a message with no createdAt, and store 1 keeps no per-message clock.
         Assert.Equal(Made, Assert.Single(history.Messages).Message.CreatedAt);
     }
+
+    [Fact]
+    public void AMessageNamesItsSpeakerWhereTheBrowserLooks()
+    {
+        var reply = new ChatMessage(ChatRole.Assistant, "Try the tension bolt.");
+        SpeakerProperty.Attach(reply, HandoffSpeaker.Human("Dana R.", "Support"));
+
+        var history = ThreadHistory.Of(Call, [Row(0, 0, reply)]);
+
+        // AgentCoreRuntime.ts reads metadata.custom.speaker, in the Speaker shape of transport.ts.
+        var speaker = Assert.Single(history.Messages).Message.Metadata.Custom["speaker"];
+        Assert.Equal("human", speaker.GetProperty("kind").GetString());
+        Assert.Equal("Dana R.", speaker.GetProperty("name").GetString());
+        Assert.Equal("Support", speaker.GetProperty("detail").GetString());
+    }
+
+    private static string TextOf(ThreadHistoryItem item)
+        => Assert.IsType<ThreadTextPart>(item.Message.Content[^1]).Text;
+
+    private static string? SpeakerKindOf(ThreadHistoryItem item)
+        => item.Message.Metadata.Custom.TryGetValue("speaker", out var speaker)
+            ? speaker.GetProperty("kind").GetString()
+            : null;
 
     private static CallMessage Row(int ordinal, int turnIndex, ChatMessage message)
         => new("call-1", ordinal, turnIndex, message, $"m{ordinal}");

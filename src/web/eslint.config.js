@@ -31,8 +31,8 @@ export default tseslint.config(
   },
 
   {
-    // This config and the Vite config run in Node, not in a browser.
-    files: ["eslint.config.js", "vite.config.ts"],
+    // This config, the Vite config, and the scripts run in Node, not in a browser.
+    files: ["eslint.config.js", "vite.config.ts", "scripts/**/*.mjs"],
     languageOptions: {
       globals: globals.node,
     },

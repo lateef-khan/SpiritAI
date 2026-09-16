@@ -46,11 +46,14 @@ import {
   type PartState,
   type ToolCallMessagePartComponent,
 } from "@assistant-ui/react";
-// `@assistant-ui/react` re-exports most hooks but not this one, so it comes from the core package
-// the app already depends on directly.
 import { ComposerDraft } from "@/components/assistant-ui/draft";
+import { OpenUIAssistantMessagePart as OpenUIAssistantMessage } from "@/components/assistant-ui/openui-message";
 import { Regenerate } from "@/components/assistant-ui/regenerate";
-import { MessageSpeaker } from "@/components/assistant-ui/speaker";
+import {
+  MessageSpeaker,
+  TranscriptModeContext,
+  useSpeaker,
+} from "@/components/assistant-ui/speaker";
 import { DayDivider } from "@/components/assistant-ui/elements/day-separator";
 import { ErrorState } from "@/components/assistant-ui/elements/error-state";
 import { MessageTiming as MessageTimingStats } from "@/components/assistant-ui/elements/message-timing";
@@ -84,11 +87,14 @@ export type ThreadGroupPart = MessagePrimitive.GroupedParts.GroupPart;
 export type ThreadComponents = {
   AssistantMessage?: ComponentType | undefined;
   Welcome?: ComponentType | undefined;
+  OpenUI?: ComponentType | undefined;
   ToolFallback?: ToolCallMessagePartComponent | undefined;
   ToolGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined;
   ReasoningGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined;
   Sources?: ComponentType | undefined;
   Timing?: ComponentType | undefined;
+  Composer?: ComponentType | undefined;
+  isTranscript?: boolean | undefined;
 };
 
 export type ThreadProps = {
@@ -145,13 +151,16 @@ export const Thread: FC<ThreadProps> = ({ components = EMPTY_COMPONENTS }) => {
 
   return (
     <ThreadComponentsContext.Provider value={components}>
-      <ThreadRoot isEmpty={isEmpty} />
+      <TranscriptModeContext.Provider value={components.isTranscript ?? false}>
+        <ThreadRoot isEmpty={isEmpty} />
+      </TranscriptModeContext.Provider>
     </ThreadComponentsContext.Provider>
   );
 };
 
 const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
-  const { Welcome = ThreadWelcome } = useContext(ThreadComponentsContext);
+  const { Welcome = ThreadWelcome, Composer: ComposerComponent = Composer } =
+    useContext(ThreadComponentsContext);
 
   return (
     <ThreadPrimitive.Root
@@ -194,8 +203,8 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
             <ThreadScrollToBottom />
             <ComposerDraft />
             <ThreadFollowupSuggestions />
-            <Composer />
-            <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
+            <ComposerComponent />
+            <AuiIf condition={(s) => isNewChatView(s)}>
               <ThreadSuggestions />
             </AuiIf>
           </ThreadPrimitive.ViewportFooter>
@@ -295,7 +304,7 @@ const ThreadWelcome: FC = () => {
 
 const ThreadSuggestions: FC = () => {
   return (
-    <div className="aui-thread-welcome-suggestions flex w-full flex-wrap items-center justify-center gap-2 px-4">
+    <div className="aui-thread-welcome-suggestions flex w-full flex-wrap items-center justify-center gap-2 px-4 empty:hidden">
       <ThreadPrimitive.Suggestions>{() => <ThreadSuggestionItem />}</ThreadPrimitive.Suggestions>
     </div>
   );
@@ -341,10 +350,15 @@ const Composer: FC = () => {
   );
 };
 
-const ComposerAction: FC = () => {
+/**
+ * The row under the input: attachments on the left, voice and send on the right. The handoff
+ * reply box renders this too, with attachments hidden — one send button everywhere, so the two
+ * composers cannot drift into a square button here and a round one there again.
+ */
+export const ComposerAction: FC<{ showAttachments?: boolean }> = ({ showAttachments = true }) => {
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
-      <ComposerAddAttachment />
+      {showAttachments ? <ComposerAddAttachment /> : <span />}
       <div className="flex items-center gap-1.5">
         <AuiIf condition={(s) => s.thread.capabilities.dictation}>
           <AuiIf condition={(s) => s.composer.dictation == null}>
@@ -484,7 +498,7 @@ const StoppedRunNotice: FC = () => {
  * How long the turn took, under the answer.
  *
  * Reads `message.metadata.timing`, which nothing fills in by default — see `newTurnClock` in
- * runtime/AgentCoreRuntime.ts, which is what puts it there.
+ * features/threads/AgentCoreRuntime.ts, which is what puts it there.
  */
 const MessageTimingFooter: FC = () => {
   const timing = useMessageTiming();
@@ -560,8 +574,57 @@ const MessageSources: FC = () => {
   return <Sources sources={sources.map(sourceCardOf)} open={open} onOpenChange={setOpen} />;
 };
 
+/**
+ * The host's own line — "Dana joined", "Dana left". An assistant row with a system speaker, drawn
+ * as a centered event rather than an answer: no bubble, no copy/retry/more bar, since none of
+ * those act on something nobody wrote.
+ */
+const SystemNote: FC = () => {
+  return (
+    <div data-slot="aui_system-note" className="flex justify-center px-2">
+      <div className="text-muted-foreground text-center text-[13px] leading-relaxed">
+        <MessagePrimitive.Parts components={{ Text: MarkdownText }} />
+      </div>
+    </div>
+  );
+};
+
+/**
+ * A staff reply in a transcript: the support side's bubble, on the right where the viewer's own
+ * words belong. The model's answers keep the full-width layout; staff get a bubble in the
+ * primary colour, so the two sides read apart even before the name above them. The action bar is
+ * the shared one — retry already limits itself to the model's answers.
+ */
+const StaffMessage: FC = () => {
+  return (
+    <MessagePrimitive.Root
+      data-slot="aui_staff-message-root"
+      className="fade-in slide-in-from-bottom-1 animate-in grid auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 duration-150 [contain-intrinsic-size:auto_200px] [content-visibility:auto] [&:where(>*)]:col-start-2"
+      data-role="assistant"
+    >
+      <div className="aui-staff-message-content-wrapper relative col-start-2 min-w-0">
+        <div className="mb-1 flex justify-end">
+          <MessageSpeaker />
+        </div>
+        <div className="aui-staff-message-content bg-primary text-primary-foreground rounded-xl px-4 py-2 wrap-break-word empty:hidden ml-auto w-fit max-w-full">
+          <MessagePrimitive.Parts components={{ Text: MarkdownText }} />
+        </div>
+      </div>
+
+      <div
+        data-slot="aui_staff-message-footer"
+        className="col-span-full flex items-center justify-end"
+      >
+        <BranchPicker />
+        <AssistantActionBar />
+      </div>
+    </MessagePrimitive.Root>
+  );
+};
+
 const AssistantMessage: FC = () => {
   const {
+    OpenUI: OpenUIComponent = OpenUIAssistantMessage,
     ToolFallback: ToolFallbackComponent = ToolFallback,
     ToolGroup,
     ReasoningGroup,
@@ -570,8 +633,21 @@ const AssistantMessage: FC = () => {
   } = useContext(ThreadComponentsContext);
 
   const ACTION_BAR_PT = "pt-1.5";
+
   // Keep the action bar inside the contained root's paint box, then cancel its reserved space in flow.
   const ACTION_BAR_HEIGHT = `min-h-7.5 ${ACTION_BAR_PT}`;
+
+  // The host's own lines ("Dana joined") are assistant rows with a system speaker. They read as
+  // events, not answers: centered, with no action bar.
+  const speaker = useSpeaker();
+
+  const isTranscript = useContext(TranscriptModeContext);
+
+  if (speaker?.kind === "system") return <SystemNote />;
+
+  // A staff reply is the support side talking, so in a transcript it gets that side's bubble
+  // rather than the model's full-width answer layout.
+  if (isTranscript && speaker?.kind === "human") return <StaffMessage />;
 
   return (
     <MessagePrimitive.Root
@@ -623,7 +699,7 @@ const AssistantMessage: FC = () => {
                 );
               }
               case "text":
-                return <MarkdownText />;
+                return <OpenUIComponent />;
               case "reasoning":
                 return <Reasoning {...part} />;
               case "tool-call":
@@ -677,6 +753,11 @@ const AssistantMessage: FC = () => {
 };
 
 const AssistantActionBar: FC = () => {
+  // Retry replays the turn's request. A staff reply is history, not a request, so only the
+  // model's own answers offer it; copy and export stay for every real message.
+  const speaker = useSpeaker();
+  const canRetry = !speaker || speaker.kind === "agent";
+
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
@@ -693,7 +774,7 @@ const AssistantActionBar: FC = () => {
           </AuiIf>
         </TooltipIconButton>
       </ActionBarPrimitive.Copy>
-      <Regenerate />
+      {canRetry ? <Regenerate /> : null}
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger asChild>
           <TooltipIconButton tooltip="More" className="data-[state=open]:bg-accent">
@@ -730,22 +811,56 @@ const UserImagePart: ImageMessagePartComponent = (part) => (
   </div>
 );
 
+/**
+ * The visitor's bubble in a transcript. The live chat shows no author — there is only one person
+ * who could have written it — but a handoff has three, so the bubble is signed "Visitor" and the
+ * edit affordance is gone: history is read, not rewritten.
+ */
 const UserMessage: FC = () => {
+  const isTranscript = useContext(TranscriptModeContext);
+
   return (
     <MessagePrimitive.Root
       data-slot="aui_user-message-root"
-      className="fade-in slide-in-from-bottom-1 animate-in grid auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 duration-150 [contain-intrinsic-size:auto_200px] [content-visibility:auto] [&:where(>*)]:col-start-2"
+      className={cn(
+        "fade-in slide-in-from-bottom-1 animate-in grid auto-rows-auto content-start gap-y-2 px-2 duration-150 [contain-intrinsic-size:auto_200px] [content-visibility:auto]",
+        // The live chat's caller reads their own words: right. A transcript's viewer is staff,
+        // so the visitor is the other side: left, with staff bubbles answering from the right.
+        isTranscript
+          ? "grid-cols-[auto_minmax(72px,1fr)] [&:where(>*)]:col-start-1"
+          : "grid-cols-[minmax(72px,1fr)_auto] [&:where(>*)]:col-start-2",
+      )}
       data-role="user"
     >
       <UserMessageAttachments />
 
-      <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
-        <div className="aui-user-message-content peer bg-muted text-foreground rounded-xl px-4 py-2 wrap-break-word empty:hidden">
+      <div
+        className={cn(
+          "aui-user-message-content-wrapper relative min-w-0",
+          isTranscript ? "col-start-1" : "col-start-2",
+        )}
+      >
+        {isTranscript ? (
+          <div
+            data-slot="aui_user-message-author"
+            className="text-muted-foreground mb-1 flex items-center justify-start gap-1.5 text-xs"
+          >
+            <span className="font-medium">Visitor</span>
+          </div>
+        ) : null}
+        <div
+          className={cn(
+            "aui-user-message-content peer rounded-xl px-4 py-2 wrap-break-word empty:hidden",
+            isTranscript ? "bg-muted text-foreground" : "bg-primary text-primary-foreground",
+          )}
+        >
           <MessagePrimitive.Parts components={{ File: UserFilePart, Image: UserImagePart }} />
         </div>
-        <div className="aui-user-action-bar-wrapper absolute start-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden rtl:translate-x-full">
-          <UserActionBar />
-        </div>
+        {isTranscript ? null : (
+          <div className="aui-user-action-bar-wrapper absolute start-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden rtl:translate-x-full">
+            <UserActionBar />
+          </div>
+        )}
       </div>
 
       <BranchPicker

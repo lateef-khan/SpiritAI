@@ -26,7 +26,7 @@ namespace SpiritAI.Tests.Hosting;
 /// </remarks>
 public sealed class ProxyHeaderTests
 {
-    private const string Public = "/v1/public/chat/completions";
+    private const string Public = "/v1/public/responses";
 
     [Fact]
     public async Task ReadsTheCallerFromFlysHeader()

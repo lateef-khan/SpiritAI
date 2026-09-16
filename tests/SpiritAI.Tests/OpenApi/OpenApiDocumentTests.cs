@@ -9,8 +9,18 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
+using SpiritAI.Auth.Users;
+using SpiritAI.Handoffs.Desk;
+using SpiritAI.Handoffs.Mail;
+using SpiritAI.Handoffs.Notifications;
+using SpiritAI.Handoffs.Staff;
+using SpiritAI.Handoffs.Store;
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
+using SpiritAI.RealTime.Presence;
+using SpiritAI.Tests.Auth.Users;
+using SpiritAI.Tests.Handoffs;
+using SpiritAI.Tests.RealTime;
 using SpiritAI.Threads;
 
 using Xunit;
@@ -29,7 +39,7 @@ namespace SpiritAI.Tests.OpenApi;
 /// unbuildable in exactly the place it is needed most.
 /// </para>
 /// <para>
-/// Only the routes the browser generates a client for are mapped. AgentCore's chat endpoint is
+/// Only the routes the browser generates a client for are mapped. AgentCore's Responses endpoint is
 /// deliberately absent: it answers with an SSE stream that <c>transport.ts</c> reads by hand, and a
 /// generated client for it would be wrong rather than merely unused.
 /// </para>
@@ -50,6 +60,12 @@ public sealed class OpenApiDocumentTests
         "deleteThread",
         "getUnit",
         "getOrder",
+        "listHandoffs",
+        "getHandoff",
+        "getHandoffMessages",
+        "claimHandoff",
+        "replyToHandoff",
+        "finishHandoff",
     ];
 
     /// <summary>
@@ -168,6 +184,18 @@ public sealed class OpenApiDocumentTests
                     services.AddSingleton<ICallTitler>(new SilentTitler());
                     services.AddSingleton(new UnitLookup(
                         (_, _, _) => ValueTask.FromResult(default(System.Text.Json.JsonElement))));
+
+                    // The inbox's routes, present so the route builder reads them as injected
+                    // services. Nothing calls them: no route is ever invoked here, so a fake
+                    // stands in for the real store, mailer, notifier, and presence table.
+                    services.AddSingleton<IUserDirectory>(new FakeUserDirectory());
+                    services.AddScoped<StaffGate>();
+                    services.AddSingleton(TimeProvider.System);
+                    services.AddSingleton<IHandoffStore>(new FakeHandoffStore(TimeProvider.System));
+                    services.AddSingleton<IHandoffNotifier>(new RecordingHandoffNotifier());
+                    services.AddSingleton<IPresenceStore>(new FakePresenceStore(TimeProvider.System, TimeSpan.FromSeconds(90)));
+                    services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());
+                    services.AddScoped<HandoffDesk>();
                 })
                 .Configure(app =>
                 {
@@ -176,6 +204,7 @@ public sealed class OpenApiDocumentTests
                     {
                         endpoints.MapThreads();
                         endpoints.MapLookup();
+                        endpoints.MapStaffHandoffs();
                         endpoints.MapOpenApi();
                     });
                 }))

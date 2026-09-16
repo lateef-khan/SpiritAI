@@ -9,7 +9,7 @@
     <ProjectReference Include="$(AgentCoreRoot)/src/AgentCore.Hosting/AgentCore.Hosting.csproj" />
   </ItemGroup>
   <ItemGroup Condition="'$(UseLocalAgentCore)' != 'true'">
-    <PackageReference Include="AgentCore.Hosting" Version="0.7.1" />
+    <PackageReference Include="AgentCore.Hosting" Version="0.8.0" />
   </ItemGroup>
 
   <!--
@@ -18,7 +18,7 @@
     Bump alongside AgentCore.
   -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.AI" Version="10.8.3" />
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.10.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,6 +27,22 @@
 
   <ItemGroup>
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Resend" Version="0.17.0" />
   </ItemGroup>
 
   <ItemGroup>
