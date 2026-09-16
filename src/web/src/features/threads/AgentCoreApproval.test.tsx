@@ -1,5 +1,5 @@
 import { Thread, type ThreadComponents } from "@/components/assistant-ui/thread";
-
+import "@/components/assistant-ui/openui-renderer";
 import { useAui } from "@assistant-ui/store";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
