@@ -2,6 +2,8 @@ using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Mvc;
 
+using SpiritAI.Hosting;
+
 namespace SpiritAI.Threads;
 
 /// <summary>
@@ -20,9 +22,11 @@ public interface IThreadSessions
     ValueTask ReopenAsync(string callId, CancellationToken cancellationToken = default);
 }
 
-/// <summary>The two answers, from AgentCore's own session table.</summary>
-internal sealed class AgentCoreThreadSessions(ICallSessions sessions) : IThreadSessions
+/// <summary>The two answers, from the session table of the one entry this host serves.</summary>
+internal sealed class AgentCoreThreadSessions(ICallSessionRegistry registry) : IThreadSessions
 {
+    private readonly ICallSessions sessions = registry.ForSessions(AgentCoreExtensions.Entry);
+
     /// <inheritdoc />
     public async ValueTask<bool> IsLiveAsync(string callId, CancellationToken cancellationToken = default)
         => await sessions.TryGetAsync(callId, cancellationToken).ConfigureAwait(false) is not null;

@@ -6,6 +6,8 @@ using AgentCore.AspNetCore.Endpoints;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
+using SpiritAI.Hosting;
+
 namespace SpiritAI.PublicChat;
 
 /// <summary>Registers the public widget endpoint and the limiter in front of every public route.</summary>
@@ -122,7 +124,7 @@ public static class PublicChatEndpointExtensions
 
         if (settings.Enabled)
         {
-            app.MapResponses(settings.Pattern);
+            app.MapResponses(settings.Pattern, AgentCoreExtensions.Entry);
         }
 
         return app;

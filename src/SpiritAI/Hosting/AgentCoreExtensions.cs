@@ -24,6 +24,9 @@ public static class AgentCoreExtensions
     /// <summary>The <c>binds:</c> name <c>spirit.yaml</c> gives the bot's door into the handoff queue.</summary>
     public const string RequestHumanBinding = "RequestHuman";
 
+    /// <summary>The <c>entries:</c> key every route and store reads. Staff and visitors share it.</summary>
+    public const string Entry = "main";
+
     /// <summary>Registers AgentCore, carrying this host's analyzers and bindings.</summary>
     /// <param name="builder">The host being built.</param>
     /// <returns>The same builder, so a host chains its calls.</returns>

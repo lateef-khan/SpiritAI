@@ -72,7 +72,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.MapAgentCoreHost();
+app.MapAgentCoreHost(responsesEntry: AgentCoreExtensions.Entry, callEntry: AgentCoreExtensions.Entry);
 
 app.MapPublicChat();
 
