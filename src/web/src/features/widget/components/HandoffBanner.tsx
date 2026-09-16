@@ -12,18 +12,19 @@ import type { HandoffState } from "../api/widgetApi";
 /** Where the chat stands, and how to leave an email. */
 export type HandoffBannerProps = {
   state: HandoffState;
+  typing?: boolean;
   onLeaveEmail: (email: string) => Promise<void>;
 };
 
 /** The one line that says where the chat stands. */
-function Line({ state }: { state: HandoffState }) {
+function Line({ state, typing }: { state: HandoffState; typing: boolean }) {
   if (state.status === "human") {
+    const name = state.assigneeName ?? "A member of staff";
     return (
       <p className="flex items-center gap-2">
         <HeadsetIcon className="size-4 shrink-0" aria-hidden />
         <span>
-          <span className="font-medium">{state.assigneeName ?? "A member of staff"}</span> is with
-          you.
+          <span className="font-medium">{name}</span> {typing ? "is typing…" : "is with you."}
         </span>
       </p>
     );
@@ -91,7 +92,7 @@ function EmailBox({ onLeaveEmail }: { onLeaveEmail: (email: string) => Promise<v
   );
 }
 
-export function HandoffBanner({ state, onLeaveEmail }: HandoffBannerProps) {
+export function HandoffBanner({ state, typing = false, onLeaveEmail }: HandoffBannerProps) {
   if (state.status !== "waiting" && state.status !== "human") return null;
 
   const asksForEmail = state.status === "waiting" && state.staffOnline === 0;
@@ -101,7 +102,7 @@ export function HandoffBanner({ state, onLeaveEmail }: HandoffBannerProps) {
       role="status"
       className="bg-muted text-foreground border-border/60 flex flex-col gap-2 border-b ps-4 pe-10 py-3 text-sm"
     >
-      <Line state={state} />
+      <Line state={state} typing={typing} />
       {asksForEmail &&
         (state.email ? (
           <p className="text-muted-foreground flex items-center gap-2">

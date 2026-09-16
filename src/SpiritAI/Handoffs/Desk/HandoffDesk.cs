@@ -141,6 +141,34 @@ public sealed class HandoffDesk(
     }
 
     /// <summary>
+    /// Writes one of the host's own lines, "Dana joined" or "Dana left", into a chat, and pushes it
+    /// the way any other message of the human phase is pushed: both screens draw it the moment it
+    /// is written, not the next time they read the history.
+    /// </summary>
+    /// <param name="callId">The chat.</param>
+    /// <param name="text">The line.</param>
+    /// <param name="cancellationToken">Cancels the work.</param>
+    /// <returns>The message as it was pushed.</returns>
+    public async Task<HandoffMessage> NoteAsync(string callId, string text, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(callId);
+        ArgumentException.ThrowIfNullOrEmpty(text);
+
+        var speaker = HandoffSpeaker.System();
+        var at = clock.GetUtcNow();
+        var line = new ChatMessage(ChatRole.Assistant, text) { CreatedAt = at };
+        SpeakerProperty.Attach(line, speaker);
+
+        var row = await calls.AppendMessageAsync(callId, line, cancellationToken).ConfigureAwait(false);
+
+        var created = new HandoffMessage(callId, row.MessageId, StaffRole, text, speaker, at);
+
+        await notifier.MessageCreatedAsync(created, cancellationToken).ConfigureAwait(false);
+
+        return created;
+    }
+
+    /// <summary>
     /// Puts a member of staff's words in the chat they hold, and mails them on when the visitor is
     /// not there to read them.
     /// </summary>

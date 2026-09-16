@@ -11,7 +11,7 @@ import { flatten, sourceContent, toolContent } from "@/features/threads/AgentCor
 import { runTurn, TurnRefusedError, type TurnState } from "@/features/threads/transport";
 import { HostRefusedError, type FetchLike } from "@/lib/apiClient";
 import { readVisitorMemory, rememberCall } from "../api/visitorIdentity";
-import type { WidgetApi } from "../api/widgetApi";
+import type { WidgetApi, WireHandoffMessage } from "../api/widgetApi";
 import type { HandoffDesk } from "./useHandoffDesk";
 
 /**
@@ -97,6 +97,42 @@ function withPerson(status: string): boolean {
 }
 
 /**
+ * One message of the human phase as the widget holds it: a staff reply, or the host saying who
+ * joined or left. Drawn under the speaker's name, the way `speaker.tsx` reads it.
+ */
+function heldFrom(message: WireHandoffMessage): Held {
+  return {
+    id: message.messageId,
+    role: "assistant",
+    content: [{ type: "text", text: message.text }],
+    createdAt: new Date(message.at),
+    status: { type: "complete", reason: "stop" },
+    metadata: {
+      custom: {
+        ...(message.speaker ? { speaker: message.speaker } : {}),
+        hostMessageId: message.messageId,
+      },
+    },
+  };
+}
+
+/** Whether the widget already holds the host's row of that name. */
+function holds(held: readonly Held[], messageId: string): boolean {
+  return held.some((message) => hostMessageId(message) === messageId);
+}
+
+/** What the widget hands `AssistantRuntimeProvider`, and the ways the outside reaches in. */
+export type WidgetRuntime = {
+  readonly runtime: AssistantRuntime;
+  /** The call the widget talks in, or `null` until the first send makes one. */
+  readonly callId: string | null;
+  /** Takes one pushed message of the human phase. The visitor's own are already on screen. */
+  receive(message: WireHandoffMessage): void;
+  /** Reads the whole chat again from the host. What was already held is replaced, not doubled. */
+  reload(): Promise<void>;
+};
+
+/**
  * Binds assistant-ui to the widget's own thread on the host.
  *
  * @param endpoint The public Responses route.
@@ -110,40 +146,52 @@ export function useWidgetRuntime(
   api: WidgetApi,
   send: FetchLike,
   desk: HandoffDesk,
-): AssistantRuntime {
+): WidgetRuntime {
   const [messages, setMessages] = useState<readonly Held[]>([]);
   const [isRunning, setRunning] = useState(false);
-  // A ref and not state: the turn under way reads it, and cancelling must not wait for a paint.
+  const [callId, setCallId] = useState<string | null>(() => readVisitorMemory().callId);
   const abortRef = useRef<AbortController | null>(null);
 
-  // A remembered call is restored on mount. A 404 means the host has forgotten it — a retention
-  // sweep, a database reset — and the widget forgets it too. Any other refusal keeps the id and
-  // shows nothing; the next send finds out.
-  useEffect(() => {
-    const { callId } = readVisitorMemory();
-    if (callId === null) return;
+  const remember = useCallback((id: string | null) => {
+    rememberCall(id);
+    setCallId(id);
+  }, []);
 
-    let cancelled = false;
+  /**
+   * Reads the whole chat from the host. A 404 means the host has forgotten the call — a
+   * retention sweep, a database reset — and the widget forgets it too. Any other refusal keeps
+   * the id and what is on screen; the next send finds out.
+   */
+  const reload = useCallback((): Promise<void> => {
+    const id = readVisitorMemory().callId;
+    if (id === null) return Promise.resolve();
 
-    api
-      .history(callId)
-      .then((history) => {
-        if (cancelled) return;
+    return api.history(id).then(
+      (history) => {
         setMessages(
           history.messages.map(({ message }) => ({
             ...message,
             id: message.id ?? crypto.randomUUID(),
           })),
         );
-      })
-      .catch((error: unknown) => {
-        if (!cancelled && callIsGone(error)) rememberCall(null);
-      });
+      },
+      (error: unknown) => {
+        if (callIsGone(error)) remember(null);
+      },
+    );
+  }, [api, remember]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [api]);
+  // A remembered call is restored on mount.
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const receive = useCallback((message: WireHandoffMessage) => {
+    // The visitor's own words are on screen from the moment they were typed; the push is the
+    // host telling staff. A row the reload already brought is not doubled either.
+    if (message.role === "user") return;
+    setMessages((held) => (holds(held, message.messageId) ? held : [...held, heldFrom(message)]));
+  }, []);
 
   const replace = useCallback((id: string, next: (held: Held) => Held) => {
     setMessages((held) => held.map((message) => (message.id === id ? next(message) : message)));
@@ -237,26 +285,26 @@ export function useWidgetRuntime(
         withPerson(status) ? person(callId) : bot(callId);
 
       try {
-        let callId = readVisitorMemory().callId;
-        if (callId === null) {
-          callId = await api.createThread();
-          rememberCall(callId);
+        let id = readVisitorMemory().callId;
+        if (id === null) {
+          id = await api.createThread();
+          remember(id);
         }
 
         try {
-          await through(desk.state.status, callId);
+          await through(desk.state.status, id);
         } catch (error) {
           if (wrongDoor(error)) {
             // The chat changed hands since the state was read. Read it again and go through
             // the other door, once.
-            const fresh = await desk.refresh(callId);
-            await through(fresh.status, callId);
+            const fresh = await desk.refresh(id);
+            await through(fresh.status, id);
           } else if (callIsGone(error)) {
             // The host forgot the call. The words on screen are the visitor's and stay; the host
             // starts a fresh call for them, and a fresh call is always with the bot. Once.
-            rememberCall(null);
+            remember(null);
             const fresh = await api.createThread();
-            rememberCall(fresh);
+            remember(fresh);
             await bot(fresh);
           } else {
             throw error;
@@ -283,18 +331,20 @@ export function useWidgetRuntime(
         setRunning(false);
       }
     },
-    [api, desk, messages, replace, runBot],
+    [api, desk, messages, remember, replace, runBot],
   );
 
   const onCancel = useCallback(async () => {
     abortRef.current?.abort();
   }, []);
 
-  return useExternalStoreRuntime<Held>({
+  const runtime = useExternalStoreRuntime<Held>({
     messages,
     isRunning,
     onNew,
     onCancel,
     convertMessage: (message) => message,
   });
+
+  return { runtime, callId, receive, reload };
 }

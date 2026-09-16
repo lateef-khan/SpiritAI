@@ -25,6 +25,8 @@ export type HandoffDesk = {
   refresh(callId: string): Promise<HandoffState>;
   /** Leaves an email on the waiting row of the remembered call. */
   leaveEmail(email: string): Promise<void>;
+  /** Moves the state the way a push said it moved, without a read. The next open reads the truth. */
+  apply(change: Partial<HandoffState>): void;
 };
 
 /**
@@ -85,5 +87,9 @@ export function useHandoffDesk(api: WidgetApi): HandoffDesk {
     [api],
   );
 
-  return { state, refresh, leaveEmail };
+  const apply = useCallback((change: Partial<HandoffState>) => {
+    setState((held) => ({ ...held, ...change }));
+  }, []);
+
+  return { state, refresh, leaveEmail, apply };
 }

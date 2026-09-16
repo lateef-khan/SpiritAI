@@ -22,7 +22,7 @@ export class NotSignedInError extends Error {}
 /**
  * Reads the current access token.
  */
-async function currentToken(): Promise<string | null> {
+export async function currentToken(): Promise<string | null> {
   if (cached && Date.now() < cached.until) return cached.token;
 
   const token = (await fromSession()) ?? (await fromTokenEndpoint());

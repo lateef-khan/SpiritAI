@@ -6,9 +6,11 @@ import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { readVisitorMemory, visitorFetch } from "./features/widget/api/visitorIdentity";
 import { createWidgetApi } from "./features/widget/api/widgetApi";
+import { TypingReporter } from "./features/handoff/TypingReporter";
 import { HandoffBanner } from "./features/widget/components/HandoffBanner";
 import { useHandoffDesk } from "./features/widget/hooks/useHandoffDesk";
 import { useWidgetRuntime } from "./features/widget/hooks/useWidgetRuntime";
+import { useWidgetSocket } from "./features/widget/hooks/useWidgetSocket";
 
 /**
  * The embeddable form of the chat: a bubble on someone else's page that opens into a panel.
@@ -64,13 +66,28 @@ function useFrameSize(phase: Phase) {
 
 export function Widget() {
   const desk = useHandoffDesk(api);
-  const runtime = useWidgetRuntime(endpoint, api, send, desk);
+  const widget = useWidgetRuntime(endpoint, api, send, desk);
   const [phase, setPhase] = useState<Phase>("closed");
+  // Replies that landed while the panel was closed. The bubble shows the count; opening clears it.
+  const [unread, setUnread] = useState(0);
+
+  const { typing, sayTyping } = useWidgetSocket({
+    desk,
+    widget,
+    onMessage: () => {
+      if (phase === "closed") setUnread((n) => n + 1);
+    },
+  });
 
   useFrameSize(phase);
 
+  const open = () => {
+    setUnread(0);
+    setPhase("open");
+  };
+
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
+    <AssistantRuntimeProvider runtime={widget.runtime}>
       <TooltipProvider>
         <div className="flex h-dvh w-full items-end justify-end p-3">
           {phase === "open" ? (
@@ -83,11 +100,12 @@ export function Widget() {
               >
                 <XIcon className="size-4" />
               </button>
-              <HandoffBanner state={desk.state} onLeaveEmail={desk.leaveEmail} />
+              <HandoffBanner state={desk.state} typing={typing} onLeaveEmail={desk.leaveEmail} />
               <Thread components={WIDGET_COMPONENTS} />
+              <TypingReporter sayTyping={sayTyping} />
             </div>
           ) : (
-            <LauncherBubble unread={0} onToggle={() => setPhase("open")} />
+            <LauncherBubble unread={unread} onToggle={open} />
           )}
         </div>
       </TooltipProvider>

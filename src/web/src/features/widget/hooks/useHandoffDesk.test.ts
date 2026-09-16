@@ -100,4 +100,23 @@ describe("useHandoffDesk", () => {
     expect(emails).toEqual([{ callId: "call-kept", email: "pat@example.com" }]);
     expect(view.result.current.state.email).toBe("pat@example.com");
   });
+
+  it("applies what a push said, over what it holds", async () => {
+    rememberCall("call-kept");
+    const { api } = fakeApi(async () => waiting);
+
+    const view = renderHook(() => useHandoffDesk(api));
+    await waitFor(() => expect(view.result.current.state.status).toBe("waiting"));
+
+    act(() =>
+      view.result.current.apply({ status: "human", position: null, assigneeName: "Dana R." }),
+    );
+
+    expect(view.result.current.state).toEqual({
+      ...waiting,
+      status: "human",
+      position: null,
+      assigneeName: "Dana R.",
+    });
+  });
 });

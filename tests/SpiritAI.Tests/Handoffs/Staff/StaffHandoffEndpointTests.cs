@@ -130,6 +130,12 @@ public sealed class StaffHandoffEndpointTests
         Assert.Equal(ChatRole.Assistant, note.Content.Role);
         Assert.Equal("Dana R. joined", note.Content.Text);
         Assert.Equal("system", SpeakerProperty.Read(note.Content)?.GetProperty("kind").GetString());
+
+        var pushed = Assert.Single(world.Notifier.Pushed, push => push.Event == "message.created");
+        var line = Assert.IsType<HandoffMessage>(pushed.Payload);
+        Assert.Equal("Dana R. joined", line.Text);
+        Assert.Equal("system", line.Speaker?.Kind);
+        Assert.Equal(note.MessageId, line.MessageId);
     }
 
     [Fact]

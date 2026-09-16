@@ -133,6 +133,9 @@ function fakeDesk(
       return next;
     },
     leaveEmail: async () => {},
+    apply: (change: Partial<HandoffState>) => {
+      desk.state = { ...desk.state, ...change };
+    },
   };
   return desk;
 }
@@ -180,7 +183,7 @@ const stored: ExportedMessageRepository = {
 };
 
 /** The text of every message the runtime holds, in order. */
-function texts(runtime: ReturnType<typeof useWidgetRuntime>): string[] {
+function texts({ runtime }: ReturnType<typeof useWidgetRuntime>): string[] {
   return runtime.thread.getState().messages.map((message) =>
     message.content
       .filter((part): part is { type: "text"; text: string } => part.type === "text")
@@ -189,7 +192,7 @@ function texts(runtime: ReturnType<typeof useWidgetRuntime>): string[] {
   );
 }
 
-async function send(runtime: ReturnType<typeof useWidgetRuntime>, text: string) {
+async function send({ runtime }: ReturnType<typeof useWidgetRuntime>, text: string) {
   await act(async () => {
     await runtime.thread.append({ role: "user", content: [{ type: "text", text }] });
   });
@@ -290,7 +293,7 @@ describe("useWidgetRuntime", () => {
     await send(view.result.current, "hi");
 
     await waitFor(() =>
-      expect(view.result.current.thread.getState().messages.at(-1)?.status).toMatchObject({
+      expect(view.result.current.runtime.thread.getState().messages.at(-1)?.status).toMatchObject({
         type: "incomplete",
         reason: "error",
       }),
@@ -310,7 +313,7 @@ describe("useWidgetRuntime", () => {
     await send(view.result.current, "are you there?");
 
     await waitFor(() => expect(said).toEqual([{ callId: "call-kept", text: "are you there?" }]));
-    const held = view.result.current.thread.getState().messages;
+    const held = view.result.current.runtime.thread.getState().messages;
     expect(held.map((m) => m.role)).toEqual(["user"]);
     expect(held[0]?.metadata.custom).toMatchObject({ hostMessageId: "host-said" });
     expect(sent).toEqual([]);
@@ -366,6 +369,99 @@ describe("useWidgetRuntime", () => {
 
     await waitFor(() => expect(said).toEqual([{ callId: "call-kept", text: "still there?" }]));
     expect(desk.refreshed).toBe(1);
-    expect(view.result.current.thread.getState().messages.map((m) => m.role)).toEqual(["user"]);
+    expect(view.result.current.runtime.thread.getState().messages.map((m) => m.role)).toEqual([
+      "user",
+    ]);
+  });
+
+  it("takes a pushed reply once, and never the visitor's own words", async () => {
+    rememberCall("call-kept");
+    const { api } = fakeApi(async () => ({ messages: [] }));
+    const { send: fetch } = scripted([]);
+
+    const view = renderHook(() =>
+      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(waiting)),
+    );
+
+    const reply = {
+      callId: "call-kept",
+      messageId: "host-9",
+      role: "assistant",
+      text: "Hi, Dana here.",
+      speaker: { kind: "human", name: "Dana R.", detail: "Support" },
+      at: "2026-09-16T09:00:00Z",
+    };
+    act(() => {
+      view.result.current.receive(reply);
+      view.result.current.receive(reply);
+      view.result.current.receive({ ...reply, messageId: "host-10", role: "user", text: "me" });
+    });
+
+    const held = view.result.current.runtime.thread.getState().messages;
+    expect(texts(view.result.current)).toEqual(["Hi, Dana here."]);
+    expect(held[0]?.metadata.custom).toMatchObject({
+      speaker: { kind: "human", name: "Dana R." },
+      hostMessageId: "host-9",
+    });
+  });
+
+  it("does not double a pushed reply the reload already brought", async () => {
+    rememberCall("call-kept");
+    const stored: ExportedMessageRepository = {
+      headId: "host-9",
+      messages: [
+        {
+          parentId: null,
+          message: {
+            id: "host-9",
+            role: "assistant",
+            content: [{ type: "text", text: "Hi, Dana here." }],
+            createdAt: new Date("2026-09-16T09:00:00Z"),
+            status: { type: "complete", reason: "stop" },
+            metadata: {
+              unstable_state: null,
+              unstable_annotations: [],
+              unstable_data: [],
+              steps: [],
+              custom: { hostMessageId: "host-9" },
+            },
+          },
+        },
+      ],
+    };
+    const { api } = fakeApi(async () => stored);
+    const { send: fetch } = scripted([]);
+
+    const view = renderHook(() =>
+      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(waiting)),
+    );
+    await waitFor(() => expect(texts(view.result.current)).toEqual(["Hi, Dana here."]));
+
+    act(() => {
+      view.result.current.receive({
+        callId: "call-kept",
+        messageId: "host-9",
+        role: "assistant",
+        text: "Hi, Dana here.",
+        speaker: null,
+        at: "2026-09-16T09:00:00Z",
+      });
+    });
+
+    expect(texts(view.result.current)).toEqual(["Hi, Dana here."]);
+  });
+
+  it("follows the call id as it is made", async () => {
+    const { api } = fakeApi(async () => ({ messages: [] }));
+    const { send: fetch } = scripted([reply("hello")]);
+
+    const view = renderHook(() =>
+      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
+    );
+    expect(view.result.current.callId).toBeNull();
+
+    await send(view.result.current, "hi");
+
+    await waitFor(() => expect(view.result.current.callId).toBe("call-1"));
   });
 });

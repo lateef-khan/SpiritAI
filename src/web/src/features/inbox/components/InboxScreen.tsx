@@ -11,6 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 import type { Handoff } from "../api/handoffsApi";
 import { useHandoffs, type InboxView } from "../hooks/useHandoffs";
+import { useInboxSocket } from "../hooks/useInboxSocket";
 import { HandoffChat } from "./HandoffChat";
 import { InboxPanel } from "./InboxPanel";
 
@@ -67,6 +68,12 @@ export function InboxScreen({
     onSelectionChange(selected);
   }, [selected, onSelectionChange]);
 
+  const { typing, sayTyping } = useInboxSocket({
+    selectedCallId: selected?.callId ?? null,
+    reloadList: reload,
+    reloadTranscript: transcript.reload,
+  });
+
   function handleSelect(row: Handoff) {
     setSelectedId(row.id);
     setPinned(row);
@@ -113,6 +120,8 @@ export function InboxScreen({
             error={transcript.error}
             reload={transcript.reload}
             meKey={meKey}
+            typing={typing}
+            onTyping={sayTyping}
             onChanged={handleChanged}
             onBack={clearSelection}
           />
@@ -145,6 +154,8 @@ export function InboxScreen({
             error={transcript.error}
             reload={transcript.reload}
             meKey={meKey}
+            typing={typing}
+            onTyping={sayTyping}
             onChanged={handleChanged}
           />
         ) : (

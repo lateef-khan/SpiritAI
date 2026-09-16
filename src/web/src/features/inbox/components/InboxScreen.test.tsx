@@ -20,6 +20,9 @@ vi.mock("@/api/sdk.gen", () => ({
   claimHandoff: vi.fn(),
 }));
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: vi.fn(() => false) }));
+// No socket here: the screen's list and pick are what is under test, and the real hub would try
+// to reach a host that does not exist.
+vi.mock("@/lib/realtime/useSocket", () => ({ useSocket: () => ({ signal: async () => {} }) }));
 
 const { listHandoffs, claimHandoff } = await import("@/api/sdk.gen");
 const { useIsMobile } = await import("@/hooks/use-mobile");

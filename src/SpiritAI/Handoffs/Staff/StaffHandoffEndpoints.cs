@@ -185,7 +185,6 @@ public static class StaffHandoffEndpoints
         ICallStore calls,
         IHandoffNotifier notifier,
         HandoffDesk desk,
-        TimeProvider clock,
         string callId,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (key, member) =>
@@ -204,7 +203,7 @@ public static class StaffHandoffEndpoints
                     break;
             }
 
-            await NoteAsync(calls, clock, callId, $"{member.Name} joined", cancellationToken).ConfigureAwait(false);
+            await desk.NoteAsync(callId, $"{member.Name} joined", cancellationToken).ConfigureAwait(false);
 
             await notifier.ClaimedAsync(callId, new HandoffAssignee(key, member.Name), cancellationToken).ConfigureAwait(false);
 
@@ -258,7 +257,6 @@ public static class StaffHandoffEndpoints
         ICallStore calls,
         IHandoffNotifier notifier,
         HandoffDesk desk,
-        TimeProvider clock,
         string callId,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (_, _) =>
@@ -279,7 +277,7 @@ public static class StaffHandoffEndpoints
 
             if (leaving is not null)
             {
-                await NoteAsync(calls, clock, callId, $"{leaving} left", cancellationToken).ConfigureAwait(false);
+                await desk.NoteAsync(callId, $"{leaving} left", cancellationToken).ConfigureAwait(false);
             }
 
             await notifier.DoneAsync(callId, cancellationToken).ConfigureAwait(false);
@@ -289,20 +287,6 @@ public static class StaffHandoffEndpoints
 
             return TypedResults.NoContent();
         });
-
-    /// <summary>Writes one of the host's own lines, "joined" or "left", into the chat.</summary>
-    private static async Task NoteAsync(
-        ICallStore calls,
-        TimeProvider clock,
-        string callId,
-        string text,
-        CancellationToken cancellationToken)
-    {
-        var line = new ChatMessage(ChatRole.Assistant, text) { CreatedAt = clock.GetUtcNow() };
-        SpeakerProperty.Attach(line, HandoffSpeaker.System());
-
-        await calls.AppendMessageAsync(callId, line, cancellationToken).ConfigureAwait(false);
-    }
 
     private static ProblemHttpResult Problem(int statusCode, string title, string detail)
         => TypedResults.Problem(detail, statusCode: statusCode, title: title);
