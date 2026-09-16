@@ -78,7 +78,8 @@ export function visitorFetch(
   send: FetchLike = (input, init) => fetch(input, init),
 ): FetchLike {
   return (input, init) => {
-    const headers = new Headers(init?.headers);
+    const headers = new Headers(input instanceof Request ? input.headers : undefined);
+    new Headers(init?.headers).forEach((value, name) => headers.set(name, value));
     headers.set(VisitorHeader, memory().key);
 
     return send(input, { ...init, headers });

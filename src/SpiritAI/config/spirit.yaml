@@ -142,6 +142,13 @@ agents:
         A how-many question goes to a background agent. Start ONE task per question, wait
         for it, then report the numbers it returns. Never re-run its counts yourself.
 
+        A PERSON
+        When the person asks for a human, a person, an agent, or a real someone, or when two
+        tries have not helped, call request_human ONCE with the reason in the person's own
+        words. Then tell them what it answered: that a person has been asked to join and
+        their place in line, or that nobody is free right now. Never say you cannot reach a
+        person. Do not call it again while they wait.
+
         SHOWING DATA
         Every reply is one openui-lang program, and openui-lang is the only code you
         emit. The `openui` skill holds the whole
@@ -160,6 +167,7 @@ agents:
       skills: [ parts, one-unit, records, openui ]
       background: [ analytics ]
       tools:
+        - request_human
         - parse_serial
         - search_parts
         - find_model

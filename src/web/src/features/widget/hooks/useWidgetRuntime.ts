@@ -12,21 +12,14 @@ import { runTurn, TurnRefusedError, type TurnState } from "@/features/threads/tr
 import { HostRefusedError, type FetchLike } from "@/lib/apiClient";
 import { readVisitorMemory, rememberCall } from "../api/visitorIdentity";
 import type { WidgetApi } from "../api/widgetApi";
+import type { HandoffDesk } from "./useHandoffDesk";
 
 /**
  * The widget's runtime: a store the widget owns, bound to the host's public routes.
- *
- * The signed-in app runs on `useLocalRuntime`, which owns its messages and starts a bot turn on
- * every send. The widget cannot: a chat that a person has taken needs sends that go to that person
- * and start no turn, and words that arrive over a socket while nobody typed. Both are what an
- * external store is for — the widget holds the messages, `onNew` decides where a send goes, and
- * anything may append. Today every send is a bot turn; the other branches come with the human
- * phase.
- *
- * The call id is the widget's own, kept in `localStorage` beside the visitor's key, and sent as
- * the conversation of every turn so the host files the call under it. It is made lazily, on the
- * first send: a visitor who opens the bubble and leaves makes no row.
  */
+
+/** The tool the bot calls to ask for a person, as `spirit.yaml` names it. */
+const RequestHumanTool = "request_human";
 
 /** A message the widget holds, with the id the widget gave it. */
 type Held = ThreadMessageLike & { readonly id: string };
@@ -34,8 +27,8 @@ type Held = ThreadMessageLike & { readonly id: string };
 /**
  * Reads back the name the host stored one message under, when it carries one.
  *
- * A reply does; the visitor's own words travel under the name the widget gave them, which the
- * host keeps.
+ * A reply does, and so do the visitor's words once a person's door stored them; a bot turn's
+ * words travel under the name the widget gave them, which the host keeps.
  */
 function hostMessageId(message: Held): string {
   const custom = message.metadata?.custom as { hostMessageId?: unknown } | undefined;
@@ -76,17 +69,47 @@ function callIsGone(error: unknown): boolean {
 }
 
 /**
+ * Whether a refusal says the chat changed hands since the state was last read.
+ *
+ * Both doors answer 409 for exactly that: the chat door with `handoff_open` while a person has
+ * the chat, the handoff door with "The assistant has this chat." once nobody does.
+ */
+function wrongDoor(error: unknown): boolean {
+  return (
+    (error instanceof HostRefusedError || error instanceof TurnRefusedError) && error.status === 409
+  );
+}
+
+/** An empty reply, drawn as running until the turn fills it. */
+function pendingReply(): Held {
+  return {
+    id: crypto.randomUUID(),
+    role: "assistant",
+    content: [],
+    createdAt: new Date(),
+    status: { type: "running" },
+  };
+}
+
+/** Whether the desk's state sends words to a person rather than the bot. */
+function withPerson(status: string): boolean {
+  return status === "waiting" || status === "human";
+}
+
+/**
  * Binds assistant-ui to the widget's own thread on the host.
  *
  * @param endpoint The public Responses route.
  * @param api The widget's thread routes.
  * @param send How a turn reaches the host. Must carry the visitor's key.
+ * @param desk Where the chat stands, and how to read it again.
  * @returns The runtime to hand to `AssistantRuntimeProvider`.
  */
 export function useWidgetRuntime(
   endpoint: string,
   api: WidgetApi,
   send: FetchLike,
+  desk: HandoffDesk,
 ): AssistantRuntime {
   const [messages, setMessages] = useState<readonly Held[]>([]);
   const [isRunning, setRunning] = useState(false);
@@ -126,6 +149,39 @@ export function useWidgetRuntime(
     setMessages((held) => held.map((message) => (message.id === id ? next(message) : message)));
   }, []);
 
+  /** Runs one bot turn under `callId`, filling `replyId` as it streams. */
+  const runBot = useCallback(
+    async (
+      callId: string,
+      replyId: string,
+      input: string,
+      origin: { message_id: string; parent_id: string | null },
+      signal: AbortSignal,
+    ) => {
+      let askedForHuman = false;
+
+      for await (const state of runTurn({
+        endpoint,
+        session: { current: null },
+        threadId: callId,
+        input,
+        abortSignal: signal,
+        fetch: send,
+        origin,
+      })) {
+        askedForHuman ||= state.tools.some((tool) => tool.name === RequestHumanTool);
+        replace(replyId, (held) => replyFrom(held, state));
+      }
+
+      replace(replyId, (held) => ({ ...held, status: { type: "complete", reason: "stop" } }));
+
+      // The bot asked for a person. The row exists on the host now, and the desk is the only
+      // one who can say where in the line the chat stands.
+      if (askedForHuman) await desk.refresh(callId);
+    },
+    [desk, endpoint, replace, send],
+  );
+
   const onNew = useCallback(
     async (message: AppendMessage) => {
       const userId = crypto.randomUUID();
@@ -134,14 +190,6 @@ export function useWidgetRuntime(
         role: "user",
         content: message.content,
         createdAt: new Date(),
-      };
-      const replyId = crypto.randomUUID();
-      const reply: Held = {
-        id: replyId,
-        role: "assistant",
-        content: [],
-        createdAt: new Date(),
-        status: { type: "running" },
       };
 
       // The message the new one hangs off is whatever the widget held last, under the name the
@@ -153,25 +201,40 @@ export function useWidgetRuntime(
       };
       const input = flatten({ ...message, id: userId } as ThreadMessage).content;
 
-      setMessages((held) => [...held, user, reply]);
+      setMessages((held) => [...held, user]);
       setRunning(true);
 
       const controller = new AbortController();
       abortRef.current = controller;
 
-      const stream = async (callId: string) => {
-        for await (const state of runTurn({
-          endpoint,
-          session: { current: null },
-          threadId: callId,
-          input,
-          abortSignal: controller.signal,
-          fetch: send,
-          origin,
-        })) {
-          replace(replyId, (held) => replyFrom(held, state));
+      // The reply is made only for a bot turn. A person answers in their own time, and an empty
+      // row drawn as running would promise otherwise.
+      let reply: Held | null = null;
+
+      const bot = async (callId: string) => {
+        if (reply === null) {
+          const made = pendingReply();
+          reply = made;
+          setMessages((held) => [...held, made]);
         }
+        await runBot(callId, reply.id, input, origin, controller.signal);
       };
+
+      const person = async (callId: string) => {
+        if (reply !== null) {
+          const { id } = reply;
+          setMessages((held) => held.filter((m) => m.id !== id));
+          reply = null;
+        }
+        const created = await api.say(callId, input);
+        replace(userId, (held) => ({
+          ...held,
+          metadata: { custom: { hostMessageId: created.messageId } },
+        }));
+      };
+
+      const through = (status: string, callId: string) =>
+        withPerson(status) ? person(callId) : bot(callId);
 
       try {
         let callId = readVisitorMemory().callId;
@@ -181,34 +244,46 @@ export function useWidgetRuntime(
         }
 
         try {
-          await stream(callId);
+          await through(desk.state.status, callId);
         } catch (error) {
-          // The host forgot the call. The words on screen are the visitor's and stay; the host
-          // starts a fresh call for them. Once: a second 404 is an error.
-          if (!callIsGone(error)) throw error;
-
-          rememberCall(null);
-          const fresh = await api.createThread();
-          rememberCall(fresh);
-          await stream(fresh);
+          if (wrongDoor(error)) {
+            // The chat changed hands since the state was read. Read it again and go through
+            // the other door, once.
+            const fresh = await desk.refresh(callId);
+            await through(fresh.status, callId);
+          } else if (callIsGone(error)) {
+            // The host forgot the call. The words on screen are the visitor's and stay; the host
+            // starts a fresh call for them, and a fresh call is always with the bot. Once.
+            rememberCall(null);
+            const fresh = await api.createThread();
+            rememberCall(fresh);
+            await bot(fresh);
+          } else {
+            throw error;
+          }
         }
-
-        replace(replyId, (held) => ({ ...held, status: { type: "complete", reason: "stop" } }));
       } catch (error) {
-        replace(replyId, (held) => ({
-          ...held,
-          status: {
-            type: "incomplete",
-            reason: controller.signal.aborted ? "cancelled" : "error",
-            error: error instanceof Error ? error.message : String(error),
-          },
-        }));
+        // The failure lands on the reply when there is one — with whatever it had streamed — and
+        // on a reply made for the purpose when a person's door refused.
+        const status = {
+          type: "incomplete" as const,
+          reason: controller.signal.aborted ? ("cancelled" as const) : ("error" as const),
+          error: error instanceof Error ? error.message : String(error),
+        };
+        // Read through a widening: the closures above assign `reply`, which the narrowing here
+        // cannot see.
+        const id = (reply as Held | null)?.id;
+        setMessages((held) =>
+          id !== undefined && held.some((m) => m.id === id)
+            ? held.map((m) => (m.id === id ? { ...m, status } : m))
+            : [...held, { ...pendingReply(), status }],
+        );
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
         setRunning(false);
       }
     },
-    [api, endpoint, messages, replace, send],
+    [api, desk, messages, replace, runBot],
   );
 
   const onCancel = useCallback(async () => {

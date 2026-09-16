@@ -1042,7 +1042,8 @@
           "status",
           "position",
           "assigneeName",
-          "staffOnline"
+          "staffOnline",
+          "email"
         ],
         "type": "object",
         "properties": {
@@ -1065,6 +1066,12 @@
           "staffOnline": {
             "type": "integer",
             "format": "int32"
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

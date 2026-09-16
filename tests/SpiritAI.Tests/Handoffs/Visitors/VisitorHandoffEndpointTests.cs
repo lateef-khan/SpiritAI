@@ -118,6 +118,9 @@ public sealed class VisitorHandoffEndpointTests
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal("pat@example.com", Assert.Single(world.Store.Rows).Email);
+
+        var state = await world.Visitor.ReadAsync<HandoffState>($"{Handoff}/{callId}");
+        Assert.Equal("pat@example.com", state.Email);
     }
 
     [Fact]

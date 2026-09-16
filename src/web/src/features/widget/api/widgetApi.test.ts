@@ -10,9 +10,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/api/sdk.gen", () => ({
   createPublicThread: vi.fn(),
   getPublicThreadMessages: vi.fn(),
+  getHandoffState: vi.fn(),
+  leaveEmail: vi.fn(),
+  sendVisitorMessage: vi.fn(),
 }));
 
-const { createPublicThread, getPublicThreadMessages } = await import("@/api/sdk.gen");
+const { createPublicThread, getPublicThreadMessages, getHandoffState, sendVisitorMessage } =
+  await import("@/api/sdk.gen");
 const { createWidgetApi } = await import("./widgetApi");
 
 const send = async () => new Response();
@@ -54,5 +58,39 @@ describe("createWidgetApi", () => {
     });
     expect(history.headId).toBe("m1");
     expect(history.messages[0]?.message.createdAt).toEqual(new Date("2026-09-16T09:00:00Z"));
+  });
+
+  it("narrows the state's status and keeps the rest", async () => {
+    vi.mocked(getHandoffState).mockResolvedValue({
+      data: { status: "waiting", position: 2, assigneeName: null, staffOnline: 0 },
+    } as never);
+
+    expect(await createWidgetApi(send).handoffState("call-9")).toEqual({
+      status: "waiting",
+      position: 2,
+      assigneeName: null,
+      staffOnline: 0,
+    });
+  });
+
+  it("sends the visitor's words as text and answers the stored message", async () => {
+    vi.mocked(sendVisitorMessage).mockResolvedValue({
+      data: {
+        callId: "call-9",
+        messageId: "host-7",
+        role: "user",
+        text: "still there?",
+        speaker: null,
+        at: "2026-09-16T09:00:00Z",
+      },
+    } as never);
+
+    const created = await createWidgetApi(send).say("call-9", "still there?");
+
+    expect(vi.mocked(sendVisitorMessage).mock.calls[0]?.[0]).toMatchObject({
+      path: { callId: "call-9" },
+      body: { text: "still there?" },
+    });
+    expect(created.messageId).toBe("host-7");
   });
 });

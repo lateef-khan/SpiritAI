@@ -59,4 +59,22 @@ describe("visitorFetch", () => {
     expect(headers.get("Content-Type")).toBe("application/json");
     expect(headers.get(VisitorHeader)).toBe("abc123");
   });
+
+  it("keeps the headers of a built Request", async () => {
+    // The generated client sends a `Request` and no init. Its content type must survive.
+    const send = vi.fn(async () => new Response());
+    const memory = () => ({ key: "abc123", callId: null });
+    const request = new Request("http://host/v1/public/handoff/c1/email", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+
+    await visitorFetch(memory, send)(request);
+
+    const [, init] = send.mock.calls[0] as unknown as [Request, RequestInit];
+    const headers = new Headers(init.headers);
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(headers.get(VisitorHeader)).toBe("abc123");
+  });
 });

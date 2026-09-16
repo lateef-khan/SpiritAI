@@ -5,7 +5,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { ConversationField } from "@/features/threads/transport";
 import { HostRefusedError, type FetchLike } from "@/lib/apiClient";
 import { readVisitorMemory, rememberCall } from "../api/visitorIdentity";
-import type { WidgetApi } from "../api/widgetApi";
+import type { HandoffState, WidgetApi } from "../api/widgetApi";
+import { WithBot, type HandoffDesk } from "./useHandoffDesk";
 import { useWidgetRuntime } from "./useWidgetRuntime";
 
 /**
@@ -22,9 +23,15 @@ function event(payload: unknown, eventName: string): string {
   return `event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`;
 }
 
-/** A whole reply saying `text`, closed with the turn facts. */
-function reply(text: string, messageId = "host-reply"): Response {
+/** A whole reply saying `text`, closed with the turn facts. `tools` are named as having run. */
+function reply(text: string, messageId = "host-reply", tools: string[] = []): Response {
   const body = [
+    ...tools.map((name) =>
+      event(
+        { agentcore_tool: { call_id: `t-${name}`, name, phase: "result", result: {} } },
+        "agentcore_tool",
+      ),
+    ),
     event({ type: "response.output_text.delta", delta: text }, "response.output_text.delta"),
     event(
       {
@@ -77,15 +84,23 @@ function scripted(responses: Response[]): { send: FetchLike; sent: Sent[] } {
   return { send, sent };
 }
 
-/** A fake host that mints ids in order and answers one history. */
-function fakeApi(history: (callId: string) => Promise<ExportedMessageRepository>): {
+/** A fake host that mints ids in order, answers one history, and records what was said to a person. */
+function fakeApi(
+  history: (callId: string) => Promise<ExportedMessageRepository>,
+  say: (callId: string, text: string) => Promise<{ messageId: string }> = async () => ({
+    messageId: "host-said",
+  }),
+): {
   api: WidgetApi;
   created: string[];
+  said: { callId: string; text: string }[];
 } {
   const created: string[] = [];
+  const said: { callId: string; text: string }[] = [];
 
   return {
     created,
+    said,
     api: {
       createThread: async () => {
         const id = `call-${created.length + 1}`;
@@ -93,9 +108,42 @@ function fakeApi(history: (callId: string) => Promise<ExportedMessageRepository>
         return id;
       },
       history,
+      handoffState: async () => WithBot,
+      leaveEmail: async () => {},
+      say: async (callId, text) => {
+        said.push({ callId, text });
+        const { messageId } = await say(callId, text);
+        return { callId, messageId, role: "user", text, speaker: null, at: "2026-09-16T09:00:00Z" };
+      },
     },
   };
 }
+
+/** A desk that holds one state, and answers `next` on every refresh. */
+function fakeDesk(
+  state: HandoffState,
+  next: HandoffState = state,
+): HandoffDesk & { refreshed: number } {
+  const desk = {
+    refreshed: 0,
+    state,
+    refresh: async () => {
+      desk.refreshed += 1;
+      desk.state = next;
+      return next;
+    },
+    leaveEmail: async () => {},
+  };
+  return desk;
+}
+
+const waiting: HandoffState = {
+  status: "waiting",
+  position: 1,
+  assigneeName: null,
+  staffOnline: 1,
+  email: null,
+};
 
 const stored: ExportedMessageRepository = {
   headId: "m2",
@@ -155,7 +203,9 @@ describe("useWidgetRuntime", () => {
     const { api } = fakeApi(async () => stored);
     const { send: fetch } = scripted([]);
 
-    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch));
+    const view = renderHook(() =>
+      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
+    );
 
     await waitFor(() => expect(texts(view.result.current)).toEqual(["hello", "hi there"]));
   });
@@ -167,7 +217,9 @@ describe("useWidgetRuntime", () => {
     });
     const { send: fetch } = scripted([]);
 
-    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch));
+    const view = renderHook(() =>
+      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
+    );
 
     await waitFor(() => expect(readVisitorMemory().callId).toBeNull());
     expect(texts(view.result.current)).toEqual([]);
@@ -177,7 +229,9 @@ describe("useWidgetRuntime", () => {
     const { api, created } = fakeApi(async () => stored);
     const { send: fetch, sent } = scripted([reply("welcome")]);
 
-    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch));
+    const view = renderHook(() =>
+      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
+    );
     expect(created).toEqual([]);
 
     await send(view.result.current, "hi");
@@ -192,7 +246,9 @@ describe("useWidgetRuntime", () => {
     const { api, created } = fakeApi(async () => stored);
     const { send: fetch, sent } = scripted([reply("one"), reply("two", "host-reply-2")]);
 
-    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch));
+    const view = renderHook(() =>
+      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
+    );
 
     await send(view.result.current, "first");
     await waitFor(() => expect(texts(view.result.current)).toEqual(["first", "one"]));
@@ -210,7 +266,9 @@ describe("useWidgetRuntime", () => {
     const { api, created } = fakeApi(async () => ({ messages: [] }));
     const { send: fetch, sent } = scripted([noSuchThread(), reply("again")]);
 
-    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch));
+    const view = renderHook(() =>
+      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
+    );
 
     await send(view.result.current, "still there?");
 
@@ -225,7 +283,9 @@ describe("useWidgetRuntime", () => {
     const { api, created } = fakeApi(async () => ({ messages: [] }));
     const { send: fetch } = scripted([refusal(429, "rate_limited")]);
 
-    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch));
+    const view = renderHook(() =>
+      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
+    );
 
     await send(view.result.current, "hi");
 
@@ -237,5 +297,75 @@ describe("useWidgetRuntime", () => {
     );
     expect(created).toEqual([]);
     expect(readVisitorMemory().callId).toBe("call-kept");
+  });
+
+  it("sends to the person and draws no reply while the chat is waiting", async () => {
+    rememberCall("call-kept");
+    const { api, said } = fakeApi(async () => ({ messages: [] }));
+    const { send: fetch, sent } = scripted([]);
+    const desk = fakeDesk(waiting);
+
+    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch, desk));
+
+    await send(view.result.current, "are you there?");
+
+    await waitFor(() => expect(said).toEqual([{ callId: "call-kept", text: "are you there?" }]));
+    const held = view.result.current.thread.getState().messages;
+    expect(held.map((m) => m.role)).toEqual(["user"]);
+    expect(held[0]?.metadata.custom).toMatchObject({ hostMessageId: "host-said" });
+    expect(sent).toEqual([]);
+  });
+
+  it("reads the desk again after a turn in which the bot asked for a person", async () => {
+    rememberCall("call-kept");
+    const { api } = fakeApi(async () => ({ messages: [] }));
+    const { send: fetch } = scripted([
+      reply("I have asked a person to join.", "r1", ["request_human"]),
+    ]);
+    const desk = fakeDesk(WithBot, waiting);
+
+    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch, desk));
+
+    await send(view.result.current, "I want a human");
+
+    await waitFor(() => expect(desk.refreshed).toBe(1));
+    expect(texts(view.result.current)).toEqual([
+      "I want a human",
+      "I have asked a person to join.",
+    ]);
+  });
+
+  it("does not read the desk again after an ordinary turn", async () => {
+    rememberCall("call-kept");
+    const { api } = fakeApi(async () => ({ messages: [] }));
+    const { send: fetch } = scripted([reply("sure", "r1", ["lookup_model"])]);
+    const desk = fakeDesk(WithBot);
+
+    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch, desk));
+
+    await send(view.result.current, "hi");
+
+    await waitFor(() => expect(texts(view.result.current)).toEqual(["hi", "sure"]));
+    expect(desk.refreshed).toBe(0);
+  });
+
+  it("goes through the other door once when the chat changed hands", async () => {
+    rememberCall("call-kept");
+    const { api, said } = fakeApi(async () => ({ messages: [] }));
+    const { send: fetch } = scripted([
+      new Response(
+        JSON.stringify({ title: "A person has this chat.", status: 409, type: "handoff_open" }),
+        { status: 409, headers: { "Content-Type": "application/problem+json" } },
+      ),
+    ]);
+    const desk = fakeDesk(WithBot, waiting);
+
+    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch, desk));
+
+    await send(view.result.current, "still there?");
+
+    await waitFor(() => expect(said).toEqual([{ callId: "call-kept", text: "still there?" }]));
+    expect(desk.refreshed).toBe(1);
+    expect(view.result.current.thread.getState().messages.map((m) => m.role)).toEqual(["user"]);
   });
 });

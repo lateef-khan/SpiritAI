@@ -6,6 +6,8 @@ import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { readVisitorMemory, visitorFetch } from "./features/widget/api/visitorIdentity";
 import { createWidgetApi } from "./features/widget/api/widgetApi";
+import { HandoffBanner } from "./features/widget/components/HandoffBanner";
+import { useHandoffDesk } from "./features/widget/hooks/useHandoffDesk";
 import { useWidgetRuntime } from "./features/widget/hooks/useWidgetRuntime";
 
 /**
@@ -61,7 +63,8 @@ function useFrameSize(phase: Phase) {
 }
 
 export function Widget() {
-  const runtime = useWidgetRuntime(endpoint, api, send);
+  const desk = useHandoffDesk(api);
+  const runtime = useWidgetRuntime(endpoint, api, send, desk);
   const [phase, setPhase] = useState<Phase>("closed");
 
   useFrameSize(phase);
@@ -80,6 +83,7 @@ export function Widget() {
               >
                 <XIcon className="size-4" />
               </button>
+              <HandoffBanner state={desk.state} onLeaveEmail={desk.leaveEmail} />
               <Thread components={WIDGET_COMPONENTS} />
             </div>
           ) : (

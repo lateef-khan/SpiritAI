@@ -349,6 +349,38 @@ test("a thread-owned refusal names its status and code on the error", async () =
   assert.equal(thrown.code, ContinuationNotFound);
 });
 
+test("a door's problem body names its type as the code", async () => {
+  // The door in front of the public chat answers problem details, not the endpoint's shape. Its
+  // `type` is the code the widget switches doors on.
+  const { fetch } = scripted([
+    new Response(
+      JSON.stringify({ title: "A person has this chat.", status: 409, type: "handoff_open" }),
+      { status: 409, headers: { "Content-Type": "application/problem+json" } },
+    ),
+  ]);
+
+  const thrown = await (async () => {
+    for await (const state of runTurn({
+      endpoint: "/v1/responses",
+      session: { current: null },
+      input: "hi",
+      abortSignal: new AbortController().signal,
+      fetch,
+      threadId: "thread-7",
+    })) {
+      void state;
+    }
+  })().then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  assert.ok(thrown instanceof TurnRefusedError);
+  assert.equal(thrown.status, 409);
+  assert.equal(thrown.code, "handoff_open");
+  assert.equal(thrown.message, "A person has this chat.");
+});
+
 test("a 404 that is not a lost conversation is not retried", async () => {
   const session: Session = { current: "conv_1" };
 

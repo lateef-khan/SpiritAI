@@ -246,9 +246,15 @@ export type StreamChunk = {
   readonly agentcore_approval?: ApprovalFrame;
 };
 
-/** The body of one refusal. */
+/**
+ * The body of one refusal: the endpoint's own shape, or the problem details a door in front of it
+ * answers with (`type` is the door's code, such as `handoff_open`).
+ */
 type WireError = {
   error?: { message?: string; code?: string };
+  title?: string;
+  detail?: string;
+  type?: string;
 };
 
 /**
@@ -327,6 +333,9 @@ async function failureOf(response: Response): Promise<{ message: string; code?: 
     const body = (await response.json()) as WireError;
     if (body.error?.message) {
       return { message: body.error.message, code: body.error.code };
+    }
+    if (body.title || body.detail) {
+      return { message: body.detail ?? body.title!, ...(body.type ? { code: body.type } : {}) };
     }
   } catch {
     // A body that is not the documented shape tells us nothing the status line does not.
