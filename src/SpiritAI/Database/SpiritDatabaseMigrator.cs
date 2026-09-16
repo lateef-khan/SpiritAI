@@ -1,6 +1,8 @@
 using AgentCore.Application.Ports;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace SpiritAI.Database;
 
@@ -25,10 +27,19 @@ internal sealed class SpiritDatabaseMigrator(IServiceScopeFactory scopes) : IHos
         // most likely to find the database asleep, and the strategy is what retries it.
         await database
             .CreateExecutionStrategy()
-            .ExecuteAsync(database, static (db, ct) => db.MigrateAsync(ct), cancellationToken)
+            .ExecuteAsync(database, static (db, ct) => MigrateAsync(db, ct), cancellationToken)
             .ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    private static async Task MigrateAsync(DatabaseFacade database, CancellationToken cancellationToken)
+    {
+        await database.GetService<IHistoryRepository>()
+                      .CreateIfNotExistsAsync(cancellationToken)
+                      .ConfigureAwait(false);
+
+        await database.MigrateAsync(cancellationToken).ConfigureAwait(false);
+    }
 }
