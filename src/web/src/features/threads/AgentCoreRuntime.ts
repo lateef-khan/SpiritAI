@@ -124,7 +124,7 @@ function newTurnClock() {
 /**
  * Turns one reported tool into the content part assistant-ui draws it as.
  */
-function toolContent(tool: ToolPart) {
+export function toolContent(tool: ToolPart) {
   return {
     type: "tool-call" as const,
     toolCallId: tool.callId,

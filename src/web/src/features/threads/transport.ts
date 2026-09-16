@@ -252,6 +252,25 @@ type WireError = {
 };
 
 /**
+ * A turn the endpoint refused, with the status and the code it refused it with.
+ *
+ * Both are on the object as well as in the message. A caller that owns its call id — the widget —
+ * tells "the host forgot this call" (a 404 with {@link ContinuationNotFound}) from every other
+ * refusal, and the first is the one it recovers from by minting a new call. Reading the status
+ * back out of the sentence would break the first time the sentence was reworded.
+ */
+export class TurnRefusedError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "TurnRefusedError";
+  }
+}
+
+/**
  * The last user text, which the endpoint runs. The call owns the history, so earlier turns stay
  * on the host and a turn carries its own words alone; an edit is an origin, not a replay.
  */
@@ -475,7 +494,7 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
   if (response.status === 404 && !options.threadId) {
     const failure = await failureOf(response);
     if (failure.code !== ContinuationNotFound) {
-      throw new Error(failure.message);
+      throw new TurnRefusedError(response.status, failure.message, failure.code);
     }
 
     session.current = null;
@@ -483,7 +502,8 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
   }
 
   if (!response.ok) {
-    throw new Error((await failureOf(response)).message);
+    const failure = await failureOf(response);
+    throw new TurnRefusedError(response.status, failure.message, failure.code);
   }
 
   if (!response.body) {

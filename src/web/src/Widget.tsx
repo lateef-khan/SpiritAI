@@ -4,7 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useAgentCoreRuntime } from "./features/threads/AgentCoreRuntime";
+import { readVisitorMemory, visitorFetch } from "./features/widget/api/visitorIdentity";
+import { createWidgetApi } from "./features/widget/api/widgetApi";
+import { useWidgetRuntime } from "./features/widget/hooks/useWidgetRuntime";
 
 /**
  * The embeddable form of the chat: a bubble on someone else's page that opens into a panel.
@@ -29,6 +31,13 @@ const SIZE = {
  */
 const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/public/responses";
 
+/*
+ * Who this widget is, on every request it makes. Built once: the key is read per request, so
+ * nothing here goes stale.
+ */
+const send = visitorFetch(readVisitorMemory);
+const api = createWidgetApi(send);
+
 const WIDGET_COMPONENTS = {
   ToolGroup: Hidden,
   ToolFallback: Hidden,
@@ -52,7 +61,7 @@ function useFrameSize(phase: Phase) {
 }
 
 export function Widget() {
-  const runtime = useAgentCoreRuntime(endpoint, (url, init) => fetch(url, init));
+  const runtime = useWidgetRuntime(endpoint, api, send);
   const [phase, setPhase] = useState<Phase>("closed");
 
   useFrameSize(phase);

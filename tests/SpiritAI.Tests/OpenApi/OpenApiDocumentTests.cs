@@ -15,8 +15,10 @@ using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Notifications;
 using SpiritAI.Handoffs.Staff;
 using SpiritAI.Handoffs.Store;
+using SpiritAI.Handoffs.Visitors;
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
+using SpiritAI.PublicChat;
 using SpiritAI.RealTime.Presence;
 using SpiritAI.Tests.Auth.Users;
 using SpiritAI.Tests.Handoffs;
@@ -66,6 +68,12 @@ public sealed class OpenApiDocumentTests
         "claimHandoff",
         "replyToHandoff",
         "finishHandoff",
+        "createPublicThread",
+        "getPublicThreadMessages",
+        "askForHuman",
+        "getHandoffState",
+        "leaveEmail",
+        "sendVisitorMessage",
     ];
 
     /// <summary>
@@ -205,6 +213,8 @@ public sealed class OpenApiDocumentTests
                         endpoints.MapThreads();
                         endpoints.MapLookup();
                         endpoints.MapStaffHandoffs();
+                        endpoints.MapPublicThreads();
+                        endpoints.MapVisitorHandoffs();
                         endpoints.MapOpenApi();
                     });
                 }))

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, expect, it, test } from "vitest";
 import {
   ContinuationNotFound,
+  TurnRefusedError,
   ConversationField,
   foldSource,
   readEvent,
@@ -318,6 +319,34 @@ test("a thread-owned 404 is not retried nameless", async () => {
   );
   assert.deepEqual(drained, []);
   assert.equal(sent.length, 1);
+});
+
+test("a thread-owned refusal names its status and code on the error", async () => {
+  // The widget owns its call id and recovers from exactly one refusal: a 404 for a call the host
+  // forgot. It needs the status and the code, not the sentence.
+  const { fetch } = scripted([
+    refusal(404, "no call opens under 'thread-7'.", ContinuationNotFound),
+  ]);
+
+  const thrown = await (async () => {
+    for await (const state of runTurn({
+      endpoint: "/v1/responses",
+      session: { current: null },
+      input: "hi",
+      abortSignal: new AbortController().signal,
+      fetch,
+      threadId: "thread-7",
+    })) {
+      void state;
+    }
+  })().then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  assert.ok(thrown instanceof TurnRefusedError);
+  assert.equal(thrown.status, 404);
+  assert.equal(thrown.code, ContinuationNotFound);
 });
 
 test("a 404 that is not a lost conversation is not retried", async () => {
