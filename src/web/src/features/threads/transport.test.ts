@@ -7,6 +7,7 @@ import {
   foldSource,
   readEvent,
   runTurn,
+  TimeZoneHeader,
   splitEvents,
   wireMessages,
   type FetchLike,
@@ -27,7 +28,7 @@ import {
 // -------------------------------------------------------------------------------------------------
 
 /** One recorded request. */
-type Sent = { conversation: string | null; body: unknown };
+type Sent = { conversation: string | null; body: unknown; headers: Record<string, string> };
 
 /** Builds a response whose body arrives in exactly the pieces given. */
 function streaming(pieces: string[], headers: Record<string, string> = {}): Response {
@@ -63,6 +64,7 @@ function scripted(responses: Response[]): { fetch: FetchLike; sent: Sent[] } {
       conversation:
         typeof body[ConversationField] === "string" ? (body[ConversationField] as string) : null,
       body,
+      headers: { ...(init.headers as Record<string, string>) },
     });
 
     const response = responses[index++];
@@ -206,6 +208,18 @@ test("the first turn names no conversation and keeps the one the stream mints", 
     "a first turn must not name a call that does not exist.",
   );
   assert.equal(session.current, "conv_1");
+});
+
+test("every turn names the browser's zone, so the host reads the date in it", async () => {
+  const { sent } = await collect(
+    [streaming([created("conv_1"), delta("hi"), completed()])],
+    { current: null },
+  );
+
+  assert.equal(
+    sent[0]!.headers[TimeZoneHeader],
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+  );
 });
 
 test("the next turn sends the conversation back", async () => {

@@ -22,6 +22,21 @@ export const ConversationField = "conversation";
  */
 export const StageHeader = "X-AgentCore-Stage";
 
+/**
+ * The request header naming the zone this browser is in, as an IANA id. The host reads the date
+ * in it when it tells the model what day it is; without it the model would read the server's.
+ */
+export const TimeZoneHeader = "X-AgentCore-Time-Zone";
+
+/** The zone this browser is in, or nothing where the runtime does not say. */
+function browserTimeZone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
 /** The prefix every server-sent event's data line carries. */
 const DataPrefix = "data: ";
 
@@ -365,9 +380,13 @@ function post(options: TurnOptions, session: string | null): Promise<Response> {
   // A thread-owned turn names its thread as the conversation, so the host files the call under
   // the id the thread list already has. A bare tab keeps its minted conversation in the session.
   const conversation = options.threadId ?? session;
+  const timeZone = browserTimeZone();
   return options.fetch(options.endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(timeZone ? { [TimeZoneHeader]: timeZone } : {}),
+    },
     body: JSON.stringify({
       ...(conversation ? { [ConversationField]: conversation } : {}),
       input: options.approval ? [] : options.input,

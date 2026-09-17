@@ -184,7 +184,8 @@ agents:
 
     - id: analytics
       description: >-
-        Counts, totals, trends, and breakdowns across units, orders, or parts. Send the whole
+        Counts, totals, trends, and breakdowns across units, orders, or parts, and the only
+        desk that can hand the person a file: a CSV, a spreadsheet, or a chart. Send the whole
         question in the person's words, plus any product name, model number, serial number,
         or year already known.
       instructions: |
@@ -205,7 +206,9 @@ agents:
 
         HOW YOU ANSWER
         Plain text, no code and no markup. Give the numbers, the grouping they are under,
-        and the filters you applied, in a few short lines. Counts are whole numbers. A
+        and the filters you applied, in a few short lines. When the question asks for a
+        file, a download, a report, or a chart, make it in Python as well; it reaches the
+        person on its own, so name the file in your answer and still give the numbers. Counts are whole numbers. A
         percent has exactly one decimal place and a ratio exactly two, however many digits
         the math produced: 0.5944484131 is written 0.6. Say up or down in words rather
         than with a sign. If a filter matched nothing,
