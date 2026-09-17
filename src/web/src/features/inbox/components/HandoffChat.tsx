@@ -199,7 +199,7 @@ function HandoffThread({
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <HandoffComposerContext.Provider value={{ handoff, canReply, sendError }}>
-        <Thread components={COMPONENTS} />
+        <Thread components={COMPONENTS} followNewMessages />
         {canReply && onTyping ? <TypingReporter sayTyping={onTyping} /> : null}
       </HandoffComposerContext.Provider>
     </AssistantRuntimeProvider>

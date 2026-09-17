@@ -8,7 +8,7 @@ import type { Handoff } from "./api/handoffsApi";
 /**
  * The heading a handoff reads by, wherever one is needed.
  *
- * A visitor's email is the most identifying thing about them, so it wins when there is one; a
+ * A visitor's email is the most identifying thing about them, so it wins when there is one; a a
  * title or the conversation's first line are the fallbacks the host sends when there is no email
  * yet.
  *

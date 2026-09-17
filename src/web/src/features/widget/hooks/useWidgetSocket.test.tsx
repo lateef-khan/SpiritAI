@@ -18,7 +18,7 @@ const waiting: HandoffState = {
   status: "waiting",
   position: 2,
   assigneeName: null,
-  staffOnline: 1,
+  staffOnline: true,
   email: null,
 };
 
@@ -163,7 +163,7 @@ describe("useWidgetSocket", () => {
 
     expect(desk.applied).toEqual([
       { position: 1 },
-      { staffOnline: 2 },
+      { staffOnline: true },
       { status: "human", position: null, assigneeName: "Dana R." },
     ]);
     expect(widget.received.map((m) => m.messageId)).toEqual(["m-1", "m-2"]);

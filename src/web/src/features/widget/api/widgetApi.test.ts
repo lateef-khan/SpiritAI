@@ -62,14 +62,14 @@ describe("createWidgetApi", () => {
 
   it("narrows the state's status and keeps the rest", async () => {
     vi.mocked(getHandoffState).mockResolvedValue({
-      data: { status: "waiting", position: 2, assigneeName: null, staffOnline: 0 },
+      data: { status: "waiting", position: 2, assigneeName: null, staffOnline: false },
     } as never);
 
     expect(await createWidgetApi(send).handoffState("call-9")).toEqual({
       status: "waiting",
       position: 2,
       assigneeName: null,
-      staffOnline: 0,
+      staffOnline: false,
     });
   });
 

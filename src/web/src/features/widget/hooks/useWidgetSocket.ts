@@ -81,7 +81,7 @@ export function useWidgetSocket({
           showTyping(false);
         },
         presence: (push: Presence) => {
-          if (push.kind === Events.StaffKind) desk.apply({ staffOnline: push.online });
+          if (push.kind === Events.StaffKind) desk.apply({ staffOnline: push.online > 0 });
         },
         signal: (signal: Signal<Events.TypingSignal>) => {
           if (signal.name === Events.Typing && signal.sender.kind === Events.StaffKind) {

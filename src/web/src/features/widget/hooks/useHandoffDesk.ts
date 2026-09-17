@@ -13,7 +13,7 @@ export const WithBot: HandoffState = {
   status: "bot",
   position: null,
   assigneeName: null,
-  staffOnline: 0,
+  staffOnline: false,
   email: null,
 };
 

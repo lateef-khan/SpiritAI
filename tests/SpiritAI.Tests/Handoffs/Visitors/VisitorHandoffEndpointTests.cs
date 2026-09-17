@@ -7,6 +7,7 @@ using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Transcript;
 using SpiritAI.Tests.Threads;
+using SpiritAI.Threads;
 
 using Xunit;
 
@@ -33,7 +34,7 @@ public sealed class VisitorHandoffEndpointTests
         var state = await response.ReadAsync<HandoffState>();
         Assert.Equal("waiting", state.Status);
         Assert.Equal(1, state.Position);
-        Assert.Equal(2, state.StaffOnline);
+        Assert.True(state.StaffOnline);
 
         var row = Assert.Single(world.Store.Rows);
         Assert.Equal(HandoffAskedBy.Visitor, row.AskedBy);

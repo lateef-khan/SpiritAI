@@ -99,6 +99,15 @@ export type ThreadComponents = {
 
 export type ThreadProps = {
   components?: ThreadComponents | undefined;
+  /**
+   * Whether the viewport follows new words while the reader is at the bottom.
+   *
+   * Off by default, because the turn anchor is `top`: a new turn is pinned to the top of the
+   * viewport and following the bottom would fight that. A chat that grows while nobody here is
+   * running a turn — a person's reply landing over the socket — has no anchor to fight, and
+   * wants to follow.
+   */
+  followNewMessages?: boolean | undefined;
 };
 
 const EMPTY_COMPONENTS: ThreadComponents = {};
@@ -146,19 +155,25 @@ const ThreadHistorySkeleton: FC = () => (
   </div>
 );
 
-export const Thread: FC<ThreadProps> = ({ components = EMPTY_COMPONENTS }) => {
+export const Thread: FC<ThreadProps> = ({
+  components = EMPTY_COMPONENTS,
+  followNewMessages = false,
+}) => {
   const isEmpty = useAuiState(isNewChatView);
 
   return (
     <ThreadComponentsContext.Provider value={components}>
       <TranscriptModeContext.Provider value={components.isTranscript ?? false}>
-        <ThreadRoot isEmpty={isEmpty} />
+        <ThreadRoot isEmpty={isEmpty} followNewMessages={followNewMessages} />
       </TranscriptModeContext.Provider>
     </ThreadComponentsContext.Provider>
   );
 };
 
-const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
+const ThreadRoot: FC<{ isEmpty: boolean; followNewMessages: boolean }> = ({
+  isEmpty,
+  followNewMessages,
+}) => {
   const { Welcome = ThreadWelcome, Composer: ComposerComponent = Composer } =
     useContext(ThreadComponentsContext);
 
@@ -174,6 +189,7 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
     >
       <ThreadPrimitive.Viewport
         turnAnchor="top"
+        autoScroll={followNewMessages}
         data-slot="aui_thread-viewport"
         className="relative flex flex-1 flex-col overflow-x-auto overflow-y-auto scroll-smooth"
       >

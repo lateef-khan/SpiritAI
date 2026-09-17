@@ -46,7 +46,22 @@ function Line({ state, typing }: { state: HandoffState; typing: boolean }) {
   );
 }
 
-/** The email box, shown while nobody is online and no email has been left. */
+/**
+ * Whether anyone is behind the desk.
+ */
+function Presence({ online }: { online: boolean }) {
+  return (
+    <p className="text-muted-foreground flex items-center gap-2">
+      <span
+        aria-hidden
+        className={`size-2 shrink-0 rounded-full ${online ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
+      />
+      <span>{online ? "Someone is online." : "Nobody is online right now."}</span>
+    </p>
+  );
+}
+
+/** The email box, shown while a person is waited for and no email has been left. */
 function EmailBox({ onLeaveEmail }: { onLeaveEmail: (email: string) => Promise<void> }) {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -70,7 +85,7 @@ function EmailBox({ onLeaveEmail }: { onLeaveEmail: (email: string) => Promise<v
   return (
     <form onSubmit={submit} className="flex flex-col gap-2">
       <p className="text-muted-foreground">
-        Nobody is online right now. Leave your email and we will reply there.
+        Leave your email, and we will reply there if you step away.
       </p>
       <div className="flex gap-2">
         <Input
@@ -95,7 +110,9 @@ function EmailBox({ onLeaveEmail }: { onLeaveEmail: (email: string) => Promise<v
 export function HandoffBanner({ state, typing = false, onLeaveEmail }: HandoffBannerProps) {
   if (state.status !== "waiting" && state.status !== "human") return null;
 
-  const asksForEmail = state.status === "waiting" && state.staffOnline === 0;
+  // Asked whenever a person was requested and no address is on file, online or not: a visitor
+  // who closes the tab before someone is free would otherwise never hear back.
+  const asksForEmail = state.status === "waiting";
 
   return (
     <div
@@ -103,6 +120,7 @@ export function HandoffBanner({ state, typing = false, onLeaveEmail }: HandoffBa
       className="bg-muted text-foreground border-border/60 flex flex-col gap-2 border-b ps-4 pe-10 py-3 text-sm"
     >
       <Line state={state} typing={typing} />
+      {state.status === "waiting" && <Presence online={state.staffOnline} />}
       {asksForEmail &&
         (state.email ? (
           <p className="text-muted-foreground flex items-center gap-2">

@@ -11,7 +11,7 @@ const waiting: HandoffState = {
   status: "waiting",
   position: 2,
   assigneeName: null,
-  staffOnline: 1,
+  staffOnline: true,
   email: null,
 };
 
@@ -33,16 +33,24 @@ describe("HandoffBanner", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("says where in the line the chat stands while staff are online", () => {
+  it("says where in the line the chat stands, and that someone is online", () => {
     render(<HandoffBanner state={waiting} onLeaveEmail={none} />);
 
     expect(said()).toContain("You are #2 in line.");
-    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(said()).toContain("Someone is online.");
   });
 
-  it("asks for an email while nobody is online, and sends it", async () => {
+  it("says nobody is online, and never how many there are", () => {
+    render(<HandoffBanner state={{ ...waiting, staffOnline: false }} onLeaveEmail={none} />);
+
+    expect(said()).toContain("Nobody is online right now.");
+  });
+
+  it("asks for an email while waiting, whether or not staff are online, and sends it", async () => {
     const onLeaveEmail = vi.fn(async () => {});
-    render(<HandoffBanner state={{ ...waiting, staffOnline: 0 }} onLeaveEmail={onLeaveEmail} />);
+    render(
+      <HandoffBanner state={{ ...waiting, staffOnline: false }} onLeaveEmail={onLeaveEmail} />,
+    );
 
     fireEvent.change(screen.getByLabelText("Your email"), { target: { value: "pat@example.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
@@ -51,14 +59,20 @@ describe("HandoffBanner", () => {
   });
 
   it("says where the reply will go once an email is left", () => {
+    render(<HandoffBanner state={{ ...waiting, email: "pat@example.com" }} onLeaveEmail={none} />);
+
+    expect(said()).toContain("We will email pat@example.com");
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  it("stops asking once a person has the chat", () => {
     render(
       <HandoffBanner
-        state={{ ...waiting, staffOnline: 0, email: "pat@example.com" }}
+        state={{ ...waiting, status: "human", position: null, assigneeName: "Dana R." }}
         onLeaveEmail={none}
       />,
     );
 
-    expect(said()).toContain("We will email pat@example.com");
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 

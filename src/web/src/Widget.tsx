@@ -101,7 +101,10 @@ export function Widget() {
                 <XIcon className="size-4" />
               </button>
               <HandoffBanner state={desk.state} typing={typing} onLeaveEmail={desk.leaveEmail} />
-              <Thread components={WIDGET_COMPONENTS} />
+              <Thread
+                components={WIDGET_COMPONENTS}
+                followNewMessages={desk.state.status === "waiting" || desk.state.status === "human"}
+              />
               <TypingReporter sayTyping={sayTyping} />
             </div>
           ) : (

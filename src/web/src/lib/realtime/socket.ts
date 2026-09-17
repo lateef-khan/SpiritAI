@@ -144,7 +144,7 @@ export function openSocket(
       }
     }
   };
-  
+
   void start();
 
   return {

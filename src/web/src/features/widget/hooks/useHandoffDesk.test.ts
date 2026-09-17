@@ -17,7 +17,7 @@ const waiting: HandoffState = {
   status: "waiting",
   position: 3,
   assigneeName: null,
-  staffOnline: 0,
+  staffOnline: false,
   email: null,
 };
 
