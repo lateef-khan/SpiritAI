@@ -152,9 +152,21 @@ export type ApprovalAsk = {
   readonly requestId: string;
 };
 
+/**
+ * One piece of the reply in the order it arrived: a run of words, or a tool by its call id. Words
+ * before a tool and words after it stay apart, so a sentence said before a slow step is not glued
+ * to the answer that follows it.
+ */
+export type TurnItem =
+  | { readonly type: "text"; readonly text: string }
+  | { readonly type: "tool"; readonly callId: string };
+
 /** Everything one turn has produced so far. */
 export type TurnState = {
+  /** Every word so far, as one string. */
   readonly text: string;
+  /** The reply in arrival order: each run of words and each tool call, interleaved. */
+  readonly items: readonly TurnItem[];
   /** Every tool this turn has called, in call order, each with its result once it has one. */
   readonly tools: readonly ToolPart[];
   /** Every source this turn cited, in cite order. */
@@ -415,6 +427,24 @@ function post(options: TurnOptions, session: string | null): Promise<Response> {
   });
 }
 
+/** Adds words to the open run of words, or opens one when the last item is a tool. */
+export function foldTextItem(items: readonly TurnItem[], delta: string): readonly TurnItem[] {
+  const last = items[items.length - 1];
+  if (last?.type === "text") {
+    return [...items.slice(0, -1), { type: "text", text: last.text + delta }];
+  }
+  return [...items, { type: "text", text: delta }];
+}
+
+/** Places a tool call in the order it arrived. A result frame changes no order, so it adds nothing. */
+export function foldToolItem(items: readonly TurnItem[], frame: ToolFrame): readonly TurnItem[] {
+  const callId = frame.call_id;
+  if (!callId || frame.phase === "result") {
+    return items;
+  }
+  return [...items, { type: "tool", callId }];
+}
+
 /**
  * Folds one tool frame into the list the state carries.
  */
@@ -591,6 +621,7 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let pending = "";
   let text = "";
+  let items: readonly TurnItem[] = [];
   let tools: readonly ToolPart[] = [];
   let sources: readonly SourcePart[] = [];
   let files: readonly FilePart[] = [];
@@ -611,6 +642,7 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
         for (const chunk of readEvent(event)) {
           const state = () => ({
             text,
+            items,
             tools,
             sources,
             files,
@@ -646,6 +678,7 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
           const tool = chunk.agentcore_tool;
           if (tool) {
             tools = foldTool(tools, tool);
+            items = foldToolItem(items, tool);
             yield state();
           }
 
@@ -673,6 +706,7 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
             chunk.delta.length > 0
           ) {
             text += chunk.delta;
+            items = foldTextItem(items, chunk.delta);
             yield state();
           }
           // The minted conversation rides the created event; a continued one rides it too.

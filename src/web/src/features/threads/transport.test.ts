@@ -608,6 +608,28 @@ test("runTurn keeps two tool calls apart and pairs each with its own result", as
   assert.equal(collected[3]!.tools[1]!.result, "second");
 });
 
+test("runTurn keeps words and tools in the order they arrived", async () => {
+  // The model says a sentence, calls a tool, then answers with a program. Glued into one string
+  // the program would start mid-line and not draw; kept apart, each run keeps its place.
+  const collected = await states([
+    created("conv_1"),
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"Checking "}\n\n',
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"the orders."}\n\n',
+    'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"call","arguments":{}}}\n\n',
+    'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"result","result":"42 rows","failed":false}}\n\n',
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"root = Card([])"}\n\n',
+    completed(),
+  ]);
+
+  const last = collected[collected.length - 1]!;
+  assert.deepEqual(last.items, [
+    { type: "text", text: "Checking the orders." },
+    { type: "tool", callId: "c1" },
+    { type: "text", text: "root = Card([])" },
+  ]);
+  assert.equal(last.text, "Checking the orders.root = Card([])");
+});
+
 test("a tool survives a later text-only yield", async () => {
   const collected = await states([
     created("conv_1"),

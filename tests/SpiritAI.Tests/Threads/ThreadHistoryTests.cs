@@ -207,7 +207,7 @@ public sealed class ThreadHistoryTests
         ]);
 
         var parts = Assert.Single(history.Messages).Message.Content;
-        var source = Assert.IsType<ThreadSourcePart>(parts[0]);
+        var source = Assert.IsType<ThreadSourcePart>(parts[1]);
 
         Assert.Equal("kb-7", source.Id);
         Assert.Equal("document", source.SourceType);
@@ -216,7 +216,7 @@ public sealed class ThreadHistoryTests
     }
 
     [Fact]
-    public void SourcesComeBeforeTheWordsTheySupport()
+    public void SourcesComeAfterTheWordsTheySupport()
     {
         var cited = new SourceContent
         {
@@ -235,9 +235,30 @@ public sealed class ThreadHistoryTests
         ]);
 
         // The same order the live turn draws in, so a reloaded thread does not rearrange itself.
+        // A source draws nothing in place, and last it never shifts the words above it.
         var parts = Assert.Single(history.Messages).Message.Content;
-        Assert.IsType<ThreadSourcePart>(parts[0]);
-        Assert.IsType<ThreadTextPart>(parts[1]);
+        Assert.IsType<ThreadTextPart>(parts[0]);
+        Assert.IsType<ThreadSourcePart>(parts[1]);
+    }
+
+    [Fact]
+    public void WordsAndToolsKeepTheOrderTheyWereSaidIn()
+    {
+        // A sentence before a tool, the tool, then a program: three parts, so the program starts
+        // on a line of its own rather than mid-sentence.
+        var history = ThreadHistory.Of(Call, [
+            Row(0, 0, new ChatMessage(ChatRole.Assistant, [
+                new TextContent("Checking the orders."),
+                new FunctionCallContent("call-a", "read_records", new Dictionary<string, object?>()),
+            ])),
+            Row(1, 0, new ChatMessage(ChatRole.Tool, [new FunctionResultContent("call-a", "42 rows")])),
+            Row(2, 0, new ChatMessage(ChatRole.Assistant, [new TextContent("root = Card([])")])),
+        ]);
+
+        var parts = Assert.Single(history.Messages).Message.Content;
+        Assert.Equal("Checking the orders.", Assert.IsType<ThreadTextPart>(parts[0]).Text);
+        Assert.Equal("call-a", Assert.IsType<ThreadToolCallPart>(parts[1]).ToolCallId);
+        Assert.Equal("root = Card([])", Assert.IsType<ThreadTextPart>(parts[2]).Text);
     }
 
     [Fact]

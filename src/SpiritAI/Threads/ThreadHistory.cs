@@ -227,11 +227,10 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
         var first = turn[0];
         var role = RoleOf(first.Content.Role);
 
-        List<ThreadToolCallPart> tools = [];
+        List<ThreadPart> parts = [];
         Dictionary<string, int> toolAt = new(StringComparer.Ordinal);
         List<ThreadSourcePart> sources = [];
         List<ThreadPart> attached = [];
-        List<string> utterances = [];
 
         foreach (var row in turn)
         {
@@ -250,12 +249,13 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
                         break;
 
                     case FunctionCallContent called:
-                        toolAt[called.CallId] = tools.Count;
-                        tools.Add(ToolOf(called));
+                        AddWords(parts, words);
+                        toolAt[called.CallId] = parts.Count;
+                        parts.Add(ToolOf(called));
                         break;
 
                     case FunctionResultContent answered when toolAt.TryGetValue(answered.CallId, out var at):
-                        tools[at] = tools[at] with
+                        parts[at] = ((ThreadToolCallPart)parts[at]) with
                         {
                             Result = JsonSerializer.SerializeToElement(answered.Result, Json),
                             IsError = answered.Exception is not null,
@@ -271,19 +271,10 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
                 }
             }
 
-            if (words.Length > 0)
-            {
-                utterances.Add(words.ToString());
-            }
+            AddWords(parts, words);
         }
 
-        List<ThreadPart> parts = [.. tools, .. sources];
-
-        if (utterances.Count > 0)
-        {
-            parts.Add(new ThreadTextPart(string.Join("\n\n", utterances)));
-        }
-
+        parts.AddRange(sources);
         parts.AddRange(attached);
 
         return new ThreadHistoryMessage(
@@ -298,6 +289,26 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
             Status = role == "assistant" ? new ThreadMessageStatus("complete") : null,
             Attachments = role == "user" ? [] : null,
         };
+    }
+
+    /// <summary>Closes the open run of words as a text part, joined onto the one before it when they touch.</summary>
+    private static void AddWords(List<ThreadPart> parts, StringBuilder words)
+    {
+        if (words.Length == 0)
+        {
+            return;
+        }
+
+        if (parts.Count > 0 && parts[^1] is ThreadTextPart(var before))
+        {
+            parts[^1] = new ThreadTextPart(before + "\n\n" + words);
+        }
+        else
+        {
+            parts.Add(new ThreadTextPart(words.ToString()));
+        }
+
+        words.Clear();
     }
 
     private static ThreadMessageMetadata MetadataOf(ChatMessage content)
