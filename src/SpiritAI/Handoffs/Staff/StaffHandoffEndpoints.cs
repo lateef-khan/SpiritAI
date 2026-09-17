@@ -1,3 +1,4 @@
+using AgentCore.Application.Calls;
 using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -160,7 +161,7 @@ public static class StaffHandoffEndpoints
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
-        ICallStore calls,
+        CallRepository calls,
         string callId,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (_, _) =>
@@ -172,9 +173,7 @@ public static class StaffHandoffEndpoints
                 return TypedResults.NotFound();
             }
 
-            var rows = await calls.ReadAsync(callId, cancellationToken).ConfigureAwait(false);
-
-            return TypedResults.Ok(ThreadHistory.Of(record, rows));
+            return TypedResults.Ok(await ThreadHistory.ReadAsync(record, calls, cancellationToken).ConfigureAwait(false));
         });
 
     /// <summary>Takes a waiting chat for the caller.</summary>

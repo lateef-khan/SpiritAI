@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using AgentCore.Application.Calls;
 using AgentCore.Application.Calls.Memory;
 using AgentCore.Application.Ports;
 
@@ -189,6 +190,7 @@ public sealed class OpenApiDocumentTests
                     // Present so the route builder reads these as injected services rather than as
                     // request bodies. Nothing calls them: no route is ever invoked here.
                     services.AddSingleton<ICallStore>(new InMemoryCallStore());
+                    services.AddSingleton(new CallRepository(new InMemoryCallStore(), blobs: null));
                     services.AddSingleton<ICallTitler>(new SilentTitler());
                     services.AddSingleton(new UnitLookup(
                         (_, _, _) => ValueTask.FromResult(default(System.Text.Json.JsonElement))));

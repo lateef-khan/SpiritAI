@@ -1505,6 +1505,9 @@
           },
           {
             "$ref": "#/components/schemas/ThreadPartThreadSourcePart"
+          },
+          {
+            "$ref": "#/components/schemas/ThreadPartThreadFilePart"
           }
         ],
         "discriminator": {
@@ -1512,7 +1515,37 @@
           "mapping": {
             "text": "#/components/schemas/ThreadPartThreadTextPart",
             "tool-call": "#/components/schemas/ThreadPartThreadToolCallPart",
-            "source": "#/components/schemas/ThreadPartThreadSourcePart"
+            "source": "#/components/schemas/ThreadPartThreadSourcePart",
+            "file": "#/components/schemas/ThreadPartThreadFilePart"
+          }
+        }
+      },
+      "ThreadPartThreadFilePart": {
+        "required": [
+          "name",
+          "mediaType",
+          "length",
+          "url"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "file"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "mediaType": {
+            "type": "string"
+          },
+          "length": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "url": {
+            "type": "string"
           }
         }
       },

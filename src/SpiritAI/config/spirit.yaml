@@ -231,6 +231,8 @@ providers:
 
   embeddings: { kind: openai, model: text-embedding-3-small, dimensions: 1024 }
 
+  blobs: { kind: s3, endpoint: https://s3.us-east-005.backblazeb2.com, bucket: SpiritAI }
+
   knowledge:
     kind: qdrant
     endpoint: https://89cfeb2d-7bfe-48e0-b9fc-7c1b67bd20f1.us-east-1-1.aws.cloud.qdrant.io:6334

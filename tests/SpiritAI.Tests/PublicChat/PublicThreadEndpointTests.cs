@@ -1,5 +1,6 @@
 using System.Net;
 
+using AgentCore.Application.Calls;
 using AgentCore.Application.Calls.Memory;
 using AgentCore.Application.Ports;
 
@@ -141,7 +142,11 @@ public sealed class PublicThreadEndpointTests
 
             var host = await ThreadTestHost.StartAsync(
                 new NeonAuthTestKit(),
-                services => services.AddSingleton<ICallStore>(calls),
+                services =>
+                {
+                    services.AddSingleton<ICallStore>(calls);
+                    services.AddSingleton(new CallRepository(calls, blobs: null));
+                },
                 app =>
                 {
                     app.UseNeonAuthOnApi();

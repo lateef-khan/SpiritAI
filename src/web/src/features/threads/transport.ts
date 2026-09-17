@@ -8,6 +8,8 @@
  * this.
  */
 
+import type { ReplyFile } from "@/lib/files";
+
 /** The conversation id the reply files the turn under, on the request and on the answer. */
 export const ConversationField = "conversation";
 
@@ -88,6 +90,17 @@ export type SourceFrame = {
   origin?: string;
 };
 
+/** One file the reply produced this turn. Arrives after the words, once the host has the bytes. */
+export type FilePart = ReplyFile;
+
+/** One file as the wire spells it. Every field is optional: the browser never trusts the host's shape. */
+export type FileFrame = {
+  name?: string;
+  media_type?: string;
+  length?: number;
+  url?: string | null;
+};
+
 /** Anything `JSON.parse` can produce. */
 export type JsonValue =
   string | number | boolean | null | readonly JsonValue[] | { readonly [key: string]: JsonValue };
@@ -131,6 +144,8 @@ export type TurnState = {
   readonly tools: readonly ToolPart[];
   /** Every source this turn cited, in cite order. */
   readonly sources: readonly SourcePart[];
+  /** Every file the reply produced and the host kept, in the order the host linked them. */
+  readonly files: readonly FilePart[];
   /** The stage the pipeline is in: the turn's own stage, then the stage it moved to at the end. */
   readonly stage: string | null;
   /** Whether the stage the turn moved to ends the call. Only ever true on the final state. */
@@ -244,6 +259,7 @@ export type StreamChunk = {
   readonly agentcore_source?: SourceFrame;
   readonly agentcore_tool?: ToolFrame;
   readonly agentcore_approval?: ApprovalFrame;
+  readonly agentcore_file?: FileFrame;
 };
 
 /**
@@ -445,6 +461,35 @@ export function foldApproval(
 }
 
 /**
+ * Folds one wire frame into the files held so far.
+ *
+ * Keyed by name, last write winning in place: a second write with the same name replaced the
+ * first in the store, so the later frame is the one whose link works.
+ */
+export function foldFile(files: readonly FilePart[], frame: FileFrame): readonly FilePart[] {
+  const name = frame.name;
+  if (!name) {
+    return files;
+  }
+
+  const part: FilePart = {
+    name,
+    mediaType: frame.media_type ?? "application/octet-stream",
+    length: typeof frame.length === "number" ? frame.length : 0,
+    url: frame.url ?? null,
+  };
+
+  const at = files.findIndex((file) => file.name === name);
+  if (at < 0) {
+    return [...files, part];
+  }
+
+  const next = [...files];
+  next[at] = part;
+  return next;
+}
+
+/**
  * Folds one wire frame into the sources held so far.
  *
  * Keyed by id, last write winning in the place the first took: the host already de-duplicates
@@ -529,6 +574,7 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
   let text = "";
   let tools: readonly ToolPart[] = [];
   let sources: readonly SourcePart[] = [];
+  let files: readonly FilePart[] = [];
 
   try {
     for (;;) {
@@ -548,6 +594,7 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
             text,
             tools,
             sources,
+            files,
             stage,
             isTerminal,
             speaker: null,
@@ -592,6 +639,12 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
           const source = chunk.agentcore_source;
           if (source) {
             sources = foldSource(sources, source);
+            yield state();
+          }
+
+          const file = chunk.agentcore_file;
+          if (file) {
+            files = foldFile(files, file);
             yield state();
           }
 

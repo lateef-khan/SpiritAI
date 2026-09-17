@@ -1,3 +1,4 @@
+using AgentCore.Application.Calls;
 using AgentCore.Application.Calls.Memory;
 using AgentCore.Application.Ports;
 using AgentCore.Application.Transcript;
@@ -95,6 +96,7 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
                 services.AddScoped<StaffGate>();
                 services.AddSingleton<TimeProvider>(clock);
                 services.AddSingleton<ICallStore>(calls);
+                services.AddSingleton(new CallRepository(calls, blobs: null));
                 services.AddSingleton<IHandoffStore>(store);
                 services.AddSingleton<IHandoffNotifier>(notifier);
                 services.AddSingleton<IPresenceStore>(new FakePresenceStore(clock, TimeSpan.FromSeconds(90)));

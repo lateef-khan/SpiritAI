@@ -24,7 +24,8 @@ Deploys happen in CI: merging to `main` runs `.github/workflows/deploy.yml`, whi
 tests, creates the Fly app if needed, syncs secrets and deploys. Nothing to run locally.
 
 The repository secrets it needs: `FLY_API_TOKEN`, `OPENAI_API_KEY`, `QDRANT_API_KEY`,
-`POSTGRES_CONNECTION_STRING`, `TS_AUTHKEY`. `GRAFANA_CLOUD_INSTANCE_ID` and
+`POSTGRES_CONNECTION_STRING`, `TS_AUTHKEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+(the Backblaze B2 keyID and applicationKey). `GRAFANA_CLOUD_INSTANCE_ID` and
 `GRAFANA_CLOUD_API_TOKEN` are optional, and optional together.
 
 `./tailscale-setup.sh` walks you through the Tailscale side and proves it works before you

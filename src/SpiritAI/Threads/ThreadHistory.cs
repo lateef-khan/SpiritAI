@@ -17,10 +17,19 @@ namespace SpiritAI.Threads;
 [JsonDerivedType(typeof(ThreadTextPart), "text")]
 [JsonDerivedType(typeof(ThreadToolCallPart), "tool-call")]
 [JsonDerivedType(typeof(ThreadSourcePart), "source")]
+[JsonDerivedType(typeof(ThreadFilePart), "file")]
 public abstract record ThreadPart;
 
 /// <summary>Words.</summary>
 public sealed record ThreadTextPart(string Text) : ThreadPart;
+
+/// <summary>
+/// A file the reply produced, as the stream's <c>agentcore_file</c> frame spells it. Not an
+/// assistant-ui part: the browser decides whether to draw it as a picture or a download, so the
+/// same rule serves a live turn and a restored one.
+/// </summary>
+/// <param name="Url">Where the browser fetches it from. Signed per read, and short-lived.</param>
+public sealed record ThreadFilePart(string Name, string MediaType, long Length, string Url) : ThreadPart;
 
 /// <summary>A tool the host ran, with its answer folded back in.</summary>
 public sealed record ThreadToolCallPart(
@@ -107,16 +116,47 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
     /// <param name="rows">Every stored message of the call. Order does not matter.</param>
     /// <returns>The conversation, oldest message first, chained by parent.</returns>
     public static ThreadHistory Of(CallRecord call, IReadOnlyList<CallMessage> rows)
+        => Of(call, rows, new Dictionary<string, ThreadPart>(StringComparer.Ordinal));
+
+    /// <summary>Reads one whole call, linking every file the store still holds.</summary>
+    /// <param name="call">The call's row.</param>
+    /// <param name="calls">The door to the stored call. It reads the rows and links the files.</param>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>The conversation, oldest message first, chained by parent.</returns>
+    public static async Task<ThreadHistory> ReadAsync(
+        CallRecord call,
+        CallRepository calls,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(call);
+        ArgumentNullException.ThrowIfNull(calls);
+
+        var rows = await calls.ReadAsync(call.CallId, cancellationToken).ConfigureAwait(false);
+
+        var links = await calls
+            .LinkFilesAsync(call.CallId, rows.Select(row => row.Content), cancellationToken)
+            .ConfigureAwait(false);
+
+        return Of(call, rows, ThreadFiles.PartsOf(links));
+    }
+
+    /// <summary>Reads one whole call into the shape the browser restores a thread from, with its files linked.</summary>
+    /// <param name="call">The call's row. It supplies the clock store 1 does not keep.</param>
+    /// <param name="rows">Every stored message of the call. Order does not matter.</param>
+    /// <param name="files">The part for each file the store still holds, from <see cref="ThreadFiles.PartsOf"/>.</param>
+    /// <returns>The conversation, oldest message first, chained by parent.</returns>
+    public static ThreadHistory Of(CallRecord call, IReadOnlyList<CallMessage> rows, IReadOnlyDictionary<string, ThreadPart> files)
     {
         ArgumentNullException.ThrowIfNull(call);
         ArgumentNullException.ThrowIfNull(rows);
+        ArgumentNullException.ThrowIfNull(files);
 
         List<ThreadHistoryItem> messages = [];
         string? parentId = null;
 
         foreach (var turn in Group(rows))
         {
-            var message = Build(call, turn);
+            var message = Build(call, turn, files);
             messages.Add(new ThreadHistoryItem(parentId, message));
 
             // The head is the last message, and after the loop this is it. A separate pass to find
@@ -182,7 +222,7 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
     private static string? SpeakerKey(CallMessage row)
         => SpeakerProperty.Read(row.Content)?.GetRawText();
 
-    private static ThreadHistoryMessage Build(CallRecord call, List<CallMessage> turn)
+    private static ThreadHistoryMessage Build(CallRecord call, List<CallMessage> turn, IReadOnlyDictionary<string, ThreadPart> files)
     {
         var first = turn[0];
         var role = RoleOf(first.Content.Role);
@@ -190,17 +230,23 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
         List<ThreadToolCallPart> tools = [];
         Dictionary<string, int> toolAt = new(StringComparer.Ordinal);
         List<ThreadSourcePart> sources = [];
+        List<ThreadPart> attached = [];
         List<string> utterances = [];
 
         foreach (var row in turn)
         {
             StringBuilder words = new();
+
             foreach (var content in row.Content.Contents)
             {
                 switch (content)
                 {
                     case TextContent text:
                         words.Append(text.Text);
+                        break;
+
+                    case FileContent file when files.TryGetValue(file.Name, out var part) && !attached.Contains(part):
+                        attached.Add(part);
                         break;
 
                     case FunctionCallContent called:
@@ -237,6 +283,9 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
         {
             parts.Add(new ThreadTextPart(string.Join("\n\n", utterances)));
         }
+
+        // After the words, so a picture sits under the sentence that introduces it.
+        parts.AddRange(attached);
 
         return new ThreadHistoryMessage(
             // Positional, because store 1 keeps no message id of its own. It is stable only for as

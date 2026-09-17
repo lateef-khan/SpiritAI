@@ -21,6 +21,8 @@ import {
   type WireMessage,
 } from "./transport.ts";
 import { authFetch } from "@/features/auth/authFetch";
+import { fileContent, fileLinks } from "@/lib/files";
+import { resolveSandboxLinks } from "@/lib/sandboxLinks";
 
 /**
  * The bridge between assistant-ui and AgentCore's OpenAI-compatible endpoint.
@@ -361,10 +363,12 @@ async function* streamTurn(
 
     // Every yield replaces the message content rather than adding to it, so each one repeats
     // the text so far. Assistant text now carries any OpenUI markup inline.
+    const text = resolveSandboxLinks(state.text, fileLinks(state.files));
     content = [
       ...state.tools.map(toolContent),
       ...state.sources.map(sourceContent),
-      ...(state.text.length > 0 ? [{ type: "text" as const, text: state.text }] : []),
+      ...(text.length > 0 ? [{ type: "text" as const, text }] : []),
+      ...state.files.flatMap((file) => fileContent(file) ?? []),
     ];
 
     // A tool still waiting on the caller holds the message at requires-action, which is what

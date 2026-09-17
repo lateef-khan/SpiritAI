@@ -172,15 +172,11 @@ public static class ThreadEndpointRouteBuilderExtensions
     /// <summary>One thread's whole conversation, in the shape the browser restores it from.</summary>
     private static Task<IResult> HistoryAsync(
         HttpContext http,
-        ICallStore calls,
+        CallRepository calls,
         string remoteId,
         CancellationToken cancellationToken)
-        => ForOwnedAsync(http, calls, remoteId, cancellationToken, async (_, record) =>
-        {
-            var rows = await calls.ReadAsync(remoteId, cancellationToken).ConfigureAwait(false);
-
-            return TypedResults.Ok(ThreadHistory.Of(record, rows));
-        });
+        => ForOwnedAsync(http, calls, remoteId, cancellationToken, async (_, record)
+            => TypedResults.Ok(await ThreadHistory.ReadAsync(record, calls, cancellationToken).ConfigureAwait(false)));
 
     /// <summary>Names one thread from the words the browser sent.</summary>
     /// <remarks>

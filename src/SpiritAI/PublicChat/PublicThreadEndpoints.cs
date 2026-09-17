@@ -1,3 +1,4 @@
+using AgentCore.Application.Calls;
 using AgentCore.Application.Ports;
 
 using SpiritAI.Threads;
@@ -92,7 +93,7 @@ public static class PublicThreadEndpoints
     /// <summary>One thread's whole conversation, in the shape a reloaded widget restores it from.</summary>
     private static Task<IResult> HistoryAsync(
         HttpContext http,
-        ICallStore calls,
+        CallRepository calls,
         string callId,
         CancellationToken cancellationToken)
         => ForVisitorAsync(http, async key =>
@@ -102,8 +103,6 @@ public static class PublicThreadEndpoints
                 return TypedResults.NotFound();
             }
 
-            var rows = await calls.ReadAsync(callId, cancellationToken).ConfigureAwait(false);
-
-            return TypedResults.Ok(ThreadHistory.Of(record, rows));
+            return TypedResults.Ok(await ThreadHistory.ReadAsync(record, calls, cancellationToken).ConfigureAwait(false));
         });
 }

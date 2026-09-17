@@ -4,6 +4,8 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
+using AgentCore.Application.Blobs;
+using AgentCore.Application.Calls;
 using AgentCore.Application.Calls.Memory;
 using AgentCore.Application.Ports;
 
@@ -16,6 +18,7 @@ using Microsoft.Extensions.Hosting;
 
 using SpiritAI.Auth;
 using SpiritAI.Tests.Auth;
+using SpiritAI.Tests.Blobs;
 using SpiritAI.Threads;
 
 using Xunit;
@@ -247,10 +250,16 @@ public sealed class ThreadEndpointTests
         await using var world = await World.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
 
+        await world.Blobs.PutAsync(
+            new BlobWrite(remoteId, "chart.png", "image/png", new MemoryStream([1, 2, 3]), 3),
+            TestContext.Current.CancellationToken);
+
         var response = await world.Owner.DeleteAsync($"{Threads}/{remoteId}");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await world.Owner.GetAsync($"{Threads}/{remoteId}")).StatusCode);
+        // Decision 11: the thread's files go with it. The route goes through the repository, which does it.
+        Assert.Empty(world.Blobs.Blobs);
     }
 
     [Fact]
@@ -384,10 +393,11 @@ public sealed class ThreadEndpointTests
 
         private readonly IHost _host;
 
-        private World(IHost host, NeonAuthTestKit kit, ICallStore store)
+        private World(IHost host, NeonAuthTestKit kit, ICallStore store, InMemoryBlobStore blobs)
         {
             _host = host;
             Store = store;
+            Blobs = blobs;
             Owner = new Caller(host.GetTestClient(), kit.Token(subject: OwnerSubject));
             Stranger = new Caller(host.GetTestClient(), kit.Token(subject: StrangerSubject));
             Anonymous = new Caller(host.GetTestClient(), token: null);
@@ -402,15 +412,19 @@ public sealed class ThreadEndpointTests
         /// <summary>The store behind the routes, so a test can put words in a thread.</summary>
         public ICallStore Store { get; }
 
+        public InMemoryBlobStore Blobs { get; }
+
         public static async Task<World> StartAsync()
         {
             var kit = new NeonAuthTestKit();
-            ICallStore store = new InMemoryCallStore();
+            InMemoryBlobStore blobs = new();
+            CallRepository store = new(new InMemoryCallStore(), blobs);
 
             var host = await ThreadTestHost.StartAsync(
                 kit,
                 services =>
                 {
+                    services.AddSingleton(store);
                     services.AddSingleton<ICallStore>(store);
                     services.AddSingleton<ICallTitler>(new SpellingTitler(store));
                 },
@@ -421,7 +435,7 @@ public sealed class ThreadEndpointTests
                     app.UseEndpoints(endpoints => endpoints.MapThreads());
                 });
 
-            return new World(host, kit, store);
+            return new World(host, kit, store, blobs);
         }
 
         /// <summary>Writes one finished turn into store 1, the way a real turn would.</summary>
