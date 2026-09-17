@@ -1,6 +1,7 @@
 import { HeadsetIcon, HourglassIcon, MailCheckIcon } from "lucide-react";
 import { useState, type FormEvent } from "react";
 
+import { TypingDots } from "@/components/assistant-ui/elements/typing-indicator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { HandoffState } from "../api/widgetApi";
@@ -24,7 +25,14 @@ function Line({ state, typing }: { state: HandoffState; typing: boolean }) {
       <p className="flex items-center gap-2">
         <HeadsetIcon className="size-4 shrink-0" aria-hidden />
         <span>
-          <span className="font-medium">{name}</span> {typing ? "is typing…" : "is with you."}
+          <span className="font-medium">{name}</span>{" "}
+          {typing ? (
+            <>
+              is typing <TypingDots />
+            </>
+          ) : (
+            "is with you."
+          )}
         </span>
       </p>
     );

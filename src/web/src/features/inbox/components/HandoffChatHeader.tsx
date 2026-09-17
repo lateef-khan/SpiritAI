@@ -1,3 +1,4 @@
+import { TypingDots } from "@/components/assistant-ui/elements/typing-indicator";
 import { Badge } from "@/components/ui/badge";
 
 import type { Handoff } from "../api/handoffsApi";
@@ -31,9 +32,13 @@ export function HandoffChatHeader({
       <div className="min-w-0">
         <h2 className="truncate text-sm font-semibold">{handoffTitle(handoff)}</h2>
         <p className="text-xs text-muted-foreground" aria-live="polite">
-          {typing
-            ? "Visitor is typing…"
-            : `Started ${minutesBetween(handoff.askedAt, now)} min ago`}
+          {typing ? (
+            <>
+              Visitor is typing <TypingDots />
+            </>
+          ) : (
+            `Started ${minutesBetween(handoff.askedAt, now)} min ago`
+          )}
         </p>
       </div>
 
