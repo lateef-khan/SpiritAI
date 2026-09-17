@@ -90,12 +90,9 @@ const OpenUIAssistantMessage: FC = () => {
     });
   };
 
-  // Plain-text history predates the openui-lang cutover and has no `root` line, which the
-  // Renderer draws as nothing. Completed non-program text falls back to markdown; a still
-  // running part stays on the Renderer so partial programs keep their loading state.
   const isProgram = /^\s*root\s*=/m.test(text);
 
-  if (partStatusType !== "running" && !isProgram) {
+  if (!isProgram) {
     return <MarkdownText />;
   }
 
