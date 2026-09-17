@@ -16,7 +16,6 @@ import { useWidgetSocket } from "./useWidgetSocket";
 
 const waiting: HandoffState = {
   status: "waiting",
-  position: 2,
   assigneeName: null,
   staffOnline: true,
   email: null,
@@ -150,7 +149,6 @@ describe("useWidgetSocket", () => {
     renderHook(() => useWidgetSocket({ desk, widget, onMessage: told, open: socket.open }));
 
     act(() => {
-      socket.raise("handoff.queue", { callId: "call-1", position: 1 });
       socket.raise("presence", { kind: "staff", online: 2 });
       socket.raise("presence", { kind: "visitor", online: 9 });
       socket.raise("handoff.claimed", {
@@ -162,9 +160,8 @@ describe("useWidgetSocket", () => {
     });
 
     expect(desk.applied).toEqual([
-      { position: 1 },
       { staffOnline: true },
-      { status: "human", position: null, assigneeName: "Dana R." },
+      { status: "human", assigneeName: "Dana R." },
     ]);
     expect(widget.received.map((m) => m.messageId)).toEqual(["m-1", "m-2"]);
     expect(told).toHaveBeenCalledTimes(1);

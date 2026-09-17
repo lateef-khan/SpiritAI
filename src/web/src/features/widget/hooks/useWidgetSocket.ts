@@ -73,11 +73,10 @@ export function useWidgetSocket({
             onMessage?.(message);
           }
         },
-        [Events.Queue]: (push: Events.QueuePush) => desk.apply({ position: push.position }),
         [Events.Claimed]: (push: Events.ClaimedPush) =>
-          desk.apply({ status: "human", position: null, assigneeName: push.assignee.name }),
+          desk.apply({ status: "human", assigneeName: push.assignee.name }),
         [Events.Done]: () => {
-          desk.apply({ status: "done", position: null, assigneeName: null });
+          desk.apply({ status: "done", assigneeName: null });
           showTyping(false);
         },
         presence: (push: Presence) => {

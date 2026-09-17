@@ -33,15 +33,7 @@ function Line({ state, typing }: { state: HandoffState; typing: boolean }) {
   return (
     <p className="flex items-center gap-2">
       <HourglassIcon className="size-4 shrink-0" aria-hidden />
-      <span>
-        Waiting for a person.
-        {state.position !== null && state.position > 0 && (
-          <>
-            {" "}
-            You are <span className="font-medium">#{state.position}</span> in line.
-          </>
-        )}
-      </span>
+      <span>Waiting for a person.</span>
     </p>
   );
 }

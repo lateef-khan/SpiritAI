@@ -9,6 +9,40 @@ import { MarkdownText } from "./markdown-text";
 const OpenUIRenderer = lazy(() => import("./openui-renderer"));
 
 /**
+ * The words a form's submit sends up: the button's label, then one `name: value` line per field.
+ */
+
+/** One field's worth as text, or `null` when it is empty or has no flat spelling. */
+function scalarOf(state: unknown): string | null {
+  const value =
+    typeof state === "object" && state !== null && "value" in state
+      ? (state as { value: unknown }).value
+      : state;
+
+  if (!["string", "number", "boolean"].includes(typeof value)) return null;
+
+  const text = String(value).trim();
+  
+  return text.length > 0 ? text : null;
+}
+
+export function formMessage(
+  event: Pick<ActionEvent, "humanFriendlyMessage" | "formState" | "formName">,
+): string {
+  const label = event.humanFriendlyMessage.trim();
+  const fields = event.formName ? event.formState?.[event.formName] : undefined;
+
+  if (typeof fields !== "object" || fields === null) return label;
+
+  const lines = Object.entries(fields as Record<string, unknown>)
+    .map(([name, state]) => [name, scalarOf(state)] as const)
+    .filter((entry): entry is readonly [string, string] => entry[1] !== null)
+    .map(([name, value]) => `${name}: ${value}`);
+
+  return lines.length === 0 ? label : [label, ...lines].join("\n");
+}
+
+/**
  * One assistant text part through OpenUI, Renderer-only.
  */
 const OpenUIAssistantMessage: FC = () => {
@@ -46,13 +80,13 @@ const OpenUIAssistantMessage: FC = () => {
     // Anything else for a scheme is the model misbehaving: dropped.
     if (event.type !== "continue_conversation") return;
 
-    const label = event.humanFriendlyMessage?.trim();
+    const text = formMessage(event);
 
-    if (!label) return;
+    if (!text) return;
 
     aui.thread.append({
       role: "user",
-      content: [{ type: "text", text: label }],
+      content: [{ type: "text", text }],
     });
   };
 

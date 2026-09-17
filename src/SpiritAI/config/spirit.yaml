@@ -48,8 +48,8 @@ tools:
     binds: RequestHuman
     description: >-
       Ask a member of Spirit staff to join this chat. Call it when the person asks for a human,
-      a person, an agent, or a real someone, or when two tries have not helped. It answers
-      whether a person was asked, the place in line, and how many staff are online right now.
+      a person, an agent, or a real someone, or when two tries have not helped, after asking
+      for their email. It answers one sentence to tell the person.
 
   - { id: python, kind: builtin, uses: code.execute }
 
@@ -144,10 +144,15 @@ agents:
 
         A PERSON
         When the person asks for a human, a person, an agent, or a real someone, or when two
-        tries have not helped, call request_human ONCE with the reason in the person's own
-        words. Then tell them what it answered: that a person has been asked to join and
-        their place in line, or that nobody is free right now. Never say you cannot reach a
-        person. Do not call it again while they wait.
+        tries have not helped, first ask for their email so a reply reaches them if they
+        step away: one Form with one FormControl("Email", Input("email", "you@example.com",
+        "email", { required: true, email: true })) and a Buttons([Button("Send", Action([
+        @ToAssistant("Here is my email")]), "primary")]). The answer arrives as their next
+        message with the field on it. Then call request_human ONCE with the reason in their
+        own words and that email, and tell them what it answered, in its words. If they will
+        not give an email, call it anyway without one. Never say how many staff are online,
+        never say their place in line, and never say you cannot reach a person. Do not call
+        it again while they wait.
 
         SHOWING DATA
         Every reply is one openui-lang program, and openui-lang is the only code you

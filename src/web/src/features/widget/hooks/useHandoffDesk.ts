@@ -11,7 +11,6 @@ import type { HandoffState, WidgetApi } from "../api/widgetApi";
 /** A chat that has never asked for a person: no row on the host, nothing to show. */
 export const WithBot: HandoffState = {
   status: "bot",
-  position: null,
   assigneeName: null,
   staffOnline: false,
   email: null,

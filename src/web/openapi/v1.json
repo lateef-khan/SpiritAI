@@ -1040,7 +1040,6 @@
       "HandoffState": {
         "required": [
           "status",
-          "position",
           "assigneeName",
           "staffOnline",
           "email"
@@ -1049,13 +1048,6 @@
         "properties": {
           "status": {
             "type": "string"
-          },
-          "position": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
           },
           "assigneeName": {
             "type": [

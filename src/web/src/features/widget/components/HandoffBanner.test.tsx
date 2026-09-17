@@ -9,7 +9,6 @@ import { HandoffBanner } from "./HandoffBanner";
  */
 const waiting: HandoffState = {
   status: "waiting",
-  position: 2,
   assigneeName: null,
   staffOnline: true,
   email: null,
@@ -26,18 +25,17 @@ function said(): string {
 
 describe("HandoffBanner", () => {
   it("says nothing while the bot has the chat", () => {
-    render(
-      <HandoffBanner state={{ ...waiting, status: "bot", position: null }} onLeaveEmail={none} />,
-    );
+    render(<HandoffBanner state={{ ...waiting, status: "bot" }} onLeaveEmail={none} />);
 
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("says where in the line the chat stands, and that someone is online", () => {
+  it("says a person is waited for and someone is online, and never the place in line", () => {
     render(<HandoffBanner state={waiting} onLeaveEmail={none} />);
 
-    expect(said()).toContain("You are #2 in line.");
+    expect(said()).toContain("Waiting for a person.");
     expect(said()).toContain("Someone is online.");
+    expect(said()).not.toMatch(/in line|#\d/);
   });
 
   it("says nobody is online, and never how many there are", () => {
@@ -68,7 +66,7 @@ describe("HandoffBanner", () => {
   it("stops asking once a person has the chat", () => {
     render(
       <HandoffBanner
-        state={{ ...waiting, status: "human", position: null, assigneeName: "Dana R." }}
+        state={{ ...waiting, status: "human", assigneeName: "Dana R." }}
         onLeaveEmail={none}
       />,
     );
@@ -79,7 +77,7 @@ describe("HandoffBanner", () => {
   it("names the person who has the chat", () => {
     render(
       <HandoffBanner
-        state={{ ...waiting, status: "human", position: null, assigneeName: "Dana R." }}
+        state={{ ...waiting, status: "human", assigneeName: "Dana R." }}
         onLeaveEmail={none}
       />,
     );

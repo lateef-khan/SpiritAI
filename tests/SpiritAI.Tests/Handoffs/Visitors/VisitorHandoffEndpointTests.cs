@@ -33,7 +33,6 @@ public sealed class VisitorHandoffEndpointTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var state = await response.ReadAsync<HandoffState>();
         Assert.Equal("waiting", state.Status);
-        Assert.Equal(1, state.Position);
         Assert.True(state.StaffOnline);
 
         var row = Assert.Single(world.Store.Rows);
@@ -89,7 +88,6 @@ public sealed class VisitorHandoffEndpointTests
         var state = await world.Visitor.ReadAsync<HandoffState>($"{Handoff}/{callId}");
 
         Assert.Equal("bot", state.Status);
-        Assert.Null(state.Position);
         Assert.Null(state.AssigneeName);
     }
 
@@ -105,7 +103,6 @@ public sealed class VisitorHandoffEndpointTests
 
         Assert.Equal("human", state.Status);
         Assert.Equal("Dana R.", state.AssigneeName);
-        Assert.Null(state.Position);
     }
 
     [Fact]

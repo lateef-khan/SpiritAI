@@ -142,7 +142,6 @@ function fakeDesk(
 
 const waiting: HandoffState = {
   status: "waiting",
-  position: 1,
   assigneeName: null,
   staffOnline: true,
   email: null,

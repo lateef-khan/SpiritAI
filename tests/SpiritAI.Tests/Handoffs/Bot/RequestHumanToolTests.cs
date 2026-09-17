@@ -51,10 +51,8 @@ public sealed class RequestHumanToolTests
         await _calls.CreateAsync(callId, Cancel);
         await _presence.ConnectAsync("socket-1", "user:dana", "Dana R.", HandoffAdmission.StaffKind, Cancel);
 
-        var answer = await _tool.AskAsync(callId, "they want a real person", Cancel);
+        var answer = await _tool.AskAsync(callId, "they want a real person", email: null, Cancel);
 
-        Assert.Equal(1, answer.Position);
-        Assert.Equal(1, answer.StaffOnline);
         Assert.Equal(RequestHumanTool.AskedNote, answer.Note);
 
         var row = Assert.Single(_store.Rows);
@@ -71,9 +69,32 @@ public sealed class RequestHumanToolTests
         var callId = Guid.NewGuid().ToString("N");
         await _calls.CreateAsync(callId, Cancel);
 
-        var answer = await _tool.AskAsync(callId, "they want a real person", Cancel);
+        var answer = await _tool.AskAsync(callId, "they want a real person", email: null, Cancel);
 
-        Assert.Equal(0, answer.StaffOnline);
         Assert.Equal(RequestHumanTool.NobodyFreeNote, answer.Note);
+    }
+
+    [Fact]
+    public async Task AnEmailGivenWithTheAskLandsOnTheRow()
+    {
+        var callId = Guid.NewGuid().ToString("N");
+        await _calls.CreateAsync(callId, Cancel);
+
+        var answer = await _tool.AskAsync(callId, "they want a real person", " Pat@Example.com ", Cancel);
+
+        Assert.Equal(RequestHumanTool.NobodyFreeNote, answer.Note);
+        Assert.Equal("Pat@Example.com", Assert.Single(_store.Rows).Email);
+    }
+
+    [Fact]
+    public async Task AnEmailThatIsNotAnAddressIsLeftOffAndSaidSo()
+    {
+        var callId = Guid.NewGuid().ToString("N");
+        await _calls.CreateAsync(callId, Cancel);
+
+        var answer = await _tool.AskAsync(callId, "they want a real person", "not an address", Cancel);
+
+        Assert.Null(Assert.Single(_store.Rows).Email);
+        Assert.EndsWith(RequestHumanTool.BadEmailNote, answer.Note);
     }
 }

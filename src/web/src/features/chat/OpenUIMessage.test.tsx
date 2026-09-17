@@ -9,7 +9,7 @@ import { useAui, type AssistantClient } from "@assistant-ui/store";
 import { useAgentCoreRuntime } from "../threads/AgentCoreRuntime.ts";
 import { type FetchLike } from "../threads/transport.ts";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 /**
  * The OpenUI text renderer, Renderer-only: every reply is one openui-lang program and the
@@ -130,6 +130,33 @@ describe("the OpenUI text renderer", () => {
     // the label as the message, and the label is already caller-facing prose.
     await waitFor(() => {
       expect(sent.some((text) => text === "Approve")).toBe(true);
+    });
+  });
+
+  test("a form's submit sends its label and its fields as the next user turn", async () => {
+    const lang = [
+      "root = Card([form])",
+      'form = Form("contact", btns, [emailField])',
+      'emailField = FormControl("Email", Input("email", "you@example.com", "email", { required: true, email: true }))',
+      'btns = Buttons([Button("Send", Action([@ToAssistant("Here is my email")]), "primary")])',
+    ].join("\n");
+    const reply = ['t1 = TextContent("done.")', "root = Card([t1])"].join("\n");
+    const { fetch, sent } = scripted([
+      streaming([created("conv_1"), delta(lang), completed()]),
+      streaming([created("conv_1"), delta(reply), completed()]),
+    ]);
+    const aui = mount(fetch);
+    await send(aui, "I want a person");
+
+    const box = await screen.findByPlaceholderText("you@example.com");
+    fireEvent.change(box, { target: { value: "pat@example.com" } });
+    const button = await screen.findByRole("button", { name: "Send" });
+    await act(async () => {
+      button.click();
+    });
+
+    await waitFor(() => {
+      expect(sent.some((text) => text === "Here is my email\nemail: pat@example.com")).toBe(true);
     });
   });
 

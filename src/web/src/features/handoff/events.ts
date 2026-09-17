@@ -9,7 +9,7 @@ import type { HandoffMessage, HandoffSummary } from "@/api/types.gen";
 /** A chat joined the queue. Staff only. */
 export const Waiting = "handoff.waiting";
 
-/** A waiting chat's place in the line moved. The chat's visitor. */
+/** A waiting chat's place in the line moved. Pushed to the chat's visitor; the widget does not show it. */
 export const Queue = "handoff.queue";
 
 /** A member of staff took a chat. Staff, and the chat's visitor. */

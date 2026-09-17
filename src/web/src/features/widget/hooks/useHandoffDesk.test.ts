@@ -15,7 +15,6 @@ import { useHandoffDesk, WithBot } from "./useHandoffDesk";
  */
 const waiting: HandoffState = {
   status: "waiting",
-  position: 3,
   assigneeName: null,
   staffOnline: false,
   email: null,
@@ -108,14 +107,11 @@ describe("useHandoffDesk", () => {
     const view = renderHook(() => useHandoffDesk(api));
     await waitFor(() => expect(view.result.current.state.status).toBe("waiting"));
 
-    act(() =>
-      view.result.current.apply({ status: "human", position: null, assigneeName: "Dana R." }),
-    );
+    act(() => view.result.current.apply({ status: "human", assigneeName: "Dana R." }));
 
     expect(view.result.current.state).toEqual({
       ...waiting,
       status: "human",
-      position: null,
       assigneeName: "Dana R.",
     });
   });

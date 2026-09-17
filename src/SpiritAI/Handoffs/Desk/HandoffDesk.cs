@@ -57,11 +57,7 @@ public sealed class HandoffDesk(
 
         var row = await handoffs.LatestAsync(callId, cancellationToken).ConfigureAwait(false);
 
-        var position = row is { Status: HandoffStatus.Waiting }
-            ? await handoffs.PositionAsync(callId, cancellationToken).ConfigureAwait(false)
-            : null;
-
-        return HandoffState.Of(row, position, await StaffOnlineAsync(cancellationToken).ConfigureAwait(false));
+        return HandoffState.Of(row, await StaffOnlineAsync(cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>
