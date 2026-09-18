@@ -1807,7 +1807,8 @@
           "isSole",
           "manufacturedOn",
           "purchasedOn",
-          "setUpOn"
+          "setUpOn",
+          "owner"
         ],
         "type": "object",
         "properties": {
@@ -1858,6 +1859,16 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "owner": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UnitOwner"
+              }
+            ]
           }
         }
       },
@@ -1926,6 +1937,76 @@
             ]
           },
           "solution": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "UnitOwner": {
+        "required": [
+          "name",
+          "address",
+          "city",
+          "state",
+          "zip",
+          "phone",
+          "phone2",
+          "email",
+          "dealer"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "address": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "city": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "state": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "zip": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phone2": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dealer": {
             "type": [
               "null",
               "string"

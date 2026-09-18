@@ -73,6 +73,7 @@ const unit: UnitDocument = {
     manufacturedOn: "04/2010",
     purchasedOn: "2010-10-23T00:00:00+00:00",
     setUpOn: null,
+    owner: null,
   },
   jobs: [],
   history: [],

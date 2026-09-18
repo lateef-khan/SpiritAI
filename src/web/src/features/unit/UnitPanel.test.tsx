@@ -37,6 +37,17 @@ const unit = (over: Partial<UnitDocument> = {}): UnitDocument => ({
     manufacturedOn: "04/2010",
     purchasedOn: "2010-10-23T00:00:00+00:00",
     setUpOn: null,
+    owner: {
+      name: "Kurtis M.",
+      address: "12 Elm St",
+      city: "Austin",
+      state: "TX",
+      zip: "78701",
+      phone: "5125550100",
+      phone2: null,
+      email: "kurtis@example.com",
+      dealer: "DICK'S",
+    },
   },
   jobs: [],
   history: [
@@ -109,6 +120,18 @@ describe("UnitPanel", () => {
     // Grouped in fours, because this gets read digit by digit off a sticker on a frame.
     expect(screen.getByText("5808 8810 0403 6047")).toBeTruthy();
     expect(screen.getByText("Parts")).toBeTruthy();
+  });
+
+  test("pins who the machine is registered to", async () => {
+    vi.mocked(getUnit).mockResolvedValue({ data: unit() } as never);
+
+    render(<UnitPanel said={said(Serial)} onAsk={() => {}} />);
+
+    expect(await screen.findByText("Kurtis M.")).toBeTruthy();
+    expect(screen.getByText("5125550100")).toBeTruthy();
+    expect(screen.getByText("kurtis@example.com")).toBeTruthy();
+    expect(screen.getByText("12 Elm St, Austin, TX 78701")).toBeTruthy();
+    expect(screen.getByText("DICK'S")).toBeTruthy();
   });
 
   test("shows a work order with no tabs under it", async () => {

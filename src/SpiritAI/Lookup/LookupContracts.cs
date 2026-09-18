@@ -92,6 +92,10 @@ public sealed record UnitDocument(
 /// </param>
 /// <param name="PurchasedOn">When it was bought, which is what every warranty period counts from.</param>
 /// <param name="SetUpOn">When it was set up.</param>
+/// <param name="Owner">
+/// Who registered it and how to reach them, or <see langword="null"/> when the records hold no
+/// contact detail for it.
+/// </param>
 public sealed record UnitHeader(
     string Serial,
     string ModelNo,
@@ -101,7 +105,29 @@ public sealed record UnitHeader(
     bool IsSole,
     string? ManufacturedOn,
     DateTimeOffset? PurchasedOn,
-    DateTimeOffset? SetUpOn);
+    DateTimeOffset? SetUpOn,
+    UnitOwner? Owner);
+
+/// <summary>The person a machine is registered to, as the purchase record holds them.</summary>
+/// <param name="Name">Who bought it.</param>
+/// <param name="Address">The street address.</param>
+/// <param name="City">The city.</param>
+/// <param name="State">The state or province code.</param>
+/// <param name="Zip">The postal code.</param>
+/// <param name="Phone">The phone number, in whatever format was typed.</param>
+/// <param name="Phone2">A second phone number, when one was given.</param>
+/// <param name="Email">The email address.</param>
+/// <param name="Dealer">Where it was bought.</param>
+public sealed record UnitOwner(
+    string? Name,
+    string? Address,
+    string? City,
+    string? State,
+    string? Zip,
+    string? Phone,
+    string? Phone2,
+    string? Email,
+    string? Dealer);
 
 /// <summary>One service call on this machine.</summary>
 /// <param name="OrderNumber">The <c>845435-1</c> key, which is what staff say out loud.</param>
@@ -187,10 +213,6 @@ public sealed record OrderLine(string? PartNo, string? Description, int? Shipped
 /// <summary>
 /// The machines one customer owns.
 /// </summary>
-/// <remarks>
-/// The desk this replaces returned no contact details, and neither does this: a serial number is
-/// what the caller needs, and a phone number is not theirs to read out.
-/// </remarks>
 /// <param name="Units">One row per machine, as the records hold them.</param>
 /// <param name="TotalRows">How many machines matched in all, before any cap.</param>
 /// <param name="Note">One line the agent may repeat about what happened.</param>

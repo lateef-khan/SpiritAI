@@ -1,4 +1,4 @@
-import type { OrderDocument, UnitHeader, WarrantyTerm } from "@/api/types.gen";
+import type { OrderDocument, UnitHeader, UnitOwner, WarrantyTerm } from "@/api/types.gen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +42,46 @@ export function UnitFacts({
       <Facts>
         <Fact label="Bought">{asDay(header.purchasedOn)}</Fact>
         <Fact label="Set up">{asDay(header.setUpOn)}</Fact>
+        {header.owner?.dealer ? <Fact label="From">{header.owner.dealer}</Fact> : null}
       </Facts>
+
+      {header.owner ? <Owner owner={header.owner} /> : null}
+    </div>
+  );
+}
+
+/**
+ * Who the machine is registered to.
+ *
+ * Pinned with the serial because "who am I talking to" is the next thing staff check after
+ * "which machine", and a phone number that has to be found behind a tab is one that gets read
+ * back wrong. Each line is one way to reach them, so a missing one leaves no blank label behind.
+ */
+function Owner({ owner }: { owner: UnitOwner }) {
+  const address = [owner.address, owner.city, [owner.state, owner.zip].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join(", ");
+
+  return (
+    <div className="mt-3">
+      <p className="text-[11px] text-muted-foreground">Registered to</p>
+      <p className="text-[13px] font-medium">{owner.name ?? "—"}</p>
+      <dl className="mt-1 space-y-0.5 text-xs">
+        {owner.phone ? <Reach label="Phone">{owner.phone}</Reach> : null}
+        {owner.phone2 ? <Reach label="Phone 2">{owner.phone2}</Reach> : null}
+        {owner.email ? <Reach label="Email">{owner.email}</Reach> : null}
+        {address ? <Reach label="Address">{address}</Reach> : null}
+      </dl>
+    </div>
+  );
+}
+
+/** One way to reach the owner, selectable as a unit so it copies clean. */
+function Reach({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex gap-2">
+      <dt className="w-14 shrink-0 text-muted-foreground">{label}</dt>
+      <dd className="font-mono tabular-nums select-all">{children}</dd>
     </div>
   );
 }
