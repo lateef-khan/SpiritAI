@@ -58,6 +58,16 @@ public static class AgentCoreExtensions
         return builder;
     }
 
+    /// <summary>
+    /// Where a call's scratch folder lives: the shell's working directory, the file tools' store,
+    /// and what <c>file.publish</c> copies out of. Nothing here outlives the call, so the machine's
+    /// temp folder is the default; <c>Spirit:WorkspaceRoot</c> overrides it.
+    /// </summary>
+    private static string WorkspaceRoot(IConfiguration configuration)
+        => configuration["Spirit:WorkspaceRoot"] is { Length: > 0 } configured
+            ? configured
+            : Path.Combine(Path.GetTempPath(), "spiritai", "workspaces");
+
     /// <summary>Writes this host's word over the defaults AgentCore filled in.</summary>
     /// <param name="options">The options the host is filling.</param>
     /// <param name="services">
@@ -71,6 +81,7 @@ public static class AgentCoreExtensions
     private static void Configure(AgentCoreOptions options, IServiceProvider services, IHostEnvironment environment)
         => options
             .UseSkills(Path.Combine(environment.ContentRootPath, "skills"))
+            .UseWorkspace(WorkspaceRoot(services.GetRequiredService<IConfiguration>()))
             .UseKnowledgeQueryAnalyzers(new IdentifierCodeAnalyzer())
             .Bind(
                 SerialBinding,
