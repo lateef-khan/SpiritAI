@@ -16,9 +16,11 @@ public sealed class PublicChatOptions
     public string PublicPrefix { get; set; } = "/v1/public";
 
     /// <summary>
-    /// The route the widget posts a turn to. Under <see cref="PublicPrefix"/>.
+    /// The route the widget posts a turn to. Under <see cref="PublicPrefix"/>, and it must carry
+    /// <c>{entry}</c>, since AgentCore reads the entry off the URL. Only the one entry this host
+    /// serves answers on it.
     /// </summary>
-    public string Pattern { get; set; } = "/v1/public/responses";
+    public string Pattern { get; set; } = "/v1/public/{entry}/responses";
 
     /// <summary>Whether the routes are mapped at all. Turn it off and the widget stops working.</summary>
     public bool Enabled { get; set; } = true;

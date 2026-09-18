@@ -33,7 +33,7 @@ const SIZE = {
 /*
  * The widget's own route, and not the app's.
  */
-const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/public/responses";
+const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/public/main/responses";
 
 /*
  * Who this widget is, on every request it makes. Built once: the key is read per request, so

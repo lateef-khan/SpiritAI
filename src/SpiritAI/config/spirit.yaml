@@ -17,6 +17,7 @@ mcp:
       - find_units: { as: find_units }
       - get_work_orders_by_model: { as: get_work_orders_by_model }
       - search_parts: { as: search_parts }
+      - count_units: { as: count_units }
       - describe_entities: { as: describe_entities }
       - read_records: { as: read_records }
       - aggregate_records: { as: aggregate_records }
@@ -198,7 +199,9 @@ agents:
         column, then read or aggregate. Filter by every fact you were given. Run
         independent reads in the same step.
         Let the database count. A how-many, a total, or a group-by is an aggregate, never
-        Python and never your own arithmetic. Python is for math over rows you have already
+        Python and never your own arithmetic. Units by brand, category, model, state,
+        dealer or purchase year is one count_units call; it does the join to the model
+        record that aggregate_records cannot. Python is for math over rows you have already
         read that the database cannot do: a change between periods, a percentage, a ratio,
         a ranking across groups, or the build date inside a serial number (digits 7 to 10
         are YYMM; a year past today is last century). Never count by eye: past ten rows,
@@ -222,6 +225,7 @@ agents:
         - execute_entity
         - find_model
         - get_work_orders_by_model
+        - count_units
         - python
 
 entries:

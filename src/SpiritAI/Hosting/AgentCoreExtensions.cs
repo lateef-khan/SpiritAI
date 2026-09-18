@@ -2,6 +2,7 @@ using System.ComponentModel;
 
 using AgentCore.Application.Tools;
 using AgentCore.AspNetCore.DependencyInjection;
+using AgentCore.AspNetCore.Endpoints;
 using AgentCore.Hosting;
 
 using SpiritAI.Handoffs.Bot;
@@ -26,6 +27,20 @@ public static class AgentCoreExtensions
 
     /// <summary>The <c>entries:</c> key every route and store reads. Staff and visitors share it.</summary>
     public const string Entry = "main";
+
+    /// <summary>
+    /// The one path a route with <c>{entry}</c> answers on for <see cref="Entry"/>, so a door that
+    /// matches by path reads the same route the endpoint is mapped on.
+    /// </summary>
+    /// <param name="pattern">A route that carries <c>{entry}</c>.</param>
+    /// <returns>The pattern, with <see cref="Entry"/> filled in.</returns>
+    public static string RouteOf(string pattern)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(pattern);
+
+        return pattern.Replace(
+            "{" + ResponsesEndpointRouteBuilderExtensions.EntryRouteParameter + "}", Entry, StringComparison.Ordinal);
+    }
 
     /// <summary>Registers AgentCore, carrying this host's analyzers and bindings.</summary>
     /// <param name="builder">The host being built.</param>

@@ -114,19 +114,33 @@ public static class PublicChatEndpointExtensions
     /// <summary>
     /// Maps the unauthenticated chat endpoint, or nothing when the route is disabled.
     /// </summary>
-    /// <param name="app">The application to map on.</param>
-    /// <returns>The same application.</returns>
-    public static WebApplication MapPublicChat(this WebApplication app)
+    /// <param name="endpoints">The route builder to map on.</param>
+    /// <returns>The same route builder.</returns>
+    public static IEndpointRouteBuilder MapPublicChat(this IEndpointRouteBuilder endpoints)
     {
-        ArgumentNullException.ThrowIfNull(app);
+        ArgumentNullException.ThrowIfNull(endpoints);
 
-        var settings = app.Services.GetRequiredService<IOptions<PublicChatOptions>>().Value;
+        var settings = endpoints.ServiceProvider.GetRequiredService<IOptions<PublicChatOptions>>().Value;
 
         if (settings.Enabled)
         {
-            app.MapResponses(settings.Pattern, AgentCoreExtensions.Entry);
+            endpoints.MapResponses(settings.Pattern).AddEndpointFilter(OnlyTheOneEntry);
         }
 
-        return app;
+        return endpoints;
+    }
+
+    /// <summary>
+    /// The public route carries <c>{entry}</c> because AgentCore asks for it, but a stranger may
+    /// reach only the one entry this host serves. Any other name is refused before AgentCore
+    /// sees it, so a private entry added later stays private.
+    /// </summary>
+    private static ValueTask<object?> OnlyTheOneEntry(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        var entry = context.HttpContext.Request.RouteValues[ResponsesEndpointRouteBuilderExtensions.EntryRouteParameter];
+
+        return entry is AgentCoreExtensions.Entry
+            ? next(context)
+            : ValueTask.FromResult<object?>(Results.NotFound());
     }
 }

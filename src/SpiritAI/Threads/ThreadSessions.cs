@@ -1,4 +1,5 @@
 using AgentCore.Application.Ports;
+using AgentCore.AspNetCore.Endpoints;
 
 using Microsoft.AspNetCore.Mvc;
 
@@ -55,19 +56,21 @@ public static class ThreadSessionServiceCollectionExtensions
 /// <summary>The door in front of the Responses endpoint.</summary>
 public static class ThreadSessionApplicationBuilderExtensions
 {
-    /// <summary>The route this guards when the host names none.</summary>
-    public const string DefaultResponsesPattern = "/v1/responses";
+    /// <summary>The route this guards when the host names none: the one entry's Responses route.</summary>
+    public static readonly string DefaultResponsesPattern =
+        AgentCoreExtensions.RouteOf(ResponsesEndpointRouteBuilderExtensions.DefaultPattern);
 
     /// <summary>
     /// Lets a turn continue a thread the caller owns, and refuses one that names anybody else's.
     /// </summary>
     /// <param name="app">The application to add the door to. Add it after the token check.</param>
-    /// <param name="pattern">The route to guard.</param>
+    /// <param name="pattern">The route to guard, or <see langword="null"/> for <see cref="DefaultResponsesPattern"/>.</param>
     /// <returns>The same application.</returns>
-    public static IApplicationBuilder UseThreadSessions(
-        this IApplicationBuilder app, string pattern = DefaultResponsesPattern)
+    public static IApplicationBuilder UseThreadSessions(this IApplicationBuilder app, string? pattern = null)
     {
         ArgumentNullException.ThrowIfNull(app);
+
+        pattern ??= DefaultResponsesPattern;
         ArgumentException.ThrowIfNullOrEmpty(pattern);
 
         return app.UseMiddleware<ThreadSessionMiddleware>(pattern);

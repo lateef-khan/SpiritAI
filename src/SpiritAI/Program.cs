@@ -65,14 +65,14 @@ app.UseNeonAuthOnApi();
 
 app.UseThreadSessions();
 
-app.UseVisitorChat(publicChat.Pattern);
+app.UseVisitorChat(AgentCoreExtensions.RouteOf(publicChat.Pattern));
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.MapAgentCoreHost(responsesEntry: AgentCoreExtensions.Entry, callEntry: AgentCoreExtensions.Entry);
+app.MapAgentCoreHost();
 
 app.MapPublicChat();
 

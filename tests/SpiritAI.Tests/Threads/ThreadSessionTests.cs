@@ -23,8 +23,8 @@ namespace SpiritAI.Tests.Threads;
 /// </summary>
 public sealed class ThreadSessionTests
 {
-    private const string Responses = "/v1/responses";
-    private const string PublicResponses = "/v1/public/responses";
+    private const string Responses = "/v1/main/responses";
+    private const string PublicResponses = "/v1/public/main/responses";
 
     [Fact]
     public async Task ATurnThatNamesNoThreadIsLetThrough()
