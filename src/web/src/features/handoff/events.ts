@@ -34,6 +34,16 @@ export type DonePush = { readonly callId: string };
 
 export type MessagePush = HandoffMessage;
 
+/** Every event a member of staff hears, subscribed before the socket comes up. `signal` is the hub's relay of a group signal. */
+export const StaffEvents: readonly string[] = [
+  Waiting,
+  Queue,
+  Claimed,
+  Done,
+  MessageCreated,
+  "signal",
+];
+
 /** The kind the hub counts staff under in a `presence` push. */
 export const StaffKind = "staff";
 

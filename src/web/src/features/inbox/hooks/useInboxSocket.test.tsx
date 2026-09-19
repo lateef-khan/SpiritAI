@@ -1,25 +1,26 @@
+import type { ReactNode } from "react";
+
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import * as Events from "@/features/handoff/events";
+import { SocketProvider } from "@/lib/realtime/SocketProvider";
 import type { Socket, SocketAuth } from "@/lib/realtime/socket";
 import { useInboxSocket } from "./useInboxSocket";
 
 /**
- * The inbox's socket hook, one test per rule: it speaks as staff, every open and every handoff
- * push reloads the list, a message in the open chat reloads the transcript, and typing goes
- * both ways for the open chat alone.
+ * The inbox's socket hook, one test per rule: every open and every handoff push reloads the
+ * list, a message in the open chat reloads the transcript, and typing goes both ways for the
+ * open chat alone. The socket is the app's, so each test stands one up the way the app does.
  */
-vi.mock("@/features/auth", () => ({ currentToken: async () => "token" }));
 
 /** A socket a test can open, raise events on, and count. */
 function fakeOpen() {
-  const opened: SocketAuth[] = [];
   const handlers = new Map<string, (payload: unknown) => void>();
   let onOpen: (() => void) | null = null;
   const signals: unknown[][] = [];
 
-  const open = (auth: SocketAuth): Socket => {
-    opened.push(auth);
+  const open = (): Socket => {
     return {
       on: (event, handler) => {
         handlers.set(event, handler as (payload: unknown) => void);
@@ -38,9 +39,15 @@ function fakeOpen() {
     };
   };
 
+  const staff: SocketAuth = { kind: "staff", token: async () => "token" };
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <SocketProvider auth={staff} events={Events.StaffEvents} open={open}>
+      {children}
+    </SocketProvider>
+  );
+
   return {
-    open,
-    opened,
+    wrapper,
     signals,
     arrive: () => onOpen?.(),
     raise: (event: string, payload: unknown) => handlers.get(event)?.(payload),
@@ -64,15 +71,14 @@ const typingFrom = (kind: string, callId: string, on: boolean) => ({
 });
 
 describe("useInboxSocket", () => {
-  it("speaks as staff and reads everything again on every open", () => {
+  it("reads everything again on every open", () => {
     const socket = fakeOpen();
     const reloadList = vi.fn();
     const reloadTranscript = vi.fn();
 
-    renderHook(() =>
-      useInboxSocket({ selectedCallId: "call-1", reloadList, reloadTranscript, open: socket.open }),
-    );
-    expect(socket.opened[0]?.kind).toBe("staff");
+    renderHook(() => useInboxSocket({ selectedCallId: "call-1", reloadList, reloadTranscript }), {
+      wrapper: socket.wrapper,
+    });
 
     socket.arrive();
 
@@ -84,13 +90,14 @@ describe("useInboxSocket", () => {
     const socket = fakeOpen();
     const reloadList = vi.fn();
 
-    renderHook(() =>
-      useInboxSocket({
-        selectedCallId: null,
-        reloadList,
-        reloadTranscript: () => {},
-        open: socket.open,
-      }),
+    renderHook(
+      () =>
+        useInboxSocket({
+          selectedCallId: null,
+          reloadList,
+          reloadTranscript: () => {},
+        }),
+      { wrapper: socket.wrapper },
     );
 
     socket.raise("handoff.waiting", {});
@@ -105,13 +112,14 @@ describe("useInboxSocket", () => {
     const socket = fakeOpen();
     const reloadTranscript = vi.fn();
 
-    renderHook(() =>
-      useInboxSocket({
-        selectedCallId: "call-1",
-        reloadList: () => {},
-        reloadTranscript,
-        open: socket.open,
-      }),
+    renderHook(
+      () =>
+        useInboxSocket({
+          selectedCallId: "call-1",
+          reloadList: () => {},
+          reloadTranscript,
+        }),
+      { wrapper: socket.wrapper },
     );
 
     socket.raise("message.created", message("call-2"));
@@ -124,13 +132,14 @@ describe("useInboxSocket", () => {
   it("shows the open chat's visitor typing, and no one else", () => {
     const socket = fakeOpen();
 
-    const view = renderHook(() =>
-      useInboxSocket({
-        selectedCallId: "call-1",
-        reloadList: () => {},
-        reloadTranscript: () => {},
-        open: socket.open,
-      }),
+    const view = renderHook(
+      () =>
+        useInboxSocket({
+          selectedCallId: "call-1",
+          reloadList: () => {},
+          reloadTranscript: () => {},
+        }),
+      { wrapper: socket.wrapper },
     );
 
     act(() => socket.raise("signal", typingFrom("visitor", "call-2", true)));
@@ -149,13 +158,14 @@ describe("useInboxSocket", () => {
   it("tells the open chat's visitor whether the viewer is typing", async () => {
     const socket = fakeOpen();
 
-    const view = renderHook(() =>
-      useInboxSocket({
-        selectedCallId: "call-1",
-        reloadList: () => {},
-        reloadTranscript: () => {},
-        open: socket.open,
-      }),
+    const view = renderHook(
+      () =>
+        useInboxSocket({
+          selectedCallId: "call-1",
+          reloadList: () => {},
+          reloadTranscript: () => {},
+        }),
+      { wrapper: socket.wrapper },
     );
     await act(async () => {
       view.result.current.sayTyping(true);

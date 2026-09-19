@@ -7,6 +7,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider, useRemoteThreadListRuntime } from "@assistant-ui/react";
 import { AgentCoreSidebar } from "@/features/chat/AgentCoreSidebar";
 import { AuthGate } from "@/features/auth/AuthGate";
+import { currentToken } from "@/features/auth";
+import * as Events from "@/features/handoff/events";
+import { SocketProvider } from "@/lib/realtime/SocketProvider";
 import { useAgentCoreRuntime } from "./features/threads/AgentCoreRuntime";
 import {
   createAgentCoreThreadListAdapter,
@@ -45,6 +48,9 @@ const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/main
  * new one per render would be a new backing store that nothing ever reads.
  */
 const threads = createAgentCoreThreadListAdapter();
+
+/** Who the app's socket speaks as. The hub counts staff online by it, whichever screen is up. */
+const staff = { kind: "staff", token: currentToken } as const;
 
 /**
  * One thread's turn loop, bound to that thread's call.
@@ -116,63 +122,65 @@ export function App() {
 
   return (
     <AuthGate>
-      <AssistantRuntimeProvider runtime={runtime}>
-        <TooltipProvider>
-          <SidebarProvider>
-            <div className="flex h-dvh w-full">
-              <AgentCoreSidebar
-                inboxOpen={view === "inbox"}
-                onOpenInbox={() => setView("inbox")}
-                onOpenChat={() => setView("chat")}
-              />
-              {isMobile ? (
-                view === "inbox" ? (
-                  <InboxScreen
-                    meKey={meKey}
-                    transcript={transcript}
-                    onSelectionChange={handleInboxSelection}
-                  />
-                ) : (
-                  <ChatAndUnitSheet />
-                )
-              ) : (
-                <ResizablePanelGroup
-                  orientation="horizontal"
-                  className="min-w-0 flex-1"
-                  defaultLayout={defaultLayout}
-                  onLayoutChanged={onLayoutChanged}
-                >
-                  <ResizablePanel id="main" minSize="24rem">
-                    {view === "inbox" ? (
-                      <InboxScreen
-                        meKey={meKey}
-                        transcript={transcript}
-                        onSelectionChange={handleInboxSelection}
-                      />
-                    ) : (
-                      <Thread />
-                    )}
-                  </ResizablePanel>
-                  <ResizableHandle />
-                  <ResizablePanel
-                    id="context"
-                    defaultSize="20rem"
-                    minSize="16rem"
-                    maxSize="40rem"
-                    groupResizeBehavior="preserve-pixel-size"
-                  >
-                    <ContextRail
-                      mode={view === "inbox" ? "handoff" : "thread"}
-                      handoff={selectedHandoff}
-                      history={transcript.history}
+      <SocketProvider auth={staff} events={Events.StaffEvents}>
+        <AssistantRuntimeProvider runtime={runtime}>
+          <TooltipProvider>
+            <SidebarProvider>
+              <div className="flex h-dvh w-full">
+                <AgentCoreSidebar
+                  inboxOpen={view === "inbox"}
+                  onOpenInbox={() => setView("inbox")}
+                  onOpenChat={() => setView("chat")}
+                />
+                {isMobile ? (
+                  view === "inbox" ? (
+                    <InboxScreen
+                      meKey={meKey}
+                      transcript={transcript}
+                      onSelectionChange={handleInboxSelection}
                     />
-                  </ResizablePanel>
-                </ResizablePanelGroup>
-              )}
-            </div>
-          </SidebarProvider>
-        </TooltipProvider>
-      </AssistantRuntimeProvider>
+                  ) : (
+                    <ChatAndUnitSheet />
+                  )
+                ) : (
+                  <ResizablePanelGroup
+                    orientation="horizontal"
+                    className="min-w-0 flex-1"
+                    defaultLayout={defaultLayout}
+                    onLayoutChanged={onLayoutChanged}
+                  >
+                    <ResizablePanel id="main" minSize="24rem">
+                      {view === "inbox" ? (
+                        <InboxScreen
+                          meKey={meKey}
+                          transcript={transcript}
+                          onSelectionChange={handleInboxSelection}
+                        />
+                      ) : (
+                        <Thread />
+                      )}
+                    </ResizablePanel>
+                    <ResizableHandle />
+                    <ResizablePanel
+                      id="context"
+                      defaultSize="20rem"
+                      minSize="16rem"
+                      maxSize="40rem"
+                      groupResizeBehavior="preserve-pixel-size"
+                    >
+                      <ContextRail
+                        mode={view === "inbox" ? "handoff" : "thread"}
+                        handoff={selectedHandoff}
+                        history={transcript.history}
+                      />
+                    </ResizablePanel>
+                  </ResizablePanelGroup>
+                )}
+              </div>
+            </SidebarProvider>
+          </TooltipProvider>
+        </AssistantRuntimeProvider>
+      </SocketProvider>
     </AuthGate>
   );
 }
