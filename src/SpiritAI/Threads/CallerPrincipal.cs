@@ -3,7 +3,7 @@ using System.Security.Claims;
 namespace SpiritAI.Threads;
 
 /// <summary>
-/// Turns a signed-in browser into the opaque key <c>call_principal</c> is filed under.
+/// Turns a signed-in browser into the opaque key <c>conversation_principal</c> is filed under.
 /// </summary>
 public static class CallerPrincipal
 {

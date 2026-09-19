@@ -13,15 +13,15 @@ internal sealed class SilentHandoffNotifier : IHandoffNotifier
         => ValueTask.CompletedTask;
 
     /// <inheritdoc />
-    public ValueTask QueueAsync(string callId, int position, CancellationToken cancellationToken)
+    public ValueTask QueueAsync(string conversationId, int position, CancellationToken cancellationToken)
         => ValueTask.CompletedTask;
 
     /// <inheritdoc />
-    public ValueTask ClaimedAsync(string callId, HandoffAssignee assignee, CancellationToken cancellationToken)
+    public ValueTask ClaimedAsync(string conversationId, HandoffAssignee assignee, CancellationToken cancellationToken)
         => ValueTask.CompletedTask;
 
     /// <inheritdoc />
-    public ValueTask DoneAsync(string callId, CancellationToken cancellationToken)
+    public ValueTask DoneAsync(string conversationId, CancellationToken cancellationToken)
         => ValueTask.CompletedTask;
 
     /// <inheritdoc />

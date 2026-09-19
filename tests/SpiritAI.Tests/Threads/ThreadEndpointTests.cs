@@ -5,8 +5,8 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 using AgentCore.Application.Blobs;
-using AgentCore.Application.Calls;
-using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Conversation;
+using AgentCore.Application.Conversation.Memory;
 using AgentCore.Application.Ports;
 
 using Microsoft.Extensions.AI;
@@ -270,7 +270,7 @@ public sealed class ThreadEndpointTests
 
         var response = await world.Stranger.GetAsync($"{Threads}/{remoteId}");
 
-        // 404 and not 403, deliberately. A 403 would confirm the call id names something real,
+        // 404 and not 403, deliberately. A 403 would confirm the conversation id names something real,
         // which is the one thing a caller guessing ids wants to learn.
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -393,7 +393,7 @@ public sealed class ThreadEndpointTests
 
         private readonly IHost _host;
 
-        private World(IHost host, NeonAuthTestKit kit, ICallStore store, InMemoryBlobStore blobs)
+        private World(IHost host, NeonAuthTestKit kit, IConversations store, InMemoryBlobStore blobs)
         {
             _host = host;
             Store = store;
@@ -410,7 +410,7 @@ public sealed class ThreadEndpointTests
         public Caller Anonymous { get; }
 
         /// <summary>The store behind the routes, so a test can put words in a thread.</summary>
-        public ICallStore Store { get; }
+        public IConversations Store { get; }
 
         public InMemoryBlobStore Blobs { get; }
 
@@ -418,15 +418,14 @@ public sealed class ThreadEndpointTests
         {
             var kit = new NeonAuthTestKit();
             InMemoryBlobStore blobs = new();
-            CallRepository store = new(new InMemoryCallStore(), blobs);
+            Conversations store = new(new InMemoryConversationStore(), blobs);
 
             var host = await ThreadTestHost.StartAsync(
                 kit,
                 services =>
                 {
-                    services.AddSingleton(store);
-                    services.AddSingleton<ICallStore>(store);
-                    services.AddSingleton<ICallTitler>(new SpellingTitler(store));
+                    services.AddSingleton<IConversations>(store);
+                    services.AddSingleton<IConversationTitler>(new SpellingTitler(store));
                 },
                 app =>
                 {
@@ -453,15 +452,15 @@ public sealed class ThreadEndpointTests
     }
 
     /// <summary>
-    /// A titler with no model behind it, standing in for <see cref="ICallTitler"/>.
+    /// A titler with no model behind it, standing in for <see cref="IConversationTitler"/>.
     /// </summary>
-    private sealed class SpellingTitler(ICallStore calls) : ICallTitler
+    private sealed class SpellingTitler(IConversations conversations) : IConversationTitler
     {
         public async IAsyncEnumerable<string> GenerateAsync(
-            string callId,
+            string conversationId,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var rows = await calls.ReadAsync(callId, cancellationToken).ConfigureAwait(false);
+            var rows = await conversations.ReadAsync(conversationId, cancellationToken).ConfigureAwait(false);
 
             if (rows.Count == 0)
             {
@@ -475,11 +474,11 @@ public sealed class ThreadEndpointTests
                 yield return at == 0 ? words[at] : " " + words[at];
             }
 
-            await calls.RenameAsync(callId, string.Join(' ', words), cancellationToken).ConfigureAwait(false);
+            await conversations.RenameAsync(conversationId, string.Join(' ', words), cancellationToken).ConfigureAwait(false);
         }
 
         public async IAsyncEnumerable<string> GenerateFromAsync(
-            string callId,
+            string conversationId,
             IReadOnlyList<ChatMessage> messages,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
@@ -497,7 +496,7 @@ public sealed class ThreadEndpointTests
                 yield return at == 0 ? picked[at] : " " + picked[at];
             }
 
-            await calls.RenameAsync(callId, string.Join(' ', picked), cancellationToken).ConfigureAwait(false);
+            await conversations.RenameAsync(conversationId, string.Join(' ', picked), cancellationToken).ConfigureAwait(false);
         }
     }
 

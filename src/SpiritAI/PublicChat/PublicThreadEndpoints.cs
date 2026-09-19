@@ -1,4 +1,4 @@
-using AgentCore.Application.Calls;
+using AgentCore.Application.Conversation;
 using AgentCore.Application.Ports;
 
 using SpiritAI.Threads;
@@ -15,10 +15,10 @@ public static class PublicThreadEndpoints
     /// <summary>The route prefix the widget's threads answer on.</summary>
     public const string Pattern = "/v1/public/threads";
 
-    /// <summary>What the visitor's claim on a call is called in <c>call_principal</c>.</summary>
+    /// <summary>What the visitor's claim on a conversation is called in <c>conversation_principal</c>.</summary>
     public const string VisitorRole = "visitor";
 
-    private const string One = $"{Pattern}/{{callId}}";
+    private const string One = $"{Pattern}/{{conversationId}}";
 
     /// <summary>Maps the widget's thread routes on <see cref="Pattern"/>.</summary>
     /// <param name="endpoints">The route builder of the host.</param>
@@ -57,7 +57,7 @@ public static class PublicThreadEndpoints
 
     /// <summary>Runs a route body for the visitor behind the request, or refuses it.</summary>
     /// <param name="http">The request, carrying the visitor's key.</param>
-    /// <param name="body">The route, given the key the visitor's calls are filed under.</param>
+    /// <param name="body">The route, given the key the visitor's conversations are filed under.</param>
     /// <returns>What the route answered, or 400 when there is no usable key.</returns>
     private static Task<IResult> ForVisitorAsync(HttpContext http, Func<string, Task<IResult>> body)
     {
@@ -77,32 +77,33 @@ public static class PublicThreadEndpoints
     /// <summary>Makes a thread, and gives the visitor the only claim on it.</summary>
     private static Task<IResult> CreateAsync(
         HttpContext http,
-        ICallStore calls,
+        IConversations conversations,
         CancellationToken cancellationToken)
         => ForVisitorAsync(http, async key =>
         {
-            var callId = Guid.NewGuid().ToString("N");
+            var conversationId = Guid.NewGuid().ToString("N");
 
-            await calls.CreateAsync(callId, cancellationToken).ConfigureAwait(false);
-            await calls.SetCustomAsync(callId, ThreadEnvelope.Build(key, app: null), cancellationToken).ConfigureAwait(false);
-            await calls.AttachPrincipalAsync(callId, key, VisitorRole, cancellationToken).ConfigureAwait(false);
+            await conversations.CreateAsync(conversationId, cancellationToken).ConfigureAwait(false);
+            await conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(key, app: null), cancellationToken).ConfigureAwait(false);
+            await conversations.AttachPrincipalAsync(conversationId, key, VisitorRole, cancellationToken).ConfigureAwait(false);
 
-            return TypedResults.Created($"{Pattern}/{callId}/messages", new ThreadCreated(callId, ExternalId: null));
+            return TypedResults.Created($"{Pattern}/{conversationId}/messages", new ThreadCreated(conversationId, ExternalId: null));
         });
 
     /// <summary>One thread's whole conversation, in the shape a reloaded widget restores it from.</summary>
     private static Task<IResult> HistoryAsync(
         HttpContext http,
-        CallRepository calls,
-        string callId,
+        IConversations conversations,
+        string conversationId,
         CancellationToken cancellationToken)
         => ForVisitorAsync(http, async key =>
         {
-            if (await ThreadOwnership.ReadAsync(calls, callId, key, cancellationToken).ConfigureAwait(false) is not { } record)
+            if (await conversations.LoadAsync(conversationId, cancellationToken).ConfigureAwait(false) is not { } stored
+                || !ThreadOwnership.Owns(stored.Conversation, key))
             {
                 return TypedResults.NotFound();
             }
 
-            return TypedResults.Ok(await ThreadHistory.ReadAsync(record, calls, cancellationToken).ConfigureAwait(false));
+            return TypedResults.Ok(ThreadHistory.Of(stored));
         });
 }

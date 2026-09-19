@@ -22,18 +22,18 @@ public sealed class RequestHumanTool(HandoffDesk desk)
     public const string BadEmailNote = " The email given does not look like an address; ask for it again.";
 
     /// <summary>Asks for a person on the chat of the turn under way.</summary>
-    /// <param name="callId">The chat, as AgentCore names it to the binding.</param>
+    /// <param name="conversationId">The chat, as AgentCore names it to the binding.</param>
     /// <param name="reason">Why, in the person's own words.</param>
     /// <param name="email">Where a reply goes when they are not there to read it, when they gave one.</param>
     /// <param name="cancellationToken">Cancels the ask.</param>
     /// <returns>One sentence for the model to pass on.</returns>
-    public async Task<RequestHumanAnswer> AskAsync(string callId, string reason, string? email, CancellationToken cancellationToken)
+    public async Task<RequestHumanAnswer> AskAsync(string conversationId, string reason, string? email, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrEmpty(callId);
+        ArgumentException.ThrowIfNullOrEmpty(conversationId);
 
         var staffOnline = await desk.StaffOnlineAsync(cancellationToken).ConfigureAwait(false);
 
-        await desk.AskAsync(callId, HandoffAskedBy.Bot, reason, cancellationToken).ConfigureAwait(false);
+        await desk.AskAsync(conversationId, HandoffAskedBy.Bot, reason, cancellationToken).ConfigureAwait(false);
 
         var note = staffOnline > 0 ? AskedNote : NobodyFreeNote;
 
@@ -41,7 +41,7 @@ public sealed class RequestHumanTool(HandoffDesk desk)
         {
             if (MailAddress.TryCreate(email.Trim(), out var address))
             {
-                await desk.SetEmailAsync(callId, address.Address, cancellationToken).ConfigureAwait(false);
+                await desk.SetEmailAsync(conversationId, address.Address, cancellationToken).ConfigureAwait(false);
             }
             else
             {

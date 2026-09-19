@@ -1,7 +1,7 @@
 using System.Text.Json;
 
-using AgentCore.Application.Calls;
-using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Conversation;
+using AgentCore.Application.Conversation.Memory;
 using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Builder;
@@ -189,9 +189,8 @@ public sealed class OpenApiDocumentTests
 
                     // Present so the route builder reads these as injected services rather than as
                     // request bodies. Nothing calls them: no route is ever invoked here.
-                    services.AddSingleton<ICallStore>(new InMemoryCallStore());
-                    services.AddSingleton(new CallRepository(new InMemoryCallStore(), blobs: null));
-                    services.AddSingleton<ICallTitler>(new SilentTitler());
+                    services.AddSingleton<IConversations>(new Conversations(new InMemoryConversationStore(), blobs: null));
+                    services.AddSingleton<IConversationTitler>(new SilentTitler());
                     services.AddSingleton(new UnitLookup(
                         (_, _, _) => ValueTask.FromResult(default(System.Text.Json.JsonElement))));
 
@@ -243,13 +242,13 @@ public sealed class OpenApiDocumentTests
     }
 
     /// <summary>A titler that is registered and never asked for anything.</summary>
-    private sealed class SilentTitler : ICallTitler
+    private sealed class SilentTitler : IConversationTitler
     {
-        public IAsyncEnumerable<string> GenerateAsync(string callId, CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<string> GenerateAsync(string conversationId, CancellationToken cancellationToken = default)
             => AsyncEnumerable.Empty<string>();
 
         public IAsyncEnumerable<string> GenerateFromAsync(
-            string callId,
+            string conversationId,
             IReadOnlyList<Microsoft.Extensions.AI.ChatMessage> messages,
             CancellationToken cancellationToken = default)
             => AsyncEnumerable.Empty<string>();

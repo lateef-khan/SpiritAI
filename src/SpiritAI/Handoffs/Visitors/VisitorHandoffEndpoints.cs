@@ -22,7 +22,7 @@ public static class VisitorHandoffEndpoints
     /// <summary>The route prefix the visitor's handoff routes answer on.</summary>
     public const string Pattern = "/v1/public/handoff";
 
-    private const string One = $"{Pattern}/{{callId}}";
+    private const string One = $"{Pattern}/{{conversationId}}";
 
     /// <summary>Maps the visitor's handoff routes on <see cref="Pattern"/>.</summary>
     /// <param name="endpoints">The route builder of the host.</param>
@@ -75,8 +75,8 @@ public static class VisitorHandoffEndpoints
 
     /// <summary>Runs a route body against a chat the visitor owns, or refuses the request.</summary>
     /// <param name="http">The request, carrying the visitor's key.</param>
-    /// <param name="calls">The store the row is read from.</param>
-    /// <param name="callId">The call the request named, which may be anything at all.</param>
+    /// <param name="conversations">The store the row is read from.</param>
+    /// <param name="conversationId">The call the request named, which may be anything at all.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <param name="body">The route.</param>
     /// <returns>
@@ -85,8 +85,8 @@ public static class VisitorHandoffEndpoints
     /// </returns>
     private static async Task<IResult> ForOwnedAsync(
         HttpContext http,
-        ICallStore calls,
-        string callId,
+        IConversations conversations,
+        string conversationId,
         CancellationToken cancellationToken,
         Func<Task<IResult>> body)
     {
@@ -100,7 +100,7 @@ public static class VisitorHandoffEndpoints
                 $"Send a well-formed {VisitorPrincipal.Header} header: letters, digits, '_' and '-', at most {VisitorPrincipal.MaxLength} characters.");
         }
 
-        if (await ThreadOwnership.ReadAsync(calls, callId, VisitorPrincipal.KeyOf(sent), cancellationToken).ConfigureAwait(false)
+        if (await ThreadOwnership.ReadAsync(conversations, conversationId, VisitorPrincipal.KeyOf(sent), cancellationToken).ConfigureAwait(false)
             is null)
         {
             return TypedResults.NotFound();
@@ -112,25 +112,25 @@ public static class VisitorHandoffEndpoints
     /// <summary>Asks for a person on the visitor's chat.</summary>
     private static Task<IResult> AskAsync(
         HttpContext http,
-        ICallStore calls,
+        IConversations conversations,
         HandoffDesk desk,
         VisitorAskRequest? body,
         CancellationToken cancellationToken)
     {
-        if (body is not { CallId: { } callId } || string.IsNullOrWhiteSpace(callId))
+        if (body is not { ConversationId: { } conversationId } || string.IsNullOrWhiteSpace(conversationId))
         {
             return Task.FromResult<IResult>(
                 Problem(StatusCodes.Status400BadRequest, "The request cannot be read.", "callId must be a non-blank string."));
         }
 
-        return ForOwnedAsync(http, calls, callId, cancellationToken, async () =>
+        return ForOwnedAsync(http, conversations, conversationId, cancellationToken, async () =>
         {
-            var asked = await desk.AskAsync(callId, HandoffAskedBy.Visitor, body.Reason, cancellationToken).ConfigureAwait(false);
+            var asked = await desk.AskAsync(conversationId, HandoffAskedBy.Visitor, body.Reason, cancellationToken).ConfigureAwait(false);
 
-            var state = await desk.StateAsync(callId, cancellationToken).ConfigureAwait(false);
+            var state = await desk.StateAsync(conversationId, cancellationToken).ConfigureAwait(false);
 
             return asked.Created
-                ? TypedResults.Created($"{Pattern}/{callId}", state)
+                ? TypedResults.Created($"{Pattern}/{conversationId}", state)
                 : TypedResults.Ok(state);
         });
     }
@@ -138,29 +138,29 @@ public static class VisitorHandoffEndpoints
     /// <summary>Where the visitor's chat stands: the truth after a reconnect.</summary>
     private static Task<IResult> StateAsync(
         HttpContext http,
-        ICallStore calls,
+        IConversations conversations,
         HandoffDesk desk,
-        string callId,
+        string conversationId,
         CancellationToken cancellationToken)
-        => ForOwnedAsync(http, calls, callId, cancellationToken, async ()
-            => TypedResults.Ok(await desk.StateAsync(callId, cancellationToken).ConfigureAwait(false)));
+        => ForOwnedAsync(http, conversations, conversationId, cancellationToken, async ()
+            => TypedResults.Ok(await desk.StateAsync(conversationId, cancellationToken).ConfigureAwait(false)));
 
     /// <summary>Records where a reply goes when the visitor is not there to read it.</summary>
     private static Task<IResult> EmailAsync(
         HttpContext http,
-        ICallStore calls,
+        IConversations conversations,
         HandoffDesk desk,
-        string callId,
+        string conversationId,
         VisitorEmailRequest? body,
         CancellationToken cancellationToken)
-        => ForOwnedAsync(http, calls, callId, cancellationToken, async () =>
+        => ForOwnedAsync(http, conversations, conversationId, cancellationToken, async () =>
         {
             if (body is not { Email: { } email } || !MailAddress.TryCreate(email, out _))
             {
                 return Problem(StatusCodes.Status400BadRequest, "The request cannot be read.", "email must be an email address.");
             }
 
-            if (!await desk.SetEmailAsync(callId, email, cancellationToken).ConfigureAwait(false))
+            if (!await desk.SetEmailAsync(conversationId, email, cancellationToken).ConfigureAwait(false))
             {
                 return Problem(StatusCodes.Status409Conflict, "Nothing is waiting.", "Ask for a person first.");
             }
@@ -171,24 +171,24 @@ public static class VisitorHandoffEndpoints
     /// <summary>Puts the visitor's words in a chat that is waiting or with a person.</summary>
     private static Task<IResult> SayAsync(
         HttpContext http,
-        ICallStore calls,
+        IConversations conversations,
         HandoffDesk desk,
-        string callId,
+        string conversationId,
         VisitorMessageRequest? body,
         CancellationToken cancellationToken)
-        => ForOwnedAsync(http, calls, callId, cancellationToken, async () =>
+        => ForOwnedAsync(http, conversations, conversationId, cancellationToken, async () =>
         {
             if (body is not { Text: { } text } || string.IsNullOrWhiteSpace(text))
             {
                 return Problem(StatusCodes.Status400BadRequest, "The request cannot be read.", "text must be a non-blank string.");
             }
 
-            if (await desk.VisitorSaysAsync(callId, text, cancellationToken).ConfigureAwait(false) is not { } created)
+            if (await desk.VisitorSaysAsync(conversationId, text, cancellationToken).ConfigureAwait(false) is not { } created)
             {
                 return Problem(StatusCodes.Status409Conflict, "The assistant has this chat.", "Send it there.");
             }
 
-            return TypedResults.Created($"{Pattern}/{callId}/messages", created);
+            return TypedResults.Created($"{Pattern}/{conversationId}/messages", created);
         });
 
     private static ProblemHttpResult Problem(int statusCode, string title, string detail)

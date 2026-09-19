@@ -20,12 +20,12 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
 
     /// <inheritdoc />
     public async Task<HandoffTicket> AskAsync(
-        string callId, HandoffAskedBy askedBy, string? reason, CancellationToken cancellationToken)
+        string conversationId, HandoffAskedBy askedBy, string? reason, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrEmpty(callId);
+        ArgumentException.ThrowIfNullOrEmpty(conversationId);
 
-        var row = await _queries.OpenAsync(callId, cancellationToken).ConfigureAwait(false)
-            ?? await InsertWaitingAsync(callId, askedBy, reason, cancellationToken).ConfigureAwait(false);
+        var row = await _queries.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false)
+            ?? await InsertWaitingAsync(conversationId, askedBy, reason, cancellationToken).ConfigureAwait(false);
 
         var position = row.Status == HandoffStatus.Waiting
             ? await _queries.PositionOfAsync(row, cancellationToken).ConfigureAwait(false)
@@ -35,11 +35,11 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
     }
 
     /// <inheritdoc />
-    public async Task<int?> PositionAsync(string callId, CancellationToken cancellationToken)
+    public async Task<int?> PositionAsync(string conversationId, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrEmpty(callId);
+        ArgumentException.ThrowIfNullOrEmpty(conversationId);
 
-        var row = await _queries.OpenAsync(callId, cancellationToken).ConfigureAwait(false);
+        var row = await _queries.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false);
 
         return row is { Status: HandoffStatus.Waiting }
             ? await _queries.PositionOfAsync(row, cancellationToken).ConfigureAwait(false)
@@ -47,19 +47,19 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
     }
 
     /// <inheritdoc />
-    public Task<Handoff?> OpenAsync(string callId, CancellationToken cancellationToken)
+    public Task<Handoff?> OpenAsync(string conversationId, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrEmpty(callId);
+        ArgumentException.ThrowIfNullOrEmpty(conversationId);
 
-        return _queries.OpenAsync(callId, cancellationToken);
+        return _queries.OpenAsync(conversationId, cancellationToken);
     }
 
     /// <inheritdoc />
-    public Task<Handoff?> LatestAsync(string callId, CancellationToken cancellationToken)
+    public Task<Handoff?> LatestAsync(string conversationId, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrEmpty(callId);
+        ArgumentException.ThrowIfNullOrEmpty(conversationId);
 
-        return _queries.LatestAsync(callId, cancellationToken);
+        return _queries.LatestAsync(conversationId, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -69,16 +69,16 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
 
     /// <inheritdoc />
     public async Task<HandoffClaim> ClaimAsync(
-        string callId, string staffKey, string staffName, CancellationToken cancellationToken)
+        string conversationId, string staffKey, string staffName, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrEmpty(callId);
+        ArgumentException.ThrowIfNullOrEmpty(conversationId);
         ArgumentException.ThrowIfNullOrEmpty(staffKey);
         ArgumentException.ThrowIfNullOrEmpty(staffName);
 
         var now = clock.GetUtcNow();
 
         var won = await database.Handoffs
-            .Where(h => h.CallId == callId && h.Status == HandoffStatus.Waiting && h.AssigneeKey == null)
+            .Where(h => h.ConversationId == conversationId && h.Status == HandoffStatus.Waiting && h.AssigneeKey == null)
             .ExecuteUpdateAsync(
                 s => s
                     .SetProperty(h => h.Status, HandoffStatus.Human)
@@ -92,7 +92,7 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
         {
             // The newest row this claimant holds on the chat is the one the update just took.
             var taken = await database.Handoffs.AsNoTracking()
-                .Where(h => h.CallId == callId && h.AssigneeKey == staffKey)
+                .Where(h => h.ConversationId == conversationId && h.AssigneeKey == staffKey)
                 .OrderByDescending(h => h.Id)
                 .FirstAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -100,19 +100,19 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
             return HandoffClaim.Won(taken);
         }
 
-        var open = await _queries.OpenAsync(callId, cancellationToken).ConfigureAwait(false);
+        var open = await _queries.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false);
 
         return open is null ? HandoffClaim.NotWaiting() : HandoffClaim.AlreadyTaken(open);
     }
 
     /// <inheritdoc />
-    public async Task<bool> DoneAsync(string callId, CancellationToken cancellationToken)
+    public async Task<bool> DoneAsync(string conversationId, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrEmpty(callId);
+        ArgumentException.ThrowIfNullOrEmpty(conversationId);
 
         var now = clock.GetUtcNow();
 
-        return await _queries.Open(callId)
+        return await _queries.Open(conversationId)
             .ExecuteUpdateAsync(
                 s => s
                     .SetProperty(h => h.Status, HandoffStatus.Done)
@@ -122,12 +122,12 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
     }
 
     /// <inheritdoc />
-    public async Task<bool> SetEmailAsync(string callId, string email, CancellationToken cancellationToken)
+    public async Task<bool> SetEmailAsync(string conversationId, string email, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrEmpty(callId);
+        ArgumentException.ThrowIfNullOrEmpty(conversationId);
         ArgumentException.ThrowIfNullOrEmpty(email);
 
-        return await _queries.Open(callId)
+        return await _queries.Open(conversationId)
             .ExecuteUpdateAsync(s => s.SetProperty(h => h.Email, email), cancellationToken)
             .ConfigureAwait(false) == 1;
     }
@@ -136,11 +136,11 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
     /// Inserts the waiting row, or, when another ask got in first, hands back the row it made.
     /// </summary>
     private async Task<Handoff> InsertWaitingAsync(
-        string callId, HandoffAskedBy askedBy, string? reason, CancellationToken cancellationToken)
+        string conversationId, HandoffAskedBy askedBy, string? reason, CancellationToken cancellationToken)
     {
         var row = new Handoff
         {
-            CallId = callId,
+            ConversationId = conversationId,
             Status = HandoffStatus.Waiting,
             AskedBy = askedBy,
             Reason = reason,
@@ -158,9 +158,9 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
             // Left tracked, the context would try the insert again on its next save.
             database.Entry(row).State = EntityState.Detached;
 
-            return await _queries.OpenAsync(callId, cancellationToken).ConfigureAwait(false)
+            return await _queries.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException(
-                    $"A second open handoff for call '{callId}' was refused, but none can be read.",
+                    $"A second open handoff for conversation '{conversationId}' was refused, but none can be read.",
                     refused);
         }
 
@@ -169,5 +169,5 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
 
     /// <summary>Whether the database refused a second open row for one chat.</summary>
     private static bool IsSecondOpenRow(DbUpdateException exception)
-        => exception.InnerException is PostgresException { ConstraintName: HandoffConfiguration.OpenPerCallIndex };
+        => exception.InnerException is PostgresException { ConstraintName: HandoffConfiguration.OpenPerConversationIndex };
 }

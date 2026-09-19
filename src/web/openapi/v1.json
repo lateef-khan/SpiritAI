@@ -360,7 +360,7 @@
         }
       }
     },
-    "/v1/handoff/{callId}": {
+    "/v1/handoff/{conversationId}": {
       "get": {
         "tags": [
           "Handoff"
@@ -368,7 +368,7 @@
         "operationId": "getHandoff",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -406,7 +406,7 @@
         }
       }
     },
-    "/v1/handoff/{callId}/messages": {
+    "/v1/handoff/{conversationId}/messages": {
       "get": {
         "tags": [
           "Handoff"
@@ -414,7 +414,7 @@
         "operationId": "getHandoffMessages",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -458,7 +458,7 @@
         "operationId": "replyToHandoff",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -532,7 +532,7 @@
         }
       }
     },
-    "/v1/handoff/{callId}/claim": {
+    "/v1/handoff/{conversationId}/claim": {
       "post": {
         "tags": [
           "Handoff"
@@ -540,7 +540,7 @@
         "operationId": "claimHandoff",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -588,7 +588,7 @@
         }
       }
     },
-    "/v1/handoff/{callId}/done": {
+    "/v1/handoff/{conversationId}/done": {
       "post": {
         "tags": [
           "Handoff"
@@ -596,7 +596,7 @@
         "operationId": "finishHandoff",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -657,7 +657,7 @@
         }
       }
     },
-    "/v1/public/threads/{callId}/messages": {
+    "/v1/public/threads/{conversationId}/messages": {
       "get": {
         "tags": [
           "PublicThreads"
@@ -665,7 +665,7 @@
         "operationId": "getPublicThreadMessages",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -759,7 +759,7 @@
         }
       }
     },
-    "/v1/public/handoff/{callId}": {
+    "/v1/public/handoff/{conversationId}": {
       "get": {
         "tags": [
           "PublicHandoff"
@@ -767,7 +767,7 @@
         "operationId": "getHandoffState",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -802,7 +802,7 @@
         }
       }
     },
-    "/v1/public/handoff/{callId}/email": {
+    "/v1/public/handoff/{conversationId}/email": {
       "patch": {
         "tags": [
           "PublicHandoff"
@@ -810,7 +810,7 @@
         "operationId": "leaveEmail",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -864,7 +864,7 @@
         }
       }
     },
-    "/v1/public/handoff/{callId}/messages": {
+    "/v1/public/handoff/{conversationId}/messages": {
       "post": {
         "tags": [
           "PublicHandoff"
@@ -872,7 +872,7 @@
         "operationId": "sendVisitorMessage",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {

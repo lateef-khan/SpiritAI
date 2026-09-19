@@ -1,6 +1,7 @@
 
 using AgentCore.Application.Ports;
-using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Conversation;
+using AgentCore.Application.Conversation.Memory;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Connections;
@@ -44,47 +45,47 @@ public sealed class HandoffSocketTests : IAsyncDisposable
     private readonly List<HubConnection> _connections = [];
     private IHost? _host;
     private NeonAuthTestKit? _kit;
-    private ICallStore? _calls;
+    private IConversations? _conversations;
 
     [Fact]
     public async Task AVisitorsTypingReachesStaffAndTheirsReachesTheVisitor()
     {
-        var callId = await StartAsync();
+        var conversationId = await StartAsync();
         var staff = Staff();
-        var visitor = Visitor(callId);
+        var visitor = Visitor(conversationId);
         var toStaff = new Inbox<RealTimeSignal>(staff, RealTimeEvents.Signal);
         var toVisitor = new Inbox<RealTimeSignal>(visitor, RealTimeEvents.Signal);
         Assert.True(await SpiritHubWorld.AdmittedAsync(staff), "staff was not admitted");
         Assert.True(await SpiritHubWorld.AdmittedAsync(visitor), "the visitor was not admitted");
 
-        await visitor.InvokeAsync(nameof(SpiritHub.Signal), HandoffGroups.Staff, "typing", new { callId, on = true }, Cancel);
+        await visitor.InvokeAsync(nameof(SpiritHub.Signal), HandoffGroups.Staff, "typing", new { callId = conversationId, on = true }, Cancel);
 
         var heardByStaff = await toStaff.NextAsync();
         Assert.Equal(HandoffAdmission.VisitorKind, heardByStaff.Sender.Kind);
         Assert.Equal("typing", heardByStaff.Name);
-        Assert.Equal(callId, heardByStaff.Payload.GetProperty("callId").GetString());
+        Assert.Equal(conversationId, heardByStaff.Payload.GetProperty("callId").GetString());
         Assert.True(heardByStaff.Payload.GetProperty("on").GetBoolean());
 
-        await staff.InvokeAsync(nameof(SpiritHub.Signal), HandoffGroups.ForCall(callId), "typing", new { callId, on = true }, Cancel);
+        await staff.InvokeAsync(nameof(SpiritHub.Signal), HandoffGroups.ForConversation(conversationId), "typing", new { callId = conversationId, on = true }, Cancel);
 
         var heardByVisitor = await toVisitor.NextAsync();
         Assert.Equal(HandoffAdmission.StaffKind, heardByVisitor.Sender.Kind);
-        Assert.Equal(HandoffGroups.ForCall(callId), heardByVisitor.Group);
+        Assert.Equal(HandoffGroups.ForConversation(conversationId), heardByVisitor.Group);
     }
 
     [Fact]
     public async Task AMessagePushReachesStaffAndTheChatsVisitor()
     {
-        var callId = await StartAsync();
+        var conversationId = await StartAsync();
         var staff = Staff();
-        var visitor = Visitor(callId);
+        var visitor = Visitor(conversationId);
         var toStaff = new Inbox<HandoffMessage>(staff, HandoffEvents.MessageCreated);
         var toVisitor = new Inbox<HandoffMessage>(visitor, HandoffEvents.MessageCreated);
         Assert.True(await SpiritHubWorld.AdmittedAsync(staff));
         Assert.True(await SpiritHubWorld.AdmittedAsync(visitor));
 
         var notifier = _host!.Services.GetRequiredService<IHandoffNotifier>();
-        var message = new HandoffMessage(callId, "m-1", "assistant", "Dana R. joined", HandoffSpeaker.System(), Start);
+        var message = new HandoffMessage(conversationId, "m-1", "assistant", "Dana R. joined", HandoffSpeaker.System(), Start);
         await notifier.MessageCreatedAsync(message, Cancel);
 
         Assert.Equal("Dana R. joined", (await toStaff.NextAsync()).Text);
@@ -96,7 +97,7 @@ public sealed class HandoffSocketTests : IAsyncDisposable
     {
         _kit = new NeonAuthTestKit();
         TestTimeProvider clock = new(Start);
-        _calls = new InMemoryCallStore(clock);
+        _conversations = new Conversations(new InMemoryConversationStore(clock), blobs: null);
 
         _host = await ThreadTestHost.StartAsync(
             _kit,
@@ -105,7 +106,7 @@ public sealed class HandoffSocketTests : IAsyncDisposable
                 services.AddRealTime(new ConfigurationBuilder().Build());
                 services.AddHandoffRealTime();
                 services.AddSingleton<TimeProvider>(clock);
-                services.AddSingleton(_calls);
+                services.AddSingleton(_conversations);
                 services.AddSingleton<IUserDirectory>(new FakeUserDirectory(new AuthUser("user_dana", "Dana Rivera", "dana@example.com")));
                 services.AddScoped<StaffGate>();
                 services.AddSingleton<IPresenceStore>(new FakePresenceStore(clock, TimeSpan.FromSeconds(90)));
@@ -122,11 +123,11 @@ public sealed class HandoffSocketTests : IAsyncDisposable
                 auth.QueryTokenPathPrefixes = [SpiritHub.Pattern];
             });
 
-        var callId = Guid.NewGuid().ToString("N");
-        await _calls.CreateAsync(callId, Cancel);
-        await _calls.SetCustomAsync(callId, ThreadEnvelope.Build(VisitorPrincipal.KeyOf(VisitorKey), app: null), Cancel);
+        var conversationId = Guid.NewGuid().ToString("N");
+        await _conversations.CreateAsync(conversationId, Cancel);
+        await _conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(VisitorPrincipal.KeyOf(VisitorKey), app: null), Cancel);
 
-        return callId;
+        return conversationId;
     }
 
     private const string VisitorKey = "visitor-abc";
@@ -136,8 +137,8 @@ public sealed class HandoffSocketTests : IAsyncDisposable
         => Connect($"access_token={_kit!.Token(subject: "user_dana", email: "dana@example.com")}");
 
     /// <summary>The visitor's socket, naming the chat and their key.</summary>
-    private HubConnection Visitor(string callId)
-        => Connect($"{HandoffAdmission.CallQuery}={callId}&{HandoffAdmission.VisitorQuery}={VisitorKey}");
+    private HubConnection Visitor(string conversationId)
+        => Connect($"{HandoffAdmission.ConversationQuery}={conversationId}&{HandoffAdmission.VisitorQuery}={VisitorKey}");
 
     private HubConnection Connect(string query)
     {

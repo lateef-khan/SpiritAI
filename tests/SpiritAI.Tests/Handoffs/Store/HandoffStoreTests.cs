@@ -25,9 +25,9 @@ public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<P
     [Fact]
     public async Task AskMakesAWaitingRowAtTheBackOfTheLine()
     {
-        var (first, second) = (NewCallId(), NewCallId());
-        await fixture.MakeCallAsync(first);
-        await fixture.MakeCallAsync(second);
+        var (first, second) = (NewConversationId(), NewConversationId());
+        await fixture.MakeConversationAsync(first);
+        await fixture.MakeConversationAsync(second);
 
         try
         {
@@ -55,40 +55,40 @@ public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<P
         }
         finally
         {
-            await fixture.DeleteCallAsync(first);
-            await fixture.DeleteCallAsync(second);
+            await fixture.DeleteConversationAsync(first);
+            await fixture.DeleteConversationAsync(second);
         }
     }
 
     [Fact]
     public async Task AskingTwiceOnOneChatReturnsTheSameRow()
     {
-        var callId = NewCallId();
-        await fixture.MakeCallAsync(callId);
+        var conversationId = NewConversationId();
+        await fixture.MakeConversationAsync(conversationId);
 
         try
         {
             await using var database = fixture.Open();
             var store = new HandoffStore(database, new TestTimeProvider(Start));
 
-            var once = await store.AskAsync(callId, HandoffAskedBy.Visitor, null, Cancel);
-            var twice = await store.AskAsync(callId, HandoffAskedBy.Bot, "again", Cancel);
+            var once = await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
+            var twice = await store.AskAsync(conversationId, HandoffAskedBy.Bot, "again", Cancel);
 
             Assert.Equal(once.Row.Id, twice.Row.Id);
             Assert.Equal(HandoffAskedBy.Visitor, twice.Row.AskedBy);
-            Assert.Equal(1, await database.Handoffs.CountAsync(h => h.CallId == callId, Cancel));
+            Assert.Equal(1, await database.Handoffs.CountAsync(h => h.ConversationId == conversationId, Cancel));
         }
         finally
         {
-            await fixture.DeleteCallAsync(callId);
+            await fixture.DeleteConversationAsync(conversationId);
         }
     }
 
     [Fact]
     public async Task ClaimIsWonOnceThenAlreadyTaken()
     {
-        var callId = NewCallId();
-        await fixture.MakeCallAsync(callId);
+        var conversationId = NewConversationId();
+        await fixture.MakeConversationAsync(conversationId);
 
         try
         {
@@ -96,10 +96,10 @@ public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<P
             var clock = new TestTimeProvider(Start);
             var store = new HandoffStore(database, clock);
 
-            await store.AskAsync(callId, HandoffAskedBy.Visitor, null, Cancel);
+            await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
             clock.Now += TimeSpan.FromMinutes(1);
 
-            var dana = await store.ClaimAsync(callId, "staff:dana", "Dana R.", Cancel);
+            var dana = await store.ClaimAsync(conversationId, "staff:dana", "Dana R.", Cancel);
 
             Assert.Equal(HandoffClaimResult.Won, dana.Result);
             Assert.NotNull(dana.Row);
@@ -108,29 +108,29 @@ public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<P
             Assert.Equal("Dana R.", dana.Row.AssigneeName);
             Assert.Equal(clock.Now, dana.Row.ClaimedAt);
 
-            var sam = await store.ClaimAsync(callId, "staff:sam", "Sam", Cancel);
+            var sam = await store.ClaimAsync(conversationId, "staff:sam", "Sam", Cancel);
 
             Assert.Equal(HandoffClaimResult.AlreadyTaken, sam.Result);
             Assert.NotNull(sam.Row);
             Assert.Equal("staff:dana", sam.Row.AssigneeKey);
             Assert.Equal("Dana R.", sam.Row.AssigneeName);
 
-            var nobody = await store.ClaimAsync(NewCallId(), "staff:sam", "Sam", Cancel);
+            var nobody = await store.ClaimAsync(NewConversationId(), "staff:sam", "Sam", Cancel);
 
             Assert.Equal(HandoffClaimResult.NotWaiting, nobody.Result);
             Assert.Null(nobody.Row);
         }
         finally
         {
-            await fixture.DeleteCallAsync(callId);
+            await fixture.DeleteConversationAsync(conversationId);
         }
     }
 
     [Fact]
     public async Task DoneClosesAndAskAgainOpensANewRow()
     {
-        var callId = NewCallId();
-        await fixture.MakeCallAsync(callId);
+        var conversationId = NewConversationId();
+        await fixture.MakeConversationAsync(conversationId);
 
         try
         {
@@ -138,13 +138,13 @@ public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<P
             var clock = new TestTimeProvider(Start);
             var store = new HandoffStore(database, clock);
 
-            var first = await store.AskAsync(callId, HandoffAskedBy.Visitor, null, Cancel);
+            var first = await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
             clock.Now += TimeSpan.FromMinutes(1);
 
-            Assert.True(await store.DoneAsync(callId, Cancel));
-            Assert.Null(await store.OpenAsync(callId, Cancel));
+            Assert.True(await store.DoneAsync(conversationId, Cancel));
+            Assert.Null(await store.OpenAsync(conversationId, Cancel));
 
-            var closed = await store.LatestAsync(callId, Cancel);
+            var closed = await store.LatestAsync(conversationId, Cancel);
 
             Assert.NotNull(closed);
             Assert.Equal(first.Row.Id, closed.Id);
@@ -152,32 +152,32 @@ public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<P
             Assert.Equal(clock.Now, closed.DoneAt);
 
             clock.Now += TimeSpan.FromMinutes(1);
-            var again = await store.AskAsync(callId, HandoffAskedBy.Bot, "still stuck", Cancel);
+            var again = await store.AskAsync(conversationId, HandoffAskedBy.Bot, "still stuck", Cancel);
 
             Assert.NotEqual(first.Row.Id, again.Row.Id);
             Assert.Equal(1, again.Position);
-            Assert.Equal(2, await database.Handoffs.CountAsync(h => h.CallId == callId, Cancel));
+            Assert.Equal(2, await database.Handoffs.CountAsync(h => h.ConversationId == conversationId, Cancel));
 
-            var open = await store.LatestAsync(callId, Cancel);
+            var open = await store.LatestAsync(conversationId, Cancel);
 
             Assert.NotNull(open);
             Assert.Equal(again.Row.Id, open.Id);
 
-            Assert.False(await store.DoneAsync(NewCallId(), Cancel));
+            Assert.False(await store.DoneAsync(NewConversationId(), Cancel));
         }
         finally
         {
-            await fixture.DeleteCallAsync(callId);
+            await fixture.DeleteConversationAsync(conversationId);
         }
     }
 
     [Fact]
     public async Task PositionMovesWhenAnEarlierChatCloses()
     {
-        var callIds = new[] { NewCallId(), NewCallId(), NewCallId() };
-        foreach (var callId in callIds)
+        var conversationIds = new[] { NewConversationId(), NewConversationId(), NewConversationId() };
+        foreach (var conversationId in conversationIds)
         {
-            await fixture.MakeCallAsync(callId);
+            await fixture.MakeConversationAsync(conversationId);
         }
 
         try
@@ -186,25 +186,25 @@ public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<P
             var clock = new TestTimeProvider(Start);
             var store = new HandoffStore(database, clock);
 
-            foreach (var callId in callIds)
+            foreach (var conversationId in conversationIds)
             {
-                await store.AskAsync(callId, HandoffAskedBy.Visitor, null, Cancel);
+                await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
                 clock.Now += TimeSpan.FromMinutes(1);
             }
 
-            Assert.Equal(3, await store.PositionAsync(callIds[2], Cancel));
+            Assert.Equal(3, await store.PositionAsync(conversationIds[2], Cancel));
 
-            Assert.True(await store.DoneAsync(callIds[0], Cancel));
+            Assert.True(await store.DoneAsync(conversationIds[0], Cancel));
 
-            Assert.Null(await store.PositionAsync(callIds[0], Cancel));
-            Assert.Equal(1, await store.PositionAsync(callIds[1], Cancel));
-            Assert.Equal(2, await store.PositionAsync(callIds[2], Cancel));
+            Assert.Null(await store.PositionAsync(conversationIds[0], Cancel));
+            Assert.Equal(1, await store.PositionAsync(conversationIds[1], Cancel));
+            Assert.Equal(2, await store.PositionAsync(conversationIds[2], Cancel));
         }
         finally
         {
-            foreach (var callId in callIds)
+            foreach (var conversationId in conversationIds)
             {
-                await fixture.DeleteCallAsync(callId);
+                await fixture.DeleteConversationAsync(conversationId);
             }
         }
     }
@@ -212,38 +212,38 @@ public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<P
     [Fact]
     public async Task EmailLandsOnTheOpenRow()
     {
-        var callId = NewCallId();
-        await fixture.MakeCallAsync(callId);
+        var conversationId = NewConversationId();
+        await fixture.MakeConversationAsync(conversationId);
 
         try
         {
             await using var database = fixture.Open();
             var store = new HandoffStore(database, new TestTimeProvider(Start));
 
-            await store.AskAsync(callId, HandoffAskedBy.Visitor, null, Cancel);
+            await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
 
-            Assert.True(await store.SetEmailAsync(callId, "visitor@example.com", Cancel));
+            Assert.True(await store.SetEmailAsync(conversationId, "visitor@example.com", Cancel));
 
-            var row = await store.OpenAsync(callId, Cancel);
+            var row = await store.OpenAsync(conversationId, Cancel);
 
             Assert.NotNull(row);
             Assert.Equal("visitor@example.com", row.Email);
 
-            Assert.False(await store.SetEmailAsync(NewCallId(), "visitor@example.com", Cancel));
+            Assert.False(await store.SetEmailAsync(NewConversationId(), "visitor@example.com", Cancel));
         }
         finally
         {
-            await fixture.DeleteCallAsync(callId);
+            await fixture.DeleteConversationAsync(conversationId);
         }
     }
 
     [Fact]
     public async Task ListReturnsTheQueueOldestFirst()
     {
-        var callIds = new[] { NewCallId(), NewCallId(), NewCallId() };
-        foreach (var callId in callIds)
+        var conversationIds = new[] { NewConversationId(), NewConversationId(), NewConversationId() };
+        foreach (var conversationId in conversationIds)
         {
-            await fixture.MakeCallAsync(callId);
+            await fixture.MakeConversationAsync(conversationId);
         }
 
         try
@@ -253,24 +253,24 @@ public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<P
             var store = new HandoffStore(database, clock);
 
             var expected = new List<long>();
-            foreach (var callId in callIds)
+            foreach (var conversationId in conversationIds)
             {
-                expected.Add((await store.AskAsync(callId, HandoffAskedBy.Visitor, null, Cancel)).Row.Id);
+                expected.Add((await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel)).Row.Id);
                 clock.Now += TimeSpan.FromMinutes(1);
             }
 
             var queue = await store.ListAsync(HandoffStatus.Waiting, 10, Cancel);
 
-            Assert.Equal(expected, queue.Where(h => callIds.Contains(h.CallId)).Select(h => h.Id));
+            Assert.Equal(expected, queue.Where(h => conversationIds.Contains(h.ConversationId)).Select(h => h.Id));
         }
         finally
         {
-            foreach (var callId in callIds)
+            foreach (var conversationId in conversationIds)
             {
-                await fixture.DeleteCallAsync(callId);
+                await fixture.DeleteConversationAsync(conversationId);
             }
         }
     }
 
-    private static string NewCallId() => "test-" + Guid.NewGuid().ToString("N");
+    private static string NewConversationId() => "test-" + Guid.NewGuid().ToString("N");
 }

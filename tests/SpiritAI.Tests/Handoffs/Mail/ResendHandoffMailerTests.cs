@@ -33,7 +33,7 @@ public sealed class ResendHandoffMailerTests
             }));
 
         await mailer.SendReplyAsync(
-            new HandoffReplyMail("pat@example.com", "call-1", "Dana R.", "Try the tension bolt."),
+            new HandoffReplyMail("pat@example.com", "conversation-1", "Dana R.", "Try the tension bolt."),
             TestContext.Current.CancellationToken);
 
         using var sent = JsonDocument.Parse(Assert.Single(wire.Bodies));

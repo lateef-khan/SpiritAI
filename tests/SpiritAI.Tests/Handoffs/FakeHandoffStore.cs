@@ -15,16 +15,16 @@ internal sealed class FakeHandoffStore(TimeProvider clock) : IHandoffStore
     public List<Handoff> Rows { get; } = [];
 
     public Task<HandoffTicket> AskAsync(
-        string callId, HandoffAskedBy askedBy, string? reason, CancellationToken cancellationToken)
+        string conversationId, HandoffAskedBy askedBy, string? reason, CancellationToken cancellationToken)
     {
-        var row = Open(callId);
+        var row = Open(conversationId);
 
         if (row is null)
         {
             row = new Handoff
             {
                 Id = _nextId++,
-                CallId = callId,
+                ConversationId = conversationId,
                 Status = HandoffStatus.Waiting,
                 AskedBy = askedBy,
                 Reason = reason,
@@ -37,16 +37,16 @@ internal sealed class FakeHandoffStore(TimeProvider clock) : IHandoffStore
         return Task.FromResult(new HandoffTicket(row, row.Status == HandoffStatus.Waiting ? PositionOf(row) : 0));
     }
 
-    public Task<int?> PositionAsync(string callId, CancellationToken cancellationToken)
-        => Task.FromResult<int?>(Open(callId) is { Status: HandoffStatus.Waiting } row ? PositionOf(row) : null);
+    public Task<int?> PositionAsync(string conversationId, CancellationToken cancellationToken)
+        => Task.FromResult<int?>(Open(conversationId) is { Status: HandoffStatus.Waiting } row ? PositionOf(row) : null);
 
-    public Task<Handoff?> OpenAsync(string callId, CancellationToken cancellationToken)
-        => Task.FromResult(Open(callId));
+    public Task<Handoff?> OpenAsync(string conversationId, CancellationToken cancellationToken)
+        => Task.FromResult(Open(conversationId));
 
-    public Task<Handoff?> LatestAsync(string callId, CancellationToken cancellationToken)
+    public Task<Handoff?> LatestAsync(string conversationId, CancellationToken cancellationToken)
         => Task.FromResult(
-            Open(callId)
-            ?? Rows.Where(h => h.CallId == callId).OrderByDescending(h => h.DoneAt).ThenByDescending(h => h.Id).FirstOrDefault());
+            Open(conversationId)
+            ?? Rows.Where(h => h.ConversationId == conversationId).OrderByDescending(h => h.DoneAt).ThenByDescending(h => h.Id).FirstOrDefault());
 
     public Task<IReadOnlyList<Handoff>> ListAsync(HandoffStatus status, int limit, CancellationToken cancellationToken)
     {
@@ -60,9 +60,9 @@ internal sealed class FakeHandoffStore(TimeProvider clock) : IHandoffStore
     }
 
     public Task<HandoffClaim> ClaimAsync(
-        string callId, string staffKey, string staffName, CancellationToken cancellationToken)
+        string conversationId, string staffKey, string staffName, CancellationToken cancellationToken)
     {
-        var row = Open(callId);
+        var row = Open(conversationId);
 
         if (row is null)
         {
@@ -82,22 +82,22 @@ internal sealed class FakeHandoffStore(TimeProvider clock) : IHandoffStore
         return Task.FromResult(HandoffClaim.Won(row));
     }
 
-    public Task<bool> DoneAsync(string callId, CancellationToken cancellationToken)
-        => Task.FromResult(OnOpen(callId, row =>
+    public Task<bool> DoneAsync(string conversationId, CancellationToken cancellationToken)
+        => Task.FromResult(OnOpen(conversationId, row =>
         {
             row.Status = HandoffStatus.Done;
             row.DoneAt = clock.GetUtcNow();
         }));
 
-    public Task<bool> SetEmailAsync(string callId, string email, CancellationToken cancellationToken)
-        => Task.FromResult(OnOpen(callId, row => row.Email = email));
+    public Task<bool> SetEmailAsync(string conversationId, string email, CancellationToken cancellationToken)
+        => Task.FromResult(OnOpen(conversationId, row => row.Email = email));
 
-    private Handoff? Open(string callId)
-        => Rows.SingleOrDefault(h => h.CallId == callId && h.Status != HandoffStatus.Done);
+    private Handoff? Open(string conversationId)
+        => Rows.SingleOrDefault(h => h.ConversationId == conversationId && h.Status != HandoffStatus.Done);
 
-    private bool OnOpen(string callId, Action<Handoff> change)
+    private bool OnOpen(string conversationId, Action<Handoff> change)
     {
-        if (Open(callId) is not { } row)
+        if (Open(conversationId) is not { } row)
         {
             return false;
         }

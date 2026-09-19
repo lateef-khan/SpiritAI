@@ -1,7 +1,7 @@
 using System.Net;
 
-using AgentCore.Application.Calls;
-using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Conversation;
+using AgentCore.Application.Conversation.Memory;
 using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Builder;
@@ -39,11 +39,11 @@ public sealed class PublicThreadEndpointTests
         var created = await response.ReadAsync<ThreadCreated>();
         Assert.False(string.IsNullOrWhiteSpace(created.RemoteId));
 
-        var record = await world.Calls.GetAsync(created.RemoteId, TestContext.Current.CancellationToken);
+        var record = await world.Conversations.GetAsync(created.RemoteId, TestContext.Current.CancellationToken);
         Assert.Equal(world.Visitor.Key, ThreadEnvelope.OwnerOf(record?.Custom));
 
-        var page = await world.Calls.ListAsync(world.Visitor.Key!, after: null, limit: 10, cancellationToken: TestContext.Current.CancellationToken);
-        Assert.Equal([created.RemoteId], page.Calls.Select(call => call.CallId));
+        var page = await world.Conversations.ListAsync(world.Visitor.Key!, after: null, limit: 10, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Equal([created.RemoteId], page.Conversations.Select(conversation => conversation.ConversationId));
     }
 
     [Fact]
@@ -82,9 +82,9 @@ public sealed class PublicThreadEndpointTests
     public async Task TheHistoryIsTheVisitorsToRead()
     {
         await using var world = await World.StartAsync();
-        var callId = await world.MakeChatAsync(world.Visitor.Key!, "the belt keeps slipping");
+        var conversationId = await world.MakeChatAsync(world.Visitor.Key!, "the belt keeps slipping");
 
-        var history = await world.Visitor.ReadAsync<ThreadHistory>($"{Threads}/{callId}/messages");
+        var history = await world.Visitor.ReadAsync<ThreadHistory>($"{Threads}/{conversationId}/messages");
 
         Assert.Equal(2, history.Messages.Count);
         Assert.Equal("the belt keeps slipping", Assert.IsType<ThreadTextPart>(history.Messages[0].Message.Content[0]).Text);
@@ -94,9 +94,9 @@ public sealed class PublicThreadEndpointTests
     public async Task AnotherVisitorsHistoryLooksLikeNoChatAtAll()
     {
         await using var world = await World.StartAsync();
-        var callId = await world.MakeChatAsync(world.Visitor.Key!, "the belt keeps slipping");
+        var conversationId = await world.MakeChatAsync(world.Visitor.Key!, "the belt keeps slipping");
 
-        var response = await world.Stranger.GetAsync($"{Threads}/{callId}/messages");
+        var response = await world.Stranger.GetAsync($"{Threads}/{conversationId}/messages");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -105,9 +105,9 @@ public sealed class PublicThreadEndpointTests
     public async Task WithoutAKeyNoHistoryIsRead()
     {
         await using var world = await World.StartAsync();
-        var callId = await world.MakeChatAsync(world.Visitor.Key!, "the belt keeps slipping");
+        var conversationId = await world.MakeChatAsync(world.Visitor.Key!, "the belt keeps slipping");
 
-        var response = await world.Anonymous.GetAsync($"{Threads}/{callId}/messages");
+        var response = await world.Anonymous.GetAsync($"{Threads}/{conversationId}/messages");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -117,16 +117,16 @@ public sealed class PublicThreadEndpointTests
     {
         private readonly IHost _host;
 
-        private World(IHost host, ICallStore calls)
+        private World(IHost host, IConversations conversations)
         {
             _host = host;
-            Calls = calls;
+            Conversations = conversations;
             Visitor = Caller("widget-one");
             Stranger = Caller("widget-two");
             Anonymous = Caller(null);
         }
 
-        public ICallStore Calls { get; }
+        public IConversations Conversations { get; }
 
         public VisitorCaller Visitor { get; }
 
@@ -138,14 +138,13 @@ public sealed class PublicThreadEndpointTests
 
         public static async Task<World> StartAsync()
         {
-            ICallStore calls = new InMemoryCallStore();
+            IConversations conversations = new Conversations(new InMemoryConversationStore(), blobs: null);
 
             var host = await ThreadTestHost.StartAsync(
                 new NeonAuthTestKit(),
                 services =>
                 {
-                    services.AddSingleton<ICallStore>(calls);
-                    services.AddSingleton(new CallRepository(calls, blobs: null));
+                    services.AddSingleton<IConversations>(conversations);
                 },
                 app =>
                 {
@@ -155,20 +154,20 @@ public sealed class PublicThreadEndpointTests
                 },
                 options => options.OpenPathPrefixes = ["/v1/public"]);
 
-            return new World(host, calls);
+            return new World(host, conversations);
         }
 
         /// <summary>Makes a chat owned by one key, with one finished turn in it.</summary>
         public async Task<string> MakeChatAsync(string ownerKey, string said)
         {
-            var callId = Guid.NewGuid().ToString("N");
+            var conversationId = Guid.NewGuid().ToString("N");
 
-            await Calls.CreateAsync(callId, TestContext.Current.CancellationToken);
-            await Calls.SetCustomAsync(callId, ThreadEnvelope.Build(ownerKey, app: null), TestContext.Current.CancellationToken);
-            await Calls.AppendMessageAsync(callId, new ChatMessage(ChatRole.User, said), TestContext.Current.CancellationToken);
-            await Calls.AppendMessageAsync(callId, new ChatMessage(ChatRole.Assistant, "Let me check."), TestContext.Current.CancellationToken);
+            await Conversations.CreateAsync(conversationId, TestContext.Current.CancellationToken);
+            await Conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(ownerKey, app: null), TestContext.Current.CancellationToken);
+            await Conversations.AppendMessageAsync(conversationId, new ChatMessage(ChatRole.User, said), TestContext.Current.CancellationToken);
+            await Conversations.AppendMessageAsync(conversationId, new ChatMessage(ChatRole.Assistant, "Let me check."), TestContext.Current.CancellationToken);
 
-            return callId;
+            return conversationId;
         }
 
         public async ValueTask DisposeAsync()

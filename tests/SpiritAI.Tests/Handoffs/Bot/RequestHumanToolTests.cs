@@ -1,4 +1,5 @@
-using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Conversation;
+using AgentCore.Application.Conversation.Memory;
 using AgentCore.Application.Ports;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -23,7 +24,7 @@ public sealed class RequestHumanToolTests
 
     private readonly TestTimeProvider _clock = new(new DateTimeOffset(2026, 9, 11, 9, 0, 0, TimeSpan.Zero));
     private readonly FakeHandoffStore _store;
-    private readonly ICallStore _calls;
+    private readonly IConversations _conversations;
     private readonly RecordingHandoffNotifier _notifier = new();
     private readonly FakePresenceStore _presence;
     private readonly RequestHumanTool _tool;
@@ -31,12 +32,12 @@ public sealed class RequestHumanToolTests
     public RequestHumanToolTests()
     {
         _store = new FakeHandoffStore(_clock);
-        _calls = new InMemoryCallStore(_clock);
+        _conversations = new Conversations(new InMemoryConversationStore(_clock), blobs: null);
         _presence = new FakePresenceStore(_clock, TimeSpan.FromSeconds(90));
         _tool = new RequestHumanTool(
             new HandoffDesk(
                 _store,
-                _calls,
+                _conversations,
                 _notifier,
                 _presence,
                 new RecordingHandoffMailer(),
@@ -47,16 +48,16 @@ public sealed class RequestHumanToolTests
     [Fact]
     public async Task InsideAChatTheToolJoinsTheQueueAndSaysWhere()
     {
-        var callId = Guid.NewGuid().ToString("N");
-        await _calls.CreateAsync(callId, Cancel);
+        var conversationId = Guid.NewGuid().ToString("N");
+        await _conversations.CreateAsync(conversationId, Cancel);
         await _presence.ConnectAsync("socket-1", "user:dana", "Dana R.", HandoffAdmission.StaffKind, Cancel);
 
-        var answer = await _tool.AskAsync(callId, "they want a real person", email: null, Cancel);
+        var answer = await _tool.AskAsync(conversationId, "they want a real person", email: null, Cancel);
 
         Assert.Equal(RequestHumanTool.AskedNote, answer.Note);
 
         var row = Assert.Single(_store.Rows);
-        Assert.Equal(callId, row.CallId);
+        Assert.Equal(conversationId, row.ConversationId);
         Assert.Equal(HandoffStatus.Waiting, row.Status);
         Assert.Equal(HandoffAskedBy.Bot, row.AskedBy);
         Assert.Equal("they want a real person", row.Reason);
@@ -66,10 +67,10 @@ public sealed class RequestHumanToolTests
     [Fact]
     public async Task WithNobodyOnlineTheToolSaysToOfferAnEmail()
     {
-        var callId = Guid.NewGuid().ToString("N");
-        await _calls.CreateAsync(callId, Cancel);
+        var conversationId = Guid.NewGuid().ToString("N");
+        await _conversations.CreateAsync(conversationId, Cancel);
 
-        var answer = await _tool.AskAsync(callId, "they want a real person", email: null, Cancel);
+        var answer = await _tool.AskAsync(conversationId, "they want a real person", email: null, Cancel);
 
         Assert.Equal(RequestHumanTool.NobodyFreeNote, answer.Note);
     }
@@ -77,10 +78,10 @@ public sealed class RequestHumanToolTests
     [Fact]
     public async Task AnEmailGivenWithTheAskLandsOnTheRow()
     {
-        var callId = Guid.NewGuid().ToString("N");
-        await _calls.CreateAsync(callId, Cancel);
+        var conversationId = Guid.NewGuid().ToString("N");
+        await _conversations.CreateAsync(conversationId, Cancel);
 
-        var answer = await _tool.AskAsync(callId, "they want a real person", " Pat@Example.com ", Cancel);
+        var answer = await _tool.AskAsync(conversationId, "they want a real person", " Pat@Example.com ", Cancel);
 
         Assert.Equal(RequestHumanTool.NobodyFreeNote, answer.Note);
         Assert.Equal("Pat@Example.com", Assert.Single(_store.Rows).Email);
@@ -89,10 +90,10 @@ public sealed class RequestHumanToolTests
     [Fact]
     public async Task AnEmailThatIsNotAnAddressIsLeftOffAndSaidSo()
     {
-        var callId = Guid.NewGuid().ToString("N");
-        await _calls.CreateAsync(callId, Cancel);
+        var conversationId = Guid.NewGuid().ToString("N");
+        await _conversations.CreateAsync(conversationId, Cancel);
 
-        var answer = await _tool.AskAsync(callId, "they want a real person", "not an address", Cancel);
+        var answer = await _tool.AskAsync(conversationId, "they want a real person", "not an address", Cancel);
 
         Assert.Null(Assert.Single(_store.Rows).Email);
         Assert.EndsWith(RequestHumanTool.BadEmailNote, answer.Note);

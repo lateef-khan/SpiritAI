@@ -44,7 +44,7 @@ public static class AgentCoreExtensions
 
     /// <summary>Registers AgentCore, carrying this host's analyzers and bindings.</summary>
     /// <param name="builder">The host being built.</param>
-    /// <returns>The same builder, so a host chains its calls.</returns>
+    /// <returns>The same builder, so a host chains its conversations.</returns>
     public static WebApplicationBuilder AddSpiritAgentCore(this WebApplicationBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -59,8 +59,8 @@ public static class AgentCoreExtensions
     }
 
     /// <summary>
-    /// Where a call's scratch folder lives: the shell's working directory, the file tools' store,
-    /// and what <c>file.publish</c> copies out of. Nothing here outlives the call, so the machine's
+    /// Where a conversation's scratch folder lives: the shell's working directory, the file tools' store,
+    /// and what <c>file.publish</c> copies out of. Nothing here outlives the conversation, so the machine's
     /// temp folder is the default; <c>Spirit:WorkspaceRoot</c> overrides it.
     /// </summary>
     private static string WorkspaceRoot(IConfiguration configuration)
@@ -107,7 +107,7 @@ public static class AgentCoreExtensions
                     await using var container = services.GetRequiredService<IServiceScopeFactory>().CreateAsyncScope();
 
                     return await container.ServiceProvider.GetRequiredService<RequestHumanTool>()
-                        .AskAsync(scope.CallId, reason, email, cancellationToken)
+                        .AskAsync(scope.ConversationId, reason, email, cancellationToken)
                         .ConfigureAwait(false);
                 });
 }

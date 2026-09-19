@@ -33,7 +33,7 @@ public sealed class NeonAuthRoutingTests
     [InlineData("/chat/", HttpStatusCode.OK)]
     // Closed: everything the agent answers on.
     [InlineData("/v1/main/responses", HttpStatusCode.Unauthorized)]
-    [InlineData("/v1/main/call", HttpStatusCode.Unauthorized)]
+    [InlineData("/v1/main/conversation", HttpStatusCode.Unauthorized)]
     [InlineData("/v1", HttpStatusCode.Unauthorized)]
     public async Task WithoutAToken(string path, HttpStatusCode expected)
     {
@@ -164,7 +164,7 @@ public sealed class NeonAuthRoutingTests
                         endpoints.MapGet("/chat/", () => Results.Content("<html></html>", "text/html"));
                         endpoints.MapGet("/v1x/open", () => Results.Ok("open"));
                         endpoints.MapGet("/v1", () => Results.Ok("root"));
-                        endpoints.MapGet("/v1/main/call", () => Results.Ok("call"));
+                        endpoints.MapGet("/v1/main/conversation", () => Results.Ok("conversation"));
                         endpoints.MapGet("/v1/public/main/responses", () => Results.Ok("public"));
                         endpoints.MapGet(
                             "/v1/main/responses",

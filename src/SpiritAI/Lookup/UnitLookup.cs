@@ -87,7 +87,7 @@ public sealed class UnitLookup(ToolInvoker invoke)
 
         await Task.WhenAll(history, parts, warranty).ConfigureAwait(false);
 
-        var calls = await history.ConfigureAwait(false);
+        var conversations = await history.ConfigureAwait(false);
 
         var pieces = await parts.ConfigureAwait(false);
 
@@ -95,14 +95,14 @@ public sealed class UnitLookup(ToolInvoker invoke)
 
         // The stored procedure raises rather than returning nothing when a serial resolves to no
         // model, so a serial nobody has ever sold fails both of these rather than one.
-        if (calls is null && pieces is null)
+        if (conversations is null && pieces is null)
         {
             return null;
         }
 
         List<UnitSection> unavailable = [];
 
-        if (calls is null)
+        if (conversations is null)
         {
             unavailable.Add(UnitSection.Jobs);
             unavailable.Add(UnitSection.History);
@@ -113,14 +113,14 @@ public sealed class UnitLookup(ToolInvoker invoke)
             unavailable.Add(UnitSection.Parts);
         }
 
-        var header = HeaderOf(serial, modelNo, calls, pieces);
+        var header = HeaderOf(serial, modelNo, conversations, pieces);
 
         if (header is null)
         {
             unavailable.Add(UnitSection.Header);
         }
 
-        var jobs = calls?.Select(JobOf).OrderByDescending(job => job.CalledOn).ToList();
+        var jobs = conversations?.Select(JobOf).OrderByDescending(job => job.CalledOn).ToList();
         var covered = WarrantyTerms.Of(terms, header?.ModelVersion, header?.PurchasedOn);
 
         if (covered is null)
@@ -216,10 +216,10 @@ public sealed class UnitLookup(ToolInvoker invoke)
         return rows;
     }
 
-    /// <summary>Calls one tool and reads its rows, or nothing when it refused.</summary>
+    /// <summary>Conversations one tool and reads its rows, or nothing when it refused.</summary>
     /// <param name="toolId">The tool to call.</param>
     /// <param name="arguments">Its arguments.</param>
-    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <param name="cancellationToken">Cancels the conversation.</param>
     /// <returns>The rows, or <see langword="null"/> when the tool failed or answered nothing.</returns>
     private async Task<IReadOnlyList<JsonElement>?> ReadAsync(
         string toolId,
@@ -241,19 +241,19 @@ public sealed class UnitLookup(ToolInvoker invoke)
     /// <summary>Builds the pinned facts out of whichever tool answered.</summary>
     /// <param name="serial">The serial that was asked for.</param>
     /// <param name="modelNo">Its first six digits.</param>
-    /// <param name="calls">The service history rows, or nothing.</param>
+    /// <param name="conversations">The service history rows, or nothing.</param>
     /// <param name="pieces">The parts rows, or nothing.</param>
     /// <returns>The header, or <see langword="null"/> when neither tool answered a row.</returns>
     private static UnitHeader? HeaderOf(
         string serial,
         string modelNo,
-        IReadOnlyList<JsonElement>? calls,
+        IReadOnlyList<JsonElement>? conversations,
         IReadOnlyList<JsonElement>? pieces)
     {
-        var call = calls is { Count: > 0 } ? calls[0] : (JsonElement?)null;
+        var conversation = conversations is { Count: > 0 } ? conversations[0] : (JsonElement?)null;
         var piece = pieces is { Count: > 0 } ? pieces[0] : (JsonElement?)null;
 
-        if (call is null && piece is null)
+        if (conversation is null && piece is null)
         {
             return null;
         }
@@ -263,14 +263,14 @@ public sealed class UnitLookup(ToolInvoker invoke)
         return new UnitHeader(
             serial,
             modelNo,
-            (call is { } c ? DabRow.Number(c, "ModelVersion") : null) ?? (piece is { } p ? DabRow.Number(p, "ModelVersion") : null),
-            (call is { } c2 ? DabRow.Text(c2, "ModelName") : null) ?? (piece is { } p2 ? DabRow.Text(p2, "ModelName") : null),
-            call is { } c3 ? DabRow.Text(c3, "FG") : null,
-            call is { } c4 && DabRow.Flag(c4, "Sole") is true,
-            call is { } c5 ? DabRow.Text(c5, "MfgDate") : null,
-            call is { } c6 ? DabRow.Moment(c6, "PurchasedDate") : null,
-            call is { } c7 ? DabRow.Moment(c7, "SetupDate") : null,
-            call is { } c8 ? OwnerOf(c8) : null);
+            (conversation is { } c ? DabRow.Number(c, "ModelVersion") : null) ?? (piece is { } p ? DabRow.Number(p, "ModelVersion") : null),
+            (conversation is { } c2 ? DabRow.Text(c2, "ModelName") : null) ?? (piece is { } p2 ? DabRow.Text(p2, "ModelName") : null),
+            conversation is { } c3 ? DabRow.Text(c3, "FG") : null,
+            conversation is { } c4 && DabRow.Flag(c4, "Sole") is true,
+            conversation is { } c5 ? DabRow.Text(c5, "MfgDate") : null,
+            conversation is { } c6 ? DabRow.Moment(c6, "PurchasedDate") : null,
+            conversation is { } c7 ? DabRow.Moment(c7, "SetupDate") : null,
+            conversation is { } c8 ? OwnerOf(c8) : null);
     }
 
     /// <summary>Reads who a machine is registered to.</summary>
@@ -294,7 +294,7 @@ public sealed class UnitLookup(ToolInvoker invoke)
 
     /// <summary>Reads one service call.</summary>
     /// <param name="row">One row of the history rowset.</param>
-    /// <returns>The call, as the panel lists it.</returns>
+    /// <returns>The conversation, as the panel lists it.</returns>
     private static UnitJob JobOf(JsonElement row)
     {
         var serviceId = DabRow.Number(row, "ServiceId") ?? 0;
@@ -307,7 +307,7 @@ public sealed class UnitLookup(ToolInvoker invoke)
             orderId,
             StatusOf(word),
             word,
-            DabRow.Moment(row, "CallDate"),
+            DabRow.Moment(row, "ConversationDate"),
             DabRow.Moment(row, "ServiceDate"),
             DabRow.Text(row, "ServiceRep"),
             DabRow.Text(row, "Description"),

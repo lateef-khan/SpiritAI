@@ -8,33 +8,33 @@ using SpiritAI.Hosting;
 namespace SpiritAI.Threads;
 
 /// <summary>
-/// Whether a call has a live session, and how to give it one.
+/// Whether a conversation has a live session, and how to give it one.
 /// </summary>
 public interface IThreadSessions
 {
-    /// <summary>Whether this host is already holding a session for one call.</summary>
-    /// <param name="callId">The call to ask about.</param>
+    /// <summary>Whether this host is already holding a session for one conversation.</summary>
+    /// <param name="conversationId">The call to ask about.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
-    ValueTask<bool> IsLiveAsync(string callId, CancellationToken cancellationToken = default);
+    ValueTask<bool> IsLiveAsync(string conversationId, CancellationToken cancellationToken = default);
 
-    /// <summary>Opens a session for a call that already exists.</summary>
-    /// <param name="callId">The call to pick up again.</param>
+    /// <summary>Opens a session for a conversation that already exists.</summary>
+    /// <param name="conversationId">The call to pick up again.</param>
     /// <param name="cancellationToken">Cancels the open.</param>
-    ValueTask ReopenAsync(string callId, CancellationToken cancellationToken = default);
+    ValueTask ReopenAsync(string conversationId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>The two answers, from the session table of the one entry this host serves.</summary>
-internal sealed class AgentCoreThreadSessions(ICallSessionRegistry registry) : IThreadSessions
+internal sealed class AgentCoreThreadSessions(IConversationSessionRegistry registry) : IThreadSessions
 {
-    private readonly ICallSessions sessions = registry.ForSessions(AgentCoreExtensions.Entry);
+    private readonly IConversationSessions sessions = registry.ForSessions(AgentCoreExtensions.Entry);
 
     /// <inheritdoc />
-    public async ValueTask<bool> IsLiveAsync(string callId, CancellationToken cancellationToken = default)
-        => await sessions.TryGetAsync(callId, cancellationToken).ConfigureAwait(false) is not null;
+    public async ValueTask<bool> IsLiveAsync(string conversationId, CancellationToken cancellationToken = default)
+        => await sessions.TryGetAsync(conversationId, cancellationToken).ConfigureAwait(false) is not null;
 
     /// <inheritdoc />
-    public async ValueTask ReopenAsync(string callId, CancellationToken cancellationToken = default)
-        => await sessions.OpenAsync(callId, cancellationToken).ConfigureAwait(false);
+    public async ValueTask ReopenAsync(string conversationId, CancellationToken cancellationToken = default)
+        => await sessions.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false);
 }
 
 /// <summary>Registers the seam the turn's door reads.</summary>
@@ -82,7 +82,7 @@ public static class ThreadSessionApplicationBuilderExtensions
 /// </summary>
 internal sealed class ThreadSessionMiddleware(RequestDelegate next, string pattern)
 {
-    public async Task InvokeAsync(HttpContext context, ICallStore calls, IThreadSessions sessions)
+    public async Task InvokeAsync(HttpContext context, IConversations conversations, IThreadSessions sessions)
     {
         if (!context.Request.Path.StartsWithSegments(pattern, StringComparison.OrdinalIgnoreCase))
         {
@@ -92,7 +92,7 @@ internal sealed class ThreadSessionMiddleware(RequestDelegate next, string patte
 
         var namedThread = await TurnConversation.ReadAsync(context.Request).ConfigureAwait(false);
 
-        // A turn that names no thread is a new conversation, and AgentCore mints the call for it.
+        // A turn that names no thread is a new conversation, and AgentCore mints the conversation for it.
         // Nothing here has an opinion about that.
         if (namedThread.Length == 0 || CallerPrincipal.KeyOf(context.User) is not { } key)
         {
@@ -100,7 +100,7 @@ internal sealed class ThreadSessionMiddleware(RequestDelegate next, string patte
             return;
         }
 
-        if (await ThreadOwnership.ReadAsync(calls, namedThread, key, context.RequestAborted).ConfigureAwait(false)
+        if (await ThreadOwnership.ReadAsync(conversations, namedThread, key, context.RequestAborted).ConfigureAwait(false)
             is null)
         {
             await RefuseAsync(context, namedThread).ConfigureAwait(false);

@@ -10,21 +10,21 @@ public static class HandoffGroups
     public const string Visitors = "handoff:visitors";
 
     /// <summary>What the group of one chat starts with.</summary>
-    public const string CallPrefix = "call:";
+    public const string ConversationPrefix = "call:";
 
     /// <summary>The visitor of one chat.</summary>
-    /// <param name="callId">The chat.</param>
+    /// <param name="conversationId">The chat.</param>
     /// <returns>The group's name.</returns>
-    public static string ForCall(string callId)
+    public static string ForConversation(string conversationId)
     {
-        ArgumentException.ThrowIfNullOrEmpty(callId);
+        ArgumentException.ThrowIfNullOrEmpty(conversationId);
 
-        return CallPrefix + callId;
+        return ConversationPrefix + conversationId;
     }
 
     /// <summary>Whether a group is the visitor of some chat.</summary>
     /// <param name="group">The group's name.</param>
-    /// <returns><see langword="true"/> for any <see cref="ForCall"/> group.</returns>
-    public static bool IsCall(string group)
-        => group.Length > CallPrefix.Length && group.StartsWith(CallPrefix, StringComparison.Ordinal);
+    /// <returns><see langword="true"/> for any <see cref="ForConversation"/> group.</returns>
+    public static bool IsConversation(string group)
+        => group.Length > ConversationPrefix.Length && group.StartsWith(ConversationPrefix, StringComparison.Ordinal);
 }

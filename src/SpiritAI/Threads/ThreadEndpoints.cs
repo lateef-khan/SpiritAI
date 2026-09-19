@@ -1,14 +1,14 @@
 using System.Text;
 using System.Text.Json;
 
-using AgentCore.Application.Calls;
+using AgentCore.Application.Conversation;
 using AgentCore.Application.Ports;
 using Microsoft.Extensions.AI;
 
 namespace SpiritAI.Threads;
 
 /// <summary>
-/// The thread list, as REST over <see cref="ICallStore"/>.
+/// The thread list, as REST over <see cref="IConversations"/>.
 /// </summary>
 public static class ThreadEndpointRouteBuilderExtensions
 {
@@ -21,7 +21,7 @@ public static class ThreadEndpointRouteBuilderExtensions
     /// <summary>The largest page this host will build, whatever a caller asks for.</summary>
     public const int MaxPageSize = 100;
 
-    /// <summary>What the owner's claim on a call is called in <c>call_principal</c>.</summary>
+    /// <summary>What the owner's claim on a conversation is called in <c>conversation_principal</c>.</summary>
     public const string OwnerRole = "owner";
 
     private const string One = $"{Pattern}/{{remoteId}}";
@@ -98,19 +98,19 @@ public static class ThreadEndpointRouteBuilderExtensions
 
     /// <summary>Runs a route body against a thread the caller owns, or refuses the request.</summary>
     /// <param name="http">The request, carrying whoever the token named.</param>
-    /// <param name="calls">The store the row is read from.</param>
+    /// <param name="conversations">The store the row is read from.</param>
     /// <param name="remoteId">The call the path named, which may be anything at all.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <param name="body">The route, given the caller's key and the row.</param>
     /// <returns>What the route answered, 401 when there is no caller, or 404 otherwise.</returns>
     private static Task<IResult> ForOwnedAsync(
         HttpContext http,
-        ICallStore calls,
+        IConversations conversations,
         string remoteId,
         CancellationToken cancellationToken,
-        Func<string, CallRecord, Task<IResult>> body)
+        Func<string, ConversationRecord, Task<IResult>> body)
         => ForCallerAsync(http, async key
-            => await ThreadOwnership.ReadAsync(calls, remoteId, key, cancellationToken).ConfigureAwait(false)
+            => await ThreadOwnership.ReadAsync(conversations, remoteId, key, cancellationToken).ConfigureAwait(false)
                 is { } record
                 ? await body(key, record).ConfigureAwait(false)
                 : TypedResults.NotFound());
@@ -118,14 +118,14 @@ public static class ThreadEndpointRouteBuilderExtensions
     /// <summary>One page of the caller's own threads.</summary>
     private static Task<IResult> ListAsync(
         HttpContext http,
-        ICallStore calls,
+        IConversations conversations,
         string? after,
         int? limit,
         string? status,
         CancellationToken cancellationToken)
         => ForCallerAsync(http, async key =>
         {
-            CallStatus? narrowed = null;
+            ConversationStatus? narrowed = null;
 
             if (status is not null)
             {
@@ -137,62 +137,65 @@ public static class ThreadEndpointRouteBuilderExtensions
                 narrowed = read;
             }
 
-            var page = await calls
+            var page = await conversations
                 .ListAsync(key, after, Math.Clamp(limit ?? DefaultPageSize, 1, MaxPageSize), narrowed, cancellationToken)
                 .ConfigureAwait(false);
 
-            return TypedResults.Ok(new ThreadPage([.. page.Calls.Select(ThreadSummary.Of)], page.NextCursor));
+            return TypedResults.Ok(new ThreadPage([.. page.Conversations.Select(ThreadSummary.Of)], page.NextCursor));
         });
 
     /// <summary>Makes a thread, and gives the caller the only claim on it.</summary>
     private static Task<IResult> CreateAsync(
         HttpContext http,
-        ICallStore calls,
+        IConversations conversations,
         CancellationToken cancellationToken)
         => ForCallerAsync(http, async key =>
         {
-            var callId = Guid.NewGuid().ToString("N");
+            var conversationId = Guid.NewGuid().ToString("N");
 
-            await calls.CreateAsync(callId, cancellationToken).ConfigureAwait(false);
-            await calls.SetCustomAsync(callId, ThreadEnvelope.Build(key, app: null), cancellationToken).ConfigureAwait(false);
-            await calls.AttachPrincipalAsync(callId, key, OwnerRole, cancellationToken).ConfigureAwait(false);
+            await conversations.CreateAsync(conversationId, cancellationToken).ConfigureAwait(false);
+            await conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(key, app: null), cancellationToken).ConfigureAwait(false);
+            await conversations.AttachPrincipalAsync(conversationId, key, OwnerRole, cancellationToken).ConfigureAwait(false);
 
-            return TypedResults.Created($"{Pattern}/{callId}", new ThreadCreated(callId, ExternalId: null));
+            return TypedResults.Created($"{Pattern}/{conversationId}", new ThreadCreated(conversationId, ExternalId: null));
         });
 
     /// <summary>One thread, when it is the caller's.</summary>
     private static Task<IResult> FetchAsync(
         HttpContext http,
-        ICallStore calls,
+        IConversations conversations,
         string remoteId,
         CancellationToken cancellationToken)
-        => ForOwnedAsync(http, calls, remoteId, cancellationToken, (_, record)
+        => ForOwnedAsync(http, conversations, remoteId, cancellationToken, (_, record)
             => Task.FromResult<IResult>(TypedResults.Ok(ThreadSummary.Of(record))));
 
     /// <summary>One thread's whole conversation, in the shape the browser restores it from.</summary>
     private static Task<IResult> HistoryAsync(
         HttpContext http,
-        CallRepository calls,
+        IConversations conversations,
         string remoteId,
         CancellationToken cancellationToken)
-        => ForOwnedAsync(http, calls, remoteId, cancellationToken, async (_, record)
-            => TypedResults.Ok(await ThreadHistory.ReadAsync(record, calls, cancellationToken).ConfigureAwait(false)));
+        => ForCallerAsync(http, async key
+            => await conversations.LoadAsync(remoteId, cancellationToken).ConfigureAwait(false) is { } stored
+                && ThreadOwnership.Owns(stored.Conversation, key)
+                ? TypedResults.Ok(ThreadHistory.Of(stored))
+                : TypedResults.NotFound());
 
     /// <summary>Names one thread from the words the browser sent.</summary>
     /// <remarks>
-    /// The words come up in the body rather than out of the call store, because a browser asks for
+    /// The words come up in the body rather than out of the conversation store, because a browser asks for
     /// a name the moment the first message appears and AgentCore writes a turn only once it has
-    /// finished. Reading the store here would read an empty call and answer nothing. It is also the
+    /// finished. Reading the store here would read an empty conversation and answer nothing. It is also the
     /// shape assistant-ui's own adapters use, which is what keeps the browser side a plain fetch.
     /// </remarks>
     private static Task<IResult> TitleAsync(
         HttpContext http,
-        ICallStore calls,
-        ICallTitler titler,
+        IConversations conversations,
+        IConversationTitler titler,
         string remoteId,
         JsonElement? body,
         CancellationToken cancellationToken)
-        => ForOwnedAsync(http, calls, remoteId, cancellationToken, (_, _) =>
+        => ForOwnedAsync(http, conversations, remoteId, cancellationToken, (_, _) =>
         {
             if (WordsOf(body) is not { } words)
             {
@@ -268,11 +271,11 @@ public static class ThreadEndpointRouteBuilderExtensions
     /// <summary>Renames, archives, or rewrites the consumer-owned fields of one thread.</summary>
     private static Task<IResult> AmendAsync(
         HttpContext http,
-        ICallStore calls,
+        IConversations conversations,
         string remoteId,
         JsonElement body,
         CancellationToken cancellationToken)
-        => ForOwnedAsync(http, calls, remoteId, cancellationToken, async (key, _) =>
+        => ForOwnedAsync(http, conversations, remoteId, cancellationToken, async (key, _) =>
         {
             if (body.ValueKind != JsonValueKind.Object)
             {
@@ -280,7 +283,7 @@ public static class ThreadEndpointRouteBuilderExtensions
             }
 
             string? title = null;
-            CallStatus? status = null;
+            ConversationStatus? status = null;
             (bool Given, JsonElement? Value) custom = (false, null);
 
             if (body.TryGetProperty("title", out var titleValue))
@@ -321,12 +324,12 @@ public static class ThreadEndpointRouteBuilderExtensions
 
             if (title is not null)
             {
-                await calls.RenameAsync(remoteId, title, cancellationToken).ConfigureAwait(false);
+                await conversations.RenameAsync(remoteId, title, cancellationToken).ConfigureAwait(false);
             }
 
             if (status is { } moved)
             {
-                await calls.SetStatusAsync(remoteId, moved, cancellationToken).ConfigureAwait(false);
+                await conversations.SetStatusAsync(remoteId, moved, cancellationToken).ConfigureAwait(false);
             }
 
             if (custom.Given)
@@ -335,7 +338,7 @@ public static class ThreadEndpointRouteBuilderExtensions
                 // the whole value. Reading it from the token rather than from the row is deliberate:
                 // ownership was already proved above, and re-using the proved key means a row whose
                 // owner field were ever lost cannot be silently handed to whoever writes next.
-                await calls
+                await conversations
                     .SetCustomAsync(remoteId, ThreadEnvelope.Build(key, custom.Value), cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -346,12 +349,12 @@ public static class ThreadEndpointRouteBuilderExtensions
     /// <summary>Erases one thread and every word of it.</summary>
     private static Task<IResult> DeleteAsync(
         HttpContext http,
-        ICallStore calls,
+        IConversations conversations,
         string remoteId,
         CancellationToken cancellationToken)
-        => ForOwnedAsync(http, calls, remoteId, cancellationToken, async (_, _) =>
+        => ForOwnedAsync(http, conversations, remoteId, cancellationToken, async (_, _) =>
         {
-            await calls.DeleteAsync(remoteId, cancellationToken).ConfigureAwait(false);
+            await conversations.DeleteAsync(remoteId, cancellationToken).ConfigureAwait(false);
 
             return TypedResults.NoContent();
         });

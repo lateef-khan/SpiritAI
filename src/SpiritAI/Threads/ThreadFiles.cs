@@ -8,7 +8,7 @@ namespace SpiritAI.Threads;
 public static class ThreadFiles
 {
     /// <summary>The part for each linked file, keyed by the name the model gave it.</summary>
-    /// <param name="links">What <c>CallRepository.LinkFilesAsync</c> found for the thread.</param>
+    /// <param name="links">What <c>Conversations.LinkFilesAsync</c> found for the thread.</param>
     /// <returns>One part per file that has a link. A file with none has nothing to draw.</returns>
     public static IReadOnlyDictionary<string, ThreadPart> PartsOf(IReadOnlyList<FileLink> links)
     {

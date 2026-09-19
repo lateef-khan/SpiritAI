@@ -1,6 +1,7 @@
 using System.Security.Claims;
 
-using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Conversation;
+using AgentCore.Application.Conversation.Memory;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
@@ -25,7 +26,7 @@ public sealed class HandoffAdmissionTests
 {
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
-    private readonly InMemoryCallStore _calls = new(new TestTimeProvider(new DateTimeOffset(2026, 9, 11, 9, 0, 0, TimeSpan.Zero)));
+    private readonly InMemoryConversationStore _conversations = new(new TestTimeProvider(new DateTimeOffset(2026, 9, 11, 9, 0, 0, TimeSpan.Zero)));
 
     private readonly HandoffAdmission _admission;
 
@@ -33,7 +34,7 @@ public sealed class HandoffAdmissionTests
     {
         var staff = new StaffGate(new FakeUserDirectory(new AuthUser("user_dana", "Dana Rivera", "dana@example.com")));
 
-        _admission = new HandoffAdmission(_calls, staff);
+        _admission = new HandoffAdmission(new Conversations(_conversations, blobs: null), staff);
     }
 
     [Fact]
@@ -62,27 +63,27 @@ public sealed class HandoffAdmissionTests
     [Fact]
     public async Task AVisitorJoinsItsOwnChatAndMaySignalStaff()
     {
-        var callId = await MakeVisitorChatAsync("v1");
+        var conversationId = await MakeVisitorChatAsync("v1");
 
-        var caller = await _admission.AdmitAsync(new RealTimeRequest(null, Query(("call", callId), ("visitor", "v1"))), Cancel);
+        var caller = await _admission.AdmitAsync(new RealTimeRequest(null, Query(("call", conversationId), ("visitor", "v1"))), Cancel);
 
         Assert.NotNull(caller);
         Assert.Equal(VisitorPrincipal.KeyOf("v1"), caller.Key);
         Assert.Null(caller.Name);
         Assert.Equal(HandoffAdmission.VisitorKind, caller.Kind);
-        Assert.Equal([HandoffGroups.ForCall(callId), HandoffGroups.Visitors], caller.Groups);
+        Assert.Equal([HandoffGroups.ForConversation(conversationId), HandoffGroups.Visitors], caller.Groups);
         Assert.True(caller.MaySignal(HandoffGroups.Staff));
-        Assert.False(caller.MaySignal(HandoffGroups.ForCall(callId)));
+        Assert.False(caller.MaySignal(HandoffGroups.ForConversation(conversationId)));
         Assert.False(caller.MaySignal("call:x"));
     }
 
     [Fact]
     public async Task AVisitorWithTheWrongKeyIsNobody()
     {
-        var callId = await MakeVisitorChatAsync("v1");
+        var conversationId = await MakeVisitorChatAsync("v1");
 
-        Assert.Null(await _admission.AdmitAsync(new RealTimeRequest(null, Query(("call", callId), ("visitor", "v2"))), Cancel));
-        Assert.Null(await _admission.AdmitAsync(new RealTimeRequest(null, Query(("call", "no-such-call"), ("visitor", "v1"))), Cancel));
+        Assert.Null(await _admission.AdmitAsync(new RealTimeRequest(null, Query(("call", conversationId), ("visitor", "v2"))), Cancel));
+        Assert.Null(await _admission.AdmitAsync(new RealTimeRequest(null, Query(("call", "no-such-conversation"), ("visitor", "v1"))), Cancel));
     }
 
     [Theory]
@@ -91,9 +92,9 @@ public sealed class HandoffAdmissionTests
     [InlineData("semi;colon")]
     public async Task AMalformedKeyIsNobody(string visitor)
     {
-        var callId = await MakeVisitorChatAsync("v1");
+        var conversationId = await MakeVisitorChatAsync("v1");
 
-        Assert.Null(await _admission.AdmitAsync(new RealTimeRequest(null, Query(("call", callId), ("visitor", visitor))), Cancel));
+        Assert.Null(await _admission.AdmitAsync(new RealTimeRequest(null, Query(("call", conversationId), ("visitor", visitor))), Cancel));
     }
 
     [Fact]
@@ -105,12 +106,12 @@ public sealed class HandoffAdmissionTests
 
     private async Task<string> MakeVisitorChatAsync(string visitorKey)
     {
-        var callId = Guid.NewGuid().ToString("N");
+        var conversationId = Guid.NewGuid().ToString("N");
 
-        await _calls.CreateAsync(callId, Cancel);
-        await _calls.SetCustomAsync(callId, ThreadEnvelope.Build(VisitorPrincipal.KeyOf(visitorKey), null), Cancel);
+        await _conversations.CreateAsync(conversationId, Cancel);
+        await _conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(VisitorPrincipal.KeyOf(visitorKey), null), Cancel);
 
-        return callId;
+        return conversationId;
     }
 
     private static ClaimsPrincipal SignedIn(string subject, string email)

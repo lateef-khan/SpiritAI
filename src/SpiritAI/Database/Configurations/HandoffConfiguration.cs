@@ -8,8 +8,8 @@ namespace SpiritAI.Database.Configurations;
 /// <summary>Maps <see cref="Handoff"/> onto <c>spirit.handoff</c>.</summary>
 internal sealed class HandoffConfiguration : IEntityTypeConfiguration<Handoff>
 {
-    /// <summary>The unique index that allows one open row per call. A refused insert names it.</summary>
-    public const string OpenPerCallIndex = "handoff_open_per_call";
+    /// <summary>The unique index that allows one open row per conversation. A refused insert names it.</summary>
+    public const string OpenPerConversationIndex = "handoff_open_per_conversation";
 
     /// <summary>The index the queue reads: open rows, oldest ask first.</summary>
     public const string QueueIndex = "handoff_queue";
@@ -27,7 +27,7 @@ internal sealed class HandoffConfiguration : IEntityTypeConfiguration<Handoff>
         builder.HasKey(h => h.Id);
 
         builder.Property(h => h.Id).HasColumnName("id").UseIdentityAlwaysColumn();
-        builder.Property(h => h.CallId).HasColumnName("call_id");
+        builder.Property(h => h.ConversationId).HasColumnName("conversation_id");
 
         builder.Property(h => h.Status)
             .HasColumnName("status")
@@ -50,17 +50,17 @@ internal sealed class HandoffConfiguration : IEntityTypeConfiguration<Handoff>
         builder.Property(h => h.DoneAt).HasColumnName("done_at");
 
         // One open handoff per chat. Closed ones stay: they are the wait-time report.
-        builder.HasIndex(h => h.CallId)
-            .HasDatabaseName(OpenPerCallIndex)
+        builder.HasIndex(h => h.ConversationId)
+            .HasDatabaseName(OpenPerConversationIndex)
             .IsUnique()
             .HasFilter("status <> 'done'");
 
         builder.HasIndex(h => new { h.Status, h.AskedAt }).HasDatabaseName(QueueIndex);
 
-        // The cascade means AgentCore's retention sweep of agentcore.call cleans up after us.
-        builder.HasOne<CallStub>()
+        // The cascade means AgentCore's retention sweep of agentcore.conversation cleans up after us.
+        builder.HasOne<ConversationStub>()
             .WithMany()
-            .HasForeignKey(h => h.CallId)
+            .HasForeignKey(h => h.ConversationId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

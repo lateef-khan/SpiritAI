@@ -5,7 +5,7 @@ namespace SpiritAI.Lookup;
 /// <summary>
 /// Finds the machines one customer owns, straight from the tool the agent uses.
 /// </summary>
-/// <param name="invoke">The seam that calls one DAB tool.</param>
+/// <param name="invoke">The seam that conversations one DAB tool.</param>
 public sealed class CustomerLookup(ToolInvoker invoke)
 {
     /// <summary>The tool id <c>spirit.yaml</c> aliases the customer reader under.</summary>

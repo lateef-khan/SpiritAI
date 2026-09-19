@@ -20,7 +20,7 @@ public enum UnitSection
     [JsonStringEnumMemberName("header")]
     Header,
 
-    /// <summary>Service calls that are not closed.</summary>
+    /// <summary>Service conversations that are not closed.</summary>
     [JsonStringEnumMemberName("jobs")]
     Jobs,
 
@@ -62,7 +62,7 @@ public enum JobStatus
 /// <summary>Everything the panel shows for one machine.</summary>
 /// <param name="Serial">The serial that was asked for.</param>
 /// <param name="Header">The pinned facts, or <see langword="null"/> when they could not be read.</param>
-/// <param name="Jobs">Service calls that are not closed, newest first.</param>
+/// <param name="Jobs">Service conversations that are not closed, newest first.</param>
 /// <param name="History">Every service call, newest first.</param>
 /// <param name="Parts">The model's parts list.</param>
 /// <param name="Warranty">What is covered, and until when.</param>

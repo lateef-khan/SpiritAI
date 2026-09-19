@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace SpiritAI.Lookup;
 
 /// <summary>
-/// Calls one DAB tool.
+/// Conversations one DAB tool.
 /// </summary>
 /// <remarks>
 /// A delegate rather than <c>ToolRegistry</c> itself. The registry has an internal constructor and
@@ -12,7 +12,7 @@ namespace SpiritAI.Lookup;
 /// </remarks>
 /// <param name="toolId">The tool's id, as <c>spirit.yaml</c> aliases it.</param>
 /// <param name="arguments">The tool's arguments, by name.</param>
-/// <param name="cancellationToken">Cancels the call.</param>
+/// <param name="cancellationToken">Cancels the conversation.</param>
 /// <returns>Whatever the tool answered, as JSON.</returns>
 public delegate ValueTask<JsonElement> ToolInvoker(
     string toolId,

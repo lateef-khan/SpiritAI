@@ -1,7 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Conversation;
+using AgentCore.Application.Conversation.Memory;
 using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Builder;
@@ -106,9 +107,9 @@ public sealed class ThreadSessionTests
         public const string StrangerSubject = "user_stranger";
 
         private readonly IHost _host;
-        private readonly InMemoryCallStore _store;
+        private readonly InMemoryConversationStore _store;
 
-        private World(IHost host, NeonAuthTestKit kit, InMemoryCallStore store, FakeSessions sessions)
+        private World(IHost host, NeonAuthTestKit kit, InMemoryConversationStore store, FakeSessions sessions)
         {
             _host = host;
             _store = store;
@@ -128,13 +129,13 @@ public sealed class ThreadSessionTests
 
         public async Task<string> MakeThreadAsync(string ownerKey)
         {
-            var callId = Guid.NewGuid().ToString("N");
+            var conversationId = Guid.NewGuid().ToString("N");
 
-            await _store.CreateAsync(callId, TestContext.Current.CancellationToken);
+            await _store.CreateAsync(conversationId, TestContext.Current.CancellationToken);
             await _store.SetCustomAsync(
-                callId, ThreadEnvelope.Build(ownerKey, app: null), TestContext.Current.CancellationToken);
+                conversationId, ThreadEnvelope.Build(ownerKey, app: null), TestContext.Current.CancellationToken);
 
-            return callId;
+            return conversationId;
         }
 
         public Task<HttpResponseMessage> PostAsync(string? token, string? thread)
@@ -174,14 +175,14 @@ public sealed class ThreadSessionTests
         public static async Task<World> StartAsync()
         {
             var kit = new NeonAuthTestKit();
-            InMemoryCallStore store = new();
+            InMemoryConversationStore store = new();
             FakeSessions sessions = new();
 
             var host = await ThreadTestHost.StartAsync(
                 kit,
                 services =>
                 {
-                    services.AddSingleton<ICallStore>(store);
+                    services.AddSingleton<IConversations>(new Conversations(store, blobs: null));
                     services.AddSingleton<IThreadSessions>(sessions);
                 },
                 app =>

@@ -328,7 +328,7 @@ providers:
             SKU, or the years a machine was made, so the search returns the model cards and
             nothing else. Leave it out for every other question.
 
-  call: { kind: telnyx-relay }
+  conversation: { kind: telnyx-relay }
 
   speech:
     stt: { kind: telnyx-relay }
@@ -344,4 +344,4 @@ providers:
 
   audit: { kind: postgres }
 
-  calls: { kind: postgres }
+  conversations: { kind: postgres }

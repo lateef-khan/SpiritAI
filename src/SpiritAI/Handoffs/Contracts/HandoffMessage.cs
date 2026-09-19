@@ -1,9 +1,11 @@
+using System.Text.Json.Serialization;
+
 namespace SpiritAI.Handoffs.Contracts;
 
 /// <summary>
 /// One message of the human phase, as it is pushed and as a reply answers with it.
 /// </summary>
-/// <param name="CallId">The chat.</param>
+/// <param name="ConversationId">The chat.</param>
 /// <param name="MessageId">
 /// The row's name in the chat, as AgentCore stored it. A browser that reconnects fetches the
 /// history and then keeps listening, so a push that also arrived by REST is dropped on this.
@@ -13,7 +15,7 @@ namespace SpiritAI.Handoffs.Contracts;
 /// <param name="Speaker">Who wrote it, when that is not simply "the agent".</param>
 /// <param name="At">When it was written.</param>
 public sealed record HandoffMessage(
-    string CallId,
+    [property: JsonPropertyName("callId")] string ConversationId,
     string MessageId,
     string Role,
     string Text,

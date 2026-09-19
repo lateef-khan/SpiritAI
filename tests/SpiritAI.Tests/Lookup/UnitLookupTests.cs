@@ -32,7 +32,7 @@ public sealed class UnitLookupTests
           "CustomerName": "Kurtis M.", "Address": "12 Elm St", "City": "Austin", "State": "TX",
           "Zip": "78701", "Phone": "5125550100", "Phone2": "", "Email": "kurtis@example.com",
           "DealerNo": "DICK'S",
-          "ServiceId": 796955, "CallDate": "2025-01-15T15:18:00",
+          "ServiceId": 796955, "ConversationDate": "2025-01-15T15:18:00",
           "ServiceDate": "2025-01-15T16:21:00", "ServiceRep": "tiana.bills",
           "Description": "Missing Parts", "Solution": null,
           "ServiceStatus": "CLOSED", "OrderId": 1, "CaseStatus": "CLOSED"
@@ -40,7 +40,7 @@ public sealed class UnitLookupTests
         {
           "SerialNo": "5808881004036047", "ModelNo": "580888", "ModelName": "SOLE WF80 2010",
           "Sole": true, "FG": "TREADMILL", "ModelVersion": 2,
-          "ServiceId": 800001, "CallDate": "2026-02-01T09:00:00",
+          "ServiceId": 800001, "ConversationDate": "2026-02-01T09:00:00",
           "ServiceRep": "sam", "Description": "Belt slips",
           "ServiceStatus": "IN PROGRESS", "OrderId": 2, "CaseStatus": "IN PROGRESS"
         }
@@ -153,7 +153,7 @@ public sealed class UnitLookupTests
     }
 
     [Fact]
-    public async Task JobsAreTheCallsThatAreNotClosed()
+    public async Task JobsAreTheConversationsThatAreNotClosed()
     {
         var unit = await Lookup().ReadUnitAsync(Serial, TestContext.Current.CancellationToken);
 

@@ -52,7 +52,7 @@ public sealed class StaffHandoffEndpointTests
 
         var page = await world.Staff.ReadAsync<HandoffPage>(Handoff);
 
-        Assert.Equal([first, second], page.Items.Select(item => item.CallId));
+        Assert.Equal([first, second], page.Items.Select(item => item.ConversationId));
         Assert.Equal([1, 2], page.Items.Select(item => item.Position));
         Assert.Equal("Belt slips", page.Items[0].Title);
         Assert.Equal("the belt keeps slipping", page.Items[0].FirstLine);
@@ -73,9 +73,9 @@ public sealed class StaffHandoffEndpointTests
     public async Task AChatThatNeverAskedIsNotFound()
     {
         await using var world = await StaffHandoffWorld.StartAsync();
-        var callId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        var conversationId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
 
-        var response = await world.Staff.GetAsync($"{Handoff}/{callId}");
+        var response = await world.Staff.GetAsync($"{Handoff}/{conversationId}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -84,10 +84,10 @@ public sealed class StaffHandoffEndpointTests
     public async Task AChatThatAskedAnswersWithItsStatus()
     {
         await using var world = await StaffHandoffWorld.StartAsync();
-        var callId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
-        await world.AskAsync(callId);
+        var conversationId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        await world.AskAsync(conversationId);
 
-        var summary = await world.Staff.ReadAsync<HandoffSummary>($"{Handoff}/{callId}");
+        var summary = await world.Staff.ReadAsync<HandoffSummary>($"{Handoff}/{conversationId}");
 
         Assert.Equal("waiting", summary.Status);
         Assert.Equal(1, summary.Position);
@@ -97,13 +97,13 @@ public sealed class StaffHandoffEndpointTests
     public async Task TheWholeChatIsStaffsToReadOnceItAsked()
     {
         await using var world = await StaffHandoffWorld.StartAsync();
-        var callId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        var conversationId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
 
         // A chat that never asked for a person is not staff's to read, however real its id.
-        Assert.Equal(HttpStatusCode.NotFound, (await world.Staff.GetAsync($"{Handoff}/{callId}/messages")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await world.Staff.GetAsync($"{Handoff}/{conversationId}/messages")).StatusCode);
 
-        await world.AskAsync(callId);
-        var history = await world.Staff.ReadAsync<ThreadHistory>($"{Handoff}/{callId}/messages");
+        await world.AskAsync(conversationId);
+        var history = await world.Staff.ReadAsync<ThreadHistory>($"{Handoff}/{conversationId}/messages");
 
         Assert.Equal(2, history.Messages.Count);
         Assert.Equal("the belt keeps slipping", Assert.IsType<ThreadTextPart>(history.Messages[0].Message.Content[0]).Text);
@@ -113,10 +113,10 @@ public sealed class StaffHandoffEndpointTests
     public async Task ClaimingAWaitingChatTakesItAndSaysSo()
     {
         await using var world = await StaffHandoffWorld.StartAsync();
-        var callId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
-        await world.AskAsync(callId);
+        var conversationId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        await world.AskAsync(conversationId);
 
-        var response = await world.Staff.PostAsync($"{Handoff}/{callId}/claim");
+        var response = await world.Staff.PostAsync($"{Handoff}/{conversationId}/claim");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var summary = await response.ReadAsync<HandoffSummary>();
@@ -126,7 +126,7 @@ public sealed class StaffHandoffEndpointTests
 
         Assert.Contains("handoff.claimed", world.Notifier.Events);
 
-        var note = await world.LastWordAsync(callId);
+        var note = await world.LastWordAsync(conversationId);
         Assert.Equal(ChatRole.Assistant, note.Content.Role);
         Assert.Equal("Dana R. joined", note.Content.Text);
         Assert.Equal("system", SpeakerProperty.Read(note.Content)?.GetProperty("kind").GetString());
@@ -142,11 +142,11 @@ public sealed class StaffHandoffEndpointTests
     public async Task ASecondClaimIsRefusedNamingWhoHasIt()
     {
         await using var world = await StaffHandoffWorld.StartAsync();
-        var callId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
-        await world.AskAsync(callId);
-        await world.Staff.PostAsync($"{Handoff}/{callId}/claim");
+        var conversationId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        await world.AskAsync(conversationId);
+        await world.Staff.PostAsync($"{Handoff}/{conversationId}/claim");
 
-        var response = await world.OtherStaff.PostAsync($"{Handoff}/{callId}/claim");
+        var response = await world.OtherStaff.PostAsync($"{Handoff}/{conversationId}/claim");
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Contains("Dana R.", await DetailOf(response), StringComparison.Ordinal);
@@ -166,10 +166,10 @@ public sealed class StaffHandoffEndpointTests
     public async Task AReplyBeforeAClaimIsRefused()
     {
         await using var world = await StaffHandoffWorld.StartAsync();
-        var callId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
-        await world.AskAsync(callId);
+        var conversationId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        await world.AskAsync(conversationId);
 
-        var response = await world.Staff.PostAsync($"{Handoff}/{callId}/messages", new { text = "Hello" });
+        var response = await world.Staff.PostAsync($"{Handoff}/{conversationId}/messages", new { text = "Hello" });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
@@ -178,11 +178,11 @@ public sealed class StaffHandoffEndpointTests
     public async Task OnlyTheAssigneeMayReply()
     {
         await using var world = await StaffHandoffWorld.StartAsync();
-        var callId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
-        await world.AskAsync(callId);
-        await world.Staff.PostAsync($"{Handoff}/{callId}/claim");
+        var conversationId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        await world.AskAsync(conversationId);
+        await world.Staff.PostAsync($"{Handoff}/{conversationId}/claim");
 
-        var response = await world.OtherStaff.PostAsync($"{Handoff}/{callId}/messages", new { text = "Hello" });
+        var response = await world.OtherStaff.PostAsync($"{Handoff}/{conversationId}/messages", new { text = "Hello" });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -191,11 +191,11 @@ public sealed class StaffHandoffEndpointTests
     public async Task TheAssigneesReplyIsStoredSignedAndPushed()
     {
         await using var world = await StaffHandoffWorld.StartAsync();
-        var callId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
-        await world.AskAsync(callId);
-        await world.Staff.PostAsync($"{Handoff}/{callId}/claim");
+        var conversationId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        await world.AskAsync(conversationId);
+        await world.Staff.PostAsync($"{Handoff}/{conversationId}/claim");
 
-        var response = await world.Staff.PostAsync($"{Handoff}/{callId}/messages", new { text = "Try the tension bolt." });
+        var response = await world.Staff.PostAsync($"{Handoff}/{conversationId}/messages", new { text = "Try the tension bolt." });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var created = await response.ReadAsync<HandoffMessage>();
@@ -204,7 +204,7 @@ public sealed class StaffHandoffEndpointTests
         Assert.Equal("human", created.Speaker?.Kind);
         Assert.Equal("Dana R.", created.Speaker?.Name);
 
-        var stored = await world.LastWordAsync(callId);
+        var stored = await world.LastWordAsync(conversationId);
         Assert.Equal(created.MessageId, stored.MessageId);
         Assert.Equal(ChatRole.Assistant, stored.Content.Role);
         Assert.Equal("Try the tension bolt.", stored.Content.Text);
@@ -217,11 +217,11 @@ public sealed class StaffHandoffEndpointTests
     public async Task ABlankReplyIsRefused()
     {
         await using var world = await StaffHandoffWorld.StartAsync();
-        var callId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
-        await world.AskAsync(callId);
-        await world.Staff.PostAsync($"{Handoff}/{callId}/claim");
+        var conversationId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        await world.AskAsync(conversationId);
+        await world.Staff.PostAsync($"{Handoff}/{conversationId}/claim");
 
-        var response = await world.Staff.PostAsync($"{Handoff}/{callId}/messages", new { text = "   " });
+        var response = await world.Staff.PostAsync($"{Handoff}/{conversationId}/messages", new { text = "   " });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -230,16 +230,16 @@ public sealed class StaffHandoffEndpointTests
     public async Task FinishingHandsTheChatBackAndSaysGoodbye()
     {
         await using var world = await StaffHandoffWorld.StartAsync();
-        var callId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
-        await world.AskAsync(callId);
-        await world.Staff.PostAsync($"{Handoff}/{callId}/claim");
+        var conversationId = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        await world.AskAsync(conversationId);
+        await world.Staff.PostAsync($"{Handoff}/{conversationId}/claim");
 
-        var response = await world.Staff.PostAsync($"{Handoff}/{callId}/done");
+        var response = await world.Staff.PostAsync($"{Handoff}/{conversationId}/done");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal(HandoffStatus.Done, Assert.Single(world.Store.Rows).Status);
         Assert.Contains("handoff.done", world.Notifier.Events);
-        Assert.Equal("Dana R. left", (await world.LastWordAsync(callId)).Content.Text);
+        Assert.Equal("Dana R. left", (await world.LastWordAsync(conversationId)).Content.Text);
     }
 
     [Fact]

@@ -18,19 +18,19 @@ public sealed class SpeakerRoundTripTests(PostgresFixture fixture) : IClassFixtu
     [Fact]
     public async Task AStaffReplyComesBackSigned()
     {
-        var callId = "test-" + Guid.NewGuid().ToString("N");
-        var store = await fixture.OpenCallStoreAsync();
+        var conversationId = "test-" + Guid.NewGuid().ToString("N");
+        var store = await fixture.OpenConversationStoreAsync();
 
         try
         {
-            await store.CreateAsync(callId, TestContext.Current.CancellationToken);
+            await store.CreateAsync(conversationId, TestContext.Current.CancellationToken);
 
             var reply = new ChatMessage(ChatRole.Assistant, "Try the tension bolt.");
             SpeakerProperty.Attach(reply, HandoffSpeaker.Human("Dana R.", "Support"));
 
-            var written = await store.AppendMessageAsync(callId, reply, TestContext.Current.CancellationToken);
+            var written = await store.AppendMessageAsync(conversationId, reply, TestContext.Current.CancellationToken);
 
-            var row = Assert.Single(await store.ReadAsync(callId, TestContext.Current.CancellationToken));
+            var row = Assert.Single(await store.ReadAsync(conversationId, TestContext.Current.CancellationToken));
             Assert.Equal(written.MessageId, row.MessageId);
             Assert.Equal(ChatRole.Assistant, row.Content.Role);
             Assert.Equal("Try the tension bolt.", row.Content.Text);
@@ -43,7 +43,7 @@ public sealed class SpeakerRoundTripTests(PostgresFixture fixture) : IClassFixtu
         }
         finally
         {
-            await fixture.DeleteCallAsync(callId);
+            await fixture.DeleteConversationAsync(conversationId);
 
             if (store is IAsyncDisposable pool)
             {

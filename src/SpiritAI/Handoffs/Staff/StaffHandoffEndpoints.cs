@@ -1,4 +1,4 @@
-using AgentCore.Application.Calls;
+using AgentCore.Application.Conversation;
 using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -25,7 +25,7 @@ public static class StaffHandoffEndpoints
     /// <summary>How many rows a listing holds when the caller asks for no size.</summary>
     public const int DefaultPageSize = 30;
 
-    private const string One = $"{Pattern}/{{callId}}";
+    private const string One = $"{Pattern}/{{conversationId}}";
 
     /// <summary>Maps the inbox on <see cref="Pattern"/>.</summary>
     /// <param name="endpoints">The route builder of the host.</param>
@@ -115,7 +115,7 @@ public static class StaffHandoffEndpoints
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
-        ICallStore calls,
+        IConversations conversations,
         string? status,
         int? limit,
         CancellationToken cancellationToken)
@@ -133,7 +133,7 @@ public static class StaffHandoffEndpoints
                 .ListAsync(read, Math.Clamp(limit ?? DefaultPageSize, 1, HandoffStore.MaxListSize), cancellationToken)
                 .ConfigureAwait(false);
 
-            var items = await HandoffSummaries.OfAsync(store, calls, rows, cancellationToken).ConfigureAwait(false);
+            var items = await HandoffSummaries.OfAsync(store, conversations, rows, cancellationToken).ConfigureAwait(false);
 
             return TypedResults.Ok(new HandoffPage(items));
         });
@@ -143,17 +143,17 @@ public static class StaffHandoffEndpoints
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
-        ICallStore calls,
-        string callId,
+        IConversations conversations,
+        string conversationId,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (_, _) =>
         {
-            if (await store.LatestAsync(callId, cancellationToken).ConfigureAwait(false) is not { } row)
+            if (await store.LatestAsync(conversationId, cancellationToken).ConfigureAwait(false) is not { } row)
             {
                 return TypedResults.NotFound();
             }
 
-            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, calls, row, cancellationToken).ConfigureAwait(false));
+            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, conversations, row, cancellationToken).ConfigureAwait(false));
         });
 
     /// <summary>The whole chat, in the shape the browser draws a thread from.</summary>
@@ -161,19 +161,19 @@ public static class StaffHandoffEndpoints
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
-        CallRepository calls,
-        string callId,
+        IConversations conversations,
+        string conversationId,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (_, _) =>
         {
             // A chat that never asked for a person is not staff's to read.
-            if (await store.LatestAsync(callId, cancellationToken).ConfigureAwait(false) is null
-                || await calls.GetAsync(callId, cancellationToken).ConfigureAwait(false) is not { } record)
+            if (await store.LatestAsync(conversationId, cancellationToken).ConfigureAwait(false) is null
+                || await conversations.LoadAsync(conversationId, cancellationToken).ConfigureAwait(false) is not { } stored)
             {
                 return TypedResults.NotFound();
             }
 
-            return TypedResults.Ok(await ThreadHistory.ReadAsync(record, calls, cancellationToken).ConfigureAwait(false));
+            return TypedResults.Ok(ThreadHistory.Of(stored));
         });
 
     /// <summary>Takes a waiting chat for the caller.</summary>
@@ -181,14 +181,14 @@ public static class StaffHandoffEndpoints
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
-        ICallStore calls,
+        IConversations conversations,
         IHandoffNotifier notifier,
         HandoffDesk desk,
-        string callId,
+        string conversationId,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (key, member) =>
         {
-            var claim = await store.ClaimAsync(callId, key, member.Name, cancellationToken).ConfigureAwait(false);
+            var claim = await store.ClaimAsync(conversationId, key, member.Name, cancellationToken).ConfigureAwait(false);
 
             switch (claim.Result)
             {
@@ -202,14 +202,14 @@ public static class StaffHandoffEndpoints
                     break;
             }
 
-            await desk.NoteAsync(callId, $"{member.Name} joined", cancellationToken).ConfigureAwait(false);
+            await desk.NoteAsync(conversationId, $"{member.Name} joined", cancellationToken).ConfigureAwait(false);
 
-            await notifier.ClaimedAsync(callId, new HandoffAssignee(key, member.Name), cancellationToken).ConfigureAwait(false);
+            await notifier.ClaimedAsync(conversationId, new HandoffAssignee(key, member.Name), cancellationToken).ConfigureAwait(false);
 
             // Everyone behind the chat just taken moved up one.
             await desk.AnnounceQueueAsync(cancellationToken).ConfigureAwait(false);
 
-            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, calls, claim.Row!, cancellationToken).ConfigureAwait(false));
+            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, conversations, claim.Row!, cancellationToken).ConfigureAwait(false));
         });
 
     /// <summary>Puts the caller's words in a chat they hold.</summary>
@@ -218,7 +218,7 @@ public static class StaffHandoffEndpoints
         StaffGate staff,
         IHandoffStore store,
         HandoffDesk desk,
-        string callId,
+        string conversationId,
         HandoffReplyRequest? body,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (key, member) =>
@@ -228,7 +228,7 @@ public static class StaffHandoffEndpoints
                 return Problem(StatusCodes.Status400BadRequest, "The request cannot be read.", "text must be a non-blank string.");
             }
 
-            if (await store.OpenAsync(callId, cancellationToken).ConfigureAwait(false) is not { } row)
+            if (await store.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false) is not { } row)
             {
                 return TypedResults.NotFound();
             }
@@ -245,7 +245,7 @@ public static class StaffHandoffEndpoints
 
             var created = await desk.StaffSaysAsync(row, member, text, cancellationToken).ConfigureAwait(false);
 
-            return TypedResults.Created($"{Pattern}/{callId}/messages", created);
+            return TypedResults.Created($"{Pattern}/{conversationId}/messages", created);
         });
 
     /// <summary>Hands the chat back to the bot, from waiting or from human.</summary>
@@ -253,14 +253,14 @@ public static class StaffHandoffEndpoints
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
-        ICallStore calls,
+        IConversations conversations,
         IHandoffNotifier notifier,
         HandoffDesk desk,
-        string callId,
+        string conversationId,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (_, _) =>
         {
-            if (await store.OpenAsync(callId, cancellationToken).ConfigureAwait(false) is not { } row)
+            if (await store.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false) is not { } row)
             {
                 return TypedResults.NotFound();
             }
@@ -269,17 +269,17 @@ public static class StaffHandoffEndpoints
             // read no longer finds it.
             var leaving = row.Status == HandoffStatus.Human ? row.AssigneeName : null;
 
-            if (!await store.DoneAsync(callId, cancellationToken).ConfigureAwait(false))
+            if (!await store.DoneAsync(conversationId, cancellationToken).ConfigureAwait(false))
             {
                 return TypedResults.NotFound();
             }
 
             if (leaving is not null)
             {
-                await desk.NoteAsync(callId, $"{leaving} left", cancellationToken).ConfigureAwait(false);
+                await desk.NoteAsync(conversationId, $"{leaving} left", cancellationToken).ConfigureAwait(false);
             }
 
-            await notifier.DoneAsync(callId, cancellationToken).ConfigureAwait(false);
+            await notifier.DoneAsync(conversationId, cancellationToken).ConfigureAwait(false);
 
             // A chat closed straight from waiting leaves the line; the ones behind it move up.
             await desk.AnnounceQueueAsync(cancellationToken).ConfigureAwait(false);

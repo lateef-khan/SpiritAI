@@ -23,13 +23,13 @@ internal static class HandoffSummaries
     /// ports.
     /// </remarks>
     /// <param name="store">Where the position is read.</param>
-    /// <param name="calls">Where the title and the words are read.</param>
+    /// <param name="conversations">Where the title and the words are read.</param>
     /// <param name="rows">The rows, in the order they are to be listed.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>One summary per row, in the same order.</returns>
     public static async Task<IReadOnlyList<HandoffSummary>> OfAsync(
         IHandoffStore store,
-        ICallStore calls,
+        IConversations conversations,
         IReadOnlyList<Handoff> rows,
         CancellationToken cancellationToken)
     {
@@ -37,7 +37,7 @@ internal static class HandoffSummaries
 
         foreach (var row in rows)
         {
-            summaries.Add(await OfAsync(store, calls, row, cancellationToken).ConfigureAwait(false));
+            summaries.Add(await OfAsync(store, conversations, row, cancellationToken).ConfigureAwait(false));
         }
 
         return summaries;
@@ -45,30 +45,30 @@ internal static class HandoffSummaries
 
     /// <summary>Summarises one row.</summary>
     /// <param name="store">Where the position is read.</param>
-    /// <param name="calls">Where the title and the words are read.</param>
+    /// <param name="conversations">Where the title and the words are read.</param>
     /// <param name="row">The row.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The summary, with a position only while the row is waiting.</returns>
     public static async Task<HandoffSummary> OfAsync(
         IHandoffStore store,
-        ICallStore calls,
+        IConversations conversations,
         Handoff row,
         CancellationToken cancellationToken)
     {
-        var call = await calls.GetAsync(row.CallId, cancellationToken).ConfigureAwait(false);
-        var words = await calls.ReadAsync(row.CallId, cancellationToken).ConfigureAwait(false);
+        var conversation = await conversations.GetAsync(row.ConversationId, cancellationToken).ConfigureAwait(false);
+        var words = await conversations.ReadAsync(row.ConversationId, cancellationToken).ConfigureAwait(false);
 
         var position = row.Status == HandoffStatus.Waiting
-            ? await store.PositionAsync(row.CallId, cancellationToken).ConfigureAwait(false)
+            ? await store.PositionAsync(row.ConversationId, cancellationToken).ConfigureAwait(false)
             : null;
 
-        return HandoffSummary.Of(row, call, FirstLineOf(words), position);
+        return HandoffSummary.Of(row, conversation, FirstLineOf(words), position);
     }
 
     /// <summary>The first thing the visitor said: the text of the lowest user row.</summary>
-    /// <param name="rows">Every stored message of the call. Order does not matter.</param>
+    /// <param name="rows">Every stored message of the conversation. Order does not matter.</param>
     /// <returns>The words, or <see langword="null"/> when the visitor has said nothing yet.</returns>
-    public static string? FirstLineOf(IReadOnlyList<CallMessage> rows)
+    public static string? FirstLineOf(IReadOnlyList<ConversationMessage> rows)
     {
         var first = rows
             .Where(row => row.Content.Role == ChatRole.User)

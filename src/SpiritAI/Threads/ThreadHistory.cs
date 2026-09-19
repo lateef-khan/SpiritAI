@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using AgentCore.Application.Calls;
+using AgentCore.Application.Conversation;
 using AgentCore.Application.Transcript;
 using AgentCore.Domain.Sources;
 
@@ -102,7 +102,7 @@ public sealed record ThreadHistoryMessage(
 public sealed record ThreadHistoryItem(string? ParentId, ThreadHistoryMessage Message);
 
 /// <summary>
-/// A stored call, as the conversation assistant-ui draws.
+/// A stored conversation, as the conversation assistant-ui draws.
 /// </summary>
 public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryItem> Messages)
 {
@@ -111,43 +111,31 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
     private static readonly JsonSerializerOptions Readable =
         new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-    /// <summary>Reads one whole call into the shape the browser restores a thread from.</summary>
-    /// <param name="call">The call's row. It supplies the clock store 1 does not keep.</param>
-    /// <param name="rows">Every stored message of the call. Order does not matter.</param>
+    /// <summary>Reads one whole conversation into the shape the browser restores a thread from.</summary>
+    /// <param name="conversation">The conversation's row. It supplies the clock store 1 does not keep.</param>
+    /// <param name="rows">Every stored message of the conversation. Order does not matter.</param>
     /// <returns>The conversation, oldest message first, chained by parent.</returns>
-    public static ThreadHistory Of(CallRecord call, IReadOnlyList<CallMessage> rows)
-        => Of(call, rows, new Dictionary<string, ThreadPart>(StringComparer.Ordinal));
+    public static ThreadHistory Of(ConversationRecord conversation, IReadOnlyList<ConversationMessage> rows)
+        => Of(conversation, rows, new Dictionary<string, ThreadPart>(StringComparer.Ordinal));
 
-    /// <summary>Reads one whole call, linking every file the store still holds.</summary>
-    /// <param name="call">The call's row.</param>
-    /// <param name="calls">The door to the stored call. It reads the rows and links the files.</param>
-    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <summary>Turns one conversation, as the door loaded it, into the shape the browser restores a thread from.</summary>
+    /// <param name="stored">The conversation's row, its words, and a link to every file it still holds.</param>
     /// <returns>The conversation, oldest message first, chained by parent.</returns>
-    public static async Task<ThreadHistory> ReadAsync(
-        CallRecord call,
-        CallRepository calls,
-        CancellationToken cancellationToken)
+    public static ThreadHistory Of(StoredConversation stored)
     {
-        ArgumentNullException.ThrowIfNull(call);
-        ArgumentNullException.ThrowIfNull(calls);
+        ArgumentNullException.ThrowIfNull(stored);
 
-        var rows = await calls.ReadAsync(call.CallId, cancellationToken).ConfigureAwait(false);
-
-        var links = await calls
-            .LinkFilesAsync(call.CallId, rows.Select(row => row.Content), cancellationToken)
-            .ConfigureAwait(false);
-
-        return Of(call, rows, ThreadFiles.PartsOf(links));
+        return Of(stored.Conversation, stored.Messages, ThreadFiles.PartsOf(stored.Files));
     }
 
-    /// <summary>Reads one whole call into the shape the browser restores a thread from, with its files linked.</summary>
-    /// <param name="call">The call's row. It supplies the clock store 1 does not keep.</param>
-    /// <param name="rows">Every stored message of the call. Order does not matter.</param>
+    /// <summary>Reads one whole conversation into the shape the browser restores a thread from, with its files linked.</summary>
+    /// <param name="conversation">The conversation's row. It supplies the clock store 1 does not keep.</param>
+    /// <param name="rows">Every stored message of the conversation. Order does not matter.</param>
     /// <param name="files">The part for each file the store still holds, from <see cref="ThreadFiles.PartsOf"/>.</param>
     /// <returns>The conversation, oldest message first, chained by parent.</returns>
-    public static ThreadHistory Of(CallRecord call, IReadOnlyList<CallMessage> rows, IReadOnlyDictionary<string, ThreadPart> files)
+    public static ThreadHistory Of(ConversationRecord conversation, IReadOnlyList<ConversationMessage> rows, IReadOnlyDictionary<string, ThreadPart> files)
     {
-        ArgumentNullException.ThrowIfNull(call);
+        ArgumentNullException.ThrowIfNull(conversation);
         ArgumentNullException.ThrowIfNull(rows);
         ArgumentNullException.ThrowIfNull(files);
 
@@ -156,7 +144,7 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
 
         foreach (var turn in Group(rows))
         {
-            var message = Build(call, turn, files);
+            var message = Build(conversation, turn, files);
             messages.Add(new ThreadHistoryItem(parentId, message));
 
             // The head is the last message, and after the loop this is it. A separate pass to find
@@ -168,9 +156,9 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
     }
 
     /// <summary>Gathers the rows that become one restored message.</summary>
-    private static IEnumerable<List<CallMessage>> Group(IReadOnlyList<CallMessage> rows)
+    private static IEnumerable<List<ConversationMessage>> Group(IReadOnlyList<ConversationMessage> rows)
     {
-        List<CallMessage>? open = null;
+        List<ConversationMessage>? open = null;
 
         var openTurn = -1;
 
@@ -219,10 +207,10 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
     }
 
     /// <summary>Who a row speaks as, as the stored JSON spells it. No entry means the agent.</summary>
-    private static string? SpeakerKey(CallMessage row)
+    private static string? SpeakerKey(ConversationMessage row)
         => SpeakerProperty.Read(row.Content)?.GetRawText();
 
-    private static ThreadHistoryMessage Build(CallRecord call, List<CallMessage> turn, IReadOnlyDictionary<string, ThreadPart> files)
+    private static ThreadHistoryMessage Build(ConversationRecord conversation, List<ConversationMessage> turn, IReadOnlyDictionary<string, ThreadPart> files)
     {
         var first = turn[0];
         var role = RoleOf(first.Content.Role);
@@ -280,10 +268,10 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
         return new ThreadHistoryMessage(
             // Positional, because store 1 keeps no message id of its own. It is stable only for as
             // long as a message keeps the ordinal it was written under.
-            $"{first.CallId}:{first.Ordinal}",
+            $"{first.ConversationId}:{first.Ordinal}",
             role,
             parts,
-            first.Content.CreatedAt ?? call.CreatedAt,
+            first.Content.CreatedAt ?? conversation.CreatedAt,
             MetadataOf(first.Content))
         {
             Status = role == "assistant" ? new ThreadMessageStatus("complete") : null,

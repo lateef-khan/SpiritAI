@@ -1,4 +1,5 @@
-using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Conversation;
+using AgentCore.Application.Conversation.Memory;
 using AgentCore.Application.Ports;
 
 using Microsoft.Extensions.AI;
@@ -33,7 +34,7 @@ public sealed class HandoffDeskTests
 
     private readonly TestTimeProvider _clock = new(new DateTimeOffset(2026, 9, 11, 9, 0, 0, TimeSpan.Zero));
     private readonly FakeHandoffStore _store;
-    private readonly ICallStore _calls;
+    private readonly IConversations _conversations;
     private readonly RecordingHandoffNotifier _notifier = new();
     private readonly FakePresenceStore _presence;
     private readonly RecordingHandoffMailer _mailer = new();
@@ -42,7 +43,7 @@ public sealed class HandoffDeskTests
     public HandoffDeskTests()
     {
         _store = new FakeHandoffStore(_clock);
-        _calls = new InMemoryCallStore(_clock);
+        _conversations = new Conversations(new InMemoryConversationStore(_clock), blobs: null);
         _presence = new FakePresenceStore(_clock, TimeSpan.FromSeconds(90));
         _desk = Desk(_mailer);
     }
@@ -65,13 +66,13 @@ public sealed class HandoffDeskTests
     [Fact]
     public async Task TheVisitorCannotSpeakToAChatTheBotHas()
     {
-        var callId = Guid.NewGuid().ToString("N");
-        await _calls.CreateAsync(callId, Cancel);
+        var conversationId = Guid.NewGuid().ToString("N");
+        await _conversations.CreateAsync(conversationId, Cancel);
 
-        var said = await _desk.VisitorSaysAsync(callId, "Still there?", Cancel);
+        var said = await _desk.VisitorSaysAsync(conversationId, "Still there?", Cancel);
 
         Assert.Null(said);
-        Assert.Empty(await _calls.ReadAsync(callId, Cancel));
+        Assert.Empty(await _conversations.ReadAsync(conversationId, Cancel));
         Assert.Empty(_notifier.Events);
     }
 
@@ -84,11 +85,11 @@ public sealed class HandoffDeskTests
 
         var mail = Assert.Single(_mailer.Sent);
         Assert.Equal("pat@example.com", mail.To);
-        Assert.Equal(open.CallId, mail.CallId);
+        Assert.Equal(open.ConversationId, mail.ConversationId);
         Assert.Equal("Dana R.", mail.StaffName);
         Assert.Equal("Try the tension bolt.", mail.Text);
 
-        await AssertStoredAndPushedAsync(open.CallId, created);
+        await AssertStoredAndPushedAsync(open.ConversationId, created);
     }
 
     [Fact]
@@ -101,7 +102,7 @@ public sealed class HandoffDeskTests
         var created = await _desk.StaffSaysAsync(open, Dana, "Try the tension bolt.", Cancel);
 
         Assert.Empty(_mailer.Sent);
-        await AssertStoredAndPushedAsync(open.CallId, created);
+        await AssertStoredAndPushedAsync(open.ConversationId, created);
     }
 
     [Fact]
@@ -112,7 +113,7 @@ public sealed class HandoffDeskTests
         var created = await _desk.StaffSaysAsync(open, Dana, "Try the tension bolt.", Cancel);
 
         Assert.Empty(_mailer.Sent);
-        await AssertStoredAndPushedAsync(open.CallId, created);
+        await AssertStoredAndPushedAsync(open.ConversationId, created);
     }
 
     [Fact]
@@ -125,13 +126,13 @@ public sealed class HandoffDeskTests
         var created = await desk.StaffSaysAsync(open, Dana, "Try the tension bolt.", Cancel);
 
         Assert.Equal("Try the tension bolt.", created.Text);
-        await AssertStoredAndPushedAsync(open.CallId, created);
+        await AssertStoredAndPushedAsync(open.ConversationId, created);
     }
 
     /// <summary>The reply is in the chat, signed, and was pushed as the message returned.</summary>
-    private async Task AssertStoredAndPushedAsync(string callId, HandoffMessage created)
+    private async Task AssertStoredAndPushedAsync(string conversationId, HandoffMessage created)
     {
-        var stored = Assert.Single(await _calls.ReadAsync(callId, Cancel));
+        var stored = Assert.Single(await _conversations.ReadAsync(conversationId, Cancel));
         Assert.Equal(created.MessageId, stored.MessageId);
         Assert.Equal(ChatRole.Assistant, stored.Content.Role);
         Assert.Equal(created.Text, stored.Content.Text);
@@ -143,32 +144,32 @@ public sealed class HandoffDeskTests
     }
 
     private HandoffDesk Desk(IHandoffMailer mailer)
-        => new(_store, _calls, _notifier, _presence, mailer, _clock, NullLogger<HandoffDesk>.Instance);
+        => new(_store, _conversations, _notifier, _presence, mailer, _clock, NullLogger<HandoffDesk>.Instance);
 
     /// <summary>Asks for a person on a new chat, a minute after the last ask, so the line has an order.</summary>
     private async Task<string> AskAsync()
     {
-        var callId = Guid.NewGuid().ToString("N");
-        await _calls.CreateAsync(callId, Cancel);
+        var conversationId = Guid.NewGuid().ToString("N");
+        await _conversations.CreateAsync(conversationId, Cancel);
 
         _clock.Now += TimeSpan.FromMinutes(1);
-        await _store.AskAsync(callId, HandoffAskedBy.Visitor, null, Cancel);
+        await _store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
 
-        return callId;
+        return conversationId;
     }
 
     /// <summary>A visitor's chat that asked, was taken by Dana, and may have an email on it.</summary>
     private async Task<Handoff> TakenChatAsync(string? email)
     {
-        var callId = await AskAsync();
-        await _calls.SetCustomAsync(callId, ThreadEnvelope.Build(VisitorPrincipal.KeyOf(VisitorKey), null), Cancel);
-        await _store.ClaimAsync(callId, "user_dana", Dana.Name, Cancel);
+        var conversationId = await AskAsync();
+        await _conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(VisitorPrincipal.KeyOf(VisitorKey), null), Cancel);
+        await _store.ClaimAsync(conversationId, "user_dana", Dana.Name, Cancel);
 
         if (email is not null)
         {
-            await _store.SetEmailAsync(callId, email, Cancel);
+            await _store.SetEmailAsync(conversationId, email, Cancel);
         }
 
-        return (await _store.OpenAsync(callId, Cancel))!;
+        return (await _store.OpenAsync(conversationId, Cancel))!;
     }
 }

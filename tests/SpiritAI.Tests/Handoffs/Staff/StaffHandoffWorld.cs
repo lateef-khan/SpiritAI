@@ -1,5 +1,5 @@
-using AgentCore.Application.Calls;
-using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Conversation;
+using AgentCore.Application.Conversation.Memory;
 using AgentCore.Application.Ports;
 using AgentCore.Application.Transcript;
 
@@ -30,7 +30,7 @@ namespace SpiritAI.Tests.Handoffs.Staff;
 
 /// <summary>
 /// The inbox routes on a test server: a real token check in front, the real desk, the in-memory
-/// call store, fakes for every other port behind, and the four callers a test needs.
+/// conversation store, fakes for every other port behind, and the four callers a test needs.
 /// </summary>
 internal sealed class StaffHandoffWorld : IAsyncDisposable
 {
@@ -42,13 +42,13 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
         IHost host,
         NeonAuthTestKit kit,
         FakeHandoffStore store,
-        ICallStore calls,
+        IConversations conversations,
         RecordingHandoffNotifier notifier,
         TestTimeProvider clock)
     {
         _host = host;
         Store = store;
-        Calls = calls;
+        Conversations = conversations;
         Notifier = notifier;
         Clock = clock;
         Staff = new StaffCaller(host.GetTestClient(), kit.Token(subject: "user_dana", email: "dana@example.com"));
@@ -60,7 +60,7 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
     public FakeHandoffStore Store { get; }
 
     /// <summary>The chats, and every word the routes put in them.</summary>
-    public ICallStore Calls { get; }
+    public IConversations Conversations { get; }
 
     public RecordingHandoffNotifier Notifier { get; }
 
@@ -83,7 +83,7 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
         var kit = new NeonAuthTestKit();
         TestTimeProvider clock = new(Start);
         FakeHandoffStore store = new(clock);
-        ICallStore calls = new InMemoryCallStore(clock);
+        IConversations conversations = new Conversations(new InMemoryConversationStore(clock), blobs: null);
         RecordingHandoffNotifier notifier = new();
 
         var host = await ThreadTestHost.StartAsync(
@@ -95,8 +95,7 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
                     new AuthUser("user_sam", "Sam", "sam@example.com")));
                 services.AddScoped<StaffGate>();
                 services.AddSingleton<TimeProvider>(clock);
-                services.AddSingleton<ICallStore>(calls);
-                services.AddSingleton(new CallRepository(calls, blobs: null));
+                services.AddSingleton<IConversations>(conversations);
                 services.AddSingleton<IHandoffStore>(store);
                 services.AddSingleton<IHandoffNotifier>(notifier);
                 services.AddSingleton<IPresenceStore>(new FakePresenceStore(clock, TimeSpan.FromSeconds(90)));
@@ -110,32 +109,32 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
                 app.UseEndpoints(endpoints => endpoints.MapStaffHandoffs());
             });
 
-        return new StaffHandoffWorld(host, kit, store, calls, notifier, clock);
+        return new StaffHandoffWorld(host, kit, store, conversations, notifier, clock);
     }
 
     /// <summary>Makes a titled chat with one finished turn in it, the way a real one would have.</summary>
     public async Task<string> MakeChatAsync(string title, string said)
     {
-        var callId = Guid.NewGuid().ToString("N");
+        var conversationId = Guid.NewGuid().ToString("N");
 
-        await Calls.CreateAsync(callId, TestContext.Current.CancellationToken);
-        await Calls.RenameAsync(callId, title, TestContext.Current.CancellationToken);
-        await Calls.AppendMessageAsync(callId, new ChatMessage(ChatRole.User, said), TestContext.Current.CancellationToken);
-        await Calls.AppendMessageAsync(callId, new ChatMessage(ChatRole.Assistant, "Let me check."), TestContext.Current.CancellationToken);
+        await Conversations.CreateAsync(conversationId, TestContext.Current.CancellationToken);
+        await Conversations.RenameAsync(conversationId, title, TestContext.Current.CancellationToken);
+        await Conversations.AppendMessageAsync(conversationId, new ChatMessage(ChatRole.User, said), TestContext.Current.CancellationToken);
+        await Conversations.AppendMessageAsync(conversationId, new ChatMessage(ChatRole.Assistant, "Let me check."), TestContext.Current.CancellationToken);
 
-        return callId;
+        return conversationId;
     }
 
     /// <summary>Asks for a person on a chat, a minute after the last ask, so the line has an order.</summary>
-    public async Task AskAsync(string callId)
+    public async Task AskAsync(string conversationId)
     {
         Clock.Now += TimeSpan.FromMinutes(1);
-        await Store.AskAsync(callId, HandoffAskedBy.Visitor, null, TestContext.Current.CancellationToken);
+        await Store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, TestContext.Current.CancellationToken);
     }
 
     /// <summary>The last word in a chat, as the store holds it.</summary>
-    public async Task<CallMessage> LastWordAsync(string callId)
-        => (await Calls.ReadAsync(callId, TestContext.Current.CancellationToken))[^1];
+    public async Task<ConversationMessage> LastWordAsync(string conversationId)
+        => (await Conversations.ReadAsync(conversationId, TestContext.Current.CancellationToken))[^1];
 
     public async ValueTask DisposeAsync()
     {

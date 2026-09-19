@@ -1,6 +1,6 @@
 using AgentCore.Application.Blobs;
-using AgentCore.Application.Calls;
-using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Conversation;
+using AgentCore.Application.Conversation.Memory;
 using AgentCore.Application.Ports;
 using AgentCore.Application.Transcript;
 
@@ -19,10 +19,10 @@ public sealed class ThreadFilesTests
 {
     private static readonly DateTimeOffset Made = DateTimeOffset.Parse("2026-09-17T09:00:00Z", null);
 
-    private static readonly CallRecord Call =
-        new("call-1", null, CallStatus.Regular, null, null, Made, null);
+    private static readonly ConversationRecord Conversation =
+        new("conversation-1", null, ConversationStatus.Regular, null, null, Made, null);
 
-    private static readonly Uri Link = new("https://files.test/call-1/chart.png?t=1");
+    private static readonly Uri Link = new("https://files.test/conversation-1/chart.png?t=1");
 
     /// <summary>A stored reply: one file the capture kept, one it refused.</summary>
     private static ChatMessage ReplyWith(string words, string keptName, string refusedName)
@@ -36,7 +36,7 @@ public sealed class ThreadFilesTests
     [Fact]
     public void PartOf_CarriesTheFactsAndTheLink_AndDecidesNothing()
     {
-        var part = ThreadFiles.PartOf(new BlobRef("call-1", "chart.png", "image/png", 10), Link);
+        var part = ThreadFiles.PartOf(new BlobRef("conversation-1", "chart.png", "image/png", 10), Link);
 
         Assert.Equal("chart.png", part.Name);
         Assert.Equal("image/png", part.MediaType);
@@ -49,8 +49,8 @@ public sealed class ThreadFilesTests
     {
         var parts = ThreadFiles.PartsOf(
         [
-            new FileLink(new BlobRef("call-1", "chart.png", "image/png", 10), Link),
-            new FileLink(new BlobRef("call-1", "rows.csv", "text/csv", 8), null),
+            new FileLink(new BlobRef("conversation-1", "chart.png", "image/png", 10), Link),
+            new FileLink(new BlobRef("conversation-1", "rows.csv", "text/csv", 8), null),
         ]);
 
         var (name, part) = Assert.Single(parts);
@@ -59,16 +59,16 @@ public sealed class ThreadFilesTests
     }
 
     [Fact]
-    public async Task ReadAsync_PutsTheLinkedFileAfterTheWords_AndLeavesTheSandboxLinkInThem()
+    public async Task Of_ALoadedConversation_PutsTheLinkedFileAfterTheWords_AndLeavesTheSandboxLinkInThem()
     {
         StubBlobStore blobs = new();
-        ICallStore store = new InMemoryCallStore();
+        IConversations conversations = new Conversations(new InMemoryConversationStore(), blobs);
         var token = TestContext.Current.CancellationToken;
-        await store.CreateAsync("call-1", token);
-        await store.AppendMessageAsync("call-1", ReplyWith("See [chart](sandbox:/mnt/data/chart.png)", "chart.png", "lost.csv"), token);
-        CallRepository calls = new(store, blobs);
+        await conversations.CreateAsync("conversation-1", token);
+        await conversations.AppendMessageAsync("conversation-1", ReplyWith("See [chart](sandbox:/mnt/data/chart.png)", "chart.png", "lost.csv"), token);
 
-        var history = await ThreadHistory.ReadAsync(Call, calls, token);
+        var stored = await conversations.LoadAsync("conversation-1", token);
+        var history = ThreadHistory.Of(stored!);
 
         var content = Assert.Single(history.Messages).Message.Content;
         Assert.Collection(

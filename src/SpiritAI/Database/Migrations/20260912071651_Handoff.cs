@@ -22,7 +22,7 @@ namespace SpiritAI.Database.Migrations
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn),
-                    call_id = table.Column<string>(type: "text", nullable: false),
+                    conversation_id = table.Column<string>(type: "text", nullable: false),
                     status = table.Column<string>(type: "text", nullable: false),
                     asked_by = table.Column<string>(type: "text", nullable: false),
                     reason = table.Column<string>(type: "text", nullable: true),
@@ -39,11 +39,11 @@ namespace SpiritAI.Database.Migrations
                     table.CheckConstraint("handoff_asked_by_check", "asked_by IN ('bot', 'visitor')");
                     table.CheckConstraint("handoff_status_check", "status IN ('waiting', 'human', 'done')");
                     table.ForeignKey(
-                        name: "FK_handoff_call_call_id",
-                        column: x => x.call_id,
+                        name: "FK_handoff_conversation_conversation_id",
+                        column: x => x.conversation_id,
                         principalSchema: "agentcore",
-                        principalTable: "call",
-                        principalColumn: "call_id",
+                        principalTable: "conversation",
+                        principalColumn: "conversation_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -65,10 +65,10 @@ namespace SpiritAI.Database.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "handoff_open_per_call",
+                name: "handoff_open_per_conversation",
                 schema: "spirit",
                 table: "handoff",
-                column: "call_id",
+                column: "conversation_id",
                 unique: true,
                 filter: "status <> 'done'");
 

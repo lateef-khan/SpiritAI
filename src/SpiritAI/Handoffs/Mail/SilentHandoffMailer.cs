@@ -11,7 +11,7 @@ internal sealed class SilentHandoffMailer(ILogger<SilentHandoffMailer> logger) :
     {
         ArgumentNullException.ThrowIfNull(mail);
 
-        logger.LogDebug("Mail is off. The reply on call {CallId} was not mailed.", mail.CallId);
+        logger.LogDebug("Mail is off. The reply on conversation {ConversationId} was not mailed.", mail.ConversationId);
 
         return ValueTask.CompletedTask;
     }
