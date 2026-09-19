@@ -39,11 +39,20 @@ afterEach(() => {
   token.mockReset();
 });
 
-/** The header the host reads. */
-function sentAuthorization(): string | null {
-  const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+/** The header the host reads, on the nth request sent. */
+function sentAuthorization(call = 0): string | null {
+  const init = fetchMock.mock.calls[call]?.[1] as RequestInit | undefined;
   return new Headers(init?.headers).get("Authorization");
 }
+
+/** An unsigned JWT whose `exp` is the given number of seconds from now. */
+function jwtExpiringIn(seconds: number): string {
+  const b64 = (o: object) => btoa(JSON.stringify(o)).replace(/=+$/, "");
+  const exp = Math.floor(Date.now() / 1000) + seconds;
+  return `${b64({ alg: "EdDSA" })}.${b64({ exp })}.sig`;
+}
+
+const live = (jwt: string) => ({ data: { session: { token: jwt } }, error: null });
 
 describe("authFetch", () => {
   test("signs the request with the session's token", async () => {
@@ -62,6 +71,33 @@ describe("authFetch", () => {
 
     expect(getSession).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test("drops a token before its own exp, not ten minutes after fetching it", async () => {
+    // Neon's session cache hands back the token it holds, however little life it has left.
+    vi.useFakeTimers();
+    getSession.mockResolvedValueOnce(live(jwtExpiringIn(60))).mockResolvedValue(live("jwt-new"));
+
+    await authFetch("/v1/responses");
+    vi.advanceTimersByTime(45 * 1000);
+    await authFetch("/v1/responses");
+
+    expect(sentAuthorization(1)).toBe("Bearer jwt-new");
+    vi.useRealTimers();
+  });
+
+  test("a 401 on a cached token is retried once with a fresh one", async () => {
+    getSession.mockResolvedValueOnce(LIVE).mockResolvedValue(live("jwt-new"));
+    fetchMock
+      .mockResolvedValueOnce(new Response("", { status: 401 }))
+      .mockResolvedValue(new Response("ok", { status: 200 }));
+
+    const response = await authFetch("/v1/responses", { method: "POST", body: "{}" });
+
+    expect(response.status).toBe(200);
+    expect(sentAuthorization(0)).toBe("Bearer jwt-abc");
+    expect(sentAuthorization(1)).toBe("Bearer jwt-new");
+    expect(replace).not.toHaveBeenCalled();
   });
 
   test("never sends an unsigned request", async () => {
