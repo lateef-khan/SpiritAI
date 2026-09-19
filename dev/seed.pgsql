@@ -11,14 +11,14 @@
 CREATE SCHEMA IF NOT EXISTS neon_auth;
 
 CREATE TABLE IF NOT EXISTS neon_auth."user" (
-    id     text PRIMARY KEY,
+    id     uuid PRIMARY KEY,
     name   text NOT NULL,
     email  text NOT NULL,
     banned boolean
 );
 
 INSERT INTO neon_auth."user" (id, name, email)
-VALUES ('dev-staff', :'staff_name', :'staff_email')
+VALUES ('00000000-0000-4000-8000-000000000001', :'staff_name', :'staff_email')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email;
 
 -- One chat: the conversation, its visitor, the visitor's first message.
