@@ -1,6 +1,7 @@
 using AgentCore.Hosting;
 using SpiritAI.Auth;
 using SpiritAI.Auth.Users;
+using SpiritAI.Caching;
 using SpiritAI.Database;
 using SpiritAI.Handoffs;
 using SpiritAI.Handoffs.Mail;
@@ -14,6 +15,8 @@ using SpiritAI.RealTime;
 using SpiritAI.Threads;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSpiritCache();
 
 builder.AddSpiritAgentCore();
 

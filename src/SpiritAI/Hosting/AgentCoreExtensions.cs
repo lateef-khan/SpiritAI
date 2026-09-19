@@ -5,6 +5,8 @@ using AgentCore.AspNetCore.DependencyInjection;
 using AgentCore.AspNetCore.Endpoints;
 using AgentCore.Hosting;
 
+using Microsoft.Extensions.Caching.Hybrid;
+
 using SpiritAI.Handoffs.Bot;
 using SpiritAI.Knowledge;
 using SpiritAI.Lookup;
@@ -79,7 +81,10 @@ public static class AgentCoreExtensions
     /// </param>
     /// <param name="environment">Locates the skills folder relative to the host, not the working directory.</param>
     private static void Configure(AgentCoreOptions options, IServiceProvider services, IHostEnvironment environment)
-        => options
+    {
+        options.Cache = services.GetRequiredService<HybridCache>();
+
+        options
             .UseSkills(Path.Combine(environment.ContentRootPath, "skills"))
             .UseWorkspace(WorkspaceRoot(services.GetRequiredService<IConfiguration>()))
             .UseKnowledgeQueryAnalyzers(new IdentifierCodeAnalyzer())
@@ -110,4 +115,5 @@ public static class AgentCoreExtensions
                         .AskAsync(scope.ConversationId, reason, email, cancellationToken)
                         .ConfigureAwait(false);
                 });
+    }
 }
