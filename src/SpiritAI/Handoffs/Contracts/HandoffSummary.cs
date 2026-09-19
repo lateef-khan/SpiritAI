@@ -23,6 +23,7 @@ namespace SpiritAI.Handoffs.Contracts;
 /// <param name="FirstLine">The first thing the visitor said, so the queue reads at a glance.</param>
 /// <param name="Position">Where a waiting chat stands in the line, one for the front. Absent otherwise.</param>
 /// <param name="AwaitingReply">Whether the visitor spoke after the last person's reply, or before any. See <c>ReplyDue</c>.</param>
+/// <param name="Unread">Whether the visitor said something the caller has not seen. See <c>Unread</c>.</param>
 public sealed record HandoffSummary(
     long Id,
     [property: JsonPropertyName("callId")] string ConversationId,
@@ -37,7 +38,8 @@ public sealed record HandoffSummary(
     string? Title,
     string? FirstLine,
     int? Position,
-    bool AwaitingReply)
+    bool AwaitingReply,
+    bool Unread)
 {
     /// <summary>Describes one row to the inbox.</summary>
     /// <param name="row">The row.</param>
@@ -45,9 +47,10 @@ public sealed record HandoffSummary(
     /// <param name="firstLine">The first thing the visitor said, or <see langword="null"/> when nothing yet.</param>
     /// <param name="position">Where a waiting row stands, or <see langword="null"/> when it is not waiting.</param>
     /// <param name="awaitingReply">Whether the visitor is waiting on a person, as <c>ReplyDue</c> reads it.</param>
+    /// <param name="unread">Whether the caller has a visitor line still to see, as <c>Unread</c> reads it.</param>
     /// <returns>The summary.</returns>
     public static HandoffSummary Of(
-        Handoff row, ConversationRecord? conversation, string? firstLine, int? position, bool awaitingReply)
+        Handoff row, ConversationRecord? conversation, string? firstLine, int? position, bool awaitingReply, bool unread)
     {
         ArgumentNullException.ThrowIfNull(row);
 
@@ -65,7 +68,8 @@ public sealed record HandoffSummary(
             conversation?.Title,
             firstLine,
             position,
-            awaitingReply);
+            awaitingReply,
+            unread);
     }
 
     /// <summary>Spells a status the way the wire does: lowercase, the same as the table.</summary>

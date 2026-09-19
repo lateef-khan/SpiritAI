@@ -5,6 +5,7 @@ import {
   finishHandoff,
   getHandoffMessages,
   listHandoffs,
+  markHandoffSeen,
   replyToHandoff,
 } from "@/api/sdk.gen";
 import type { HandoffCounts, HandoffSummary } from "@/api/types.gen";
@@ -71,6 +72,7 @@ export type HandoffsApi = {
   claim(callId: string): Promise<Handoff>;
   finish(callId: string): Promise<void>;
   reply(callId: string, text: string): Promise<void>;
+  seen(callId: string): Promise<void>;
 };
 
 /**
@@ -154,6 +156,10 @@ export function createHandoffsApi(client: Client = apiClient): HandoffsApi {
         path: { conversationId: callId },
         body: { text },
       });
+    },
+
+    seen: async (callId) => {
+      await markHandoffSeen({ client, throwOnError: true, path: { conversationId: callId } });
     },
   };
 }

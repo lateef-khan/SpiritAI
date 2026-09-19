@@ -36,6 +36,7 @@ function handoff(over: Partial<Handoff> = {}): Handoff {
     firstLine: "I already did that twice.",
     position: 1,
     awaitingReply: false,
+    unread: false,
     ...over,
   };
 }

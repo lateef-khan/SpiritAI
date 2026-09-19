@@ -43,6 +43,7 @@ function handoff(): Handoff {
     firstLine: "Hi, my CT800 belt slips when I go above 8 mph.",
     position: 1,
     awaitingReply: false,
+    unread: false,
   };
 }
 

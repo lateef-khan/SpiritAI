@@ -118,11 +118,6 @@ export function applyDone(cache: QueryClient, push: DonePush, meKey: string): vo
 
 /**
  * Notes who spoke last in one chat, and marks its transcript stale.
- *
- * The visitor speaking puts the chat on its holder's "waiting for you" count; a person replying
- * takes it off. The bot's lines and the host's notes move nothing, the same way `ReplyDue` reads
- * a transcript on the host. The transcript itself refetches while on screen; elsewhere, its
- * next open does.
  */
 export function applyMessage(cache: QueryClient, message: MessagePush, meKey: string): void {
   void cache.invalidateQueries({ queryKey: handoffKeys.messages(message.callId) });
@@ -138,9 +133,14 @@ export function applyMessage(cache: QueryClient, message: MessagePush, meKey: st
     return;
   }
 
-  if (before.awaitingReply === awaiting) return;
+  const unread = awaiting || before.unread;
+  if (before.awaitingReply === awaiting && before.unread === unread) return;
 
-  patchOpenLists(cache, (pages) => replaceRow(pages, { ...before, awaitingReply: awaiting }));
+  patchOpenLists(cache, (pages) =>
+    replaceRow(pages, { ...before, awaitingReply: awaiting, unread }),
+  );
+
+  if (before.awaitingReply === awaiting) return;
 
   if (before.status === "human" && before.assignee?.key === meKey) {
     patchCounts(cache, "open", (counts) => ({
@@ -148,6 +148,14 @@ export function applyMessage(cache: QueryClient, message: MessagePush, meKey: st
       awaitingReply: counts.awaitingReply + (awaiting ? 1 : -1),
     }));
   }
+}
+
+/** Takes the unread dot off one chat, once the caller has seen it. */
+export function applySeen(cache: QueryClient, callId: string): void {
+  patchLists(cache, (pages) => {
+    const row = rowIn(pages, callId);
+    return row && row.unread ? replaceRow(pages, { ...row, unread: false }) : pages;
+  });
 }
 
 /** Marks every handoff answer stale, for a reconnect. */
@@ -168,6 +176,15 @@ export function findRow(cache: QueryClient, callId: string): Handoff | null {
   return null;
 }
 
+/** Edits every cached listing, open and done alike. */
+function patchLists(cache: QueryClient, patch: (pages: HandoffPages) => HandoffPages): void {
+  for (const [key, pages] of cache.getQueriesData<HandoffPages>({
+    queryKey: handoffKeys.lists(),
+  })) {
+    if (pages) cache.setQueryData<HandoffPages>(key, patch(pages));
+  }
+}
+
 /** Edits every cached open listing, told which filter each one is. */
 function patchOpenLists(
   cache: QueryClient,
@@ -182,7 +199,15 @@ function patchOpenLists(
 }
 
 function holds(pages: HandoffPages | undefined, callId: string): boolean {
-  return pages?.pages.some((page) => page.items.some((item) => item.callId === callId)) ?? false;
+  return rowIn(pages, callId) !== null;
+}
+
+function rowIn(pages: HandoffPages | undefined, callId: string): Handoff | null {
+  for (const page of pages?.pages ?? []) {
+    const row = page.items.find((item) => item.callId === callId);
+    if (row) return row;
+  }
+  return null;
 }
 
 /**

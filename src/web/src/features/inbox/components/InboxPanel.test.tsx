@@ -34,6 +34,7 @@ function handoff(over: Partial<Handoff> = {}): Handoff {
     firstLine: "I already did that twice.",
     position: 1,
     awaitingReply: false,
+    unread: false,
     ...over,
   };
 }
@@ -48,7 +49,7 @@ describe("InboxPanel", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-12T12:52:00"));
 
-    const waiting = handoff();
+    const waiting = handoff({ unread: true });
     const human = handoff({
       id: 2,
       status: "human",
@@ -58,6 +59,7 @@ describe("InboxPanel", () => {
       firstLine: "Try holding the button for 5 seconds.",
       position: null,
       awaitingReply: true,
+      unread: false,
     });
     const rows = [waiting, human];
 
@@ -80,6 +82,7 @@ describe("InboxPanel", () => {
     expect(screen.getByText("lorrie@northwind.example")).toBeTruthy();
     expect(screen.getByText("Dana")).toBeTruthy();
     expect(screen.getByText("Needs reply")).toBeTruthy();
+    expect(screen.getAllByRole("img", { name: "Unread" })).toHaveLength(1);
 
     expect(screen.getByRole("tab", { name: "Mine 1" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Unassigned 1" })).toBeTruthy();

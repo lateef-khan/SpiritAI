@@ -136,6 +136,54 @@ public sealed class StaffHandoffEndpointTests
     }
 
     [Fact]
+    public async Task OpeningAChatClearsItsDotForTheReaderAlone()
+    {
+        await using var world = await StaffHandoffWorld.StartAsync();
+        var chat = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        await world.AskAsync(chat);
+
+        var fresh = await world.Staff.ReadAsync<HandoffPage>(Handoff);
+        var seen = await world.Staff.PostAsync($"{Handoff}/{chat}/seen");
+        var mine = await world.Staff.ReadAsync<HandoffPage>(Handoff);
+        var sams = await world.OtherStaff.ReadAsync<HandoffPage>(Handoff);
+
+        Assert.True(fresh.Items.Single().Unread);
+        Assert.Equal(HttpStatusCode.NoContent, seen.StatusCode);
+        Assert.False(mine.Items.Single().Unread);
+        Assert.True(sams.Items.Single().Unread);
+    }
+
+    [Fact]
+    public async Task TheVisitorSpeakingAgainPutsTheDotBackAndAReplyDoesNot()
+    {
+        await using var world = await StaffHandoffWorld.StartAsync();
+        var chat = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        await world.AskAsync(chat);
+        await world.Staff.PostAsync($"{Handoff}/{chat}/claim");
+        await world.Staff.PostAsync($"{Handoff}/{chat}/seen");
+
+        await world.Staff.PostAsync($"{Handoff}/{chat}/messages", new { text = "Tighten the rear roller a quarter turn." });
+        var afterReply = await world.Staff.ReadAsync<HandoffSummary>($"{Handoff}/{chat}");
+
+        await world.Conversations.AppendMessageAsync(chat, new ChatMessage(ChatRole.User, "still slipping"), TestContext.Current.CancellationToken);
+        var afterVisitor = await world.Staff.ReadAsync<HandoffSummary>($"{Handoff}/{chat}");
+
+        Assert.False(afterReply.Unread);
+        Assert.True(afterVisitor.Unread);
+    }
+
+    [Fact]
+    public async Task MarkingAChatThatNeverAskedIsNotFound()
+    {
+        await using var world = await StaffHandoffWorld.StartAsync();
+        var chat = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+
+        var response = await world.Staff.PostAsync($"{Handoff}/{chat}/seen");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task OwnerAndOrderNarrowAndTurnTheList()
     {
         await using var world = await StaffHandoffWorld.StartAsync();

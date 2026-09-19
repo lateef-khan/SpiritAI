@@ -45,11 +45,17 @@ export function HandoffRow({
           <span className="block truncate text-sm font-semibold">{title}</span>
 
           <div className="flex items-baseline justify-between gap-2">
-            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+            <span
+              className={cn(
+                "min-w-0 flex-1 truncate text-xs",
+                handoff.unread ? "font-medium text-foreground" : "text-muted-foreground",
+              )}
+            >
               {handoff.firstLine}
             </span>
-            <span className="shrink-0 text-[12.5px] tabular-nums text-muted-foreground">
+            <span className="flex shrink-0 items-center gap-1.5 text-[12.5px] tabular-nums text-muted-foreground">
               {clockTime(handoff.askedAt)}
+              {handoff.unread ? <UnreadDot /> : null}
             </span>
           </div>
 
@@ -63,6 +69,18 @@ export function HandoffRow({
         </div>
       </div>
     </Button>
+  );
+}
+
+/** The visitor said something the viewer has not seen. */
+function UnreadDot() {
+  return (
+    <span
+      role="img"
+      aria-label="Unread"
+      data-testid="unread-dot"
+      className="size-2 rounded-full bg-primary"
+    />
   );
 }
 

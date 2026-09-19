@@ -42,6 +42,7 @@ const wire = (over: Partial<HandoffSummary> = {}): HandoffSummary => ({
   firstLine: null,
   position: null,
   awaitingReply: false,
+  unread: false,
   ...over,
 });
 

@@ -14,6 +14,7 @@ using SpiritAI.Auth.Users;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Notifications;
+using SpiritAI.Handoffs.Reads;
 using SpiritAI.Handoffs.Staff;
 using SpiritAI.Handoffs.Store;
 using SpiritAI.Handoffs.Visitors;
@@ -70,6 +71,7 @@ public sealed class OpenApiDocumentTests
         "claimHandoff",
         "replyToHandoff",
         "finishHandoff",
+        "markHandoffSeen",
         "createPublicThread",
         "getPublicThreadMessages",
         "askForHuman",
@@ -202,6 +204,8 @@ public sealed class OpenApiDocumentTests
                     services.AddScoped<StaffGate>();
                     services.AddSingleton(TimeProvider.System);
                     services.AddSingleton<IHandoffStore>(new FakeHandoffStore(TimeProvider.System));
+                    services.AddSingleton<IConversationReadStore>(new FakeConversationReadStore(
+                        new Conversations(new InMemoryConversationStore(), blobs: null)));
                     services.AddSingleton<IHandoffNotifier>(new RecordingHandoffNotifier());
                     services.AddSingleton<IPresenceStore>(new FakePresenceStore(TimeProvider.System, TimeSpan.FromSeconds(90)));
                     services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());

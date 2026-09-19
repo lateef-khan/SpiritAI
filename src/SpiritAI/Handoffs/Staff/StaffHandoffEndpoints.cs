@@ -1,21 +1,19 @@
-using AgentCore.Application.Conversation;
 using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.Extensions.AI;
 
 using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Notifications;
+using SpiritAI.Handoffs.Reads;
 using SpiritAI.Handoffs.Store;
-using SpiritAI.Handoffs.Transcript;
 using SpiritAI.Threads;
 
 namespace SpiritAI.Handoffs.Staff;
 
 /// <summary>
-/// The inbox, as REST: the queue, the claim, the reply, and the close. Section 9.1 of the spec.
+/// The inbox, as REST: the queue, the claim, the reply, the close, and the read mark. Section 9.1 of the spec.
 /// </summary>
 public static class StaffHandoffEndpoints
 {
@@ -72,6 +70,11 @@ public static class StaffHandoffEndpoints
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound);
 
+        endpoints.MapPost($"{One}/seen", SeenAsync)
+            .Describe("markHandoffSeen")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound);
+
         return endpoints;
     }
 
@@ -121,6 +124,7 @@ public static class StaffHandoffEndpoints
         StaffGate staff,
         IHandoffStore store,
         IConversations conversations,
+        IConversationReadStore reads,
         string? view,
         string? owner,
         string? order,
@@ -138,7 +142,7 @@ public static class StaffHandoffEndpoints
                 .ListAsync(query!.Filter, Math.Clamp(limit ?? DefaultPageSize, 1, HandoffStore.MaxListSize), query.After, cancellationToken)
                 .ConfigureAwait(false);
 
-            var items = await HandoffSummaries.OfAsync(store, conversations, page.Rows, cancellationToken).ConfigureAwait(false);
+            var items = await HandoffSummaries.OfAsync(store, conversations, reads, key, page.Rows, cancellationToken).ConfigureAwait(false);
 
             return TypedResults.Ok(new HandoffPage(items, page.Next?.Encode()));
         });
@@ -169,16 +173,17 @@ public static class StaffHandoffEndpoints
         StaffGate staff,
         IHandoffStore store,
         IConversations conversations,
+        IConversationReadStore reads,
         string conversationId,
         CancellationToken cancellationToken)
-        => ForStaffAsync(http, staff, async (_, _) =>
+        => ForStaffAsync(http, staff, async (key, _) =>
         {
             if (await store.LatestAsync(conversationId, cancellationToken).ConfigureAwait(false) is not { } row)
             {
                 return TypedResults.NotFound();
             }
 
-            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, conversations, row, cancellationToken).ConfigureAwait(false));
+            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, conversations, reads, key, row, cancellationToken).ConfigureAwait(false));
         });
 
     /// <summary>The whole chat, in the shape the browser draws a thread from.</summary>
@@ -207,6 +212,7 @@ public static class StaffHandoffEndpoints
         StaffGate staff,
         IHandoffStore store,
         IConversations conversations,
+        IConversationReadStore reads,
         IHandoffNotifier notifier,
         HandoffDesk desk,
         string conversationId,
@@ -234,7 +240,7 @@ public static class StaffHandoffEndpoints
             // Everyone behind the chat just taken moved up one.
             await desk.AnnounceQueueAsync(cancellationToken).ConfigureAwait(false);
 
-            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, conversations, claim.Row!, cancellationToken).ConfigureAwait(false));
+            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, conversations, reads, key, claim.Row!, cancellationToken).ConfigureAwait(false));
         });
 
     /// <summary>Puts the caller's words in a chat they hold.</summary>
@@ -308,6 +314,31 @@ public static class StaffHandoffEndpoints
 
             // A chat closed straight from waiting leaves the line; the ones behind it move up.
             await desk.AnnounceQueueAsync(cancellationToken).ConfigureAwait(false);
+
+            return TypedResults.NoContent();
+        });
+
+    /// <summary>
+    /// Moves the caller's read mark to the chat's latest line, so the chat stops reading as
+    /// unread for them. The browser calls it when it opens a chat and again as visitor lines land
+    /// while the chat is on screen. Idempotent; a mark never moves back.
+    /// </summary>
+    private static Task<IResult> SeenAsync(
+        HttpContext http,
+        StaffGate staff,
+        IHandoffStore store,
+        IConversationReadStore reads,
+        string conversationId,
+        CancellationToken cancellationToken)
+        => ForStaffAsync(http, staff, async (key, _) =>
+        {
+            // A chat that never asked for a person is not staff's to read.
+            if (await store.LatestAsync(conversationId, cancellationToken).ConfigureAwait(false) is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            await reads.MarkSeenAsync(conversationId, key, cancellationToken).ConfigureAwait(false);
 
             return TypedResults.NoContent();
         });

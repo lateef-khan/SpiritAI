@@ -15,6 +15,7 @@ import { applyClaimed, applyDone } from "../cache/handoffCache";
 import { useHandoffs } from "../hooks/useHandoffs";
 import { useInboxCounts } from "../hooks/useInboxCounts";
 import { useInboxSocket } from "../hooks/useInboxSocket";
+import { useMarkSeen } from "../hooks/useMarkSeen";
 import { defaultFilter } from "../inboxFilter";
 import { HandoffChat } from "./HandoffChat";
 import { InboxPanel } from "./InboxPanel";
@@ -72,6 +73,7 @@ export function InboxScreen({
   }, [selected, onSelectionChange]);
 
   const { typing, sayTyping } = useInboxSocket({ selectedCallId: selected?.callId ?? null });
+  useMarkSeen(selected);
 
   function handleSelect(row: Handoff) {
     setSelectedId(row.id);

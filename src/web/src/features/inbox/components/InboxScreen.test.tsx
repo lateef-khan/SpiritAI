@@ -5,7 +5,7 @@ import type { HandoffSummary } from "@/api/types.gen";
 import { reviveHistory } from "@/lib/history";
 import { queryWrapper } from "@/test/query";
 
-import { applyClaimed } from "../cache/handoffCache";
+import { applyClaimed, applyMessage } from "../cache/handoffCache";
 import { InboxScreen } from "./InboxScreen";
 
 /**
@@ -22,6 +22,7 @@ vi.mock("@/api/sdk.gen", () => ({
   listHandoffs: vi.fn(),
   countHandoffs: vi.fn(),
   claimHandoff: vi.fn(),
+  markHandoffSeen: vi.fn(),
 }));
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: vi.fn(() => false) }));
 // No socket here: the screen's list and pick are what is under test, and the real hub would try
@@ -30,7 +31,8 @@ vi.mock("@/lib/realtime/SocketProvider", () => ({
   useSocketEvents: () => ({ signal: async () => {} }),
 }));
 
-const { listHandoffs, countHandoffs, claimHandoff } = await import("@/api/sdk.gen");
+const { listHandoffs, countHandoffs, claimHandoff, markHandoffSeen } =
+  await import("@/api/sdk.gen");
 const { useIsMobile } = await import("@/hooks/use-mobile");
 
 /** What the host would list for each query: open rows by ask, done rows by close. */
@@ -84,6 +86,7 @@ function wire(over: Partial<HandoffSummary> = {}): HandoffSummary {
     firstLine: "I already did that twice.",
     position: 1,
     awaitingReply: false,
+    unread: false,
     ...over,
   };
 }
@@ -145,6 +148,53 @@ describe("InboxScreen", () => {
     await act(() => vi.advanceTimersByTimeAsync(0));
 
     expect(screen.getByText("Started 15 min ago")).toBeTruthy();
+  });
+
+  it("takes the dot off a picked row and tells the host, and puts it back when the visitor speaks", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-12T12:53:00"));
+
+    hostWith([wire({ unread: true })]);
+    vi.mocked(markHandoffSeen).mockResolvedValue({ data: undefined } as never);
+
+    const client = screenWithTranscript();
+
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    expect(screen.getByRole("img", { name: "Unread" })).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Treadmill belt slips at 8 mph"));
+
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    expect(vi.mocked(markHandoffSeen)).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("img", { name: "Unread" })).toBeNull();
+
+    // The visitor speaks while the chat is on screen: the push is applied the way
+    // `useHandoffPushes` would, and the screen marks the chat seen again.
+    act(() =>
+      applyMessage(
+        client,
+        {
+          callId: "call-1",
+          messageId: "call-1:1",
+          role: "user",
+          text: "hello?",
+          speaker: null,
+          at: "2026-09-12T12:54:00",
+        },
+        MeKey,
+      ),
+    );
+
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    // The second mark is made from an effect the push's render ran, so its answer is one more
+    // timer away than the push's.
+    await act(() => vi.runOnlyPendingTimersAsync());
+
+    expect(screen.queryByRole("img", { name: "Unread" })).toBeNull();
+    expect(vi.mocked(markHandoffSeen)).toHaveBeenCalledTimes(2);
   });
 
   it("takes a waiting handoff, and the Mine count moves once, however often the claim is heard", async () => {

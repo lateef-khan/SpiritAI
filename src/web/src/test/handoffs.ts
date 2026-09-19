@@ -11,6 +11,7 @@ export function stubHandoffsApi(over: Partial<HandoffsApi> = {}): HandoffsApi {
     claim: vi.fn(),
     finish: vi.fn(),
     reply: vi.fn(),
+    seen: vi.fn(),
     ...over,
   };
 }
@@ -32,6 +33,7 @@ export function handoffOf(over: Partial<Handoff> = {}): Handoff {
     firstLine: null,
     position: 1,
     awaitingReply: false,
+    unread: false,
     ...over,
   };
 }

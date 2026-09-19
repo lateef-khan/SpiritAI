@@ -700,6 +700,45 @@
         }
       }
     },
+    "/v1/handoff/{conversationId}/seen": {
+      "post": {
+        "tags": [
+          "Handoff"
+        ],
+        "operationId": "markHandoffSeen",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/v1/public/threads": {
       "post": {
         "tags": [
@@ -1188,7 +1227,8 @@
           "title",
           "firstLine",
           "position",
-          "awaitingReply"
+          "awaitingReply",
+          "unread"
         ],
         "type": "object",
         "properties": {
@@ -1265,6 +1305,9 @@
             "format": "int32"
           },
           "awaitingReply": {
+            "type": "boolean"
+          },
+          "unread": {
             "type": "boolean"
           }
         }

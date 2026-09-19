@@ -10,6 +10,7 @@ import {
   applyClaimed,
   applyDone,
   applyMessage,
+  applySeen,
   applyWaiting,
   findRow,
   type HandoffPages,
@@ -236,5 +237,44 @@ describe("applyMessage", () => {
     applyMessage(cache, said("call-2", "assistant", "system"), Me);
 
     expect(cache.getQueryState(handoffKeys.messages("call-2"))?.isInvalidated).toBe(true);
+  });
+
+  it("puts the unread dot on when the visitor speaks, and only a seen takes it off", () => {
+    applyMessage(cache, said("call-2", "user", null), Me);
+
+    expect(findRow(cache, "call-2")?.unread).toBe(true);
+
+    applyMessage(cache, said("call-2", "assistant", "human"), Me);
+
+    expect(findRow(cache, "call-2")?.unread).toBe(true);
+
+    applySeen(cache, "call-2");
+
+    expect(findRow(cache, "call-2")?.unread).toBe(false);
+    expect(findRow(cache, "call-2")?.awaitingReply).toBe(false);
+  });
+
+  it("leaves a read chat read when a person or the host speaks", () => {
+    applyMessage(cache, said("call-2", "assistant", "human"), Me);
+    applyMessage(cache, said("call-2", "assistant", "system"), Me);
+
+    expect(findRow(cache, "call-2")?.unread).toBe(false);
+  });
+});
+
+describe("applySeen", () => {
+  it("clears the dot in the done listing too", () => {
+    const Done: HandoffFilter = { view: "done", owner: "all", order: "newest" };
+    cache.setQueryData(
+      handoffKeys.list(Done),
+      pagesOf([
+        handoffOf({ id: 9, callId: "call-9", status: "done", position: null, unread: true }),
+      ]),
+    );
+
+    applySeen(cache, "call-9");
+
+    const done = cache.getQueryData<HandoffPages>(handoffKeys.list(Done));
+    expect(done?.pages[0]?.items[0]?.unread).toBe(false);
   });
 });

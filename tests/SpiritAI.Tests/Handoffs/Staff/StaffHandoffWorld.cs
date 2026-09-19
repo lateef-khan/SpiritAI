@@ -16,6 +16,7 @@ using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Notifications;
+using SpiritAI.Handoffs.Reads;
 using SpiritAI.Handoffs.Staff;
 using SpiritAI.Handoffs.Store;
 using SpiritAI.RealTime.Presence;
@@ -97,6 +98,7 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
                 services.AddSingleton<TimeProvider>(clock);
                 services.AddSingleton<IConversations>(conversations);
                 services.AddSingleton<IHandoffStore>(store);
+                services.AddSingleton<IConversationReadStore>(new FakeConversationReadStore(conversations));
                 services.AddSingleton<IHandoffNotifier>(notifier);
                 services.AddSingleton<IPresenceStore>(new FakePresenceStore(clock, TimeSpan.FromSeconds(90)));
                 services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());

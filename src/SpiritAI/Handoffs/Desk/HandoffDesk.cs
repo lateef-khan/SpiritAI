@@ -85,7 +85,7 @@ public sealed class HandoffDesk(
             return new HandoffAsked(ticket, Created: false);
         }
 
-        var summary = await HandoffSummaries.OfAsync(handoffs, conversations, ticket.Row, cancellationToken).ConfigureAwait(false);
+        var summary = await HandoffSummaries.OfAsync(handoffs, conversations, ticket.Row, seenOrdinal: null, cancellationToken).ConfigureAwait(false);
 
         await notifier.WaitingAsync(summary, cancellationToken).ConfigureAwait(false);
 
