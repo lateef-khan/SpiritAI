@@ -308,7 +308,21 @@
         "operationId": "listHandoffs",
         "parameters": [
           {
-            "name": "status",
+            "name": "view",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order",
             "in": "query",
             "schema": {
               "type": "string"
@@ -320,6 +334,13 @@
             "schema": {
               "type": "integer",
               "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -343,6 +364,58 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HandoffPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/handoff/counts": {
+      "get": {
+        "tags": [
+          "Handoff"
+        ],
+        "operationId": "countHandoffs",
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffCounts"
                 }
               }
             }
@@ -951,6 +1024,33 @@
           }
         }
       },
+      "HandoffCounts": {
+        "required": [
+          "mine",
+          "unassigned",
+          "all",
+          "awaitingReply"
+        ],
+        "type": "object",
+        "properties": {
+          "mine": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unassigned": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "all": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "awaitingReply": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "HandoffMessage": {
         "required": [
           "callId",
@@ -992,7 +1092,8 @@
       },
       "HandoffPage": {
         "required": [
-          "items"
+          "items",
+          "nextCursor"
         ],
         "type": "object",
         "properties": {
@@ -1001,6 +1102,12 @@
             "items": {
               "$ref": "#/components/schemas/HandoffSummary"
             }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -1080,7 +1187,8 @@
           "doneAt",
           "title",
           "firstLine",
-          "position"
+          "position",
+          "awaitingReply"
         ],
         "type": "object",
         "properties": {
@@ -1155,6 +1263,9 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "awaitingReply": {
+            "type": "boolean"
           }
         }
       },

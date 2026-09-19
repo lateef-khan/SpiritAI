@@ -2,7 +2,8 @@ import type { ExportedMessageRepository } from "@assistant-ui/react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { HandoffsApi } from "../api/handoffsApi";
+import { stubHandoffsApi } from "@/test/handoffs";
+import { queryWrapper } from "@/test/query";
 
 const { useHandoffMessages } = await import("./useHandoffMessages");
 
@@ -14,15 +15,11 @@ function historyOf(headId: string): ExportedMessageRepository {
 describe("useHandoffMessages", () => {
   it("makes no call when no call is selected", () => {
     const messages = vi.fn();
-    const api: HandoffsApi = {
-      list: vi.fn(),
-      messages,
-      claim: vi.fn(),
-      finish: vi.fn(),
-      reply: vi.fn(),
-    };
+    const api = stubHandoffsApi({ messages });
 
-    const view = renderHook(() => useHandoffMessages(null, api));
+    const view = renderHook(() => useHandoffMessages(null, api), {
+      wrapper: queryWrapper().wrapper,
+    });
 
     expect(view.result.current).toEqual({
       history: null,
@@ -34,15 +31,11 @@ describe("useHandoffMessages", () => {
   });
 
   it("loads the transcript for a selected call", async () => {
-    const api: HandoffsApi = {
-      list: vi.fn(),
-      messages: vi.fn().mockResolvedValue(historyOf("call-1:0")),
-      claim: vi.fn(),
-      finish: vi.fn(),
-      reply: vi.fn(),
-    };
+    const api = stubHandoffsApi({ messages: vi.fn().mockResolvedValue(historyOf("call-1:0")) });
 
-    const view = renderHook(() => useHandoffMessages("call-1", api));
+    const view = renderHook(() => useHandoffMessages("call-1", api), {
+      wrapper: queryWrapper().wrapper,
+    });
 
     await waitFor(() => expect(view.result.current.loading).toBe(false));
 
@@ -58,16 +51,11 @@ describe("useHandoffMessages", () => {
       (callId: string) =>
         new Promise<ExportedMessageRepository>((resolve) => resolvers.set(callId, resolve)),
     );
-    const api: HandoffsApi = {
-      list: vi.fn(),
-      messages,
-      claim: vi.fn(),
-      finish: vi.fn(),
-      reply: vi.fn(),
-    };
+    const api = stubHandoffsApi({ messages });
 
     const view = renderHook(({ callId }) => useHandoffMessages(callId, api), {
       initialProps: { callId: "call-1" },
+      wrapper: queryWrapper().wrapper,
     });
 
     view.rerender({ callId: "call-2" });
@@ -86,15 +74,11 @@ describe("useHandoffMessages", () => {
       .fn()
       .mockResolvedValueOnce(historyOf("call-1:0"))
       .mockResolvedValueOnce(historyOf("call-1:1"));
-    const api: HandoffsApi = {
-      list: vi.fn(),
-      messages,
-      claim: vi.fn(),
-      finish: vi.fn(),
-      reply: vi.fn(),
-    };
+    const api = stubHandoffsApi({ messages });
 
-    const view = renderHook(() => useHandoffMessages("call-1", api));
+    const view = renderHook(() => useHandoffMessages("call-1", api), {
+      wrapper: queryWrapper().wrapper,
+    });
 
     await waitFor(() => expect(view.result.current.loading).toBe(false));
     expect(view.result.current.history).toEqual(historyOf("call-1:0"));

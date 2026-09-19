@@ -237,13 +237,23 @@ public sealed class HandoffDesk(
     /// <param name="cancellationToken">Cancels the pushes.</param>
     public async Task AnnounceQueueAsync(CancellationToken cancellationToken)
     {
-        var waiting = await handoffs
-            .ListAsync(HandoffStatus.Waiting, HandoffStore.MaxListSize, cancellationToken)
-            .ConfigureAwait(false);
+        var position = 0;
+        HandoffCursor? after = null;
+        HandoffFilter queue = new(HandoffView.Waiting);
 
-        for (var index = 0; index < waiting.Count; index++)
+        do
         {
-            await notifier.QueueAsync(waiting[index].ConversationId, index + 1, cancellationToken).ConfigureAwait(false);
+            var page = await handoffs
+                .ListAsync(queue, HandoffStore.MaxListSize, after, cancellationToken)
+                .ConfigureAwait(false);
+
+            foreach (var row in page.Rows)
+            {
+                await notifier.QueueAsync(row.ConversationId, ++position, cancellationToken).ConfigureAwait(false);
+            }
+
+            after = page.Next;
         }
+        while (after is not null);
     }
 }

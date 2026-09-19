@@ -25,6 +25,8 @@
     "@openuidev/react-headless": "^0.9.13",
     "@openuidev/react-lang": "^0.2.15",
     "@openuidev/react-ui": "^0.13.10",
+    "@tanstack/react-query": "5.103.1",
+    "@tanstack/react-virtual": "3.14.13",
     "assistant-stream": "^0.3.38",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

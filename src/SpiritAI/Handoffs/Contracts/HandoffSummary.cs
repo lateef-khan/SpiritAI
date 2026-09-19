@@ -22,6 +22,7 @@ namespace SpiritAI.Handoffs.Contracts;
 /// <param name="Title">The chat's title, when the conversation has one.</param>
 /// <param name="FirstLine">The first thing the visitor said, so the queue reads at a glance.</param>
 /// <param name="Position">Where a waiting chat stands in the line, one for the front. Absent otherwise.</param>
+/// <param name="AwaitingReply">Whether the visitor spoke after the last person's reply, or before any. See <c>ReplyDue</c>.</param>
 public sealed record HandoffSummary(
     long Id,
     [property: JsonPropertyName("callId")] string ConversationId,
@@ -35,15 +36,18 @@ public sealed record HandoffSummary(
     DateTimeOffset? DoneAt,
     string? Title,
     string? FirstLine,
-    int? Position)
+    int? Position,
+    bool AwaitingReply)
 {
     /// <summary>Describes one row to the inbox.</summary>
     /// <param name="row">The row.</param>
     /// <param name="conversation">The chat's own row, or <see langword="null"/> when store 0 holds none.</param>
     /// <param name="firstLine">The first thing the visitor said, or <see langword="null"/> when nothing yet.</param>
     /// <param name="position">Where a waiting row stands, or <see langword="null"/> when it is not waiting.</param>
+    /// <param name="awaitingReply">Whether the visitor is waiting on a person, as <c>ReplyDue</c> reads it.</param>
     /// <returns>The summary.</returns>
-    public static HandoffSummary Of(Handoff row, ConversationRecord? conversation, string? firstLine, int? position)
+    public static HandoffSummary Of(
+        Handoff row, ConversationRecord? conversation, string? firstLine, int? position, bool awaitingReply)
     {
         ArgumentNullException.ThrowIfNull(row);
 
@@ -60,7 +64,8 @@ public sealed record HandoffSummary(
             row.DoneAt,
             conversation?.Title,
             firstLine,
-            position);
+            position,
+            awaitingReply);
     }
 
     /// <summary>Spells a status the way the wire does: lowercase, the same as the table.</summary>

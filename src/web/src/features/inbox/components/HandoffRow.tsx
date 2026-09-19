@@ -1,6 +1,7 @@
 import { BotIcon, UserIcon } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -57,9 +58,28 @@ export function HandoffRow({
               {handoff.reason}
             </span>
           ) : null}
+
+          <Tags handoff={handoff} />
         </div>
       </div>
     </Button>
+  );
+}
+
+/**
+ * The row's tags, in one strip. Today the one tag is "Needs reply", on a chat a person holds
+ * whose visitor spoke last; labels will sit beside it when there are labels. A waiting chat
+ * carries no tag: every waiting chat needs a reply, and the wait time says so already.
+ */
+function Tags({ handoff }: { handoff: Handoff }) {
+  if (handoff.status !== "human" || !handoff.awaitingReply) return null;
+
+  return (
+    <span className="mt-1.5 flex flex-wrap gap-1">
+      <Badge variant="outline" className="border-aui-warning/60 text-[11.5px]">
+        Needs reply
+      </Badge>
+    </span>
   );
 }
 

@@ -28,6 +28,7 @@ const summary: Handoff = {
   title: null,
   firstLine: null,
   position: null,
+  awaitingReply: false,
 };
 
 /** Fails a test that reaches a route it has no business calling. */
@@ -39,6 +40,7 @@ describe("useHandoffActions take", () => {
   it("resolves the claimed handoff and returns busy to false", async () => {
     const api: HandoffsApi = {
       list: async () => notNeeded(),
+      counts: async () => notNeeded(),
       messages: async () => notNeeded(),
       claim: async () => summary,
       finish: async () => notNeeded(),
@@ -59,6 +61,7 @@ describe("useHandoffActions take", () => {
   it("sets error to the refusal's title", async () => {
     const api: HandoffsApi = {
       list: async () => notNeeded(),
+      counts: async () => notNeeded(),
       messages: async () => notNeeded(),
       claim: async () => Promise.reject(new HostRefusedError(409, "/x", "Somebody has this chat.")),
       finish: async () => notNeeded(),
@@ -77,6 +80,7 @@ describe("useHandoffActions take", () => {
   it("sets error to a plain Error's message", async () => {
     const api: HandoffsApi = {
       list: async () => notNeeded(),
+      counts: async () => notNeeded(),
       messages: async () => notNeeded(),
       claim: async () => Promise.reject(new Error("host refused")),
       finish: async () => notNeeded(),
@@ -97,6 +101,7 @@ describe("useHandoffActions finish", () => {
   it("resolves true on success", async () => {
     const api: HandoffsApi = {
       list: async () => notNeeded(),
+      counts: async () => notNeeded(),
       messages: async () => notNeeded(),
       claim: async () => notNeeded(),
       finish: async () => undefined,
@@ -119,6 +124,7 @@ describe("useHandoffActions finish", () => {
     let calls = 0;
     const api: HandoffsApi = {
       list: async () => notNeeded(),
+      counts: async () => notNeeded(),
       messages: async () => notNeeded(),
       claim: async () => notNeeded(),
       finish: async () => {

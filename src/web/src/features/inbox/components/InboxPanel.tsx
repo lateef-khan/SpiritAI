@@ -1,15 +1,9 @@
-import { useState } from "react";
-
 import { Skeleton } from "@/components/ui/skeleton";
 
-import type { Handoff } from "../api/handoffsApi";
-import {
-  filterHandoffs,
-  type InboxCounts,
-  type InboxTab,
-  type InboxView,
-} from "../hooks/useHandoffs";
-import { HandoffRow } from "./HandoffRow";
+import type { Handoff, HandoffFilter } from "../api/handoffsApi";
+import type { InboxCounts } from "../hooks/useHandoffs";
+import { reversed, tabOf, withTab, withView } from "../inboxFilter";
+import { HandoffList } from "./HandoffList";
 import { InboxHeader } from "./InboxHeader";
 import { InboxTabs } from "./InboxTabs";
 
@@ -17,82 +11,66 @@ import { InboxTabs } from "./InboxTabs";
  * The conversations column: every handoff waiting on, or already claimed by, a person.
  *
  * Width and placement are the parent's call — this only ever fills the height it is given, the
- * same contract `UnitPanel` uses for the column on the chat's other side. The rows, which view is
- * loaded, and which one reads as picked are all the parent's state; this only ever draws what it
- * is handed, reports a click back, and asks to change the view. The Mine/Unassigned/All split and
- * the sort order stay local, since neither needs to survive a row pick or a reload.
+ * same contract `UnitPanel` uses for the column on the chat's other side. The rows, the filter
+ * they were listed by, and which one reads as picked are all the parent's state; this only ever
+ * draws what it is handed, reports a click back, and asks for a different filter. The
+ * Open/Done switch, the Mine/Unassigned/All tabs, and the order toggle are three edits of that
+ * one filter, spelled out in `inboxFilter.ts`.
  */
 export function InboxPanel({
-  meKey,
-  view,
-  onViewChange,
+  filter,
+  onFilterChange,
   rows,
   counts,
   loading,
   error,
+  hasMore,
+  loadMore,
   selectedId,
   onSelect,
 }: {
-  meKey: string;
-  view: InboxView;
-  onViewChange: (view: InboxView) => void;
+  filter: HandoffFilter;
+  onFilterChange: (filter: HandoffFilter) => void;
   rows: Handoff[];
   counts: InboxCounts;
   loading: boolean;
   error: Error | null;
+  hasMore: boolean;
+  loadMore: () => void;
   selectedId: number | null;
   onSelect: (row: Handoff) => void;
 }) {
-  const [tab, setTab] = useState<InboxTab>("all");
-  const [reversed, setReversed] = useState(false);
-
-  // The done view has no unassigned rows, so a tab choice made in the open view falls back to all
-  // rather than showing nothing.
-  const effectiveTab: InboxTab = view === "done" && tab === "unassigned" ? "all" : tab;
-  const filtered = filterHandoffs(rows, effectiveTab, meKey);
-
-  // `useHandoffs` loads `open` oldest-first and `done` newest-first, so the same `reversed` flag
-  // reads as the opposite `oldestFirst` sense on each view.
-  const oldestFirst = view === "open" ? !reversed : reversed;
-  const ordered = reversed ? [...filtered].reverse() : filtered;
-
-  function handleViewChange(next: InboxView) {
-    setReversed(false);
-    onViewChange(next);
-  }
-
   return (
     <div className="flex h-full flex-col border-r">
       <InboxHeader
-        view={view}
-        onViewChange={handleViewChange}
-        oldestFirst={oldestFirst}
-        onToggleOrder={() => setReversed((current) => !current)}
+        view={filter.view}
+        onViewChange={(view) => onFilterChange(withView(filter, view))}
+        oldestFirst={filter.order === "oldest"}
+        onToggleOrder={() => onFilterChange(reversed(filter))}
       />
 
-      <InboxTabs view={view} tab={effectiveTab} onTabChange={setTab} counts={counts} />
+      <InboxTabs
+        view={filter.view}
+        tab={tabOf(filter)}
+        onTabChange={(tab) => onFilterChange(withTab(filter, tab))}
+        counts={counts}
+      />
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {loading ? (
-          <RowsSkeleton />
-        ) : error ? (
-          <p className="p-3.5 text-sm text-destructive">{error.message}</p>
-        ) : ordered.length === 0 ? (
-          <p className="p-3.5 text-sm text-muted-foreground">No conversations.</p>
-        ) : (
-          <ul>
-            {ordered.map((row) => (
-              <li key={row.id}>
-                <HandoffRow
-                  handoff={row}
-                  selected={row.id === selectedId}
-                  onSelect={() => onSelect(row)}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {loading ? (
+        <RowsSkeleton />
+      ) : error ? (
+        <p className="p-3.5 text-sm text-destructive">{error.message}</p>
+      ) : rows.length === 0 ? (
+        <p className="p-3.5 text-sm text-muted-foreground">No conversations.</p>
+      ) : (
+        <HandoffList
+          rows={rows}
+          hasMore={hasMore}
+          loadMore={loadMore}
+          selectedId={selectedId}
+          onSelect={onSelect}
+        />
+      )}
     </div>
   );
 }

@@ -64,6 +64,7 @@ public sealed class OpenApiDocumentTests
         "getUnit",
         "getOrder",
         "listHandoffs",
+        "countHandoffs",
         "getHandoff",
         "getHandoffMessages",
         "claimHandoff",

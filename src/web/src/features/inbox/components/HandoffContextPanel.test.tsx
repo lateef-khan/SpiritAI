@@ -38,6 +38,7 @@ function handoff(over: Partial<Handoff> = {}): Handoff {
     title: "Treadmill belt slips at 8 mph",
     firstLine: "Hi, my CT800 belt slips when I go above 8 mph.",
     position: 1,
+    awaitingReply: false,
     ...over,
   };
 }

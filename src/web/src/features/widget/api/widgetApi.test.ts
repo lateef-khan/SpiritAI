@@ -54,7 +54,7 @@ describe("createWidgetApi", () => {
     const history = await createWidgetApi(send).history("call-9");
 
     expect(vi.mocked(getPublicThreadMessages).mock.calls[0]?.[0]).toMatchObject({
-      path: { callId: "call-9" },
+      path: { conversationId: "call-9" },
     });
     expect(history.headId).toBe("m1");
     expect(history.messages[0]?.message.createdAt).toEqual(new Date("2026-09-16T09:00:00Z"));
@@ -87,7 +87,7 @@ describe("createWidgetApi", () => {
     const created = await createWidgetApi(send).say("call-9", "still there?");
 
     expect(vi.mocked(sendVisitorMessage).mock.calls[0]?.[0]).toMatchObject({
-      path: { callId: "call-9" },
+      path: { conversationId: "call-9" },
       body: { text: "still there?" },
     });
     expect(created.messageId).toBe("host-7");

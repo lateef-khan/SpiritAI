@@ -60,13 +60,98 @@ public sealed class StaffHandoffEndpointTests
     }
 
     [Fact]
-    public async Task AnUnknownStatusIsRefused()
+    public async Task AnUnknownViewIsRefused()
     {
         await using var world = await StaffHandoffWorld.StartAsync();
 
-        var response = await world.Staff.GetAsync($"{Handoff}?status=bogus");
+        var response = await world.Staff.GetAsync($"{Handoff}?view=bogus");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ACursorTheHostDidNotWriteIsRefused()
+    {
+        await using var world = await StaffHandoffWorld.StartAsync();
+
+        var response = await world.Staff.GetAsync($"{Handoff}?cursor=bogus");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TheNextCursorCarriesOnWhereThePageStopped()
+    {
+        await using var world = await StaffHandoffWorld.StartAsync();
+        var chats = new List<string>();
+        for (var index = 0; index < 3; index++)
+        {
+            var chat = await world.MakeChatAsync($"Chat {index}", "hello");
+            await world.AskAsync(chat);
+            chats.Add(chat);
+        }
+
+        var first = await world.Staff.ReadAsync<HandoffPage>($"{Handoff}?limit=2");
+        var second = await world.Staff.ReadAsync<HandoffPage>($"{Handoff}?limit=2&cursor={first.NextCursor}");
+
+        Assert.Equal(chats.Take(2), first.Items.Select(item => item.ConversationId));
+        Assert.Equal(chats.Skip(2), second.Items.Select(item => item.ConversationId));
+        Assert.Null(second.NextCursor);
+    }
+
+    [Fact]
+    public async Task TheCountsAreTheCallersOwnAndTheQueues()
+    {
+        await using var world = await StaffHandoffWorld.StartAsync();
+        var mine = await world.MakeChatAsync("Mine", "hello");
+        var theirs = await world.MakeChatAsync("Theirs", "hello");
+        var waiting = await world.MakeChatAsync("Waiting", "hello");
+        await world.AskAsync(mine);
+        await world.AskAsync(theirs);
+        await world.AskAsync(waiting);
+        await world.Staff.PostAsync($"{Handoff}/{mine}/claim");
+        await world.OtherStaff.PostAsync($"{Handoff}/{theirs}/claim");
+
+        var counts = await world.Staff.ReadAsync<HandoffCounts>($"{Handoff}/counts");
+
+        Assert.Equal(new HandoffCounts(Mine: 1, Unassigned: 1, All: 3, AwaitingReply: 1), counts);
+    }
+
+    [Fact]
+    public async Task AReplyClearsTheVisitorsWaitUntilTheySpeakAgain()
+    {
+        await using var world = await StaffHandoffWorld.StartAsync();
+        var chat = await world.MakeChatAsync("Belt slips", "the belt keeps slipping");
+        await world.AskAsync(chat);
+        await world.Staff.PostAsync($"{Handoff}/{chat}/claim");
+
+        var before = await world.Staff.ReadAsync<HandoffPage>($"{Handoff}?owner=me");
+        await world.Staff.PostAsync($"{Handoff}/{chat}/messages", new { text = "Tighten the rear roller a quarter turn." });
+        var after = await world.Staff.ReadAsync<HandoffPage>($"{Handoff}?owner=me");
+        var counts = await world.Staff.ReadAsync<HandoffCounts>($"{Handoff}/counts");
+
+        Assert.True(before.Items.Single().AwaitingReply);
+        Assert.False(after.Items.Single().AwaitingReply);
+        Assert.Equal(0, counts.AwaitingReply);
+    }
+
+    [Fact]
+    public async Task OwnerAndOrderNarrowAndTurnTheList()
+    {
+        await using var world = await StaffHandoffWorld.StartAsync();
+        var first = await world.MakeChatAsync("First", "hello");
+        var second = await world.MakeChatAsync("Second", "hello");
+        var third = await world.MakeChatAsync("Third", "hello");
+        await world.AskAsync(first);
+        await world.AskAsync(second);
+        await world.AskAsync(third);
+        await world.Staff.PostAsync($"{Handoff}/{second}/claim");
+
+        var mine = await world.Staff.ReadAsync<HandoffPage>($"{Handoff}?owner=me");
+        var nobodys = await world.Staff.ReadAsync<HandoffPage>($"{Handoff}?owner=none&order=newest");
+
+        Assert.Equal([second], mine.Items.Select(item => item.ConversationId));
+        Assert.Equal([third, first], nobodys.Items.Select(item => item.ConversationId));
     }
 
     [Fact]

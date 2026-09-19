@@ -6,24 +6,21 @@ import { useSocketEvents } from "@/lib/realtime/SocketProvider";
 import type { Signal } from "@/lib/realtime/socket";
 
 /**
- * Keeps the inbox current while it is open, off the staff socket the app holds.
+ * The chat on screen's live side: whether its visitor is typing, and telling them whether the
+ * viewer is.
  *
- * Every push is a reason to read again, not a thing to apply: the list is reloaded when a chat
- * joins the queue, is taken, is closed, or moves in the line, and the open transcript is reloaded
- * when a message lands in it. The socket is a hint; REST is the truth, and both are read on every
- * reconnect too, so a push lost while the socket was down is caught up. The socket itself
+ * The rows and the transcript are the cache's, kept current by `useHandoffPushes` from wherever
+ * it is mounted; this hears the socket only for what is not stored anywhere. The socket itself
  * outlives the inbox: it is the session's, so staff count as online on every screen.
  */
 
-/** What the inbox reaches into, and what it tells the screen. */
+/** What the inbox reaches into. */
 export type InboxSocketOptions = {
   /** The chat on screen, or `null` when none is picked. */
   readonly selectedCallId: string | null;
-  readonly reloadList: () => void;
-  readonly reloadTranscript: () => void;
 };
 
-/** What the inbox learns from the socket beyond the list and the transcript. */
+/** What the inbox learns from the socket beyond the cache. */
 export type InboxSocketState = {
   /** Whether the visitor of the chat on screen is typing right now. */
   readonly typing: boolean;
@@ -34,14 +31,10 @@ export type InboxSocketState = {
 /**
  * Hears the staff socket for the life of the inbox.
  *
- * @param options The list, the transcript, and which chat is on screen.
+ * @param options Which chat is on screen.
  * @returns Typing, in and out.
  */
-export function useInboxSocket({
-  selectedCallId,
-  reloadList,
-  reloadTranscript,
-}: InboxSocketOptions): InboxSocketState {
+export function useInboxSocket({ selectedCallId }: InboxSocketOptions): InboxSocketState {
   const [typing, showTyping] = useTypingIndicator();
 
   // A pick of another chat starts clean: whoever was typing was typing somewhere else.
@@ -50,19 +43,10 @@ export function useInboxSocket({
   }, [selectedCallId, showTyping]);
 
   const handle = useSocketEvents({
-    onOpen: () => {
-      reloadList();
-      if (selectedCallId !== null) reloadTranscript();
-    },
     on: {
-      [Events.Waiting]: () => reloadList(),
-      [Events.Claimed]: () => reloadList(),
-      [Events.Done]: () => reloadList(),
-      [Events.Queue]: () => reloadList(),
+      // The visitor's words landing means they stopped typing them.
       [Events.MessageCreated]: (message: Events.MessagePush) => {
-        if (message.callId !== selectedCallId) return;
-        if (message.role === "user") showTyping(false);
-        reloadTranscript();
+        if (message.callId === selectedCallId && message.role === "user") showTyping(false);
       },
       signal: (signal: Signal<Events.TypingSignal>) => {
         if (

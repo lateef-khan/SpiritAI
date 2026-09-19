@@ -4,6 +4,7 @@ using Npgsql;
 
 using SpiritAI.Database;
 using SpiritAI.Database.Configurations;
+using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Model;
 
 namespace SpiritAI.Handoffs.Store;
@@ -63,9 +64,22 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<Handoff>> ListAsync(
-        HandoffStatus status, int limit, CancellationToken cancellationToken)
-        => _queries.ListAsync(status, limit, cancellationToken);
+    public Task<HandoffListing> ListAsync(
+        HandoffFilter filter, int limit, HandoffCursor? after, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+        filter.Check();
+
+        return _queries.ListAsync(filter, limit, after, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<HandoffCounts> CountAsync(HandoffView view, string staffKey, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(staffKey);
+
+        return _queries.CountAsync(view, staffKey, cancellationToken);
+    }
 
     /// <inheritdoc />
     public async Task<HandoffClaim> ClaimAsync(

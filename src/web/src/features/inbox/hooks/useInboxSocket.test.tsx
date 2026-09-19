@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import * as Events from "@/features/handoff/events";
 import { SocketProvider } from "@/lib/realtime/SocketProvider";
@@ -9,9 +9,10 @@ import type { Socket, SocketAuth } from "@/lib/realtime/socket";
 import { useInboxSocket } from "./useInboxSocket";
 
 /**
- * The inbox's socket hook, one test per rule: every open and every handoff push reloads the
- * list, a message in the open chat reloads the transcript, and typing goes both ways for the
- * open chat alone. The socket is the app's, so each test stands one up the way the app does.
+ * The inbox's socket hook, one test per rule: typing goes both ways for the open chat alone, and
+ * the visitor's words landing ends their typing. The rows and the transcript are the cache's
+ * business, under `handoffCache.test.ts`. The socket is the app's, so each test stands one up
+ * the way the app does.
  */
 
 /** A socket a test can open, raise events on, and count. */
@@ -71,76 +72,12 @@ const typingFrom = (kind: string, callId: string, on: boolean) => ({
 });
 
 describe("useInboxSocket", () => {
-  it("reads everything again on every open", () => {
-    const socket = fakeOpen();
-    const reloadList = vi.fn();
-    const reloadTranscript = vi.fn();
-
-    renderHook(() => useInboxSocket({ selectedCallId: "call-1", reloadList, reloadTranscript }), {
-      wrapper: socket.wrapper,
-    });
-
-    socket.arrive();
-
-    expect(reloadList).toHaveBeenCalledTimes(1);
-    expect(reloadTranscript).toHaveBeenCalledTimes(1);
-  });
-
-  it("reloads the list on every handoff push", () => {
-    const socket = fakeOpen();
-    const reloadList = vi.fn();
-
-    renderHook(
-      () =>
-        useInboxSocket({
-          selectedCallId: null,
-          reloadList,
-          reloadTranscript: () => {},
-        }),
-      { wrapper: socket.wrapper },
-    );
-
-    socket.raise("handoff.waiting", {});
-    socket.raise("handoff.claimed", {});
-    socket.raise("handoff.done", {});
-    socket.raise("handoff.queue", {});
-
-    expect(reloadList).toHaveBeenCalledTimes(4);
-  });
-
-  it("reloads the transcript for a message in the open chat alone", () => {
-    const socket = fakeOpen();
-    const reloadTranscript = vi.fn();
-
-    renderHook(
-      () =>
-        useInboxSocket({
-          selectedCallId: "call-1",
-          reloadList: () => {},
-          reloadTranscript,
-        }),
-      { wrapper: socket.wrapper },
-    );
-
-    socket.raise("message.created", message("call-2"));
-    expect(reloadTranscript).not.toHaveBeenCalled();
-
-    socket.raise("message.created", message("call-1"));
-    expect(reloadTranscript).toHaveBeenCalledTimes(1);
-  });
-
   it("shows the open chat's visitor typing, and no one else", () => {
     const socket = fakeOpen();
 
-    const view = renderHook(
-      () =>
-        useInboxSocket({
-          selectedCallId: "call-1",
-          reloadList: () => {},
-          reloadTranscript: () => {},
-        }),
-      { wrapper: socket.wrapper },
-    );
+    const view = renderHook(() => useInboxSocket({ selectedCallId: "call-1" }), {
+      wrapper: socket.wrapper,
+    });
 
     act(() => socket.raise("signal", typingFrom("visitor", "call-2", true)));
     expect(view.result.current.typing).toBe(false);
@@ -158,15 +95,9 @@ describe("useInboxSocket", () => {
   it("tells the open chat's visitor whether the viewer is typing", async () => {
     const socket = fakeOpen();
 
-    const view = renderHook(
-      () =>
-        useInboxSocket({
-          selectedCallId: "call-1",
-          reloadList: () => {},
-          reloadTranscript: () => {},
-        }),
-      { wrapper: socket.wrapper },
-    );
+    const view = renderHook(() => useInboxSocket({ selectedCallId: "call-1" }), {
+      wrapper: socket.wrapper,
+    });
     await act(async () => {
       view.result.current.sayTyping(true);
     });

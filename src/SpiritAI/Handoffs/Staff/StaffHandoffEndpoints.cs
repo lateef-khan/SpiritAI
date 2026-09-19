@@ -39,6 +39,11 @@ public static class StaffHandoffEndpoints
             .Produces<HandoffPage>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        endpoints.MapGet($"{Pattern}/counts", CountAsync)
+            .Describe("countHandoffs")
+            .Produces<HandoffCounts>()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
         endpoints.MapGet(One, FetchAsync)
             .Describe("getHandoff")
             .Produces<HandoffSummary>()
@@ -110,32 +115,52 @@ public static class StaffHandoffEndpoints
         return await body(key, member).ConfigureAwait(false);
     }
 
-    /// <summary>The rows in one state, the queue by default.</summary>
+    /// <summary>One page of the rows in one view, the open ones by default.</summary>
     private static Task<IResult> ListAsync(
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
         IConversations conversations,
-        string? status,
+        string? view,
+        string? owner,
+        string? order,
         int? limit,
+        string? cursor,
         CancellationToken cancellationToken)
-        => ForStaffAsync(http, staff, async (_, _) =>
+        => ForStaffAsync(http, staff, async (key, _) =>
         {
-            if (!HandoffSummary.TryReadStatus(status ?? HandoffSummary.StatusOf(HandoffStatus.Waiting), out var read))
+            if (!HandoffListQuery.TryRead(view, owner, order, cursor, key, out var query, out var problem))
+            {
+                return Problem(StatusCodes.Status400BadRequest, "The request cannot be read.", problem);
+            }
+
+            var page = await store
+                .ListAsync(query!.Filter, Math.Clamp(limit ?? DefaultPageSize, 1, HandoffStore.MaxListSize), query.After, cancellationToken)
+                .ConfigureAwait(false);
+
+            var items = await HandoffSummaries.OfAsync(store, conversations, page.Rows, cancellationToken).ConfigureAwait(false);
+
+            return TypedResults.Ok(new HandoffPage(items, page.Next?.Encode()));
+        });
+
+    /// <summary>How many rows one view holds: the caller's, nobody's, and all of them.</summary>
+    private static Task<IResult> CountAsync(
+        HttpContext http,
+        StaffGate staff,
+        IHandoffStore store,
+        string? view,
+        CancellationToken cancellationToken)
+        => ForStaffAsync(http, staff, async (key, _) =>
+        {
+            if (!HandoffListQuery.TryReadView(view, out var read))
             {
                 return Problem(
                     StatusCodes.Status400BadRequest,
                     "The request cannot be read.",
-                    $"'{status}' is not a status. Send 'waiting', 'human', 'done', or nothing at all.");
+                    $"'{view}' is not a view. Send 'open', 'waiting', 'done', or nothing at all.");
             }
 
-            var rows = await store
-                .ListAsync(read, Math.Clamp(limit ?? DefaultPageSize, 1, HandoffStore.MaxListSize), cancellationToken)
-                .ConfigureAwait(false);
-
-            var items = await HandoffSummaries.OfAsync(store, conversations, rows, cancellationToken).ConfigureAwait(false);
-
-            return TypedResults.Ok(new HandoffPage(items));
+            return TypedResults.Ok(await store.CountAsync(read, key, cancellationToken).ConfigureAwait(false));
         });
 
     /// <summary>The chat's open handoff, or the one closed most recently.</summary>

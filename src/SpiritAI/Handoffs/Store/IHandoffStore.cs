@@ -1,3 +1,4 @@
+using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Model;
 
 namespace SpiritAI.Handoffs.Store;
@@ -40,15 +41,21 @@ public interface IHandoffStore
     /// <returns>The row, or <see langword="null"/> when nobody was ever asked for.</returns>
     Task<Handoff?> LatestAsync(string conversationId, CancellationToken cancellationToken);
 
-    /// <summary>The rows in one state: the queue, the chats being talked to, or the closed ones.</summary>
-    /// <param name="status">Which state.</param>
+    /// <summary>One page of the rows a filter keeps.</summary>
+    /// <param name="filter">Which rows, whose, and from which end.</param>
     /// <param name="limit">How many at most, held to one through <see cref="HandoffStore.MaxListSize"/>.</param>
+    /// <param name="after">Where the previous page ended, or <see langword="null"/> for the first page.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>
-    /// Oldest ask first, the order the queue is served in. Closed rows come newest close first
-    /// instead, so the chats just finished are at the top.
-    /// </returns>
-    Task<IReadOnlyList<Handoff>> ListAsync(HandoffStatus status, int limit, CancellationToken cancellationToken);
+    /// <returns>The page, and where the next one starts.</returns>
+    Task<HandoffListing> ListAsync(
+        HandoffFilter filter, int limit, HandoffCursor? after, CancellationToken cancellationToken);
+
+    /// <summary>How many rows one view holds, split by who holds them.</summary>
+    /// <param name="view">Which rows.</param>
+    /// <param name="staffKey">The caller key <see cref="HandoffCounts.Mine"/> counts for.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The three counts.</returns>
+    Task<HandoffCounts> CountAsync(HandoffView view, string staffKey, CancellationToken cancellationToken);
 
     /// <summary>
     /// Takes a waiting chat for one member of staff. Of any number of claims racing on one chat,

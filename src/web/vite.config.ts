@@ -32,6 +32,7 @@ export default defineConfig({
   test: {
     environment: "happy-dom",
     include: ["src/**/*.test.{ts,tsx}"],
+    setupFiles: ["src/test/setup.ts"],
     env: {
       VITE_NEON_AUTH_URL: "https://auth.invalid/neondb/auth",
     },

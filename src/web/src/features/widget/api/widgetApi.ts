@@ -66,20 +66,20 @@ export function createWidgetApi(send: FetchLike): WidgetApi {
 
     history: async (callId) =>
       reviveHistory(
-        (await getPublicThreadMessages({ client, throwOnError: true, path: { callId } })).data,
+        (await getPublicThreadMessages({ client, throwOnError: true, path: { conversationId: callId } })).data,
       ),
 
     handoffState: async (callId) => {
-      const { data } = await getHandoffState({ client, throwOnError: true, path: { callId } });
+      const { data } = await getHandoffState({ client, throwOnError: true, path: { conversationId: callId } });
       return { ...data, status: statusOf(data.status) };
     },
 
     leaveEmail: async (callId, email) => {
-      await leaveEmail({ client, throwOnError: true, path: { callId }, body: { email } });
+      await leaveEmail({ client, throwOnError: true, path: { conversationId: callId }, body: { email } });
     },
 
     say: async (callId, text) =>
-      (await sendVisitorMessage({ client, throwOnError: true, path: { callId }, body: { text } }))
+      (await sendVisitorMessage({ client, throwOnError: true, path: { conversationId: callId }, body: { text } }))
         .data,
   };
 }

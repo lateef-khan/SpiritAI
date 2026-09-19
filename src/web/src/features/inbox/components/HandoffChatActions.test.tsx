@@ -35,6 +35,7 @@ function handoff(over: Partial<Handoff> = {}): Handoff {
     title: "Treadmill belt slips at 8 mph",
     firstLine: "I already did that twice.",
     position: 1,
+    awaitingReply: false,
     ...over,
   };
 }
@@ -70,7 +71,7 @@ describe("HandoffChatActions", () => {
     });
 
     expect(claimHandoff).toHaveBeenCalledWith(
-      expect.objectContaining({ path: { callId: "call-1" } }),
+      expect.objectContaining({ path: { conversationId: "call-1" } }),
     );
     expect(onChanged).toHaveBeenCalledWith(expect.objectContaining({ status: "human" }));
   });

@@ -259,9 +259,92 @@ public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<P
                 clock.Now += TimeSpan.FromMinutes(1);
             }
 
-            var queue = await store.ListAsync(HandoffStatus.Waiting, 10, Cancel);
+            var queue = await store.ListAsync(new HandoffFilter(HandoffView.Waiting), HandoffStore.MaxListSize, null, Cancel);
 
-            Assert.Equal(expected, queue.Where(h => conversationIds.Contains(h.ConversationId)).Select(h => h.Id));
+            Assert.Equal(expected, queue.Rows.Where(h => conversationIds.Contains(h.ConversationId)).Select(h => h.Id));
+        }
+        finally
+        {
+            foreach (var conversationId in conversationIds)
+            {
+                await fixture.DeleteConversationAsync(conversationId);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task PagesFollowOneAnotherWithoutARepeatOrAGap()
+    {
+        var conversationIds = Enumerable.Range(0, 5).Select(_ => NewConversationId()).ToArray();
+        foreach (var conversationId in conversationIds)
+        {
+            await fixture.MakeConversationAsync(conversationId);
+        }
+
+        try
+        {
+            await using var database = fixture.Open();
+            var clock = new TestTimeProvider(Start);
+            var store = new HandoffStore(database, clock);
+
+            var expected = new List<long>();
+            foreach (var conversationId in conversationIds)
+            {
+                expected.Add((await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel)).Row.Id);
+            }
+
+            // Every ask shares one instant, so only the id keeps the pages apart.
+            var walked = new List<long>();
+            HandoffCursor? after = null;
+            do
+            {
+                var page = await store.ListAsync(new HandoffFilter(HandoffView.Open), 2, after, Cancel);
+                walked.AddRange(page.Rows.Where(h => conversationIds.Contains(h.ConversationId)).Select(h => h.Id));
+                after = page.Next;
+            }
+            while (after is not null);
+
+            Assert.Equal(expected, walked);
+        }
+        finally
+        {
+            foreach (var conversationId in conversationIds)
+            {
+                await fixture.DeleteConversationAsync(conversationId);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task CountsSplitTheOpenRowsBetweenTheCallerAndTheQueue()
+    {
+        var conversationIds = new[] { NewConversationId(), NewConversationId(), NewConversationId() };
+        foreach (var conversationId in conversationIds)
+        {
+            await fixture.MakeConversationAsync(conversationId);
+        }
+
+        try
+        {
+            await using var database = fixture.Open();
+            var store = new HandoffStore(database, new TestTimeProvider(Start));
+            var me = "user:" + Guid.NewGuid().ToString("N");
+            var other = "user:" + Guid.NewGuid().ToString("N");
+
+            foreach (var conversationId in conversationIds)
+            {
+                await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
+            }
+
+            var before = await store.CountAsync(HandoffView.Open, me, Cancel);
+            await store.ClaimAsync(conversationIds[0], me, "Me", Cancel);
+            await store.ClaimAsync(conversationIds[1], other, "Other", Cancel);
+            var after = await store.CountAsync(HandoffView.Open, me, Cancel);
+
+            Assert.Equal(0, before.Mine);
+            Assert.Equal(1, after.Mine);
+            Assert.Equal(before.Unassigned - 2, after.Unassigned);
+            Assert.Equal(before.All, after.All);
         }
         finally
         {

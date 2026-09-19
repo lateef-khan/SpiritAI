@@ -82,8 +82,8 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
     {
         var kit = new NeonAuthTestKit();
         TestTimeProvider clock = new(Start);
-        FakeHandoffStore store = new(clock);
         IConversations conversations = new Conversations(new InMemoryConversationStore(clock), blobs: null);
+        FakeHandoffStore store = new(clock, conversations);
         RecordingHandoffNotifier notifier = new();
 
         var host = await ThreadTestHost.StartAsync(

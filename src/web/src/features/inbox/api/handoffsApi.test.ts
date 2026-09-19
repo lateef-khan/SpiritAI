@@ -7,11 +7,12 @@ import type { HandoffSummary } from "@/api/types.gen";
  *
  * The generated client is mocked rather than the network under it, the same way
  * `UnitPanel.test.tsx` mocks `@/api/sdk.gen`: what is worth holding in place here is that three
- * wire strings become dates (or stay null), and that the status a caller asks for is the status
- * that reaches the query.
+ * wire strings become dates (or stay null), and that the filter a caller asks for is the query
+ * that reaches the wire.
  */
 vi.mock("@/api/sdk.gen", () => ({
   listHandoffs: vi.fn(),
+  countHandoffs: vi.fn(),
   getHandoffMessages: vi.fn(),
   claimHandoff: vi.fn(),
   finishHandoff: vi.fn(),
@@ -21,6 +22,8 @@ vi.mock("@/api/sdk.gen", () => ({
 const { listHandoffs, getHandoffMessages, claimHandoff, finishHandoff, replyToHandoff } =
   await import("@/api/sdk.gen");
 const { createHandoffsApi, callerKeyOf } = await import("./handoffsApi");
+
+const Open = { view: "open", owner: "all", order: "oldest" } as const;
 
 beforeEach(() => vi.resetAllMocks());
 
@@ -38,16 +41,17 @@ const wire = (over: Partial<HandoffSummary> = {}): HandoffSummary => ({
   title: null,
   firstLine: null,
   position: null,
+  awaitingReply: false,
   ...over,
 });
 
 describe("createHandoffsApi", () => {
   it("turns askedAt into a Date equal to the wire string", async () => {
     vi.mocked(listHandoffs).mockResolvedValue({
-      data: { items: [wire({ askedAt: "2026-09-10T09:00:00Z" })] },
+      data: { items: [wire({ askedAt: "2026-09-10T09:00:00Z" })], nextCursor: null },
     } as never);
 
-    const rows = await createHandoffsApi().list("waiting");
+    const { items: rows } = await createHandoffsApi().list(Open, null);
 
     expect(rows[0]!.askedAt).toBeInstanceOf(Date);
     expect(rows[0]!.askedAt.toISOString()).toBe(new Date("2026-09-10T09:00:00Z").toISOString());
@@ -55,32 +59,52 @@ describe("createHandoffsApi", () => {
 
   it("keeps a null claimedAt null", async () => {
     vi.mocked(listHandoffs).mockResolvedValue({
-      data: { items: [wire({ claimedAt: null })] },
+      data: { items: [wire({ claimedAt: null })], nextCursor: null },
     } as never);
 
-    const rows = await createHandoffsApi().list("waiting");
+    const { items: rows } = await createHandoffsApi().list(Open, null);
 
     expect(rows[0]!.claimedAt).toBeNull();
   });
 
   it("turns a claimedAt string into a Date", async () => {
     vi.mocked(listHandoffs).mockResolvedValue({
-      data: { items: [wire({ claimedAt: "2026-09-10T09:05:00Z" })] },
+      data: { items: [wire({ claimedAt: "2026-09-10T09:05:00Z" })], nextCursor: null },
     } as never);
 
-    const rows = await createHandoffsApi().list("waiting");
+    const { items: rows } = await createHandoffsApi().list(Open, null);
 
     expect(rows[0]!.claimedAt).toBeInstanceOf(Date);
   });
 
-  it("passes the status through as the query", async () => {
-    vi.mocked(listHandoffs).mockResolvedValue({ data: { items: [] } } as never);
+  it("sends the filter and the cursor as the query, leaving owner out for everyone's rows", async () => {
+    vi.mocked(listHandoffs).mockResolvedValue({ data: { items: [], nextCursor: null } } as never);
 
-    await createHandoffsApi().list("done");
+    await createHandoffsApi().list({ view: "done", owner: "all", order: "newest" }, "abc");
 
     expect(listHandoffs).toHaveBeenCalledWith(
-      expect.objectContaining({ query: { status: "done" } }),
+      expect.objectContaining({ query: { view: "done", order: "newest", cursor: "abc" } }),
     );
+  });
+
+  it("names the owner when the filter is narrower than everyone", async () => {
+    vi.mocked(listHandoffs).mockResolvedValue({ data: { items: [], nextCursor: null } } as never);
+
+    await createHandoffsApi().list({ view: "open", owner: "me", order: "oldest" }, null);
+
+    expect(listHandoffs).toHaveBeenCalledWith(
+      expect.objectContaining({ query: { view: "open", owner: "me", order: "oldest" } }),
+    );
+  });
+
+  it("hands the next cursor back beside the page", async () => {
+    vi.mocked(listHandoffs).mockResolvedValue({
+      data: { items: [wire()], nextCursor: "after-1" },
+    } as never);
+
+    const page = await createHandoffsApi().list(Open, null);
+
+    expect(page.nextCursor).toBe("after-1");
   });
 });
 
@@ -139,7 +163,7 @@ describe("createHandoffsApi finish", () => {
     await createHandoffsApi().finish("call-1");
 
     expect(finishHandoff).toHaveBeenCalledWith(
-      expect.objectContaining({ path: { callId: "call-1" } }),
+      expect.objectContaining({ path: { conversationId: "call-1" } }),
     );
   });
 });
@@ -151,7 +175,10 @@ describe("createHandoffsApi reply", () => {
     await createHandoffsApi().reply("call-1", "Hi from Dana");
 
     expect(replyToHandoff).toHaveBeenCalledWith(
-      expect.objectContaining({ path: { callId: "call-1" }, body: { text: "Hi from Dana" } }),
+      expect.objectContaining({
+        path: { conversationId: "call-1" },
+        body: { text: "Hi from Dana" },
+      }),
     );
   });
 });

@@ -6,6 +6,7 @@ using Microsoft.Extensions.AI;
 using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Store;
+using SpiritAI.Handoffs.Transcript;
 
 namespace SpiritAI.Handoffs.Desk;
 
@@ -62,7 +63,7 @@ internal static class HandoffSummaries
             ? await store.PositionAsync(row.ConversationId, cancellationToken).ConfigureAwait(false)
             : null;
 
-        return HandoffSummary.Of(row, conversation, FirstLineOf(words), position);
+        return HandoffSummary.Of(row, conversation, FirstLineOf(words), position, ReplyDue.Of(words));
     }
 
     /// <summary>The first thing the visitor said: the text of the lowest user row.</summary>
