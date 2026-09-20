@@ -1,5 +1,3 @@
-import type { ExportedMessageRepository } from "@assistant-ui/react";
-
 import {
   createPublicThread,
   getHandoffState,
@@ -9,7 +7,7 @@ import {
 } from "@/api/sdk.gen";
 import type { HandoffMessage, HandoffState as WireHandoffState } from "@/api/types.gen";
 import { createApiClient, type FetchLike } from "@/lib/apiClient";
-import { reviveHistory } from "@/lib/history";
+import { pageQuery, revivePage, type ReadHistory } from "@/lib/history";
 
 /**
  * Everything the widget asks the host about its own thread, with no assistant-ui in sight.
@@ -33,8 +31,7 @@ export type WireHandoffMessage = HandoffMessage;
 export type WidgetApi = {
   /** Makes the visitor's thread on the host, and answers the call id it was filed under. */
   createThread(): Promise<string>;
-  /** One thread's whole conversation, in the shape the widget restores it from. */
-  history(callId: string): Promise<ExportedMessageRepository>;
+  history: ReadHistory;
   /** Where the chat stands: the truth after a reload or a reconnect. */
   handoffState(callId: string): Promise<HandoffState>;
   /** Leaves an email for a reply the visitor is not there to read. */
@@ -64,22 +61,44 @@ export function createWidgetApi(send: FetchLike): WidgetApi {
     createThread: async () =>
       (await createPublicThread({ client, throwOnError: true })).data.remoteId,
 
-    history: async (callId) =>
-      reviveHistory(
-        (await getPublicThreadMessages({ client, throwOnError: true, path: { conversationId: callId } })).data,
+    history: async (callId, before, limit) =>
+      revivePage(
+        (
+          await getPublicThreadMessages({
+            client,
+            throwOnError: true,
+            path: { conversationId: callId },
+            query: pageQuery(before, limit),
+          })
+        ).data,
       ),
 
     handoffState: async (callId) => {
-      const { data } = await getHandoffState({ client, throwOnError: true, path: { conversationId: callId } });
+      const { data } = await getHandoffState({
+        client,
+        throwOnError: true,
+        path: { conversationId: callId },
+      });
       return { ...data, status: statusOf(data.status) };
     },
 
     leaveEmail: async (callId, email) => {
-      await leaveEmail({ client, throwOnError: true, path: { conversationId: callId }, body: { email } });
+      await leaveEmail({
+        client,
+        throwOnError: true,
+        path: { conversationId: callId },
+        body: { email },
+      });
     },
 
     say: async (callId, text) =>
-      (await sendVisitorMessage({ client, throwOnError: true, path: { conversationId: callId }, body: { text } }))
-        .data,
+      (
+        await sendVisitorMessage({
+          client,
+          throwOnError: true,
+          path: { conversationId: callId },
+          body: { text },
+        })
+      ).data,
   };
 }

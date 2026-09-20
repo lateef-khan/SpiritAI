@@ -102,35 +102,47 @@ public sealed record ThreadHistoryMessage(
 public sealed record ThreadHistoryItem(string? ParentId, ThreadHistoryMessage Message);
 
 /// <summary>
-/// A stored conversation, as the conversation assistant-ui draws.
+/// One window of a stored conversation, as the conversation assistant-ui draws.
 /// </summary>
+/// <param name="HeadId">The newest message, or <see langword="null"/> for a window with none.</param>
+/// <param name="Messages">The window's messages, oldest first, chained by parent. The first one has no parent.</param>
 public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryItem> Messages)
 {
+    /// <summary>
+    /// Gets what to send as <c>before</c> to read the next older window, or <see langword="null"/>
+    /// when this window reaches the conversation's start.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? NextCursor { get; init; }
+
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private static readonly JsonSerializerOptions Readable =
         new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-    /// <summary>Reads one whole conversation into the shape the browser restores a thread from.</summary>
+    /// <summary>Reads stored rows into the shape the browser restores a thread from.</summary>
     /// <param name="conversation">The conversation's row. It supplies the clock store 1 does not keep.</param>
-    /// <param name="rows">Every stored message of the conversation. Order does not matter.</param>
+    /// <param name="rows">The stored messages to draw: every one, or one window's worth. Order does not matter.</param>
     /// <returns>The conversation, oldest message first, chained by parent.</returns>
     public static ThreadHistory Of(ConversationRecord conversation, IReadOnlyList<ConversationMessage> rows)
         => Of(conversation, rows, new Dictionary<string, ThreadPart>(StringComparer.Ordinal));
 
-    /// <summary>Turns one conversation, as the door loaded it, into the shape the browser restores a thread from.</summary>
-    /// <param name="stored">The conversation's row, its words, and a link to every file it still holds.</param>
-    /// <returns>The conversation, oldest message first, chained by parent.</returns>
+    /// <summary>Turns one window of a conversation, as the door loaded it, into the shape the browser restores a thread from.</summary>
+    /// <param name="stored">The conversation's row, the window's words, and a link to every file they still hold.</param>
+    /// <returns>The window, oldest message first, chained by parent, naming the older window when there is one.</returns>
     public static ThreadHistory Of(StoredConversation stored)
     {
         ArgumentNullException.ThrowIfNull(stored);
 
-        return Of(stored.Conversation, stored.Messages, ThreadFiles.PartsOf(stored.Files));
+        return Of(stored.Conversation, stored.Messages, ThreadFiles.PartsOf(stored.Files)) with
+        {
+            NextCursor = HistoryWindow.CursorOf(stored.OlderBefore),
+        };
     }
 
-    /// <summary>Reads one whole conversation into the shape the browser restores a thread from, with its files linked.</summary>
+    /// <summary>Reads stored rows into the shape the browser restores a thread from, with their files linked.</summary>
     /// <param name="conversation">The conversation's row. It supplies the clock store 1 does not keep.</param>
-    /// <param name="rows">Every stored message of the conversation. Order does not matter.</param>
+    /// <param name="rows">The stored messages to draw: every one, or one window's worth. Order does not matter.</param>
     /// <param name="files">The part for each file the store still holds, from <see cref="ThreadFiles.PartsOf"/>.</param>
     /// <returns>The conversation, oldest message first, chained by parent.</returns>
     public static ThreadHistory Of(ConversationRecord conversation, IReadOnlyList<ConversationMessage> rows, IReadOnlyDictionary<string, ThreadPart> files)

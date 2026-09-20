@@ -186,19 +186,25 @@ public static class StaffHandoffEndpoints
             return TypedResults.Ok(await HandoffSummaries.OfAsync(store, conversations, reads, key, row, cancellationToken).ConfigureAwait(false));
         });
 
-    /// <summary>The whole chat, in the shape the browser draws a thread from.</summary>
+    /// <summary>One window of the chat, newest first, in the shape the browser draws a thread from.</summary>
     private static Task<IResult> HistoryAsync(
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
         IConversations conversations,
         string conversationId,
+        [AsParameters] HistoryQuery query,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (_, _) =>
         {
+            if (!HistoryWindow.TryRead(query, out var window))
+            {
+                return HistoryWindow.Refuse(query);
+            }
+
             // A chat that never asked for a person is not staff's to read.
             if (await store.LatestAsync(conversationId, cancellationToken).ConfigureAwait(false) is null
-                || await conversations.LoadAsync(conversationId, cancellationToken).ConfigureAwait(false) is not { } stored)
+                || await conversations.LoadWindowAsync(conversationId, window, cancellationToken).ConfigureAwait(false) is not { } stored)
             {
                 return TypedResults.NotFound();
             }

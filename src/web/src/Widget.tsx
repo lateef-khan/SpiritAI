@@ -2,6 +2,7 @@ import { Hidden, Thread } from "@/components/assistant-ui/thread";
 import { LauncherBubble } from "@/components/assistant-ui/elements/launcher-bubble";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { readVisitorMemory, visitorFetch } from "./features/widget/api/visitorIdentity";
@@ -41,6 +42,13 @@ const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/publ
  */
 const send = visitorFetch(readVisitorMemory);
 const api = createWidgetApi(send);
+
+/**
+ * The pages of history the reader scrolls up for, once read.
+ */
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: Infinity, retry: 1 } },
+});
 
 const WIDGET_COMPONENTS = {
   ToolGroup: Hidden,
@@ -88,34 +96,31 @@ export function Widget() {
 
   return (
     <AssistantRuntimeProvider runtime={widget.runtime}>
-      <TooltipProvider>
-        <div className="flex h-dvh w-full items-end justify-end p-3">
-          {phase === "open" ? (
-            <div className="bg-background border-border/60 relative flex h-full w-full flex-col overflow-hidden rounded-2xl border shadow-xl">
-              <button
-                type="button"
-                onClick={() => setPhase("closed")}
-                aria-label="Close chat"
-                className="hover:bg-accent absolute end-2 top-2 z-10 rounded-full p-1.5"
-              >
-                <XIcon className="size-4" />
-              </button>
-              <HandoffBanner state={desk.state} typing={typing} onLeaveEmail={desk.leaveEmail} />
-              <div className="min-h-0 flex-1">
-                <Thread
-                  components={WIDGET_COMPONENTS}
-                  followNewMessages={
-                    desk.state.status === "waiting" || desk.state.status === "human"
-                  }
-                />
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <div className="flex h-dvh w-full items-end justify-end p-3">
+            {phase === "open" ? (
+              <div className="bg-background border-border/60 relative flex h-full w-full flex-col overflow-hidden rounded-2xl border shadow-xl">
+                <button
+                  type="button"
+                  onClick={() => setPhase("closed")}
+                  aria-label="Close chat"
+                  className="hover:bg-accent absolute end-2 top-2 z-10 rounded-full p-1.5"
+                >
+                  <XIcon className="size-4" />
+                </button>
+                <HandoffBanner state={desk.state} typing={typing} onLeaveEmail={desk.leaveEmail} />
+                <div className="min-h-0 flex-1">
+                  <Thread components={WIDGET_COMPONENTS} olderMessages={widget.older} />
+                </div>
+                <TypingReporter sayTyping={sayTyping} />
               </div>
-              <TypingReporter sayTyping={sayTyping} />
-            </div>
-          ) : (
-            <LauncherBubble unread={unread} onToggle={open} />
-          )}
-        </div>
-      </TooltipProvider>
+            ) : (
+              <LauncherBubble unread={unread} onToggle={open} />
+            )}
+          </div>
+        </TooltipProvider>
+      </QueryClientProvider>
     </AssistantRuntimeProvider>
   );
 }

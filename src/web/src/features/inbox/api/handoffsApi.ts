@@ -1,4 +1,4 @@
-import type { ExportedMessageRepository } from "@assistant-ui/react";
+import type { Client } from "@/api/client";
 import {
   claimHandoff,
   countHandoffs,
@@ -10,8 +10,7 @@ import {
 } from "@/api/sdk.gen";
 import type { HandoffCounts, HandoffSummary } from "@/api/types.gen";
 import { apiClient } from "@/lib/apiClient";
-import type { Client } from "@/api/client";
-import { reviveHistory } from "@/lib/history";
+import { pageQuery, revivePage, type ReadHistory } from "@/lib/history";
 
 /**
  * Everything the inbox asks the host about handoffs.
@@ -68,7 +67,7 @@ export type HandoffPage = {
 export type HandoffsApi = {
   list(filter: HandoffFilter, cursor: string | null): Promise<HandoffPage>;
   counts(view: HandoffView): Promise<HandoffCounts>;
-  messages(callId: string): Promise<ExportedMessageRepository>;
+  history: ReadHistory;
   claim(callId: string): Promise<Handoff>;
   finish(callId: string): Promise<void>;
   reply(callId: string, text: string): Promise<void>;
@@ -129,13 +128,14 @@ export function createHandoffsApi(client: Client = apiClient): HandoffsApi {
     counts: async (view) =>
       (await countHandoffs({ client, throwOnError: true, query: { view } })).data,
 
-    messages: async (callId) =>
-      reviveHistory(
+    history: async (callId, before, limit) =>
+      revivePage(
         (
           await getHandoffMessages({
             client,
             throwOnError: true,
             path: { conversationId: callId },
+            query: pageQuery(before, limit),
           })
         ).data,
       ),

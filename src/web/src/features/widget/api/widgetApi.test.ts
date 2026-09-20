@@ -51,13 +51,29 @@ describe("createWidgetApi", () => {
       },
     } as never);
 
-    const history = await createWidgetApi(send).history("call-9");
+    const { repository, nextCursor } = await createWidgetApi(send).history("call-9");
 
     expect(vi.mocked(getPublicThreadMessages).mock.calls[0]?.[0]).toMatchObject({
       path: { conversationId: "call-9" },
+      query: {},
     });
-    expect(history.headId).toBe("m1");
-    expect(history.messages[0]?.message.createdAt).toEqual(new Date("2026-09-16T09:00:00Z"));
+    expect(repository.headId).toBe("m1");
+    expect(repository.messages[0]?.message.createdAt).toEqual(new Date("2026-09-16T09:00:00Z"));
+    expect(nextCursor).toBeNull();
+  });
+
+  it("carries a page's before cursor and limit to the host, and its nextCursor back", async () => {
+    vi.mocked(getPublicThreadMessages).mockResolvedValue({
+      data: { headId: null, messages: [], nextCursor: "90" },
+    } as never);
+
+    const page = await createWidgetApi(send).history("call-9", "120", 50);
+
+    expect(vi.mocked(getPublicThreadMessages).mock.calls[0]?.[0]).toMatchObject({
+      path: { conversationId: "call-9" },
+      query: { before: "120", limit: 50 },
+    });
+    expect(page.nextCursor).toBe("90");
   });
 
   it("narrows the state's status and keeps the rest", async () => {

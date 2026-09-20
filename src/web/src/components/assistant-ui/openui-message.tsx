@@ -3,6 +3,7 @@
 import { useAui, useAuiState } from "@assistant-ui/react";
 import type { ActionEvent } from "@openuidev/react-lang";
 import { lazy, Suspense, type FC } from "react";
+import { readOpenUiFormState, writeOpenUiFormState } from "@/components/assistant-ui/openUiFormStore";
 import { TypingIndicator } from "./elements/typing-indicator";
 import { MarkdownText } from "./markdown-text";
 
@@ -46,6 +47,8 @@ export function formMessage(
  * One assistant text part through OpenUI, Renderer-only.
  */
 const OpenUIAssistantMessage: FC = () => {
+  const messageId = useAuiState((s) => s.message.id);
+  
   const text = useAuiState((s) => (s.part.type === "text" ? s.part.text : null));
 
   const partStatusType = useAuiState((s) =>
@@ -109,6 +112,8 @@ const OpenUIAssistantMessage: FC = () => {
           response={text}
           isStreaming={partStatusType === "running"}
           onAction={onAction}
+          initialState={readOpenUiFormState(messageId)}
+          onStateUpdate={(state) => writeOpenUiFormState(messageId, state)}
         />
       </Suspense>
     </div>

@@ -7,6 +7,7 @@ import { reviveHistory } from "@/lib/history";
 
 import type { Handoff } from "../api/handoffsApi";
 import { HandoffChat } from "./HandoffChat";
+import { queryWrapper } from "@/test/query.tsx";
 
 /**
  * The reply box, fed a revived transcript.
@@ -68,6 +69,7 @@ function chat(
   meKey: string,
   reload: () => void = () => {},
 ) {
+  const { wrapper } = queryWrapper();
   return render(
     <HandoffChat
       handoff={handoff(over)}
@@ -78,6 +80,7 @@ function chat(
       meKey={meKey}
       onChanged={() => {}}
     />,
+    { wrapper },
   );
 }
 

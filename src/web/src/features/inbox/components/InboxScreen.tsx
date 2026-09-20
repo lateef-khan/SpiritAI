@@ -8,6 +8,7 @@ import {
   ResizablePanelGroup,
   useDefaultLayout,
 } from "@/components/ui/resizable";
+import type { OlderMessagesSource } from "@/lib/history";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import type { Handoff, HandoffFilter } from "../api/handoffsApi";
@@ -43,6 +44,7 @@ export function InboxScreen({
     loading: boolean;
     error: string | null;
     reload: () => void;
+    older?: OlderMessagesSource | undefined;
   };
   onSelectionChange(handoff: Handoff | null): void;
 }) {
@@ -63,7 +65,9 @@ export function InboxScreen({
   // an effect. A row a push took out of the list — claimed by somebody else, or closed — stays
   // pinned, so the chat pane keeps showing it as last seen rather than going blank underfoot.
   const live = rows.find((row) => row.id === selectedId) ?? null;
+
   if (live && !loading && live !== pinned) setPinned(live);
+  
   const selected = loading ? (pinned ?? live) : (live ?? pinned);
 
   // The context rail lives above this screen, so the pick is mirrored up for it — including a
@@ -129,6 +133,7 @@ export function InboxScreen({
             loading={transcript.loading}
             error={transcript.error}
             reload={transcript.reload}
+            older={transcript.older}
             meKey={meKey}
             typing={typing}
             onTyping={sayTyping}
@@ -163,6 +168,7 @@ export function InboxScreen({
             loading={transcript.loading}
             error={transcript.error}
             reload={transcript.reload}
+            older={transcript.older}
             meKey={meKey}
             typing={typing}
             onTyping={sayTyping}

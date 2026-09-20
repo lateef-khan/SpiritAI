@@ -109,7 +109,35 @@ describe("createHandoffsApi", () => {
   });
 });
 
-describe("createHandoffsApi messages", () => {
+describe("createHandoffsApi history", () => {
+  it("asks for the newest page with no cursor", async () => {
+    vi.mocked(getHandoffMessages).mockResolvedValue({
+      data: { headId: null, messages: [] },
+    } as never);
+
+    const page = await createHandoffsApi().history("call-1");
+
+    expect(vi.mocked(getHandoffMessages).mock.calls[0]?.[0]).toMatchObject({
+      path: { conversationId: "call-1" },
+      query: {},
+    });
+    expect(page.nextCursor).toBeNull();
+  });
+
+  it("carries a page's before cursor and limit to the host, and its nextCursor back", async () => {
+    vi.mocked(getHandoffMessages).mockResolvedValue({
+      data: { headId: null, messages: [], nextCursor: "90" },
+    } as never);
+
+    const page = await createHandoffsApi().history("call-1", "120", 50);
+
+    expect(vi.mocked(getHandoffMessages).mock.calls[0]?.[0]).toMatchObject({
+      path: { conversationId: "call-1" },
+      query: { before: "120", limit: 50 },
+    });
+    expect(page.nextCursor).toBe("90");
+  });
+
   it("turns a message's createdAt into a Date, keeping its id, role, and text", async () => {
     vi.mocked(getHandoffMessages).mockResolvedValue({
       data: {
@@ -129,8 +157,8 @@ describe("createHandoffsApi messages", () => {
       },
     } as never);
 
-    const history = await createHandoffsApi().messages("call-1");
-    const revived = history.messages[0]!.message;
+    const { repository } = await createHandoffsApi().history("call-1");
+    const revived = repository.messages[0]!.message;
 
     expect(revived.createdAt).toEqual(new Date("2026-09-12T12:31:00"));
     expect(revived.id).toBe("call-1:0");

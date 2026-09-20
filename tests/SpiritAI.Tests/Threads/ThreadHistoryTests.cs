@@ -45,6 +45,25 @@ public sealed class ThreadHistoryTests
     }
 
     [Fact]
+    public void AWindowWithAnOlderPage_NamesTheCursorForIt()
+    {
+        StoredConversation stored = new(Conversation, [Row(0, 4, new ChatMessage(ChatRole.User, "hello"))], [])
+        {
+            OlderBefore = 4,
+        };
+
+        Assert.Equal("4", ThreadHistory.Of(stored).NextCursor);
+    }
+
+    [Fact]
+    public void AWindowThatReachesTheStart_NamesNoCursor()
+    {
+        StoredConversation stored = new(Conversation, [Row(0, 0, new ChatMessage(ChatRole.User, "hello"))], []);
+
+        Assert.Null(ThreadHistory.Of(stored).NextCursor);
+    }
+
+    [Fact]
     public void MessagesAreChainedByParent()
     {
         var history = ThreadHistory.Of(Conversation, [

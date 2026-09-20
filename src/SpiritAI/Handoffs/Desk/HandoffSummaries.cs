@@ -18,6 +18,17 @@ namespace SpiritAI.Handoffs.Desk;
 /// </summary>
 internal static class HandoffSummaries
 {
+    /// <summary>The visitor's first turn, for the first line of the chat.</summary>
+    private static readonly TranscriptWindow OpeningTurn = new(BeforeTurn: 1, Turns: 1);
+
+    /// <summary>
+    /// The newest turns, for whether a reply is owed and whether the reader has seen the latest
+    /// visitor line. A turn starts with the visitor's line and holds every reply to it, so the
+    /// newest turn alone would do; the one before it is slack for a note or a bot line that
+    /// opened a turn of its own.
+    /// </summary>
+    private static readonly TranscriptWindow LatestTurns = new(BeforeTurn: null, Turns: 2);
+
     /// <summary>Summarises every row of a listing, for one reader.</summary>
     /// <remarks>
     /// Three reads per row, one row at a time, and one read of the reader's marks for the lot.
@@ -94,14 +105,16 @@ internal static class HandoffSummaries
         CancellationToken cancellationToken)
     {
         var conversation = await conversations.GetAsync(row.ConversationId, cancellationToken).ConfigureAwait(false);
-        var words = await conversations.ReadAsync(row.ConversationId, cancellationToken).ConfigureAwait(false);
+
+        var opening = await conversations.ReadWindowAsync(row.ConversationId, OpeningTurn, cancellationToken).ConfigureAwait(false);
+        var latest = await conversations.ReadWindowAsync(row.ConversationId, LatestTurns, cancellationToken).ConfigureAwait(false);
 
         var position = row.Status == HandoffStatus.Waiting
             ? await store.PositionAsync(row.ConversationId, cancellationToken).ConfigureAwait(false)
             : null;
 
         return HandoffSummary.Of(
-            row, conversation, FirstLineOf(words), position, ReplyDue.Of(words), Unread.Of(words, seenOrdinal));
+            row, conversation, FirstLineOf(opening), position, ReplyDue.Of(latest), Unread.Of(latest, seenOrdinal));
     }
 
     /// <summary>The first thing the visitor said: the text of the lowest user row.</summary>

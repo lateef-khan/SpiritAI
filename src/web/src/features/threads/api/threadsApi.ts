@@ -1,4 +1,3 @@
-import type { ExportedMessageRepository } from "@assistant-ui/react";
 import type { WireMessage } from "../transport.ts";
 import {
   createThread,
@@ -10,7 +9,7 @@ import {
 } from "@/api/sdk.gen";
 import type { ThreadCreated, ThreadPage, ThreadStatus, ThreadSummary } from "@/api/types.gen";
 import { apiClient, createApiClient, type FetchLike } from "@/lib/apiClient";
-import { reviveHistory } from "@/lib/history";
+import { pageQuery, revivePage, type ReadHistory } from "@/lib/history";
 
 /**
  * Everything the browser asks the host about threads, with no assistant-ui in sight.
@@ -42,7 +41,7 @@ export type ThreadsApi = {
   fetch(remoteId: string): Promise<WireThread>;
   patch(remoteId: string, body: Record<string, unknown>): Promise<void>;
   remove(remoteId: string): Promise<void>;
-  history(remoteId: string): Promise<ExportedMessageRepository>;
+  history: ReadHistory;
   /** Asks the host to name a thread from words the browser holds, reading it back as it is written. */
   title(remoteId: string, messages: readonly WireMessage[]): AsyncIterable<string>;
 };
@@ -80,9 +79,16 @@ export function createThreadsApi(send?: FetchLike): ThreadsApi {
       await deleteThread({ client, throwOnError: true, path: { remoteId } });
     },
 
-    history: async (remoteId) =>
-      reviveHistory(
-        (await getThreadMessages({ client, throwOnError: true, path: { remoteId } })).data,
+    history: async (remoteId, before, limit) =>
+      revivePage(
+        (
+          await getThreadMessages({
+            client,
+            throwOnError: true,
+            path: { remoteId },
+            query: pageQuery(before, limit),
+          })
+        ).data,
       ),
 
     title: (remoteId, messages) =>

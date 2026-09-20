@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
-import { reviveHistory } from "./history.ts";
+import { reviveHistory } from "./wire.ts";
 
 describe("reviveHistory", () => {
   it("turns the wire's dates back into dates", () => {

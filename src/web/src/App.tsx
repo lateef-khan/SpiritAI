@@ -16,6 +16,7 @@ import {
   createAgentCoreThreadListAdapter,
   useThreadSession,
 } from "./features/threads/AgentCoreThreadListAdapter";
+import { useThreadListOlderMessages } from "./features/threads/useThreadListOlderMessages";
 import { authFetch } from "@/features/auth/authFetch";
 import { useSession } from "@/features/auth/authClient";
 import { callerKeyOf, type Handoff } from "@/features/inbox/api/handoffsApi";
@@ -74,6 +75,11 @@ function useThreadRuntime() {
   return useAgentCoreRuntime(endpoint, authFetch, useThreadSession());
 }
 
+/** The open thread, paging back through its history as the reader scrolls up. */
+function ChatThread() {
+  return <Thread olderMessages={useThreadListOlderMessages()} />;
+}
+
 /**
  * The same two, on a narrow screen.
  *
@@ -84,7 +90,7 @@ function ChatAndUnitSheet() {
   return (
     <>
       <div className="relative min-w-0 flex-1 overflow-hidden">
-        <Thread />
+        <ChatThread />
       </div>
       <Sheet>
         <SheetTrigger className="absolute end-3 top-3 z-10 rounded-md border bg-background p-1.5">
@@ -187,7 +193,7 @@ function Shell({ meKey }: { meKey: string }) {
                 onSelectionChange={handleInboxSelection}
               />
             ) : (
-              <Thread />
+              <ChatThread />
             )}
           </ResizablePanel>
           <ResizableHandle />

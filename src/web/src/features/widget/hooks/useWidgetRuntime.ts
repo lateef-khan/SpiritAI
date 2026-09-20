@@ -3,15 +3,16 @@ import {
   type AppendMessage,
   type AssistantRuntime,
   type ThreadMessage,
-  type ThreadMessageLike,
 } from "@assistant-ui/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { flatten, sourceContent, toolContent } from "@/features/threads/AgentCoreRuntime";
 import { runTurn, TurnRefusedError, type TurnState } from "@/features/threads/transport";
+import type { OlderMessagesSource } from "@/lib/history";
 import { HostRefusedError, type FetchLike } from "@/lib/apiClient";
 import { readVisitorMemory, rememberCall } from "../api/visitorIdentity";
 import type { WidgetApi, WireHandoffMessage } from "../api/widgetApi";
+import { heldFromPage, holds, hostMessageId, prependOlder, reloadPage, type Held } from "./held";
 import type { HandoffDesk } from "./useHandoffDesk";
 
 /**
@@ -20,20 +21,6 @@ import type { HandoffDesk } from "./useHandoffDesk";
 
 /** The tool the bot calls to ask for a person, as `spirit.yaml` names it. */
 const RequestHumanTool = "request_human";
-
-/** A message the widget holds, with the id the widget gave it. */
-type Held = ThreadMessageLike & { readonly id: string };
-
-/**
- * Reads back the name the host stored one message under, when it carries one.
- *
- * A reply does, and so do the visitor's words once a person's door stored them; a bot turn's
- * words travel under the name the widget gave them, which the host keeps.
- */
-function hostMessageId(message: Held): string {
-  const custom = message.metadata?.custom as { hostMessageId?: unknown } | undefined;
-  return typeof custom?.hostMessageId === "string" ? custom.hostMessageId : message.id;
-}
 
 /** Maps one streamed state onto the reply, the way the app's adapter does. */
 function replyFrom(reply: Held, state: TurnState): Held {
@@ -116,11 +103,6 @@ function heldFrom(message: WireHandoffMessage): Held {
   };
 }
 
-/** Whether the widget already holds the host's row of that name. */
-function holds(held: readonly Held[], messageId: string): boolean {
-  return held.some((message) => hostMessageId(message) === messageId);
-}
-
 /** What the widget hands `AssistantRuntimeProvider`, and the ways the outside reaches in. */
 export type WidgetRuntime = {
   readonly runtime: AssistantRuntime;
@@ -128,8 +110,22 @@ export type WidgetRuntime = {
   readonly callId: string | null;
   /** Takes one pushed message of the human phase. The visitor's own are already on screen. */
   receive(message: WireHandoffMessage): void;
-  /** Reads the whole chat again from the host. What was already held is replaced, not doubled. */
+  /** Reads the newest page again from the host. What it covers is replaced, not doubled. */
   reload(): Promise<void>;
+  /** Where the pages before what is held come from, or `undefined` until there is a call. */
+  readonly older: OlderMessagesSource | undefined;
+};
+
+/**
+ * What the widget holds, and where the page before it starts.
+ *
+ * One state rather than two: a reload decides both from the same look at the rows it lands on,
+ * and two setters would let a push slip in between them.
+ */
+type Store = {
+  readonly messages: readonly Held[];
+  /** As {@link OlderMessagesSource.initialCursor}: `undefined` until a page has been read. */
+  readonly olderCursor: string | null | undefined;
 };
 
 /**
@@ -147,18 +143,27 @@ export function useWidgetRuntime(
   send: FetchLike,
   desk: HandoffDesk,
 ): WidgetRuntime {
-  const [messages, setMessages] = useState<readonly Held[]>([]);
+  const [store, setStore] = useState<Store>({ messages: [], olderCursor: undefined });
+  const { messages, olderCursor } = store;
   const [isRunning, setRunning] = useState(false);
   const [callId, setCallId] = useState<string | null>(() => readVisitorMemory().callId);
   const abortRef = useRef<AbortController | null>(null);
 
+  const setMessages = useCallback(
+    (next: (held: readonly Held[]) => readonly Held[]) =>
+      setStore((s) => ({ ...s, messages: next(s.messages) })),
+    [],
+  );
+
+  // A call just made has nothing older than what is on screen; no call has no pages at all.
   const remember = useCallback((id: string | null) => {
     rememberCall(id);
     setCallId(id);
+    setStore((s) => ({ ...s, olderCursor: id === null ? undefined : null }));
   }, []);
 
   /**
-   * Reads the whole chat from the host. A 404 means the host has forgotten the call — a
+   * Reads the newest page from the host. A 404 means the host has forgotten the call — a
    * retention sweep, a database reset — and the widget forgets it too. Any other refusal keeps
    * the id and what is on screen; the next send finds out.
    */
@@ -167,13 +172,17 @@ export function useWidgetRuntime(
     if (id === null) return Promise.resolve();
 
     return api.history(id).then(
-      (history) => {
-        setMessages(
-          history.messages.map(({ message }) => ({
-            ...message,
-            id: message.id ?? crypto.randomUUID(),
-          })),
-        );
+      (page) => {
+        setStore((s) => {
+          const { messages, kept } = reloadPage(s.messages, heldFromPage(page.repository));
+          // Older rows kept above the page were paged in from the cursor already held; the
+          // page's own cursor names where they start, which is the wrong place to page from.
+          // Rows kept with no cursor held yet were typed here, and the page's cursor stands.
+          return {
+            messages,
+            olderCursor: kept ? (s.olderCursor ?? page.nextCursor) : page.nextCursor,
+          };
+        });
       },
       (error: unknown) => {
         if (callIsGone(error)) remember(null);
@@ -186,16 +195,22 @@ export function useWidgetRuntime(
     void reload();
   }, [reload]);
 
-  const receive = useCallback((message: WireHandoffMessage) => {
-    // The visitor's own words are on screen from the moment they were typed; the push is the
-    // host telling staff. A row the reload already brought is not doubled either.
-    if (message.role === "user") return;
-    setMessages((held) => (holds(held, message.messageId) ? held : [...held, heldFrom(message)]));
-  }, []);
+  const receive = useCallback(
+    (message: WireHandoffMessage) => {
+      // The visitor's own words are on screen from the moment they were typed; the push is the
+      // host telling staff. A row the reload already brought is not doubled either.
+      if (message.role === "user") return;
+      setMessages((held) => (holds(held, message.messageId) ? held : [...held, heldFrom(message)]));
+    },
+    [setMessages],
+  );
 
-  const replace = useCallback((id: string, next: (held: Held) => Held) => {
-    setMessages((held) => held.map((message) => (message.id === id ? next(message) : message)));
-  }, []);
+  const replace = useCallback(
+    (id: string, next: (held: Held) => Held) => {
+      setMessages((held) => held.map((message) => (message.id === id ? next(message) : message)));
+    },
+    [setMessages],
+  );
 
   /** Runs one bot turn under `callId`, filling `replyId` as it streams. */
   const runBot = useCallback(
@@ -298,13 +313,17 @@ export function useWidgetRuntime(
             // The chat changed hands since the state was read. Read it again and go through
             // the other door, once.
             const fresh = await desk.refresh(id);
+
             await through(fresh.status, id);
           } else if (callIsGone(error)) {
             // The host forgot the call. The words on screen are the visitor's and stay; the host
             // starts a fresh call for them, and a fresh call is always with the bot. Once.
             remember(null);
+
             const fresh = await api.createThread();
+
             remember(fresh);
+
             await bot(fresh);
           } else {
             throw error;
@@ -318,9 +337,11 @@ export function useWidgetRuntime(
           reason: controller.signal.aborted ? ("cancelled" as const) : ("error" as const),
           error: error instanceof Error ? error.message : String(error),
         };
+
         // Read through a widening: the closures above assign `reply`, which the narrowing here
         // cannot see.
         const id = (reply as Held | null)?.id;
+
         setMessages((held) =>
           id !== undefined && held.some((m) => m.id === id)
             ? held.map((m) => (m.id === id ? { ...m, status } : m))
@@ -328,10 +349,11 @@ export function useWidgetRuntime(
         );
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
+        
         setRunning(false);
       }
     },
-    [api, desk, messages, remember, replace, runBot],
+    [api, desk, messages, remember, replace, runBot, setMessages],
   );
 
   const onCancel = useCallback(async () => {
@@ -346,5 +368,18 @@ export function useWidgetRuntime(
     convertMessage: (message) => message,
   });
 
-  return { runtime, callId, receive, reload };
+  const older = useMemo<OlderMessagesSource | undefined>(
+    () =>
+      callId === null
+        ? undefined
+        : {
+            id: callId,
+            initialCursor: olderCursor,
+            fetchPage: (before) => api.history(callId, before),
+            merge: (page) => setMessages((held) => prependOlder(held, heldFromPage(page))),
+          },
+    [api, callId, olderCursor, setMessages],
+  );
+
+  return { runtime, callId, receive, reload, older };
 }

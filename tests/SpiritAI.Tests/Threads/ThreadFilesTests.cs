@@ -67,7 +67,7 @@ public sealed class ThreadFilesTests
         await conversations.CreateAsync("conversation-1", token);
         await conversations.AppendMessageAsync("conversation-1", ReplyWith("See [chart](sandbox:/mnt/data/chart.png)", "chart.png", "lost.csv"), token);
 
-        var stored = await conversations.LoadAsync("conversation-1", token);
+        var stored = await conversations.LoadWindowAsync("conversation-1", new TranscriptWindow(null, 1), token);
         var history = ThreadHistory.Of(stored!);
 
         var content = Assert.Single(history.Messages).Message.Content;

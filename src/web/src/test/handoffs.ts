@@ -7,7 +7,7 @@ export function stubHandoffsApi(over: Partial<HandoffsApi> = {}): HandoffsApi {
   return {
     list: vi.fn(),
     counts: vi.fn(),
-    messages: vi.fn(),
+    history: vi.fn(),
     claim: vi.fn(),
     finish: vi.fn(),
     reply: vi.fn(),

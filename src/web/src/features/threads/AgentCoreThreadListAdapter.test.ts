@@ -33,7 +33,7 @@ function fakeApi(overrides: Partial<ThreadsApi> = {}) {
     fetch: async () => wireThread({ remoteId: "call-1" }),
     patch: async (remoteId, body) => void patches.push({ remoteId, body }),
     remove: async (remoteId) => void removed.push(remoteId),
-    history: async () => ({ messages: [] }),
+    history: async () => ({ repository: { messages: [] }, nextCursor: null }),
     title: async function* () {},
     ...overrides,
   };

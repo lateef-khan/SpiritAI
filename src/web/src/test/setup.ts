@@ -9,23 +9,32 @@ import { vi } from "vitest";
  * to test; what a test here holds in place is what the rows say once drawn.
  */
 vi.mock("@tanstack/react-virtual", () => ({
-  useVirtualizer: ({
-    count,
-    estimateSize,
-  }: {
-    count: number;
-    estimateSize: (index: number) => number;
-  }) => ({
-    getVirtualItems: () =>
-      Array.from({ length: count }, (_, index) => ({
-        index,
-        key: index,
-        start: index * estimateSize(index),
-        size: estimateSize(index),
-        end: (index + 1) * estimateSize(index),
-        lane: 0,
-      })),
-    getTotalSize: () => count * estimateSize(0),
-    measureElement: () => {},
-  }),
+  useVirtualizer: (
+    options: {
+      count: number;
+      estimateSize: (index: number) => number;
+      getItemKey?: (index: number) => string | number;
+    } & Record<string, unknown>,
+  ) => {
+    const { count, estimateSize } = options;
+
+    return {
+      getVirtualItems: () =>
+        Array.from({ length: count }, (_, index) => ({
+          index,
+          key: options.getItemKey?.(index) ?? index,
+          start: index * estimateSize(index),
+          size: estimateSize(index),
+          end: (index + 1) * estimateSize(index),
+          lane: 0,
+        })),
+      getTotalSize: () => count * estimateSize(0),
+      measureElement: () => {},
+      // Every row is already drawn, so "the bottom" is always on screen.
+      isAtEnd: () => true,
+      scrollToEnd: () => {},
+      scrollToIndex: () => {},
+      options,
+    };
+  },
 }));

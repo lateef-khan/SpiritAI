@@ -5,11 +5,18 @@ import {
   ComposerAttachments,
   UserMessageAttachments,
 } from "@/components/assistant-ui/attachment";
+import { ComposerDraft } from "@/components/assistant-ui/draft";
+import { DayDivider } from "@/components/assistant-ui/elements/day-separator";
+import { ErrorState } from "@/components/assistant-ui/elements/error-state";
+import { MessageTiming as MessageTimingStats } from "@/components/assistant-ui/elements/message-timing";
 import { Sources, type Source } from "@/components/assistant-ui/elements/sources";
+import { StoppedRun } from "@/components/assistant-ui/elements/stopped-run";
+import { TypingIndicator } from "@/components/assistant-ui/elements/typing-indicator";
 import { File } from "@/components/assistant-ui/file";
 import { ThreadFollowupSuggestions } from "@/components/assistant-ui/follow-up-suggestions";
 import { Image } from "@/components/assistant-ui/image";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
+import { OpenUIAssistantMessagePart as OpenUIAssistantMessage } from "@/components/assistant-ui/openui-message";
 import {
   Reasoning,
   ReasoningContent,
@@ -17,6 +24,12 @@ import {
   ReasoningText,
   ReasoningTrigger,
 } from "@/components/assistant-ui/reasoning";
+import { Regenerate } from "@/components/assistant-ui/regenerate";
+import {
+  MessageSpeaker,
+  TranscriptModeContext,
+  useSpeaker,
+} from "@/components/assistant-ui/speaker";
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import {
   ToolGroupContent,
@@ -26,7 +39,14 @@ import {
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ThreadMessageList,
+  type ThreadMessageListHandle,
+} from "@/components/assistant-ui/ThreadMessageList";
+import type { OlderMessagesSource } from "@/lib/history";
+import { useMeasuredHeight } from "@/hooks/useMeasuredHeight";
 import { cn } from "@/lib/utils";
+import { useActionBarReload } from "@assistant-ui/core/react";
 import {
   ActionBarMorePrimitive,
   ActionBarPrimitive,
@@ -45,20 +65,6 @@ import {
   type PartState,
   type ToolCallMessagePartComponent,
 } from "@assistant-ui/react";
-import { ComposerDraft } from "@/components/assistant-ui/draft";
-import { OpenUIAssistantMessagePart as OpenUIAssistantMessage } from "@/components/assistant-ui/openui-message";
-import { Regenerate } from "@/components/assistant-ui/regenerate";
-import {
-  MessageSpeaker,
-  TranscriptModeContext,
-  useSpeaker,
-} from "@/components/assistant-ui/speaker";
-import { DayDivider } from "@/components/assistant-ui/elements/day-separator";
-import { ErrorState } from "@/components/assistant-ui/elements/error-state";
-import { MessageTiming as MessageTimingStats } from "@/components/assistant-ui/elements/message-timing";
-import { StoppedRun } from "@/components/assistant-ui/elements/stopped-run";
-import { TypingIndicator } from "@/components/assistant-ui/elements/typing-indicator";
-import { useActionBarReload } from "@assistant-ui/core/react";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -73,6 +79,7 @@ import {
 import {
   createContext,
   useContext,
+  useRef,
   useState,
   type ComponentType,
   type FC,
@@ -96,15 +103,8 @@ export type ThreadComponents = {
 
 export type ThreadProps = {
   components?: ThreadComponents | undefined;
-  /**
-   * Whether the viewport follows new words while the reader is at the bottom.
-   *
-   * Off by default, because the turn anchor is `top`: a new turn is pinned to the top of the
-   * viewport and following the bottom would fight that. A chat that grows while nobody here is
-   * running a turn — a person's reply landing over the socket — has no anchor to fight, and
-   * wants to follow.
-   */
-  followNewMessages?: boolean | undefined;
+  /** Where pages older than the loaded messages come from. Without one, none are asked for. */
+  olderMessages?: OlderMessagesSource | undefined;
 };
 
 const EMPTY_COMPONENTS: ThreadComponents = {};
@@ -152,27 +152,29 @@ const ThreadHistorySkeleton: FC = () => (
   </div>
 );
 
-export const Thread: FC<ThreadProps> = ({
-  components = EMPTY_COMPONENTS,
-  followNewMessages = false,
-}) => {
+export const Thread: FC<ThreadProps> = ({ components = EMPTY_COMPONENTS, olderMessages }) => {
   const isEmpty = useAuiState(isNewChatView);
 
   return (
     <ThreadComponentsContext.Provider value={components}>
       <TranscriptModeContext.Provider value={components.isTranscript ?? false}>
-        <ThreadRoot isEmpty={isEmpty} followNewMessages={followNewMessages} />
+        <ThreadRoot isEmpty={isEmpty} olderMessages={olderMessages} />
       </TranscriptModeContext.Provider>
     </ThreadComponentsContext.Provider>
   );
 };
 
-const ThreadRoot: FC<{ isEmpty: boolean; followNewMessages: boolean }> = ({
+const ThreadRoot: FC<{ isEmpty: boolean; olderMessages: OlderMessagesSource | undefined }> = ({
   isEmpty,
-  followNewMessages,
+  olderMessages,
 }) => {
   const { Welcome = ThreadWelcome, Composer: ComposerComponent = Composer } =
     useContext(ThreadComponentsContext);
+
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
+  const [setFooterElement, footerHeight] = useMeasuredHeight();
+  const listRef = useRef<ThreadMessageListHandle>(null);
+  const [atEnd, setAtEnd] = useState(true);
 
   return (
     <ThreadPrimitive.Root
@@ -185,10 +187,11 @@ const ThreadRoot: FC<{ isEmpty: boolean; followNewMessages: boolean }> = ({
       }}
     >
       <ThreadPrimitive.Viewport
-        turnAnchor="top"
-        autoScroll={followNewMessages}
+        ref={setScrollElement}
+        autoScroll={false}
+        scrollToBottomOnRunStart={false}
         data-slot="aui_thread-viewport"
-        className="relative flex flex-1 flex-col overflow-x-auto overflow-y-auto scroll-smooth"
+        className="relative flex flex-1 flex-col overflow-x-auto overflow-y-auto"
       >
         <div
           className={cn(
@@ -203,17 +206,26 @@ const ThreadRoot: FC<{ isEmpty: boolean; followNewMessages: boolean }> = ({
             <ThreadHistorySkeleton />
           </AuiIf>
 
-          <div data-slot="aui_message-group" className="mb-14 flex flex-col gap-y-6 empty:hidden">
-            <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
-          </div>
+          <ThreadMessageList
+            ref={listRef}
+            scrollElement={scrollElement}
+            paddingEnd={footerHeight}
+            Message={ThreadMessage}
+            onAtEndChange={setAtEnd}
+            olderMessages={olderMessages}
+          />
 
           <ThreadPrimitive.ViewportFooter
+            ref={setFooterElement}
             className={cn(
               "aui-thread-viewport-footer bg-background flex flex-col gap-4 overflow-visible pb-4 md:pb-6",
               !isEmpty && "sticky bottom-0 mt-auto rounded-t-(--composer-radius)",
             )}
           >
-            <ThreadScrollToBottom />
+            <ThreadScrollToBottom
+              atEnd={atEnd}
+              onScrollToEnd={() => listRef.current?.scrollToEnd({ behavior: "smooth" })}
+            />
             <ComposerDraft />
             <ThreadFollowupSuggestions />
             <ComposerComponent />
@@ -291,17 +303,20 @@ const ThreadMessage: FC = () => {
   );
 };
 
-const ThreadScrollToBottom: FC = () => {
+const ThreadScrollToBottom: FC<{ atEnd: boolean; onScrollToEnd: () => void }> = ({
+  atEnd,
+  onScrollToEnd,
+}) => {
   return (
-    <ThreadPrimitive.ScrollToBottom asChild>
-      <TooltipIconButton
-        tooltip="Scroll to bottom"
-        variant="outline"
-        className="aui-thread-scroll-to-bottom dark:border-border dark:bg-background dark:hover:bg-accent absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible"
-      >
-        <ArrowDownIcon />
-      </TooltipIconButton>
-    </ThreadPrimitive.ScrollToBottom>
+    <TooltipIconButton
+      tooltip="Scroll to bottom"
+      variant="outline"
+      disabled={atEnd}
+      onClick={onScrollToEnd}
+      className="aui-thread-scroll-to-bottom dark:border-border dark:bg-background dark:hover:bg-accent absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible"
+    >
+      <ArrowDownIcon />
+    </TooltipIconButton>
   );
 };
 

@@ -87,6 +87,7 @@ function scripted(responses: Response[]): { send: FetchLike; sent: Sent[] } {
 /** A fake host that mints ids in order, answers one history, and records what was said to a person. */
 function fakeApi(
   history: (callId: string) => Promise<ExportedMessageRepository>,
+  page: { nextCursor: string | null } = { nextCursor: null },
   say: (callId: string, text: string) => Promise<{ messageId: string }> = async () => ({
     messageId: "host-said",
   }),
@@ -107,7 +108,7 @@ function fakeApi(
         created.push(id);
         return id;
       },
-      history,
+      history: async (callId) => ({ repository: await history(callId), ...page }),
       handoffState: async () => WithBot,
       leaveEmail: async () => {},
       say: async (callId, text) => {

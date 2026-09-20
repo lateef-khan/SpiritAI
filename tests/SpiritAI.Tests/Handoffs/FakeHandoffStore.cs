@@ -92,7 +92,7 @@ internal sealed class FakeHandoffStore(TimeProvider clock, IConversations? conve
         {
             foreach (var row in rows.Where(h => h.Status == HandoffStatus.Human && h.AssigneeKey == staffKey))
             {
-                if (ReplyDue.Of(await conversations.ReadAsync(row.ConversationId, cancellationToken)))
+                if (ReplyDue.Of(await conversations.AllAsync(row.ConversationId, cancellationToken)))
                 {
                     awaitingReply++;
                 }

@@ -35,7 +35,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task ANewCallerHasNoThreads()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
 
         var page = await world.Owner.ListAsync();
 
@@ -46,7 +46,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task CreatingAThreadAnswersWithItsRemoteId()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
 
         var response = await world.Owner.PostAsync(Threads);
 
@@ -58,7 +58,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task ACreatedThreadIsInItsOwnersList()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
 
         var remoteId = await world.Owner.CreateThreadAsync();
         var page = await world.Owner.ListAsync();
@@ -69,7 +69,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task TitlingAThreadNamesItFromTheWordsTheBrowserSent()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
 
         var remoteId = await world.Owner.CreateThreadAsync();
 
@@ -83,7 +83,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task TitlingAThreadWithNoWordsLeavesItUnnamed()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
 
         var remoteId = await world.Owner.CreateThreadAsync();
 
@@ -96,7 +96,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task TitlingRefusesABodyThatIsNotAThreadsWorth()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
 
         var remoteId = await world.Owner.CreateThreadAsync();
 
@@ -112,7 +112,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task AStrangerCannotTitleSomebodyElsesThread()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
 
         var remoteId = await world.Owner.CreateThreadAsync();
         await world.SayAsync(remoteId, "the belt keeps slipping badly", "Try the tension bolt.");
@@ -126,7 +126,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task TitlingNeedsAToken()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
 
         var remoteId = await world.Owner.CreateThreadAsync();
 
@@ -138,7 +138,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task ANewThreadIsRegularAndUntitled()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
 
         var remoteId = await world.Owner.CreateThreadAsync();
         var thread = await world.Owner.FetchAsync(remoteId);
@@ -150,7 +150,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task OneCallersThreadIsNotInAnothersList()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
 
         await world.Owner.CreateThreadAsync();
         var page = await world.Stranger.ListAsync();
@@ -161,7 +161,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task RenamingAThreadShowsInTheList()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
 
         var response = await world.Owner.PatchAsync($"{Threads}/{remoteId}", new { title = "Treadmill belt slips" });
@@ -173,7 +173,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task ArchivingMovesAThreadOutOfTheRegularListing()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
 
         await world.Owner.PatchAsync($"{Threads}/{remoteId}", new { status = "archived" });
@@ -185,7 +185,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task UnarchivingBringsAThreadBack()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
         await world.Owner.PatchAsync($"{Threads}/{remoteId}", new { status = "archived" });
 
@@ -197,7 +197,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task AnUnknownStatusIsRefused()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
 
         var response = await world.Owner.PatchAsync($"{Threads}/{remoteId}", new { status = "burned" });
@@ -208,7 +208,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task CustomFieldsSurviveARoundTrip()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
 
         await world.Owner.PatchAsync($"{Threads}/{remoteId}", new { custom = new { pinned = true } });
@@ -221,7 +221,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task TheOwnersKeyNeverReachesTheBrowser()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
 
         // The key is kept beside the row so ownership is one read rather than a scan of the whole
@@ -229,13 +229,13 @@ public sealed class ThreadEndpointTests
         // could also read whose it is.
         var body = await world.Owner.RawAsync($"{Threads}/{remoteId}");
 
-        Assert.DoesNotContain(World.OwnerSubject, body, StringComparison.Ordinal);
+        Assert.DoesNotContain(ThreadWorld.OwnerSubject, body, StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task WritingCustomFieldsDoesNotCostTheOwnerTheirThread()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
 
         await world.Owner.PatchAsync($"{Threads}/{remoteId}", new { custom = new { pinned = true } });
@@ -247,7 +247,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task DeletingAThreadRemovesIt()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
 
         await world.Blobs.PutAsync(
@@ -265,7 +265,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task AStrangerCannotReadAThread()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
 
         var response = await world.Stranger.GetAsync($"{Threads}/{remoteId}");
@@ -278,7 +278,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task AStrangerCannotRenameAThread()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
 
         var response = await world.Stranger.PatchAsync($"{Threads}/{remoteId}", new { title = "mine now" });
@@ -290,7 +290,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task AStrangerCannotDeleteAThread()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
 
         var response = await world.Stranger.DeleteAsync($"{Threads}/{remoteId}");
@@ -302,7 +302,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task AnUnknownThreadIsNotFound()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
 
         var response = await world.Owner.GetAsync($"{Threads}/nothing-by-that-name");
 
@@ -312,7 +312,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task AListingPagesWithItsCursor()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         for (var i = 0; i < 3; i++)
         {
             await world.Owner.CreateThreadAsync();
@@ -330,7 +330,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task AnOversizedLimitIsCappedRatherThanRefused()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         await world.Owner.CreateThreadAsync();
 
         var response = await world.Owner.GetAsync($"{Threads}?limit=100000");
@@ -341,7 +341,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task WithoutATokenTheListIsShut()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
 
         var response = await world.Anonymous.GetAsync(Threads);
 
@@ -351,7 +351,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task ANewThreadHasNoMessages()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
 
         var history = await world.Owner.HistoryAsync(remoteId);
@@ -363,7 +363,7 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task AThreadsWordsComeBackChained()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
         await world.SayAsync(remoteId, "hello", "hi there");
 
@@ -376,201 +376,13 @@ public sealed class ThreadEndpointTests
     [Fact]
     public async Task AStrangerCannotReadAThreadsWords()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await ThreadWorld.StartAsync();
         var remoteId = await world.Owner.CreateThreadAsync();
         await world.SayAsync(remoteId, "hello", "hi there");
 
         var response = await world.Stranger.GetAsync($"{Threads}/{remoteId}/messages");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    /// <summary>The host, the store and the two callers one test needs.</summary>
-    private sealed class World : IAsyncDisposable
-    {
-        public const string OwnerSubject = "user_owner";
-        public const string StrangerSubject = "user_stranger";
-
-        private readonly IHost _host;
-
-        private World(IHost host, NeonAuthTestKit kit, IConversations store, InMemoryBlobStore blobs)
-        {
-            _host = host;
-            Store = store;
-            Blobs = blobs;
-            Owner = new Caller(host.GetTestClient(), kit.Token(subject: OwnerSubject));
-            Stranger = new Caller(host.GetTestClient(), kit.Token(subject: StrangerSubject));
-            Anonymous = new Caller(host.GetTestClient(), token: null);
-        }
-
-        public Caller Owner { get; }
-
-        public Caller Stranger { get; }
-
-        public Caller Anonymous { get; }
-
-        /// <summary>The store behind the routes, so a test can put words in a thread.</summary>
-        public IConversations Store { get; }
-
-        public InMemoryBlobStore Blobs { get; }
-
-        public static async Task<World> StartAsync()
-        {
-            var kit = new NeonAuthTestKit();
-            InMemoryBlobStore blobs = new();
-            Conversations store = new(new InMemoryConversationStore(), blobs);
-
-            var host = await ThreadTestHost.StartAsync(
-                kit,
-                services =>
-                {
-                    services.AddSingleton<IConversations>(store);
-                    services.AddSingleton<IConversationTitler>(new SpellingTitler(store));
-                },
-                app =>
-                {
-                    app.UseNeonAuthOnApi();
-                    app.UseRouting();
-                    app.UseEndpoints(endpoints => endpoints.MapThreads());
-                });
-
-            return new World(host, kit, store, blobs);
-        }
-
-        /// <summary>Writes one finished turn into store 1, the way a real turn would.</summary>
-        public async ValueTask SayAsync(string remoteId, string said, string heard)
-        {
-            await Store.AppendMessageAsync(remoteId, new ChatMessage(ChatRole.User, said), TestContext.Current.CancellationToken);
-            await Store.AppendMessageAsync(remoteId, new ChatMessage(ChatRole.Assistant, heard), TestContext.Current.CancellationToken);
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            await _host.StopAsync(TestContext.Current.CancellationToken);
-            _host.Dispose();
-        }
-    }
-
-    /// <summary>
-    /// A titler with no model behind it, standing in for <see cref="IConversationTitler"/>.
-    /// </summary>
-    private sealed class SpellingTitler(IConversations conversations) : IConversationTitler
-    {
-        public async IAsyncEnumerable<string> GenerateAsync(
-            string conversationId,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            var rows = await conversations.ReadAsync(conversationId, cancellationToken).ConfigureAwait(false);
-
-            if (rows.Count == 0)
-            {
-                yield break;
-            }
-
-            var words = rows[0].Content.Text.Split(' ').Take(3).ToArray();
-
-            for (var at = 0; at < words.Length; at++)
-            {
-                yield return at == 0 ? words[at] : " " + words[at];
-            }
-
-            await conversations.RenameAsync(conversationId, string.Join(' ', words), cancellationToken).ConfigureAwait(false);
-        }
-
-        public async IAsyncEnumerable<string> GenerateFromAsync(
-            string conversationId,
-            IReadOnlyList<ChatMessage> messages,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            var words = string.Join(' ', messages.Select(message => message.Text));
-
-            if (string.IsNullOrWhiteSpace(words))
-            {
-                yield break;
-            }
-
-            var picked = words.Split(' ').Take(3).ToArray();
-
-            for (var at = 0; at < picked.Length; at++)
-            {
-                yield return at == 0 ? picked[at] : " " + picked[at];
-            }
-
-            await conversations.RenameAsync(conversationId, string.Join(' ', picked), cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    /// <summary>One signed-in browser, or one that is not signed in at all.</summary>
-    private sealed class Caller(HttpClient client, string? token)
-    {
-        private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
-        public Task<HttpResponseMessage> GetAsync(string url) => SendAsync(HttpMethod.Get, url, body: null);
-
-        public Task<HttpResponseMessage> PostAsync(string url, object? body = null) => SendAsync(HttpMethod.Post, url, body);
-
-        public Task<HttpResponseMessage> PatchAsync(string url, object body) => SendAsync(HttpMethod.Patch, url, body);
-
-        public Task<HttpResponseMessage> DeleteAsync(string url) => SendAsync(HttpMethod.Delete, url, body: null);
-
-        public async Task<string> CreateThreadAsync()
-        {
-            var response = await PostAsync(Threads);
-            response.EnsureSuccessStatusCode();
-            return (await response.ReadAsync<ThreadCreated>()).RemoteId;
-        }
-
-        public async Task<ThreadPage> ListAsync(string query = "")
-        {
-            var response = await GetAsync(Threads + query);
-            response.EnsureSuccessStatusCode();
-            return await response.ReadAsync<ThreadPage>();
-        }
-
-        public async Task<ThreadSummary> FetchAsync(string remoteId)
-        {
-            var response = await GetAsync($"{Threads}/{remoteId}");
-            response.EnsureSuccessStatusCode();
-            return await response.ReadAsync<ThreadSummary>();
-        }
-
-        public async Task<ThreadHistory> HistoryAsync(string remoteId)
-        {
-            var response = await GetAsync($"{Threads}/{remoteId}/messages");
-            response.EnsureSuccessStatusCode();
-            return await response.ReadAsync<ThreadHistory>();
-        }
-
-        public async Task<string> TitleAsync(string remoteId, object body)
-        {
-            var response = await PostAsync($"{Threads}/{remoteId}/title", body);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        }
-
-        public async Task<string> RawAsync(string url)
-        {
-            var response = await GetAsync(url);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        }
-
-        private Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, object? body)
-        {
-            var request = new HttpRequestMessage(method, url);
-
-            if (token is not null)
-            {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            }
-
-            if (body is not null)
-            {
-                request.Content = JsonContent.Create(body, options: Json);
-            }
-
-            return client.SendAsync(request, TestContext.Current.CancellationToken);
-        }
     }
 }
 

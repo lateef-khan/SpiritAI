@@ -50,6 +50,7 @@ public static class ThreadEndpointRouteBuilderExtensions
         endpoints.MapGet($"{One}/messages", HistoryAsync)
             .Describe("getThreadMessages")
             .Produces<ThreadHistory>()
+            .ProducesProblem(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound);
 
         // Left out of the document on purpose. This route answers with a text stream the browser
@@ -169,17 +170,28 @@ public static class ThreadEndpointRouteBuilderExtensions
         => ForOwnedAsync(http, conversations, remoteId, cancellationToken, (_, record)
             => Task.FromResult<IResult>(TypedResults.Ok(ThreadSummary.Of(record))));
 
-    /// <summary>One thread's whole conversation, in the shape the browser restores it from.</summary>
+    /// <summary>One window of a thread's words, newest first, in the shape the browser restores it from.</summary>
     private static Task<IResult> HistoryAsync(
         HttpContext http,
         IConversations conversations,
         string remoteId,
+        [AsParameters] HistoryQuery query,
         CancellationToken cancellationToken)
-        => ForCallerAsync(http, async key
-            => await conversations.LoadAsync(remoteId, cancellationToken).ConfigureAwait(false) is { } stored
-                && ThreadOwnership.Owns(stored.Conversation, key)
-                ? TypedResults.Ok(ThreadHistory.Of(stored))
-                : TypedResults.NotFound());
+        => ForCallerAsync(http, async key =>
+        {
+            if (!HistoryWindow.TryRead(query, out var window))
+            {
+                return HistoryWindow.Refuse(query);
+            }
+
+            if (await conversations.LoadWindowAsync(remoteId, window, cancellationToken).ConfigureAwait(false) is not { } stored
+                || !ThreadOwnership.Owns(stored.Conversation, key))
+            {
+                return TypedResults.NotFound();
+            }
+
+            return TypedResults.Ok(ThreadHistory.Of(stored));
+        });
 
     /// <summary>Names one thread from the words the browser sent.</summary>
     /// <remarks>

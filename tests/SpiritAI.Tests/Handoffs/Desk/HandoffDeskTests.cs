@@ -72,7 +72,7 @@ public sealed class HandoffDeskTests
         var said = await _desk.VisitorSaysAsync(conversationId, "Still there?", Cancel);
 
         Assert.Null(said);
-        Assert.Empty(await _conversations.ReadAsync(conversationId, Cancel));
+        Assert.Empty(await _conversations.AllAsync(conversationId, Cancel));
         Assert.Empty(_notifier.Events);
     }
 
@@ -132,7 +132,7 @@ public sealed class HandoffDeskTests
     /// <summary>The reply is in the chat, signed, and was pushed as the message returned.</summary>
     private async Task AssertStoredAndPushedAsync(string conversationId, HandoffMessage created)
     {
-        var stored = Assert.Single(await _conversations.ReadAsync(conversationId, Cancel));
+        var stored = Assert.Single(await _conversations.AllAsync(conversationId, Cancel));
         Assert.Equal(created.MessageId, stored.MessageId);
         Assert.Equal(ChatRole.Assistant, stored.Content.Role);
         Assert.Equal(created.Text, stored.Content.Text);

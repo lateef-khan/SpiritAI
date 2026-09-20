@@ -124,7 +124,7 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
 
     /// <summary>Every word in a chat, as the store holds it.</summary>
     public async Task<IReadOnlyList<ConversationMessage>> WordsAsync(string conversationId)
-        => await Conversations.ReadAsync(conversationId, TestContext.Current.CancellationToken);
+        => await Conversations.AllAsync(conversationId, TestContext.Current.CancellationToken);
 
     /// <summary>Puts this many members of staff on a socket, each a different person.</summary>
     public async Task StaffOnlineAsync(int count)

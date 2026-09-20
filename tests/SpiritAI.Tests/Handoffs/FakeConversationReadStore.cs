@@ -25,7 +25,7 @@ internal sealed class FakeConversationReadStore(IConversations conversations) : 
 
     public async Task MarkSeenAsync(string conversationId, string staffKey, CancellationToken cancellationToken)
     {
-        var rows = await conversations.ReadAsync(conversationId, cancellationToken);
+        var rows = await conversations.AllAsync(conversationId, cancellationToken);
 
         if (rows.Count == 0)
         {

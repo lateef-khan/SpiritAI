@@ -136,7 +136,7 @@ internal sealed class StaffHandoffWorld : IAsyncDisposable
 
     /// <summary>The last word in a chat, as the store holds it.</summary>
     public async Task<ConversationMessage> LastWordAsync(string conversationId)
-        => (await Conversations.ReadAsync(conversationId, TestContext.Current.CancellationToken))[^1];
+        => (await Conversations.AllAsync(conversationId, TestContext.Current.CancellationToken))[^1];
 
     public async ValueTask DisposeAsync()
     {

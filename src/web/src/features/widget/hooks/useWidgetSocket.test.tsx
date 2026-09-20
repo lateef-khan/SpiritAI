@@ -53,6 +53,7 @@ function fakeWidget(callId: string | null) {
     reload: async () => {
       widget.reloaded += 1;
     },
+    older: undefined,
   };
   return widget satisfies ReturnType<typeof useWidgetRuntime>;
 }

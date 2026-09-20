@@ -90,15 +90,21 @@ public static class PublicThreadEndpoints
             return TypedResults.Created($"{Pattern}/{conversationId}/messages", new ThreadCreated(conversationId, ExternalId: null));
         });
 
-    /// <summary>One thread's whole conversation, in the shape a reloaded widget restores it from.</summary>
+    /// <summary>One window of a thread's words, newest first, in the shape a reloaded widget restores it from.</summary>
     private static Task<IResult> HistoryAsync(
         HttpContext http,
         IConversations conversations,
         string conversationId,
+        [AsParameters] HistoryQuery query,
         CancellationToken cancellationToken)
         => ForVisitorAsync(http, async key =>
         {
-            if (await conversations.LoadAsync(conversationId, cancellationToken).ConfigureAwait(false) is not { } stored
+            if (!HistoryWindow.TryRead(query, out var window))
+            {
+                return HistoryWindow.Refuse(query);
+            }
+
+            if (await conversations.LoadWindowAsync(conversationId, window, cancellationToken).ConfigureAwait(false) is not { } stored
                 || !ThreadOwnership.Owns(stored.Conversation, key))
             {
                 return TypedResults.NotFound();

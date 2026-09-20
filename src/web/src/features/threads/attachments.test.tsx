@@ -3,6 +3,7 @@ import { AssistantRuntimeProvider, type AssistantRuntime } from "@assistant-ui/r
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 import { useAgentCoreRuntime } from "./AgentCoreRuntime.ts";
+import { queryWrapper } from "@/test/query.tsx";
 
 /**
  * That the composer accepts a file at all.
@@ -32,7 +33,8 @@ function mount() {
     );
   }
 
-  render(<Harness />);
+  const { wrapper } = queryWrapper();
+  render(<Harness />, { wrapper });
   return () => runtime!;
 }
 

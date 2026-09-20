@@ -11,6 +11,7 @@ import { type FetchLike } from "../threads/transport.ts";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
+import { queryWrapper } from "@/test/query.tsx";
 /**
  * The OpenUI text renderer, Renderer-only: every reply is one openui-lang program and the
  * part text goes straight to the Renderer. Plain prose lives inside a TextContent; the
@@ -61,6 +62,7 @@ type Aui = AssistantClient;
 
 function mount(fetch: FetchLike) {
   const captured: { aui?: Aui } = {};
+  const { wrapper } = queryWrapper();
   function Harness() {
     const runtime = useAgentCoreRuntime("/v1/responses", (url, init) => fetch(url, init));
     return (
@@ -70,7 +72,7 @@ function mount(fetch: FetchLike) {
       </AssistantRuntimeProvider>
     );
   }
-  render(<Harness />);
+  render(<Harness />, { wrapper });
   if (!captured.aui) throw new Error("the harness never captured its aui handle.");
   return captured.aui;
 }

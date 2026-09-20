@@ -29,7 +29,7 @@ function fakeApi(handoffState: (callId: string) => Promise<HandoffState>): {
     emails,
     api: {
       createThread: async () => "call-1",
-      history: async () => ({ messages: [] }),
+      history: async () => ({ repository: { messages: [] }, nextCursor: null }),
       handoffState,
       leaveEmail: async (callId, email) => {
         emails.push({ callId, email });
