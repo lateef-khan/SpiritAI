@@ -3,6 +3,7 @@ using System.Text.Json;
 using AgentCore.Application.Tools.Registry;
 
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.AI;
 
 namespace SpiritAI.Lookup;
@@ -18,7 +19,7 @@ public static class LookupEndpointRouteBuilderExtensions
     /// <summary>Where one work order is read.</summary>
     public const string OrderPattern = "/v1/orders/{orderNumber}";
 
-    /// <summary>Registers the lookup and the way it reaches DAB.</summary>
+    /// <summary>Registers the lookup, the cache in front of it, and the way it reaches DAB.</summary>
     /// <param name="services">The host's services.</param>
     /// <returns>The same collection.</returns>
     public static IServiceCollection AddUnitLookup(this IServiceCollection services)
@@ -48,6 +49,11 @@ public static class LookupEndpointRouteBuilderExtensions
         });
 
         services.AddSingleton(provider => new UnitLookup(provider.GetRequiredService<ToolInvoker>()));
+
+        services.AddSingleton(provider => new CachedUnitLookup(
+            provider.GetRequiredService<UnitLookup>(),
+            provider.GetRequiredService<HybridCache>()));
+        
         services.AddSingleton(provider => new CustomerLookup(provider.GetRequiredService<ToolInvoker>()));
 
         return services;
@@ -77,12 +83,12 @@ public static class LookupEndpointRouteBuilderExtensions
     /// here runs behind a helper the way <c>Threads/</c> does, so there is no union to widen and
     /// no reason to declare the shapes separately from the code that returns them.
     /// </remarks>
-    /// <param name="lookup">Reads the tools.</param>
+    /// <param name="lookup">Reads the tools, or what they answered a moment ago.</param>
     /// <param name="serial">Sixteen digits.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>The unit, 400 for a serial that is not one, or 404 for a machine nobody sold.</returns>
     private static async Task<Results<Ok<UnitDocument>, NotFound, ProblemHttpResult>> UnitAsync(
-        UnitLookup lookup,
+        CachedUnitLookup lookup,
         string serial,
         CancellationToken cancellationToken)
     {
@@ -97,12 +103,12 @@ public static class LookupEndpointRouteBuilderExtensions
     }
 
     /// <summary>One work order and the part lines on it.</summary>
-    /// <param name="lookup">Reads the tools.</param>
+    /// <param name="lookup">Reads the tools, or what they answered a moment ago.</param>
     /// <param name="orderNumber">The <c>845435-1</c> key.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The order, 400 for a key that is not one, or 404 when no order carries it.</returns>
     private static async Task<Results<Ok<OrderDocument>, NotFound, ProblemHttpResult>> OrderAsync(
-        UnitLookup lookup,
+        CachedUnitLookup lookup,
         string orderNumber,
         CancellationToken cancellationToken)
     {

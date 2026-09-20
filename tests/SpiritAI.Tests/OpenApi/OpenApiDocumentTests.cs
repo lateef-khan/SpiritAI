@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using AgentCore.Application.Cache;
 using AgentCore.Application.Conversation;
 using AgentCore.Application.Conversation.Memory;
 using AgentCore.Application.Ports;
@@ -194,8 +195,9 @@ public sealed class OpenApiDocumentTests
                     // request bodies. Nothing calls them: no route is ever invoked here.
                     services.AddSingleton<IConversations>(new Conversations(new InMemoryConversationStore(), blobs: null));
                     services.AddSingleton<IConversationTitler>(new SilentTitler());
-                    services.AddSingleton(new UnitLookup(
-                        (_, _, _) => ValueTask.FromResult(default(System.Text.Json.JsonElement))));
+                    services.AddSingleton(new CachedUnitLookup(
+                        new UnitLookup((_, _, _) => ValueTask.FromResult(default(System.Text.Json.JsonElement))),
+                        PassThroughHybridCache.Instance));
 
                     // The inbox's routes, present so the route builder reads them as injected
                     // services. Nothing calls them: no route is ever invoked here, so a fake
