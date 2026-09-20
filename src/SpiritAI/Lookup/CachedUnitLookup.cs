@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Caching.Hybrid;
 
+using SpiritAI.Caching;
+
 namespace SpiritAI.Lookup;
 
 /// <summary>
@@ -19,11 +21,6 @@ public sealed class CachedUnitLookup(UnitLookup inner, HybridCache cache)
 
     private const string OrderPrefix = "spirit:order:";
 
-    private static readonly HybridCacheEntryOptions ReadOnly = new()
-    {
-        Flags = HybridCacheEntryFlags.DisableUnderlyingData,
-    };
-
     private static readonly HybridCacheEntryOptions Write = new() { Expiration = Lifetime };
 
     private readonly UnitLookup _inner = inner ?? throw new ArgumentNullException(nameof(inner));
@@ -37,7 +34,7 @@ public sealed class CachedUnitLookup(UnitLookup inner, HybridCache cache)
 
         var key = UnitPrefix + serial;
 
-        if (await RecallAsync<UnitDocument>(key, cancellationToken).ConfigureAwait(false) is { } remembered)
+        if (await _cache.PeekAsync<UnitDocument>(key, cancellationToken).ConfigureAwait(false) is { } remembered)
         {
             return remembered;
         }
@@ -59,7 +56,7 @@ public sealed class CachedUnitLookup(UnitLookup inner, HybridCache cache)
 
         var key = OrderPrefix + orderNumber;
 
-        if (await RecallAsync<OrderDocument>(key, cancellationToken).ConfigureAwait(false) is { } remembered)
+        if (await _cache.PeekAsync<OrderDocument>(key, cancellationToken).ConfigureAwait(false) is { } remembered)
         {
             return remembered;
         }
@@ -73,14 +70,4 @@ public sealed class CachedUnitLookup(UnitLookup inner, HybridCache cache)
 
         return order;
     }
-
-    /// <summary>
-    /// A plain read. <see cref="HybridCache"/> has none, so this is a create that is told not to
-    /// create: the factory never runs, and a miss is <see langword="null"/>.
-    /// </summary>
-    private async Task<T?> RecallAsync<T>(string key, CancellationToken cancellationToken)
-        where T : class
-        => await _cache
-            .GetOrCreateAsync(key, static _ => ValueTask.FromResult<T?>(null), ReadOnly, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
 }
