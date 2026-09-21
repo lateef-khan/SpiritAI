@@ -9,7 +9,7 @@
     <ProjectReference Include="$(AgentCoreRoot)/src/AgentCore.Hosting/AgentCore.Hosting.csproj" />
   </ItemGroup>
   <ItemGroup Condition="'$(UseLocalAgentCore)' != 'true'">
-    <PackageReference Include="AgentCore.Hosting" Version="0.10.1" />
+    <PackageReference Include="AgentCore.Hosting" Version="0.10.2" />
   </ItemGroup>
 
   <!--
@@ -47,6 +47,7 @@
 
   <ItemGroup>
     <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.8.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.2" />
   </ItemGroup>
 
   <ItemGroup>
