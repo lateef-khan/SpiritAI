@@ -13,7 +13,7 @@ internal sealed class VisitorCaller(HttpClient client, string? visitorKey)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    /// <summary>The key this widget's calls are filed under, or <see langword="null"/> when it sends none.</summary>
+    /// <summary>The key this widget's conversations are filed under, or <see langword="null"/> when it sends none.</summary>
     public string? Key => visitorKey is null ? null : VisitorPrincipal.KeyOf(visitorKey);
 
     public Task<HttpResponseMessage> GetAsync(string url) => SendAsync(HttpMethod.Get, url, body: null);

@@ -26,6 +26,11 @@ public sealed class UnitLookup(ToolInvoker invoke)
     /// <summary>The most rows one call to search_parts can answer.</summary>
     private const int PartsTop = 100;
 
+    /// <summary>
+    /// The most pages of parts read for one machine.
+    /// </summary>
+    private const int PartsPages = 10;
+
     private readonly ToolInvoker _invoke = invoke
         ?? throw new ArgumentNullException(nameof(invoke));
 
@@ -69,8 +74,8 @@ public sealed class UnitLookup(ToolInvoker invoke)
 
         var history = ReadAsync("get_service_history_by_sn", new() { ["SerialNo"] = serial }, cancellationToken);
 
-        var parts = ReadAsync("search_parts", new() { ["SerialNo"] = serial, ["Top"] = PartsTop }, cancellationToken);
-        
+        var parts = ReadPartsAsync(serial, cancellationToken);
+
         var warranty = ReadAsync(
             "read_records",
             new()
@@ -82,22 +87,22 @@ public sealed class UnitLookup(ToolInvoker invoke)
 
         await Task.WhenAll(history, parts, warranty).ConfigureAwait(false);
 
-        var calls = await history.ConfigureAwait(false);
+        var conversations = await history.ConfigureAwait(false);
 
         var pieces = await parts.ConfigureAwait(false);
-        
+
         var terms = await warranty.ConfigureAwait(false);
 
         // The stored procedure raises rather than returning nothing when a serial resolves to no
         // model, so a serial nobody has ever sold fails both of these rather than one.
-        if (calls is null && pieces is null)
+        if (conversations is null && pieces is null)
         {
             return null;
         }
 
         List<UnitSection> unavailable = [];
 
-        if (calls is null)
+        if (conversations is null)
         {
             unavailable.Add(UnitSection.Jobs);
             unavailable.Add(UnitSection.History);
@@ -108,15 +113,15 @@ public sealed class UnitLookup(ToolInvoker invoke)
             unavailable.Add(UnitSection.Parts);
         }
 
-        var header = HeaderOf(serial, modelNo, calls, pieces);
+        var header = HeaderOf(serial, modelNo, conversations, pieces);
 
         if (header is null)
         {
             unavailable.Add(UnitSection.Header);
         }
 
-        var jobs = calls?.Select(JobOf).OrderByDescending(job => job.CalledOn).ToList();
-        var covered = TermsOf(terms, header?.ModelVersion, header?.PurchasedOn);
+        var jobs = conversations?.Select(JobOf).OrderByDescending(job => job.CalledOn).ToList();
+        var covered = WarrantyTerms.Of(terms, header?.ModelVersion, header?.PurchasedOn);
 
         if (covered is null)
         {
@@ -173,10 +178,48 @@ public sealed class UnitLookup(ToolInvoker invoke)
             [.. rows.Where(row => DabRow.Text(row, "PartNo") is not null).Select(LineOf)]);
     }
 
-    /// <summary>Calls one tool and reads its rows, or nothing when it refused.</summary>
+    /// <summary>Reads the whole parts list, a page at a time.</summary>
+    /// <remarks>
+    /// The panel is a screen, not a prompt, so nothing here has to fit a context window: it reads
+    /// until <c>TotalRows</c> says there is no more. A page that fails makes the whole section
+    /// unavailable, because a list that is quietly short reads as a machine with fewer parts.
+    /// </remarks>
+    /// <param name="serial">The machine.</param>
+    /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <returns>Every row, or <see langword="null"/> when any page could not be read.</returns>
+    private async Task<IReadOnlyList<JsonElement>?> ReadPartsAsync(string serial, CancellationToken cancellationToken)
+    {
+        List<JsonElement> rows = [];
+
+        for (var page = 0; page < PartsPages; page++)
+        {
+            var read = await ReadAsync(
+                "search_parts",
+                new() { ["SerialNo"] = serial, ["Top"] = PartsTop, ["Skip"] = page * PartsTop },
+                cancellationToken).ConfigureAwait(false);
+
+            if (read is null)
+            {
+                return null;
+            }
+
+            rows.AddRange(read);
+
+            var total = read.Count > 0 ? DabRow.Number(read[0], "TotalRows") : null;
+
+            if (read.Count < PartsTop || total is null || rows.Count >= total)
+            {
+                break;
+            }
+        }
+
+        return rows;
+    }
+
+    /// <summary>Conversations one tool and reads its rows, or nothing when it refused.</summary>
     /// <param name="toolId">The tool to call.</param>
     /// <param name="arguments">Its arguments.</param>
-    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <param name="cancellationToken">Cancels the conversation.</param>
     /// <returns>The rows, or <see langword="null"/> when the tool failed or answered nothing.</returns>
     private async Task<IReadOnlyList<JsonElement>?> ReadAsync(
         string toolId,
@@ -198,19 +241,19 @@ public sealed class UnitLookup(ToolInvoker invoke)
     /// <summary>Builds the pinned facts out of whichever tool answered.</summary>
     /// <param name="serial">The serial that was asked for.</param>
     /// <param name="modelNo">Its first six digits.</param>
-    /// <param name="calls">The service history rows, or nothing.</param>
+    /// <param name="conversations">The service history rows, or nothing.</param>
     /// <param name="pieces">The parts rows, or nothing.</param>
     /// <returns>The header, or <see langword="null"/> when neither tool answered a row.</returns>
     private static UnitHeader? HeaderOf(
         string serial,
         string modelNo,
-        IReadOnlyList<JsonElement>? calls,
+        IReadOnlyList<JsonElement>? conversations,
         IReadOnlyList<JsonElement>? pieces)
     {
-        var call = calls is { Count: > 0 } ? calls[0] : (JsonElement?)null;
+        var conversation = conversations is { Count: > 0 } ? conversations[0] : (JsonElement?)null;
         var piece = pieces is { Count: > 0 } ? pieces[0] : (JsonElement?)null;
 
-        if (call is null && piece is null)
+        if (conversation is null && piece is null)
         {
             return null;
         }
@@ -220,18 +263,38 @@ public sealed class UnitLookup(ToolInvoker invoke)
         return new UnitHeader(
             serial,
             modelNo,
-            (call is { } c ? DabRow.Number(c, "ModelVersion") : null) ?? (piece is { } p ? DabRow.Number(p, "ModelVersion") : null),
-            (call is { } c2 ? DabRow.Text(c2, "ModelName") : null) ?? (piece is { } p2 ? DabRow.Text(p2, "ModelName") : null),
-            call is { } c3 ? DabRow.Text(c3, "FG") : null,
-            call is { } c4 && DabRow.Flag(c4, "Sole") is true,
-            call is { } c5 ? DabRow.Text(c5, "MfgDate") : null,
-            call is { } c6 ? DabRow.Moment(c6, "PurchasedDate") : null,
-            call is { } c7 ? DabRow.Moment(c7, "SetupDate") : null);
+            (conversation is { } c ? DabRow.Number(c, "ModelVersion") : null) ?? (piece is { } p ? DabRow.Number(p, "ModelVersion") : null),
+            (conversation is { } c2 ? DabRow.Text(c2, "ModelName") : null) ?? (piece is { } p2 ? DabRow.Text(p2, "ModelName") : null),
+            conversation is { } c3 ? DabRow.Text(c3, "FG") : null,
+            conversation is { } c4 && DabRow.Flag(c4, "Sole") is true,
+            conversation is { } c5 ? DabRow.Text(c5, "MfgDate") : null,
+            conversation is { } c6 ? DabRow.Moment(c6, "PurchasedDate") : null,
+            conversation is { } c7 ? DabRow.Moment(c7, "SetupDate") : null,
+            conversation is { } c8 ? OwnerOf(c8) : null);
+    }
+
+    /// <summary>Reads who a machine is registered to.</summary>
+    /// <param name="row">One row of the history rowset, which repeats the owner on every row.</param>
+    /// <returns>The owner, or <see langword="null"/> when the row carries no contact column at all.</returns>
+    private static UnitOwner? OwnerOf(JsonElement row)
+    {
+        UnitOwner owner = new(
+            DabRow.Text(row, "CustomerName"),
+            DabRow.Text(row, "Address"),
+            DabRow.Text(row, "City"),
+            DabRow.Text(row, "State"),
+            DabRow.Text(row, "Zip"),
+            DabRow.Text(row, "Phone"),
+            DabRow.Text(row, "Phone2"),
+            DabRow.Text(row, "Email"),
+            DabRow.Text(row, "DealerNo"));
+
+        return owner == new UnitOwner(null, null, null, null, null, null, null, null, null) ? null : owner;
     }
 
     /// <summary>Reads one service call.</summary>
     /// <param name="row">One row of the history rowset.</param>
-    /// <returns>The call, as the panel lists it.</returns>
+    /// <returns>The conversation, as the panel lists it.</returns>
     private static UnitJob JobOf(JsonElement row)
     {
         var serviceId = DabRow.Number(row, "ServiceId") ?? 0;
@@ -244,7 +307,7 @@ public sealed class UnitLookup(ToolInvoker invoke)
             orderId,
             StatusOf(word),
             word,
-            DabRow.Moment(row, "CallDate"),
+            DabRow.Moment(row, "ConversationDate"),
             DabRow.Moment(row, "ServiceDate"),
             DabRow.Text(row, "ServiceRep"),
             DabRow.Text(row, "Description"),
@@ -270,62 +333,4 @@ public sealed class UnitLookup(ToolInvoker invoke)
     /// <returns>The line.</returns>
     private static OrderLine LineOf(JsonElement row)
         => new(DabRow.Text(row, "PartNo"), DabRow.Text(row, "PartDesc"), DabRow.Number(row, "ItemShipped"), DabRow.Flag(row, "IsReturned") is true);
-
-    /// <summary>Counts each of the model's warranty periods forward from the purchase date.</summary>
-    /// <remarks>
-    /// The periods are held in days, one column per category, and a model carries a row per version.
-    /// A machine with no purchase date still lists what it is entitled to; it just cannot say when
-    /// any of it runs out.
-    /// </remarks>
-    /// <param name="rows">The <c>ModelWarranty</c> rows for this model, or nothing.</param>
-    /// <param name="version">Which revision this serial falls in.</param>
-    /// <param name="purchased">When the machine was bought.</param>
-    /// <returns>The terms, or <see langword="null"/> when the table could not be read.</returns>
-    private static IReadOnlyList<WarrantyTerm>? TermsOf(
-        IReadOnlyList<JsonElement>? rows,
-        int? version,
-        DateTimeOffset? purchased)
-    {
-        if (rows is null)
-        {
-            return null;
-        }
-
-        var row = rows.FirstOrDefault(r => version is null || DabRow.Number(r, "Version") == version);
-
-        if (row.ValueKind != JsonValueKind.Object)
-        {
-            row = rows.Count > 0 ? rows[^1] : default;
-        }
-
-        if (row.ValueKind != JsonValueKind.Object)
-        {
-            return [];
-        }
-
-        var today = DateTimeOffset.UtcNow;
-
-        return
-        [
-            .. new[]
-            {
-                ("Labor", "LaborPeriod"),
-                ("Parts", "Part2Period"),
-                ("Wear parts", "Part1Period"),
-                ("Frame", "Part3Period"),
-                ("Deck", "Deck"),
-                ("Motor", "Motor"),
-                ("Electronics", "Electronics"),
-                ("Console", "Console"),
-            }
-            .Select(term => (term.Item1, Days: DabRow.Number(row, term.Item2)))
-            .Where(term => term.Days is > 0)
-            .Select(term =>
-            {
-                var expires = purchased?.AddDays(term.Days!.Value);
-
-                return new WarrantyTerm(term.Item1, term.Days!.Value, expires, expires is { } end ? end > today : null);
-            }),
-        ];
-    }
 }

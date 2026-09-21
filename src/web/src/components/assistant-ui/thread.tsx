@@ -5,11 +5,19 @@ import {
   ComposerAttachments,
   UserMessageAttachments,
 } from "@/components/assistant-ui/attachment";
+import { ComposerDraft } from "@/components/assistant-ui/draft";
+import { CompactionNoteUI } from "@/components/assistant-ui/elements/compaction-note";
+import { DayDivider } from "@/components/assistant-ui/elements/day-separator";
+import { ErrorState } from "@/components/assistant-ui/elements/error-state";
+import { MessageTiming as MessageTimingStats } from "@/components/assistant-ui/elements/message-timing";
 import { Sources, type Source } from "@/components/assistant-ui/elements/sources";
+import { StoppedRun } from "@/components/assistant-ui/elements/stopped-run";
+import { TypingIndicator } from "@/components/assistant-ui/elements/typing-indicator";
 import { File } from "@/components/assistant-ui/file";
 import { ThreadFollowupSuggestions } from "@/components/assistant-ui/follow-up-suggestions";
 import { Image } from "@/components/assistant-ui/image";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
+import { OpenUIAssistantMessagePart as OpenUIAssistantMessage } from "@/components/assistant-ui/openui-message";
 import {
   Reasoning,
   ReasoningContent,
@@ -17,6 +25,12 @@ import {
   ReasoningText,
   ReasoningTrigger,
 } from "@/components/assistant-ui/reasoning";
+import { Regenerate } from "@/components/assistant-ui/regenerate";
+import {
+  MessageSpeaker,
+  TranscriptModeContext,
+  useSpeaker,
+} from "@/components/assistant-ui/speaker";
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import {
   ToolGroupContent,
@@ -26,12 +40,18 @@ import {
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ThreadMessageList,
+  type ThreadMessageListHandle,
+} from "@/components/assistant-ui/ThreadMessageList";
+import type { OlderMessagesSource } from "@/lib/history";
+import { useMeasuredHeight } from "@/hooks/useMeasuredHeight";
 import { cn } from "@/lib/utils";
+import { useActionBarReload } from "@assistant-ui/core/react";
 import {
   ActionBarMorePrimitive,
   ActionBarPrimitive,
   AuiIf,
-  BranchPickerPrimitive,
   ComposerPrimitive,
   groupPartByType,
   MessagePrimitive,
@@ -46,26 +66,10 @@ import {
   type PartState,
   type ToolCallMessagePartComponent,
 } from "@assistant-ui/react";
-import { ComposerDraft } from "@/components/assistant-ui/draft";
-import { OpenUIAssistantMessagePart as OpenUIAssistantMessage } from "@/components/assistant-ui/openui-message";
-import { Regenerate } from "@/components/assistant-ui/regenerate";
-import {
-  MessageSpeaker,
-  TranscriptModeContext,
-  useSpeaker,
-} from "@/components/assistant-ui/speaker";
-import { DayDivider } from "@/components/assistant-ui/elements/day-separator";
-import { ErrorState } from "@/components/assistant-ui/elements/error-state";
-import { MessageTiming as MessageTimingStats } from "@/components/assistant-ui/elements/message-timing";
-import { StoppedRun } from "@/components/assistant-ui/elements/stopped-run";
-import { TypingIndicator } from "@/components/assistant-ui/elements/typing-indicator";
-import { useActionBarReload } from "@assistant-ui/core/react";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
   CheckIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   CopyIcon,
   DownloadIcon,
   MicIcon,
@@ -76,6 +80,7 @@ import {
 import {
   createContext,
   useContext,
+  useRef,
   useState,
   type ComponentType,
   type FC,
@@ -99,6 +104,8 @@ export type ThreadComponents = {
 
 export type ThreadProps = {
   components?: ThreadComponents | undefined;
+  /** Where pages older than the loaded messages come from. Without one, none are asked for. */
+  olderMessages?: OlderMessagesSource | undefined;
 };
 
 const EMPTY_COMPONENTS: ThreadComponents = {};
@@ -146,21 +153,30 @@ const ThreadHistorySkeleton: FC = () => (
   </div>
 );
 
-export const Thread: FC<ThreadProps> = ({ components = EMPTY_COMPONENTS }) => {
+export const Thread: FC<ThreadProps> = ({ components = EMPTY_COMPONENTS, olderMessages }) => {
   const isEmpty = useAuiState(isNewChatView);
 
   return (
     <ThreadComponentsContext.Provider value={components}>
       <TranscriptModeContext.Provider value={components.isTranscript ?? false}>
-        <ThreadRoot isEmpty={isEmpty} />
+        <CompactionNoteUI />
+        <ThreadRoot isEmpty={isEmpty} olderMessages={olderMessages} />
       </TranscriptModeContext.Provider>
     </ThreadComponentsContext.Provider>
   );
 };
 
-const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
+const ThreadRoot: FC<{ isEmpty: boolean; olderMessages: OlderMessagesSource | undefined }> = ({
+  isEmpty,
+  olderMessages,
+}) => {
   const { Welcome = ThreadWelcome, Composer: ComposerComponent = Composer } =
     useContext(ThreadComponentsContext);
+
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
+  const [setFooterElement, footerHeight] = useMeasuredHeight();
+  const listRef = useRef<ThreadMessageListHandle>(null);
+  const [atEnd, setAtEnd] = useState(true);
 
   return (
     <ThreadPrimitive.Root
@@ -173,9 +189,11 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
       }}
     >
       <ThreadPrimitive.Viewport
-        turnAnchor="top"
+        ref={setScrollElement}
+        autoScroll={false}
+        scrollToBottomOnRunStart={false}
         data-slot="aui_thread-viewport"
-        className="relative flex flex-1 flex-col overflow-x-auto overflow-y-auto scroll-smooth"
+        className="relative flex flex-1 flex-col overflow-x-auto overflow-y-auto"
       >
         <div
           className={cn(
@@ -190,24 +208,35 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
             <ThreadHistorySkeleton />
           </AuiIf>
 
-          <div data-slot="aui_message-group" className="mb-14 flex flex-col gap-y-6 empty:hidden">
-            <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
-          </div>
+          <ThreadMessageList
+            ref={listRef}
+            scrollElement={scrollElement}
+            paddingEnd={footerHeight}
+            Message={ThreadMessage}
+            onAtEndChange={setAtEnd}
+            olderMessages={olderMessages}
+          />
 
-          <ThreadPrimitive.ViewportFooter
-            className={cn(
-              "aui-thread-viewport-footer bg-background flex flex-col gap-4 overflow-visible pb-4 md:pb-6",
-              !isEmpty && "sticky bottom-0 mt-auto rounded-t-(--composer-radius)",
-            )}
-          >
-            <ThreadScrollToBottom />
-            <ComposerDraft />
-            <ThreadFollowupSuggestions />
-            <ComposerComponent />
-            <AuiIf condition={(s) => isNewChatView(s)}>
-              <ThreadSuggestions />
-            </AuiIf>
-          </ThreadPrimitive.ViewportFooter>
+          <div className={cn("flex flex-col", !isEmpty && "sticky bottom-0 mt-auto h-0")}>
+            <ThreadPrimitive.ViewportFooter
+              ref={setFooterElement}
+              className={cn(
+                "aui-thread-viewport-footer bg-background flex flex-col gap-4 overflow-visible pb-4 md:pb-6",
+                !isEmpty && "absolute inset-x-0 bottom-0 rounded-t-(--composer-radius)",
+              )}
+            >
+              <ThreadScrollToBottom
+                atEnd={atEnd}
+                onScrollToEnd={() => listRef.current?.scrollToEnd({ behavior: "smooth" })}
+              />
+              <ComposerDraft />
+              <ThreadFollowupSuggestions />
+              <ComposerComponent />
+              <AuiIf condition={(s) => isNewChatView(s)}>
+                <ThreadSuggestions />
+              </AuiIf>
+            </ThreadPrimitive.ViewportFooter>
+          </div>
         </div>
       </ThreadPrimitive.Viewport>
     </ThreadPrimitive.Root>
@@ -278,17 +307,20 @@ const ThreadMessage: FC = () => {
   );
 };
 
-const ThreadScrollToBottom: FC = () => {
+const ThreadScrollToBottom: FC<{ atEnd: boolean; onScrollToEnd: () => void }> = ({
+  atEnd,
+  onScrollToEnd,
+}) => {
   return (
-    <ThreadPrimitive.ScrollToBottom asChild>
-      <TooltipIconButton
-        tooltip="Scroll to bottom"
-        variant="outline"
-        className="aui-thread-scroll-to-bottom dark:border-border dark:bg-background dark:hover:bg-accent absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible"
-      >
-        <ArrowDownIcon />
-      </TooltipIconButton>
-    </ThreadPrimitive.ScrollToBottom>
+    <TooltipIconButton
+      tooltip="Scroll to bottom"
+      variant="outline"
+      disabled={atEnd}
+      onClick={onScrollToEnd}
+      className="aui-thread-scroll-to-bottom dark:border-border dark:bg-background dark:hover:bg-accent absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible"
+    >
+      <ArrowDownIcon />
+    </TooltipIconButton>
   );
 };
 
@@ -599,7 +631,7 @@ const StaffMessage: FC = () => {
   return (
     <MessagePrimitive.Root
       data-slot="aui_staff-message-root"
-      className="fade-in slide-in-from-bottom-1 animate-in grid auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 duration-150 [contain-intrinsic-size:auto_200px] [content-visibility:auto] [&:where(>*)]:col-start-2"
+      className="fade-in slide-in-from-bottom-1 animate-in grid auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 duration-150 [&:where(>*)]:col-start-2"
       data-role="assistant"
     >
       <div className="aui-staff-message-content-wrapper relative col-start-2 min-w-0">
@@ -615,7 +647,6 @@ const StaffMessage: FC = () => {
         data-slot="aui_staff-message-footer"
         className="col-span-full flex items-center justify-end"
       >
-        <BranchPicker />
         <AssistantActionBar />
       </div>
     </MessagePrimitive.Root>
@@ -634,8 +665,7 @@ const AssistantMessage: FC = () => {
 
   const ACTION_BAR_PT = "pt-1.5";
 
-  // Keep the action bar inside the contained root's paint box, then cancel its reserved space in flow.
-  const ACTION_BAR_HEIGHT = `min-h-7.5 ${ACTION_BAR_PT}`;
+  const ACTION_BAR_HEIGHT = `min-h-8.5 ${ACTION_BAR_PT}`;
 
   // The host's own lines ("Dana joined") are assistant rows with a system speaker. They read as
   // events, not answers: centered, with no action bar.
@@ -653,7 +683,7 @@ const AssistantMessage: FC = () => {
     <MessagePrimitive.Root
       data-slot="aui_assistant-message-root"
       data-role="assistant"
-      className="fade-in slide-in-from-bottom-1 animate-in relative -mb-7.5 pb-7.5 duration-150 [contain-intrinsic-size:auto_200px] [content-visibility:auto]"
+      className="fade-in slide-in-from-bottom-1 animate-in relative duration-150"
     >
       <div
         data-slot="aui_assistant-message-content"
@@ -745,7 +775,6 @@ const AssistantMessage: FC = () => {
         data-slot="aui_assistant-message-footer"
         className={cn("ms-2 flex items-center", ACTION_BAR_HEIGHT)}
       >
-        <BranchPicker />
         <AssistantActionBar />
       </div>
     </MessagePrimitive.Root>
@@ -823,7 +852,7 @@ const UserMessage: FC = () => {
     <MessagePrimitive.Root
       data-slot="aui_user-message-root"
       className={cn(
-        "fade-in slide-in-from-bottom-1 animate-in grid auto-rows-auto content-start gap-y-2 px-2 duration-150 [contain-intrinsic-size:auto_200px] [content-visibility:auto]",
+        "fade-in slide-in-from-bottom-1 animate-in grid auto-rows-auto content-start gap-y-2 px-2 duration-150",
         // The live chat's caller reads their own words: right. A transcript's viewer is staff,
         // so the visitor is the other side: left, with staff bubbles answering from the right.
         isTranscript
@@ -857,16 +886,13 @@ const UserMessage: FC = () => {
           <MessagePrimitive.Parts components={{ File: UserFilePart, Image: UserImagePart }} />
         </div>
         {isTranscript ? null : (
-          <div className="aui-user-action-bar-wrapper absolute start-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden rtl:translate-x-full">
-            <UserActionBar />
-          </div>
+          <AuiIf condition={(s) => s.thread.capabilities.edit}>
+            <div className="aui-user-action-bar-wrapper absolute start-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden rtl:translate-x-full">
+              <UserActionBar />
+            </div>
+          </AuiIf>
         )}
       </div>
-
-      <BranchPicker
-        data-slot="aui_user-branch-picker"
-        className="col-span-full col-start-1 row-start-3 -me-1 justify-end"
-      />
     </MessagePrimitive.Root>
   );
 };
@@ -889,10 +915,7 @@ const UserActionBar: FC = () => {
 
 const EditComposer: FC = () => {
   return (
-    <MessagePrimitive.Root
-      data-slot="aui_edit-composer-wrapper"
-      className="flex flex-col px-2 [contain-intrinsic-size:auto_200px] [content-visibility:auto]"
-    >
+    <MessagePrimitive.Root data-slot="aui_edit-composer-wrapper" className="flex flex-col px-2">
       <ComposerPrimitive.Root className="aui-edit-composer-root border-border/60 dark:border-muted-foreground/15 ms-auto flex w-full max-w-[85%] cursor-text flex-col rounded-(--composer-radius) border bg-(--composer-bg)">
         <ComposerPrimitive.Input
           className="aui-edit-composer-input text-foreground min-h-14 w-full resize-none bg-transparent px-4 pt-3 pb-1 text-base outline-none"
@@ -912,32 +935,5 @@ const EditComposer: FC = () => {
         </div>
       </ComposerPrimitive.Root>
     </MessagePrimitive.Root>
-  );
-};
-
-const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({ className, ...rest }) => {
-  return (
-    <BranchPickerPrimitive.Root
-      hideWhenSingleBranch
-      className={cn(
-        "aui-branch-picker-root text-muted-foreground -ms-2 me-2 inline-flex items-center text-xs",
-        className,
-      )}
-      {...rest}
-    >
-      <BranchPickerPrimitive.Previous asChild>
-        <TooltipIconButton tooltip="Previous">
-          <ChevronLeftIcon />
-        </TooltipIconButton>
-      </BranchPickerPrimitive.Previous>
-      <span className="aui-branch-picker-state font-medium">
-        <BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
-      </span>
-      <BranchPickerPrimitive.Next asChild>
-        <TooltipIconButton tooltip="Next">
-          <ChevronRightIcon />
-        </TooltipIconButton>
-      </BranchPickerPrimitive.Next>
-    </BranchPickerPrimitive.Root>
   );
 };

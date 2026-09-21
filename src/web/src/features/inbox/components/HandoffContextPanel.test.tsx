@@ -38,6 +38,8 @@ function handoff(over: Partial<Handoff> = {}): Handoff {
     title: "Treadmill belt slips at 8 mph",
     firstLine: "Hi, my CT800 belt slips when I go above 8 mph.",
     position: 1,
+    awaitingReply: false,
+    unread: false,
     ...over,
   };
 }
@@ -73,6 +75,7 @@ const unit: UnitDocument = {
     manufacturedOn: "04/2010",
     purchasedOn: "2010-10-23T00:00:00+00:00",
     setUpOn: null,
+    owner: null,
   },
   jobs: [],
   history: [],

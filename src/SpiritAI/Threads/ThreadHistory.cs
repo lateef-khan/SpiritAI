@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using AgentCore.Application.Calls;
+using AgentCore.Application.Conversation;
 using AgentCore.Application.Transcript;
 using AgentCore.Domain.Sources;
 
@@ -17,10 +17,19 @@ namespace SpiritAI.Threads;
 [JsonDerivedType(typeof(ThreadTextPart), "text")]
 [JsonDerivedType(typeof(ThreadToolCallPart), "tool-call")]
 [JsonDerivedType(typeof(ThreadSourcePart), "source")]
+[JsonDerivedType(typeof(ThreadFilePart), "file")]
 public abstract record ThreadPart;
 
 /// <summary>Words.</summary>
 public sealed record ThreadTextPart(string Text) : ThreadPart;
+
+/// <summary>
+/// A file the reply produced, as the stream's <c>agentcore_file</c> frame spells it. Not an
+/// assistant-ui part: the browser decides whether to draw it as a picture or a download, so the
+/// same rule serves a live turn and a restored one.
+/// </summary>
+/// <param name="Url">Where the browser fetches it from. Signed per read, and short-lived.</param>
+public sealed record ThreadFilePart(string Name, string MediaType, long Length, string Url) : ThreadPart;
 
 /// <summary>A tool the host ran, with its answer folded back in.</summary>
 public sealed record ThreadToolCallPart(
@@ -93,30 +102,61 @@ public sealed record ThreadHistoryMessage(
 public sealed record ThreadHistoryItem(string? ParentId, ThreadHistoryMessage Message);
 
 /// <summary>
-/// A stored call, as the conversation assistant-ui draws.
+/// One window of a stored conversation, as the conversation assistant-ui draws.
 /// </summary>
+/// <param name="HeadId">The newest message, or <see langword="null"/> for a window with none.</param>
+/// <param name="Messages">The window's messages, oldest first, chained by parent. The first one has no parent.</param>
 public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryItem> Messages)
 {
+    /// <summary>
+    /// Gets what to send as <c>before</c> to read the next older window, or <see langword="null"/>
+    /// when this window reaches the conversation's start.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? NextCursor { get; init; }
+
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private static readonly JsonSerializerOptions Readable =
         new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-    /// <summary>Reads one whole call into the shape the browser restores a thread from.</summary>
-    /// <param name="call">The call's row. It supplies the clock store 1 does not keep.</param>
-    /// <param name="rows">Every stored message of the call. Order does not matter.</param>
+    /// <summary>Reads stored rows into the shape the browser restores a thread from.</summary>
+    /// <param name="conversation">The conversation's row. It supplies the clock store 1 does not keep.</param>
+    /// <param name="rows">The stored messages to draw: every one, or one window's worth. Order does not matter.</param>
     /// <returns>The conversation, oldest message first, chained by parent.</returns>
-    public static ThreadHistory Of(CallRecord call, IReadOnlyList<CallMessage> rows)
+    public static ThreadHistory Of(ConversationRecord conversation, IReadOnlyList<ConversationMessage> rows)
+        => Of(conversation, rows, new Dictionary<string, ThreadPart>(StringComparer.Ordinal));
+
+    /// <summary>Turns one window of a conversation, as the door loaded it, into the shape the browser restores a thread from.</summary>
+    /// <param name="stored">The conversation's row, the window's words, and a link to every file they still hold.</param>
+    /// <returns>The window, oldest message first, chained by parent, naming the older window when there is one.</returns>
+    public static ThreadHistory Of(StoredConversation stored)
     {
-        ArgumentNullException.ThrowIfNull(call);
+        ArgumentNullException.ThrowIfNull(stored);
+
+        return Of(stored.Conversation, stored.Messages, ThreadFiles.PartsOf(stored.Files)) with
+        {
+            NextCursor = HistoryWindow.CursorOf(stored.OlderBefore),
+        };
+    }
+
+    /// <summary>Reads stored rows into the shape the browser restores a thread from, with their files linked.</summary>
+    /// <param name="conversation">The conversation's row. It supplies the clock store 1 does not keep.</param>
+    /// <param name="rows">The stored messages to draw: every one, or one window's worth. Order does not matter.</param>
+    /// <param name="files">The part for each file the store still holds, from <see cref="ThreadFiles.PartsOf"/>.</param>
+    /// <returns>The conversation, oldest message first, chained by parent.</returns>
+    public static ThreadHistory Of(ConversationRecord conversation, IReadOnlyList<ConversationMessage> rows, IReadOnlyDictionary<string, ThreadPart> files)
+    {
+        ArgumentNullException.ThrowIfNull(conversation);
         ArgumentNullException.ThrowIfNull(rows);
+        ArgumentNullException.ThrowIfNull(files);
 
         List<ThreadHistoryItem> messages = [];
         string? parentId = null;
 
         foreach (var turn in Group(rows))
         {
-            var message = Build(call, turn);
+            var message = Build(conversation, turn, files);
             messages.Add(new ThreadHistoryItem(parentId, message));
 
             // The head is the last message, and after the loop this is it. A separate pass to find
@@ -128,9 +168,9 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
     }
 
     /// <summary>Gathers the rows that become one restored message.</summary>
-    private static IEnumerable<List<CallMessage>> Group(IReadOnlyList<CallMessage> rows)
+    private static IEnumerable<List<ConversationMessage>> Group(IReadOnlyList<ConversationMessage> rows)
     {
-        List<CallMessage>? open = null;
+        List<ConversationMessage>? open = null;
 
         var openTurn = -1;
 
@@ -179,22 +219,23 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
     }
 
     /// <summary>Who a row speaks as, as the stored JSON spells it. No entry means the agent.</summary>
-    private static string? SpeakerKey(CallMessage row)
+    private static string? SpeakerKey(ConversationMessage row)
         => SpeakerProperty.Read(row.Content)?.GetRawText();
 
-    private static ThreadHistoryMessage Build(CallRecord call, List<CallMessage> turn)
+    private static ThreadHistoryMessage Build(ConversationRecord conversation, List<ConversationMessage> turn, IReadOnlyDictionary<string, ThreadPart> files)
     {
         var first = turn[0];
         var role = RoleOf(first.Content.Role);
 
-        List<ThreadToolCallPart> tools = [];
+        List<ThreadPart> parts = [];
         Dictionary<string, int> toolAt = new(StringComparer.Ordinal);
         List<ThreadSourcePart> sources = [];
-        List<string> utterances = [];
+        List<ThreadPart> attached = [];
 
         foreach (var row in turn)
         {
             StringBuilder words = new();
+
             foreach (var content in row.Content.Contents)
             {
                 switch (content)
@@ -203,13 +244,18 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
                         words.Append(text.Text);
                         break;
 
+                    case FileContent file when files.TryGetValue(file.Name, out var part) && !attached.Contains(part):
+                        attached.Add(part);
+                        break;
+
                     case FunctionCallContent called:
-                        toolAt[called.CallId] = tools.Count;
-                        tools.Add(ToolOf(called));
+                        AddWords(parts, words);
+                        toolAt[called.CallId] = parts.Count;
+                        parts.Add(ToolOf(called));
                         break;
 
                     case FunctionResultContent answered when toolAt.TryGetValue(answered.CallId, out var at):
-                        tools[at] = tools[at] with
+                        parts[at] = ((ThreadToolCallPart)parts[at]) with
                         {
                             Result = JsonSerializer.SerializeToElement(answered.Result, Json),
                             IsError = answered.Exception is not null,
@@ -225,31 +271,44 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
                 }
             }
 
-            if (words.Length > 0)
-            {
-                utterances.Add(words.ToString());
-            }
+            AddWords(parts, words);
         }
 
-        List<ThreadPart> parts = [.. tools, .. sources];
-
-        if (utterances.Count > 0)
-        {
-            parts.Add(new ThreadTextPart(string.Join("\n\n", utterances)));
-        }
+        parts.AddRange(sources);
+        parts.AddRange(attached);
 
         return new ThreadHistoryMessage(
             // Positional, because store 1 keeps no message id of its own. It is stable only for as
             // long as a message keeps the ordinal it was written under.
-            $"{first.CallId}:{first.Ordinal}",
+            $"{first.ConversationId}:{first.Ordinal}",
             role,
             parts,
-            first.Content.CreatedAt ?? call.CreatedAt,
+            first.Content.CreatedAt ?? conversation.CreatedAt,
             MetadataOf(first.Content))
         {
             Status = role == "assistant" ? new ThreadMessageStatus("complete") : null,
             Attachments = role == "user" ? [] : null,
         };
+    }
+
+    /// <summary>Closes the open run of words as a text part, joined onto the one before it when they touch.</summary>
+    private static void AddWords(List<ThreadPart> parts, StringBuilder words)
+    {
+        if (words.Length == 0)
+        {
+            return;
+        }
+
+        if (parts.Count > 0 && parts[^1] is ThreadTextPart(var before))
+        {
+            parts[^1] = new ThreadTextPart(before + "\n\n" + words);
+        }
+        else
+        {
+            parts.Add(new ThreadTextPart(words.ToString()));
+        }
+
+        words.Clear();
     }
 
     private static ThreadMessageMetadata MetadataOf(ChatMessage content)

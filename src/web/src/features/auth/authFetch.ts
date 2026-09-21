@@ -5,9 +5,15 @@ import { authClient } from "./authClient";
 import { LOGIN_URL } from "./routes";
 
 /**
- * How long a fetched token is reused.
+ * The longest a fetched token is reused. A token that expires sooner is dropped sooner.
  */
 const TOKEN_TTL_MS = 10 * 60 * 1000;
+
+/** How long before a token's `exp` it is treated as dead, so a slow request cannot outlive it. */
+const EXPIRY_MARGIN_MS = 30 * 1000;
+
+/** How long a token whose `exp` cannot be read is reused. */
+const UNREADABLE_TTL_MS = 60 * 1000;
 
 let cached: { token: string; until: number } | null = null;
 
@@ -22,7 +28,7 @@ export class NotSignedInError extends Error {}
 /**
  * Reads the current access token.
  */
-async function currentToken(): Promise<string | null> {
+export async function currentToken(): Promise<string | null> {
   if (cached && Date.now() < cached.until) return cached.token;
 
   const token = (await fromSession()) ?? (await fromTokenEndpoint());
@@ -32,8 +38,35 @@ async function currentToken(): Promise<string | null> {
     return null;
   }
 
-  cached = { token, until: Date.now() + TOKEN_TTL_MS };
+  cached = { token, until: expiresAt(token) };
   return token;
+}
+
+/**
+ * When the token stops being reusable: its own `exp` minus a margin, capped at
+ * {@link TOKEN_TTL_MS}. Neon hands back whatever its session holds, which may be a token with
+ * seconds left, so a fixed lifetime from the moment of fetching is not safe.
+ */
+function expiresAt(token: string): number {
+  const now = Date.now();
+  const exp = jwtExpiry(token);
+
+  if (exp === null) return now + UNREADABLE_TTL_MS;
+
+  return Math.min(exp - EXPIRY_MARGIN_MS, now + TOKEN_TTL_MS);
+}
+
+/** The `exp` claim in milliseconds, or null if the token is not a readable JWT. */
+function jwtExpiry(token: string): number | null {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+
+  try {
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.exp === "number" ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
 }
 
 async function fromSession(): Promise<string | null> {
@@ -66,7 +99,8 @@ async function stillSignedIn(): Promise<boolean> {
 }
 
 /**
- * Signs one request and sends it.
+ * Signs one request and sends it. A 401 on a cached token is retried once with a fresh one,
+ * because the host's clock and the cache's clock never agree exactly on when a token died.
  */
 export async function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const token = await currentToken();
@@ -80,13 +114,17 @@ export async function authFetch(input: RequestInfo | URL, init?: RequestInit): P
     throw new NotSignedInError("Signed in, but Neon issued no access token for this session.");
   }
 
-  const headers = new Headers(
-    init?.headers ?? (input instanceof Request ? input.headers : undefined),
-  );
+  let response = await send(input, init, token);
 
-  headers.set("Authorization", `Bearer ${token}`);
+  if (response.status === 401) {
+    forgetToken();
 
-  const response = await fetch(input, { ...init, headers });
+    const fresh = await currentToken();
+
+    if (fresh && fresh !== token) {
+      response = await send(input, init, fresh);
+    }
+  }
 
   if (response.status === 401) {
     forgetToken();
@@ -100,4 +138,21 @@ export async function authFetch(input: RequestInfo | URL, init?: RequestInit): P
   }
 
   return response;
+}
+
+function send(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  token: string,
+): Promise<Response> {
+  const headers = new Headers(
+    init?.headers ?? (input instanceof Request ? input.headers : undefined),
+  );
+
+  headers.set("Authorization", `Bearer ${token}`);
+
+  // A Request's body can be read once, and a retry needs it again.
+  const target = input instanceof Request ? input.clone() : input;
+
+  return fetch(target, { ...init, headers });
 }

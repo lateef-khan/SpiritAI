@@ -7,6 +7,7 @@ import {
   type ChatModelRunResult,
   type CompleteAttachment,
   type MessageTiming,
+  type ThreadAssistantMessagePart,
   type ThreadMessage,
 } from "@assistant-ui/react";
 import { useRef } from "react";
@@ -14,6 +15,7 @@ import {
   runTurn,
   wireMessages,
   type ApprovalAnswer,
+  type NotePart,
   type Session,
   type SourcePart,
   type ToolPart,
@@ -21,6 +23,8 @@ import {
   type WireMessage,
 } from "./transport.ts";
 import { authFetch } from "@/features/auth/authFetch";
+import { fileContent, fileLinks } from "@/lib/files";
+import { resolveSandboxLinks } from "@/lib/sandboxLinks";
 
 /**
  * The bridge between assistant-ui and AgentCore's OpenAI-compatible endpoint.
@@ -124,7 +128,7 @@ function newTurnClock() {
 /**
  * Turns one reported tool into the content part assistant-ui draws it as.
  */
-function toolContent(tool: ToolPart) {
+export function toolContent(tool: ToolPart) {
   return {
     type: "tool-call" as const,
     toolCallId: tool.callId,
@@ -168,6 +172,14 @@ export function sourceContent(source: SourcePart) {
     sourceType: "document" as const,
     mediaType: source.mediaType,
   };
+}
+
+/**
+ * Turns one run notice into the content part assistant-ui draws it as.
+ */
+export function noteContent(note: NotePart) {
+  const { kind, ...data } = note;
+  return { type: "data" as const, name: kind, data };
 }
 
 /**
@@ -350,21 +362,28 @@ async function* streamTurn(
         stage: state.stage,
         isTerminal: state.isTerminal,
         speaker: state.speaker,
-
-        // The host's own name for this reply, kept ON the message rather than in a map beside
-        // it. The adapter never learns the id assistant-ui gives the message it is producing, so
-        // there is nothing to key a map on — and metadata rides the message through a branch
-        // switch and through the reload that restores it, which a map in a ref would not.
         hostMessageId: state.replyMessageId,
       },
     };
 
-    // Every yield replaces the message content rather than adding to it, so each one repeats
-    // the text so far. Assistant text now carries any OpenUI markup inline.
+    const links = fileLinks(state.files);
+    const toolsById = new Map(state.tools.map((tool) => [tool.callId, tool]));
+    const notesById = new Map(state.notes.map((note) => [note.id, note]));
+
     content = [
-      ...state.tools.map(toolContent),
+      ...state.items.flatMap((item): ThreadAssistantMessagePart[] => {
+        if (item.type === "text") {
+          return [{ type: "text", text: resolveSandboxLinks(item.text, links) }];
+        }
+        if (item.type === "note") {
+          const note = notesById.get(item.noteId);
+          return note ? [noteContent(note)] : [];
+        }
+        const tool = toolsById.get(item.callId);
+        return tool ? [toolContent(tool)] : [];
+      }),
       ...state.sources.map(sourceContent),
-      ...(state.text.length > 0 ? [{ type: "text" as const, text: state.text }] : []),
+      ...state.files.flatMap((file) => fileContent(file) ?? []),
     ];
 
     // A tool still waiting on the caller holds the message at requires-action, which is what

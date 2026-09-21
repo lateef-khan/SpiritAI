@@ -14,7 +14,7 @@ namespace SpiritAI.Handoffs.RealTime;
 /// the staff group and may signal any chat. A visitor names a chat and their key, is checked to
 /// own that chat, joins its group, and may signal staff. Anyone else is left to another feature.
 /// </summary>
-public sealed class HandoffAdmission(ICallStore calls, StaffGate staff) : IRealTimeAdmission
+public sealed class HandoffAdmission(IConversations conversations, StaffGate staff) : IRealTimeAdmission
 {
     /// <summary>The kind a member of staff is counted under.</summary>
     public const string StaffKind = "staff";
@@ -23,7 +23,7 @@ public sealed class HandoffAdmission(ICallStore calls, StaffGate staff) : IRealT
     public const string VisitorKind = "visitor";
 
     /// <summary>The query string field a visitor names their chat in.</summary>
-    public const string CallQuery = "call";
+    public const string ConversationQuery = "call";
 
     /// <summary>The query string field a visitor sends their key in.</summary>
     public const string VisitorQuery = "visitor";
@@ -56,22 +56,22 @@ public sealed class HandoffAdmission(ICallStore calls, StaffGate staff) : IRealT
             return null;
         }
 
-        return new RealTimeCaller(key, member.Name, StaffKind, [HandoffGroups.Staff], HandoffGroups.IsCall);
+        return new RealTimeCaller(key, member.Name, StaffKind, [HandoffGroups.Staff], HandoffGroups.IsConversation);
     }
 
     private async ValueTask<RealTimeCaller?> AdmitVisitorAsync(IQueryCollection query, CancellationToken cancellationToken)
     {
-        string callId = query[CallQuery].ToString();
+        string conversationId = query[ConversationQuery].ToString();
         string visitor = query[VisitorQuery].ToString();
 
-        if (callId.Length == 0 || !VisitorPrincipal.IsWellFormed(visitor))
+        if (conversationId.Length == 0 || !VisitorPrincipal.IsWellFormed(visitor))
         {
             return null;
         }
 
         var key = VisitorPrincipal.KeyOf(visitor);
 
-        if (await ThreadOwnership.ReadAsync(calls, callId, key, cancellationToken).ConfigureAwait(false) is null)
+        if (await ThreadOwnership.ReadAsync(conversations, conversationId, key, cancellationToken).ConfigureAwait(false) is null)
         {
             return null;
         }
@@ -80,7 +80,7 @@ public sealed class HandoffAdmission(ICallStore calls, StaffGate staff) : IRealT
             key,
             Name: null,
             VisitorKind,
-            [HandoffGroups.ForCall(callId), HandoffGroups.Visitors],
+            [HandoffGroups.ForConversation(conversationId), HandoffGroups.Visitors],
             group => string.Equals(group, HandoffGroups.Staff, StringComparison.Ordinal));
     }
 }

@@ -1,6 +1,7 @@
 using AgentCore.Hosting;
 using SpiritAI.Auth;
 using SpiritAI.Auth.Users;
+using SpiritAI.Caching;
 using SpiritAI.Database;
 using SpiritAI.Handoffs;
 using SpiritAI.Handoffs.Mail;
@@ -14,6 +15,8 @@ using SpiritAI.RealTime;
 using SpiritAI.Threads;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSpiritCache();
 
 builder.AddSpiritAgentCore();
 
@@ -65,14 +68,14 @@ app.UseNeonAuthOnApi();
 
 app.UseThreadSessions();
 
-app.UseVisitorChat(publicChat.Pattern);
+app.UseVisitorChat(AgentCoreExtensions.RouteOf(publicChat.Pattern));
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.MapAgentCoreHost(responsesEntry: AgentCoreExtensions.Entry, callEntry: AgentCoreExtensions.Entry);
+app.MapAgentCoreHost();
 
 app.MapPublicChat();
 

@@ -8,7 +8,7 @@ using Xunit;
 namespace SpiritAI.Tests.Threads;
 
 /// <summary>
-/// Which string a call is filed under.
+/// Which string a conversation is filed under.
 /// </summary>
 public sealed class CallerPrincipalTests
 {

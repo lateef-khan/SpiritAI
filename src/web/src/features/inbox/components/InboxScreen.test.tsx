@@ -1,28 +1,72 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { HandoffSummary } from "@/api/types.gen";
 import { reviveHistory } from "@/lib/history";
+import { queryWrapper } from "@/test/query";
 
+import { applyClaimed, applyMessage } from "../cache/handoffCache";
 import { InboxScreen } from "./InboxScreen";
 
 /**
  * The screen, against a mocked wire.
  *
- * `listHandoffs` is mocked the same way `InboxPanel.test.tsx` mocks it, and the picked chat's
+ * `listHandoffs` and `countHandoffs` are mocked at the generated client, and the picked chat's
  * transcript arrives revived rather than over the wire: what is worth holding in place here is
  * that a row click carries the picked handoff from the panel into the chat pane, not the
- * network underneath. `@/hooks/use-mobile` is mocked separately per test, since `InboxScreen`
+ * network underneath. The host does the filtering and the ordering, so the mock answers by the
+ * query it is sent. `@/hooks/use-mobile` is mocked separately per test, since `InboxScreen`
  * reads it to choose which of the two layouts to render.
  */
 vi.mock("@/api/sdk.gen", () => ({
   listHandoffs: vi.fn(),
+  countHandoffs: vi.fn(),
   claimHandoff: vi.fn(),
+  markHandoffSeen: vi.fn(),
 }));
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: vi.fn(() => false) }));
+// No socket here: the screen's list and pick are what is under test, and the real hub would try
+// to reach a host that does not exist.
+vi.mock("@/lib/realtime/SocketProvider", () => ({
+  useSocketEvents: () => ({ signal: async () => {} }),
+}));
 
-const { listHandoffs, claimHandoff } = await import("@/api/sdk.gen");
+const { listHandoffs, countHandoffs, claimHandoff, markHandoffSeen } =
+  await import("@/api/sdk.gen");
 const { useIsMobile } = await import("@/hooks/use-mobile");
+
+/** What the host would list for each query: open rows by ask, done rows by close. */
+function hostWith(open: HandoffSummary[], done: HandoffSummary[] = []) {
+  vi.mocked(listHandoffs).mockImplementation((options) => {
+    const query = options?.query ?? {};
+    const rows = query.view === "done" ? done : open;
+    const kept =
+      query.owner === "me"
+        ? rows.filter((row) => row.assignee?.key === MeKey)
+        : query.owner === "none"
+          ? rows.filter((row) => row.assignee === null)
+          : rows;
+    const sorted = [...kept].sort((a, b) =>
+      query.view === "done"
+        ? (a.doneAt ?? "").localeCompare(b.doneAt ?? "")
+        : a.askedAt.localeCompare(b.askedAt),
+    );
+    const items =
+      (query.view === "done") !== (query.order === "oldest") ? sorted.reverse() : sorted;
+    return Promise.resolve({ data: { items, nextCursor: null } }) as never;
+  });
+  vi.mocked(countHandoffs).mockImplementation((options) => {
+    const rows = options?.query?.view === "done" ? done : open;
+    return Promise.resolve({
+      data: {
+        mine: rows.filter((row) => row.assignee?.key === MeKey).length,
+        unassigned: rows.filter((row) => row.assignee === null).length,
+        all: rows.length,
+        awaitingReply: 0,
+      },
+    }) as never;
+  });
+}
 
 const MeKey = "user:dana";
 
@@ -41,6 +85,8 @@ function wire(over: Partial<HandoffSummary> = {}): HandoffSummary {
     title: "Treadmill belt slips at 8 mph",
     firstLine: "I already did that twice.",
     position: 1,
+    awaitingReply: false,
+    unread: false,
     ...over,
   };
 }
@@ -63,6 +109,7 @@ const Transcript = {
 };
 
 function screenWithTranscript() {
+  const { client, wrapper } = queryWrapper();
   render(
     <InboxScreen
       meKey={MeKey}
@@ -74,7 +121,9 @@ function screenWithTranscript() {
       }}
       onSelectionChange={() => {}}
     />,
+    { wrapper },
   );
+  return client;
 }
 
 afterEach(() => {
@@ -88,12 +137,7 @@ describe("InboxScreen", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-12T12:53:00"));
 
-    vi.mocked(listHandoffs).mockImplementation(
-      (options) =>
-        Promise.resolve({
-          data: { items: options?.query?.status === "waiting" ? [wire()] : [] },
-        }) as never,
-    );
+    hostWith([wire()]);
 
     screenWithTranscript();
 
@@ -106,26 +150,62 @@ describe("InboxScreen", () => {
     expect(screen.getByText("Started 15 min ago")).toBeTruthy();
   });
 
-  it("takes a waiting handoff and reflects the claim in the badge and the Mine count", async () => {
+  it("takes the dot off a picked row and tells the host, and puts it back when the visitor speaks", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-12T12:53:00"));
+
+    hostWith([wire({ unread: true })]);
+    vi.mocked(markHandoffSeen).mockResolvedValue({ data: undefined } as never);
+
+    const client = screenWithTranscript();
+
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    expect(screen.getByRole("img", { name: "Unread" })).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Treadmill belt slips at 8 mph"));
+
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    expect(vi.mocked(markHandoffSeen)).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("img", { name: "Unread" })).toBeNull();
+
+    // The visitor speaks while the chat is on screen: the push is applied the way
+    // `useHandoffPushes` would, and the screen marks the chat seen again.
+    act(() =>
+      applyMessage(
+        client,
+        {
+          callId: "call-1",
+          messageId: "call-1:1",
+          role: "user",
+          text: "hello?",
+          speaker: null,
+          at: "2026-09-12T12:54:00",
+        },
+        MeKey,
+      ),
+    );
+
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    // The second mark is made from an effect the push's render ran, so its answer is one more
+    // timer away than the push's.
+    await act(() => vi.runOnlyPendingTimersAsync());
+
+    expect(screen.queryByRole("img", { name: "Unread" })).toBeNull();
+    expect(vi.mocked(markHandoffSeen)).toHaveBeenCalledTimes(2);
+  });
+
+  it("takes a waiting handoff, and the Mine count moves once, however often the claim is heard", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-12T12:53:00"));
 
     const claimed = wire({ status: "human", assignee: { key: MeKey, name: "Dana" } });
-    let claimedFlag = false;
-    vi.mocked(listHandoffs).mockImplementation((options) => {
-      if (options?.query?.status === "waiting") {
-        return Promise.resolve({ data: { items: claimedFlag ? [] : [wire()] } }) as never;
-      }
-      return Promise.resolve({
-        data: { items: claimedFlag ? [claimed] : [] },
-      }) as never;
-    });
-    vi.mocked(claimHandoff).mockImplementation(() => {
-      claimedFlag = true;
-      return Promise.resolve({ data: claimed }) as never;
-    });
+    hostWith([wire()]);
+    vi.mocked(claimHandoff).mockResolvedValue({ data: claimed } as never);
 
-    screenWithTranscript();
+    const client = screenWithTranscript();
 
     await act(() => vi.advanceTimersByTimeAsync(0));
 
@@ -138,22 +218,21 @@ describe("InboxScreen", () => {
     });
 
     expect(screen.getByText("You have this chat")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Mine/ }).textContent).toContain("1");
 
-    await act(() => vi.advanceTimersByTimeAsync(0));
+    // The host tells every member of staff, the claimant included, over the socket; the screen
+    // has no socket here, so the push is applied the way `useHandoffPushes` would.
+    act(() => applyClaimed(client, { callId: "call-1", assignee: claimed.assignee! }, MeKey));
 
     expect(screen.getByRole("tab", { name: /Mine/ }).textContent).toContain("1");
+    expect(screen.getByRole("tab", { name: /Unassigned/ }).textContent).toContain("0");
   });
 
   it("clears the pick when the view changes underneath it", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-12T12:53:00"));
 
-    vi.mocked(listHandoffs).mockImplementation(
-      (options) =>
-        Promise.resolve({
-          data: { items: options?.query?.status === "waiting" ? [wire()] : [] },
-        }) as never,
-    );
+    hostWith([wire()]);
 
     screenWithTranscript();
 
@@ -190,12 +269,7 @@ describe("InboxScreen", () => {
       title: "Newer, done last ended",
     });
 
-    vi.mocked(listHandoffs).mockImplementation(
-      (options) =>
-        Promise.resolve({
-          data: { items: options?.query?.status === "done" ? [older, newer] : [] },
-        }) as never,
-    );
+    hostWith([], [older, newer]);
 
     const { container } = render(
       <InboxScreen
@@ -203,6 +277,7 @@ describe("InboxScreen", () => {
         transcript={{ history: null, loading: false, error: null, reload: () => {} }}
         onSelectionChange={() => {}}
       />,
+      { wrapper: queryWrapper().wrapper },
     );
 
     await screen.findByText("No conversations.");
@@ -223,19 +298,15 @@ describe("InboxScreen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Newest first" }));
 
-    expect(rowTitles()[0]).toContain("Older, done first ended");
+    await screen.findByRole("button", { name: "Oldest first" });
+    await waitFor(() => expect(rowTitles()[0]).toContain("Older, done first ended"));
     expect(rowTitles()[1]).toContain("Newer, done last ended");
     expect(screen.getByRole("button", { name: "Oldest first" })).toBeTruthy();
   });
 
   it("on mobile, a row click fills the width with the chat, and Back returns to the list", async () => {
     vi.mocked(useIsMobile).mockReturnValue(true);
-    vi.mocked(listHandoffs).mockImplementation(
-      (options) =>
-        Promise.resolve({
-          data: { items: options?.query?.status === "waiting" ? [wire()] : [] },
-        }) as never,
-    );
+    hostWith([wire()]);
 
     screenWithTranscript();
 

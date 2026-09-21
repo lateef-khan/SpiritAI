@@ -2,7 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Conversation;
+using AgentCore.Application.Conversation.Memory;
 using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Builder;
@@ -49,23 +50,23 @@ public sealed class VisitorChatDoorTests
     public async Task AnOwnedChatNobodyHasIsReopenedAndPasses()
     {
         await using var world = await World.StartAsync();
-        var callId = await world.MakeChatAsync(VisitorPrincipal.KeyOf(VisitorKey));
+        var conversationId = await world.MakeChatAsync(VisitorPrincipal.KeyOf(VisitorKey));
 
-        var response = await world.PostAsync(VisitorKey, callId);
+        var response = await world.PostAsync(VisitorKey, conversationId);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(1, world.TurnsRun);
-        Assert.Equal([callId], world.Sessions.Reopened);
+        Assert.Equal([conversationId], world.Sessions.Reopened);
     }
 
     [Fact]
     public async Task AChatAPersonHasIsRefusedByName()
     {
         await using var world = await World.StartAsync();
-        var callId = await world.MakeChatAsync(VisitorPrincipal.KeyOf(VisitorKey));
-        await world.Handoffs.AskAsync(callId, HandoffAskedBy.Visitor, null, TestContext.Current.CancellationToken);
+        var conversationId = await world.MakeChatAsync(VisitorPrincipal.KeyOf(VisitorKey));
+        await world.Handoffs.AskAsync(conversationId, HandoffAskedBy.Visitor, null, TestContext.Current.CancellationToken);
 
-        var response = await world.PostAsync(VisitorKey, callId);
+        var response = await world.PostAsync(VisitorKey, conversationId);
 
         // A stale tab must not wake the bot into a chat a person is talking in.
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
@@ -77,9 +78,9 @@ public sealed class VisitorChatDoorTests
     public async Task SomebodyElsesChatIsRefused()
     {
         await using var world = await World.StartAsync();
-        var callId = await world.MakeChatAsync(VisitorPrincipal.KeyOf("widget-two"));
+        var conversationId = await world.MakeChatAsync(VisitorPrincipal.KeyOf("widget-two"));
 
-        var response = await world.PostAsync(VisitorKey, callId);
+        var response = await world.PostAsync(VisitorKey, conversationId);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal(0, world.TurnsRun);
@@ -108,13 +109,13 @@ public sealed class VisitorChatDoorTests
     private sealed class World : IAsyncDisposable
     {
         private readonly IHost _host;
-        private readonly InMemoryCallStore _calls;
+        private readonly InMemoryConversationStore _conversations;
         private readonly HttpClient _client;
 
-        private World(IHost host, InMemoryCallStore calls, FakeHandoffStore handoffs, FakeSessions sessions, List<string> turns)
+        private World(IHost host, InMemoryConversationStore conversations, FakeHandoffStore handoffs, FakeSessions sessions, List<string> turns)
         {
             _host = host;
-            _calls = calls;
+            _conversations = conversations;
             _client = host.GetTestClient();
             Handoffs = handoffs;
             Sessions = sessions;
@@ -133,12 +134,12 @@ public sealed class VisitorChatDoorTests
 
         public async Task<string> MakeChatAsync(string ownerKey)
         {
-            var callId = Guid.NewGuid().ToString("N");
+            var conversationId = Guid.NewGuid().ToString("N");
 
-            await _calls.CreateAsync(callId, TestContext.Current.CancellationToken);
-            await _calls.SetCustomAsync(callId, ThreadEnvelope.Build(ownerKey, app: null), TestContext.Current.CancellationToken);
+            await _conversations.CreateAsync(conversationId, TestContext.Current.CancellationToken);
+            await _conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(ownerKey, app: null), TestContext.Current.CancellationToken);
 
-            return callId;
+            return conversationId;
         }
 
         public Task<HttpResponseMessage> PostAsync(string? visitor, string? thread)
@@ -164,7 +165,7 @@ public sealed class VisitorChatDoorTests
         public static async Task<World> StartAsync()
         {
             TestTimeProvider clock = new(new DateTimeOffset(2026, 9, 11, 9, 0, 0, TimeSpan.Zero));
-            InMemoryCallStore calls = new(clock);
+            InMemoryConversationStore conversations = new(clock);
             FakeHandoffStore handoffs = new(clock);
             FakeSessions sessions = new();
             List<string> turns = [];
@@ -173,7 +174,7 @@ public sealed class VisitorChatDoorTests
                 new NeonAuthTestKit(),
                 services =>
                 {
-                    services.AddSingleton<ICallStore>(calls);
+                    services.AddSingleton<IConversations>(new Conversations(conversations, blobs: null));
                     services.AddSingleton<IHandoffStore>(handoffs);
                     services.AddSingleton<IThreadSessions>(sessions);
                 },
@@ -193,7 +194,7 @@ public sealed class VisitorChatDoorTests
                 },
                 options => options.OpenPathPrefixes = [PublicResponses]);
 
-            return new World(host, calls, handoffs, sessions, turns);
+            return new World(host, conversations, handoffs, sessions, turns);
         }
 
         public async ValueTask DisposeAsync()

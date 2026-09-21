@@ -2,7 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Handoff } from "../api/handoffsApi";
-import { countHandoffs } from "../hooks/useHandoffs";
+import { defaultFilter } from "../inboxFilter";
 
 /**
  * The panel, fed rows directly.
@@ -11,6 +11,8 @@ import { countHandoffs } from "../hooks/useHandoffs";
  * .tsx`'s business. What is worth holding in place here is what a waiting row and a claimed row
  * read as, and what happens with an empty or errored load, once those are already props.
  */
+
+const Open = defaultFilter("open");
 
 const { InboxPanel } = await import("./InboxPanel");
 
@@ -31,6 +33,8 @@ function handoff(over: Partial<Handoff> = {}): Handoff {
     title: "Treadmill belt slips at 8 mph",
     firstLine: "I already did that twice.",
     position: 1,
+    awaitingReply: false,
+    unread: false,
     ...over,
   };
 }
@@ -45,7 +49,7 @@ describe("InboxPanel", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-12T12:52:00"));
 
-    const waiting = handoff();
+    const waiting = handoff({ unread: true });
     const human = handoff({
       id: 2,
       status: "human",
@@ -54,18 +58,21 @@ describe("InboxPanel", () => {
       title: "Bluetooth will not pair on XBR95",
       firstLine: "Try holding the button for 5 seconds.",
       position: null,
+      awaitingReply: true,
+      unread: false,
     });
     const rows = [waiting, human];
 
     render(
       <InboxPanel
-        meKey={MeKey}
-        view="open"
-        onViewChange={() => {}}
+        filter={Open}
+        onFilterChange={() => {}}
         rows={rows}
-        counts={countHandoffs(rows, MeKey)}
+        counts={{ mine: 1, unassigned: 1, all: 2, awaitingReply: 1 }}
         loading={false}
         error={null}
+        hasMore={false}
+        loadMore={() => {}}
         selectedId={null}
         onSelect={() => {}}
       />,
@@ -74,6 +81,8 @@ describe("InboxPanel", () => {
     expect(screen.getByText("14 min")).toBeTruthy();
     expect(screen.getByText("lorrie@northwind.example")).toBeTruthy();
     expect(screen.getByText("Dana")).toBeTruthy();
+    expect(screen.getByText("Needs reply")).toBeTruthy();
+    expect(screen.getAllByRole("img", { name: "Unread" })).toHaveLength(1);
 
     expect(screen.getByRole("tab", { name: "Mine 1" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Unassigned 1" })).toBeTruthy();
@@ -83,13 +92,14 @@ describe("InboxPanel", () => {
   it("says so when there are no conversations", () => {
     render(
       <InboxPanel
-        meKey={MeKey}
-        view="open"
-        onViewChange={() => {}}
+        filter={Open}
+        onFilterChange={() => {}}
         rows={[]}
-        counts={countHandoffs([], MeKey)}
+        counts={{ mine: 0, unassigned: 0, all: 0, awaitingReply: 0 }}
         loading={false}
         error={null}
+        hasMore={false}
+        loadMore={() => {}}
         selectedId={null}
         onSelect={() => {}}
       />,
@@ -101,13 +111,14 @@ describe("InboxPanel", () => {
   it("reports the error from a refused request", () => {
     render(
       <InboxPanel
-        meKey={MeKey}
-        view="open"
-        onViewChange={() => {}}
+        filter={Open}
+        onFilterChange={() => {}}
         rows={[]}
-        counts={countHandoffs([], MeKey)}
+        counts={{ mine: 0, unassigned: 0, all: 0, awaitingReply: 0 }}
         loading={false}
         error={new Error("host refused")}
+        hasMore={false}
+        loadMore={() => {}}
         selectedId={null}
         onSelect={() => {}}
       />,

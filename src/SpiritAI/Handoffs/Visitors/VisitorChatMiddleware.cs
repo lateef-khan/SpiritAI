@@ -20,7 +20,7 @@ namespace SpiritAI.Handoffs.Visitors;
 /// </remarks>
 internal sealed class VisitorChatMiddleware(RequestDelegate next, string pattern)
 {
-    public async Task InvokeAsync(HttpContext context, ICallStore calls, IHandoffStore handoffs, IThreadSessions sessions)
+    public async Task InvokeAsync(HttpContext context, IConversations conversations, IHandoffStore handoffs, IThreadSessions sessions)
     {
         if (!context.Request.Path.StartsWithSegments(pattern, StringComparison.OrdinalIgnoreCase))
         {
@@ -48,7 +48,7 @@ internal sealed class VisitorChatMiddleware(RequestDelegate next, string pattern
 
         var namedChat = await TurnConversation.ReadAsync(context.Request).ConfigureAwait(false);
 
-        // A turn that names no chat is a new conversation, and AgentCore mints the call for it.
+        // A turn that names no chat is a new conversation, and AgentCore mints the conversation for it.
         // Nothing here has an opinion about that.
         if (namedChat.Length == 0)
         {
@@ -58,7 +58,7 @@ internal sealed class VisitorChatMiddleware(RequestDelegate next, string pattern
 
         var key = VisitorPrincipal.KeyOf(sent);
 
-        if (await ThreadOwnership.ReadAsync(calls, namedChat, key, context.RequestAborted).ConfigureAwait(false) is null)
+        if (await ThreadOwnership.ReadAsync(conversations, namedChat, key, context.RequestAborted).ConfigureAwait(false) is null)
         {
             await RefuseAsync(
                 context,

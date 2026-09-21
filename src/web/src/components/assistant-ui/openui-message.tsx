@@ -3,15 +3,55 @@
 import { useAui, useAuiState } from "@assistant-ui/react";
 import type { ActionEvent } from "@openuidev/react-lang";
 import { lazy, Suspense, type FC } from "react";
+import {
+  readOpenUiFormState,
+  writeOpenUiFormState,
+} from "@/components/assistant-ui/openUiFormStore";
 import { TypingIndicator } from "./elements/typing-indicator";
 import { MarkdownText } from "./markdown-text";
 
 const OpenUIRenderer = lazy(() => import("./openui-renderer"));
 
 /**
+ * The words a form's submit sends up: the button's label, then one `name: value` line per field.
+ */
+
+/** One field's worth as text, or `null` when it is empty or has no flat spelling. */
+function scalarOf(state: unknown): string | null {
+  const value =
+    typeof state === "object" && state !== null && "value" in state
+      ? (state as { value: unknown }).value
+      : state;
+
+  if (!["string", "number", "boolean"].includes(typeof value)) return null;
+
+  const text = String(value).trim();
+
+  return text.length > 0 ? text : null;
+}
+
+export function formMessage(
+  event: Pick<ActionEvent, "humanFriendlyMessage" | "formState" | "formName">,
+): string {
+  const label = event.humanFriendlyMessage.trim();
+  const fields = event.formName ? event.formState?.[event.formName] : undefined;
+
+  if (typeof fields !== "object" || fields === null) return label;
+
+  const lines = Object.entries(fields as Record<string, unknown>)
+    .map(([name, state]) => [name, scalarOf(state)] as const)
+    .filter((entry): entry is readonly [string, string] => entry[1] !== null)
+    .map(([name, value]) => `${name}: ${value}`);
+
+  return lines.length === 0 ? label : [label, ...lines].join("\n");
+}
+
+/**
  * One assistant text part through OpenUI, Renderer-only.
  */
 const OpenUIAssistantMessage: FC = () => {
+  const messageId = useAuiState((s) => s.message.id);
+
   const text = useAuiState((s) => (s.part.type === "text" ? s.part.text : null));
 
   const partStatusType = useAuiState((s) =>
@@ -46,22 +86,19 @@ const OpenUIAssistantMessage: FC = () => {
     // Anything else for a scheme is the model misbehaving: dropped.
     if (event.type !== "continue_conversation") return;
 
-    const label = event.humanFriendlyMessage?.trim();
+    const text = formMessage(event);
 
-    if (!label) return;
+    if (!text) return;
 
     aui.thread.append({
       role: "user",
-      content: [{ type: "text", text: label }],
+      content: [{ type: "text", text }],
     });
   };
 
-  // Plain-text history predates the openui-lang cutover and has no `root` line, which the
-  // Renderer draws as nothing. Completed non-program text falls back to markdown; a still
-  // running part stays on the Renderer so partial programs keep their loading state.
   const isProgram = /^\s*root\s*=/m.test(text);
 
-  if (partStatusType !== "running" && !isProgram) {
+  if (!isProgram) {
     return <MarkdownText />;
   }
 
@@ -78,6 +115,8 @@ const OpenUIAssistantMessage: FC = () => {
           response={text}
           isStreaming={partStatusType === "running"}
           onAction={onAction}
+          initialState={readOpenUiFormState(messageId)}
+          onStateUpdate={(state) => writeOpenUiFormState(messageId, state)}
         />
       </Suspense>
     </div>

@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-using AgentCore.Application.Calls;
+using AgentCore.Application.Conversation;
 using AgentCore.Application.Transcript;
 using AgentCore.Domain.Sources;
 
@@ -21,13 +21,13 @@ public sealed class ThreadHistoryTests
 {
     private static readonly DateTimeOffset Made = DateTimeOffset.Parse("2026-08-31T09:00:00Z", null);
 
-    private static readonly CallRecord Call =
-        new("call-1", null, CallStatus.Regular, null, null, Made, null);
+    private static readonly ConversationRecord Conversation =
+        new("conversation-1", null, ConversationStatus.Regular, null, null, Made, null);
 
     [Fact]
-    public void ACallWithNoWordsHasNoMessages()
+    public void AConversationWithNoWordsHasNoMessages()
     {
-        var history = ThreadHistory.Of(Call, []);
+        var history = ThreadHistory.Of(Conversation, []);
 
         Assert.Empty(history.Messages);
         Assert.Null(history.HeadId);
@@ -36,7 +36,7 @@ public sealed class ThreadHistoryTests
     [Fact]
     public void WhatTheCallerSaidComesBackAsAUserMessage()
     {
-        var history = ThreadHistory.Of(Call, [Row(0, 0, new ChatMessage(ChatRole.User, "hello"))]);
+        var history = ThreadHistory.Of(Conversation, [Row(0, 0, new ChatMessage(ChatRole.User, "hello"))]);
 
         var message = Assert.Single(history.Messages).Message;
 
@@ -45,9 +45,28 @@ public sealed class ThreadHistoryTests
     }
 
     [Fact]
+    public void AWindowWithAnOlderPage_NamesTheCursorForIt()
+    {
+        StoredConversation stored = new(Conversation, [Row(0, 4, new ChatMessage(ChatRole.User, "hello"))], [])
+        {
+            OlderBefore = 4,
+        };
+
+        Assert.Equal("4", ThreadHistory.Of(stored).NextCursor);
+    }
+
+    [Fact]
+    public void AWindowThatReachesTheStart_NamesNoCursor()
+    {
+        StoredConversation stored = new(Conversation, [Row(0, 0, new ChatMessage(ChatRole.User, "hello"))], []);
+
+        Assert.Null(ThreadHistory.Of(stored).NextCursor);
+    }
+
+    [Fact]
     public void MessagesAreChainedByParent()
     {
-        var history = ThreadHistory.Of(Call, [
+        var history = ThreadHistory.Of(Conversation, [
             Row(0, 0, new ChatMessage(ChatRole.User, "hello")),
             Row(1, 0, new ChatMessage(ChatRole.Assistant, "hi there")),
         ]);
@@ -61,7 +80,7 @@ public sealed class ThreadHistoryTests
     [Fact]
     public void TheHeadIsTheLastMessage()
     {
-        var history = ThreadHistory.Of(Call, [
+        var history = ThreadHistory.Of(Conversation, [
             Row(0, 0, new ChatMessage(ChatRole.User, "hello")),
             Row(1, 0, new ChatMessage(ChatRole.Assistant, "hi there")),
         ]);
@@ -72,7 +91,7 @@ public sealed class ThreadHistoryTests
     [Fact]
     public void AnAssistantMessageSaysItIsFinished()
     {
-        var history = ThreadHistory.Of(Call, [Row(0, 0, new ChatMessage(ChatRole.Assistant, "hi"))]);
+        var history = ThreadHistory.Of(Conversation, [Row(0, 0, new ChatMessage(ChatRole.Assistant, "hi"))]);
 
         // Without a status assistant-ui reads the message as still streaming, and draws a reply that
         // never stops arriving.
@@ -82,10 +101,10 @@ public sealed class ThreadHistoryTests
     [Fact]
     public void AToolCallAndItsResultBecomeOnePart()
     {
-        var history = ThreadHistory.Of(Call, [
+        var history = ThreadHistory.Of(Conversation, [
             Row(0, 0, new ChatMessage(ChatRole.User, "what does it cost?")),
-            Row(1, 0, Called("call-a", "price_lookup", new Dictionary<string, object?> { ["sku"] = "T101" })),
-            Row(2, 0, Answered("call-a", new { price = 50 })),
+            Row(1, 0, Called("conversation-a", "price_lookup", new Dictionary<string, object?> { ["sku"] = "T101" })),
+            Row(2, 0, Answered("conversation-a", new { price = 50 })),
             Row(3, 0, new ChatMessage(ChatRole.Assistant, "It is 50.")),
         ]);
 
@@ -100,10 +119,10 @@ public sealed class ThreadHistoryTests
     [Fact]
     public void EveryRowOfOneTurnBecomesOneMessage()
     {
-        var history = ThreadHistory.Of(Call, [
+        var history = ThreadHistory.Of(Conversation, [
             Row(0, 0, new ChatMessage(ChatRole.User, "what does it cost?")),
-            Row(1, 0, Called("call-a", "price_lookup", new Dictionary<string, object?> { ["sku"] = "T101" })),
-            Row(2, 0, Answered("call-a", new { price = 50 })),
+            Row(1, 0, Called("conversation-a", "price_lookup", new Dictionary<string, object?> { ["sku"] = "T101" })),
+            Row(2, 0, Answered("conversation-a", new { price = 50 })),
             Row(3, 0, new ChatMessage(ChatRole.Assistant, "It is 50.")),
         ]);
 
@@ -125,7 +144,7 @@ public sealed class ThreadHistoryTests
 
         // The host's lines and the staff reply are consecutive assistant rows of one turn. Drawn
         // as one message they read as "Dana joinedTry the tension bolt.Dana left" under one name.
-        var history = ThreadHistory.Of(Call, [Row(0, 7, joined), Row(1, 7, reply), Row(2, 7, left)]);
+        var history = ThreadHistory.Of(Conversation, [Row(0, 7, joined), Row(1, 7, reply), Row(2, 7, left)]);
 
         Assert.Equal(3, history.Messages.Count);
         Assert.Equal("Dana joined", TextOf(history.Messages[0]));
@@ -139,7 +158,7 @@ public sealed class ThreadHistoryTests
     [Fact]
     public void ConsecutiveRowsOfOneSpeakerJoinWithABreak()
     {
-        var history = ThreadHistory.Of(Call, [
+        var history = ThreadHistory.Of(Conversation, [
             Row(0, 7, new ChatMessage(ChatRole.Assistant, "First.")),
             Row(1, 7, new ChatMessage(ChatRole.Assistant, "Second.")),
         ]);
@@ -159,7 +178,7 @@ public sealed class ThreadHistoryTests
 
         // Each reply-box send is its own message. Same speaker, same turn index on the store rows,
         // but merging them draws one bubble with the words stuck together.
-        var history = ThreadHistory.Of(Call, [Row(0, 7, first), Row(1, 7, second), Row(2, 7, third)]);
+        var history = ThreadHistory.Of(Conversation, [Row(0, 7, first), Row(1, 7, second), Row(2, 7, third)]);
 
         Assert.Equal(3, history.Messages.Count);
         Assert.Equal("hello", TextOf(history.Messages[0]));
@@ -170,10 +189,10 @@ public sealed class ThreadHistoryTests
     [Fact]
     public void ATurnThatFailedItsToolSaysSo()
     {
-        var history = ThreadHistory.Of(Call, [
-            Row(0, 0, Called("call-a", "price_lookup", new Dictionary<string, object?>())),
+        var history = ThreadHistory.Of(Conversation, [
+            Row(0, 0, Called("conversation-a", "price_lookup", new Dictionary<string, object?>())),
             Row(1, 0, new ChatMessage(ChatRole.Tool, [
-                new FunctionResultContent("call-a", "no such part")
+                new FunctionResultContent("conversation-a", "no such part")
                 {
                     Exception = new InvalidOperationException("the catalogue is down."),
                 },
@@ -190,7 +209,7 @@ public sealed class ThreadHistoryTests
     {
         var cited = new SourceContent
         {
-            CallId = "call-a",
+            CallId = "conversation-a",
             Source = new SourceReference
             {
                 SourceId = "kb-7",
@@ -202,25 +221,25 @@ public sealed class ThreadHistoryTests
             },
         };
 
-        var history = ThreadHistory.Of(Call, [
+        var history = ThreadHistory.Of(Conversation, [
             Row(0, 0, new ChatMessage(ChatRole.Assistant, [cited, new TextContent("Tighten it.")])),
         ]);
 
         var parts = Assert.Single(history.Messages).Message.Content;
-        var source = Assert.IsType<ThreadSourcePart>(parts[0]);
+        var source = Assert.IsType<ThreadSourcePart>(parts[1]);
 
         Assert.Equal("kb-7", source.Id);
         Assert.Equal("document", source.SourceType);
         Assert.Equal("Belt tension", source.Title);
-        Assert.Equal("call-a", source.ParentId);
+        Assert.Equal("conversation-a", source.ParentId);
     }
 
     [Fact]
-    public void SourcesComeBeforeTheWordsTheySupport()
+    public void SourcesComeAfterTheWordsTheySupport()
     {
         var cited = new SourceContent
         {
-            CallId = "call-a",
+            CallId = "conversation-a",
             Source = new SourceReference
             {
                 SourceId = "kb-7",
@@ -230,20 +249,41 @@ public sealed class ThreadHistoryTests
             },
         };
 
-        var history = ThreadHistory.Of(Call, [
+        var history = ThreadHistory.Of(Conversation, [
             Row(0, 0, new ChatMessage(ChatRole.Assistant, [new TextContent("Tighten it."), cited])),
         ]);
 
         // The same order the live turn draws in, so a reloaded thread does not rearrange itself.
+        // A source draws nothing in place, and last it never shifts the words above it.
         var parts = Assert.Single(history.Messages).Message.Content;
-        Assert.IsType<ThreadSourcePart>(parts[0]);
-        Assert.IsType<ThreadTextPart>(parts[1]);
+        Assert.IsType<ThreadTextPart>(parts[0]);
+        Assert.IsType<ThreadSourcePart>(parts[1]);
+    }
+
+    [Fact]
+    public void WordsAndToolsKeepTheOrderTheyWereSaidIn()
+    {
+        // A sentence before a tool, the tool, then a program: three parts, so the program starts
+        // on a line of its own rather than mid-sentence.
+        var history = ThreadHistory.Of(Conversation, [
+            Row(0, 0, new ChatMessage(ChatRole.Assistant, [
+                new TextContent("Checking the orders."),
+                new FunctionCallContent("conversation-a", "read_records", new Dictionary<string, object?>()),
+            ])),
+            Row(1, 0, new ChatMessage(ChatRole.Tool, [new FunctionResultContent("conversation-a", "42 rows")])),
+            Row(2, 0, new ChatMessage(ChatRole.Assistant, [new TextContent("root = Card([])")])),
+        ]);
+
+        var parts = Assert.Single(history.Messages).Message.Content;
+        Assert.Equal("Checking the orders.", Assert.IsType<ThreadTextPart>(parts[0]).Text);
+        Assert.Equal("conversation-a", Assert.IsType<ThreadToolCallPart>(parts[1]).ToolCallId);
+        Assert.Equal("root = Card([])", Assert.IsType<ThreadTextPart>(parts[2]).Text);
     }
 
     [Fact]
     public void EachPartNamesItsKindOnTheWire()
     {
-        var history = ThreadHistory.Of(Call, [Row(0, 0, new ChatMessage(ChatRole.User, "hello"))]);
+        var history = ThreadHistory.Of(Conversation, [Row(0, 0, new ChatMessage(ChatRole.User, "hello"))]);
 
         var json = JsonSerializer.Serialize(history, new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
@@ -252,9 +292,9 @@ public sealed class ThreadHistoryTests
     }
 
     [Fact]
-    public void AMessageWithNoTimeOfItsOwnTakesTheCalls()
+    public void AMessageWithNoTimeOfItsOwnTakesTheConversations()
     {
-        var history = ThreadHistory.Of(Call, [Row(0, 0, new ChatMessage(ChatRole.User, "hello"))]);
+        var history = ThreadHistory.Of(Conversation, [Row(0, 0, new ChatMessage(ChatRole.User, "hello"))]);
 
         // assistant-ui refuses a message with no createdAt, and store 1 keeps no per-message clock.
         Assert.Equal(Made, Assert.Single(history.Messages).Message.CreatedAt);
@@ -266,7 +306,7 @@ public sealed class ThreadHistoryTests
         var reply = new ChatMessage(ChatRole.Assistant, "Try the tension bolt.");
         SpeakerProperty.Attach(reply, HandoffSpeaker.Human("Dana R.", "Support"));
 
-        var history = ThreadHistory.Of(Call, [Row(0, 0, reply)]);
+        var history = ThreadHistory.Of(Conversation, [Row(0, 0, reply)]);
 
         // AgentCoreRuntime.ts reads metadata.custom.speaker, in the Speaker shape of transport.ts.
         var speaker = Assert.Single(history.Messages).Message.Metadata.Custom["speaker"];
@@ -283,12 +323,12 @@ public sealed class ThreadHistoryTests
             ? speaker.GetProperty("kind").GetString()
             : null;
 
-    private static CallMessage Row(int ordinal, int turnIndex, ChatMessage message)
-        => new("call-1", ordinal, turnIndex, message, $"m{ordinal}");
+    private static ConversationMessage Row(int ordinal, int turnIndex, ChatMessage message)
+        => new("conversation-1", ordinal, turnIndex, message, $"m{ordinal}");
 
-    private static ChatMessage Called(string callId, string name, IDictionary<string, object?> arguments)
-        => new(ChatRole.Assistant, [new FunctionCallContent(callId, name, arguments)]);
+    private static ChatMessage Called(string conversationId, string name, IDictionary<string, object?> arguments)
+        => new(ChatRole.Assistant, [new FunctionCallContent(conversationId, name, arguments)]);
 
-    private static ChatMessage Answered(string callId, object result)
-        => new(ChatRole.Tool, [new FunctionResultContent(callId, result)]);
+    private static ChatMessage Answered(string conversationId, object result)
+        => new(ChatRole.Tool, [new FunctionResultContent(conversationId, result)]);
 }

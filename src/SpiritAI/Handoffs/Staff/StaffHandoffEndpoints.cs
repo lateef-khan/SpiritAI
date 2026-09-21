@@ -1,20 +1,19 @@
 using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.Extensions.AI;
 
 using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Notifications;
+using SpiritAI.Handoffs.Reads;
 using SpiritAI.Handoffs.Store;
-using SpiritAI.Handoffs.Transcript;
 using SpiritAI.Threads;
 
 namespace SpiritAI.Handoffs.Staff;
 
 /// <summary>
-/// The inbox, as REST: the queue, the claim, the reply, and the close. Section 9.1 of the spec.
+/// The inbox, as REST: the queue, the claim, the reply, the close, and the read mark. Section 9.1 of the spec.
 /// </summary>
 public static class StaffHandoffEndpoints
 {
@@ -24,7 +23,7 @@ public static class StaffHandoffEndpoints
     /// <summary>How many rows a listing holds when the caller asks for no size.</summary>
     public const int DefaultPageSize = 30;
 
-    private const string One = $"{Pattern}/{{callId}}";
+    private const string One = $"{Pattern}/{{conversationId}}";
 
     /// <summary>Maps the inbox on <see cref="Pattern"/>.</summary>
     /// <param name="endpoints">The route builder of the host.</param>
@@ -36,6 +35,11 @@ public static class StaffHandoffEndpoints
         endpoints.MapGet(Pattern, ListAsync)
             .Describe("listHandoffs")
             .Produces<HandoffPage>()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        endpoints.MapGet($"{Pattern}/counts", CountAsync)
+            .Describe("countHandoffs")
+            .Produces<HandoffCounts>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
         endpoints.MapGet(One, FetchAsync)
@@ -63,6 +67,11 @@ public static class StaffHandoffEndpoints
 
         endpoints.MapPost($"{One}/done", FinishAsync)
             .Describe("finishHandoff")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound);
+
+        endpoints.MapPost($"{One}/seen", SeenAsync)
+            .Describe("markHandoffSeen")
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound);
 
@@ -109,32 +118,53 @@ public static class StaffHandoffEndpoints
         return await body(key, member).ConfigureAwait(false);
     }
 
-    /// <summary>The rows in one state, the queue by default.</summary>
+    /// <summary>One page of the rows in one view, the open ones by default.</summary>
     private static Task<IResult> ListAsync(
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
-        ICallStore calls,
-        string? status,
+        IConversations conversations,
+        IConversationReadStore reads,
+        string? view,
+        string? owner,
+        string? order,
         int? limit,
+        string? cursor,
         CancellationToken cancellationToken)
-        => ForStaffAsync(http, staff, async (_, _) =>
+        => ForStaffAsync(http, staff, async (key, _) =>
         {
-            if (!HandoffSummary.TryReadStatus(status ?? HandoffSummary.StatusOf(HandoffStatus.Waiting), out var read))
+            if (!HandoffListQuery.TryRead(view, owner, order, cursor, key, out var query, out var problem))
+            {
+                return Problem(StatusCodes.Status400BadRequest, "The request cannot be read.", problem);
+            }
+
+            var page = await store
+                .ListAsync(query!.Filter, Math.Clamp(limit ?? DefaultPageSize, 1, HandoffStore.MaxListSize), query.After, cancellationToken)
+                .ConfigureAwait(false);
+
+            var items = await HandoffSummaries.OfAsync(store, conversations, reads, key, page.Rows, cancellationToken).ConfigureAwait(false);
+
+            return TypedResults.Ok(new HandoffPage(items, page.Next?.Encode()));
+        });
+
+    /// <summary>How many rows one view holds: the caller's, nobody's, and all of them.</summary>
+    private static Task<IResult> CountAsync(
+        HttpContext http,
+        StaffGate staff,
+        IHandoffStore store,
+        string? view,
+        CancellationToken cancellationToken)
+        => ForStaffAsync(http, staff, async (key, _) =>
+        {
+            if (!HandoffListQuery.TryReadView(view, out var read))
             {
                 return Problem(
                     StatusCodes.Status400BadRequest,
                     "The request cannot be read.",
-                    $"'{status}' is not a status. Send 'waiting', 'human', 'done', or nothing at all.");
+                    $"'{view}' is not a view. Send 'open', 'waiting', 'done', or nothing at all.");
             }
 
-            var rows = await store
-                .ListAsync(read, Math.Clamp(limit ?? DefaultPageSize, 1, HandoffStore.MaxListSize), cancellationToken)
-                .ConfigureAwait(false);
-
-            var items = await HandoffSummaries.OfAsync(store, calls, rows, cancellationToken).ConfigureAwait(false);
-
-            return TypedResults.Ok(new HandoffPage(items));
+            return TypedResults.Ok(await store.CountAsync(read, key, cancellationToken).ConfigureAwait(false));
         });
 
     /// <summary>The chat's open handoff, or the one closed most recently.</summary>
@@ -142,39 +172,44 @@ public static class StaffHandoffEndpoints
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
-        ICallStore calls,
-        string callId,
+        IConversations conversations,
+        IConversationReadStore reads,
+        string conversationId,
         CancellationToken cancellationToken)
-        => ForStaffAsync(http, staff, async (_, _) =>
+        => ForStaffAsync(http, staff, async (key, _) =>
         {
-            if (await store.LatestAsync(callId, cancellationToken).ConfigureAwait(false) is not { } row)
+            if (await store.LatestAsync(conversationId, cancellationToken).ConfigureAwait(false) is not { } row)
             {
                 return TypedResults.NotFound();
             }
 
-            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, calls, row, cancellationToken).ConfigureAwait(false));
+            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, conversations, reads, key, row, cancellationToken).ConfigureAwait(false));
         });
 
-    /// <summary>The whole chat, in the shape the browser draws a thread from.</summary>
+    /// <summary>One window of the chat, newest first, in the shape the browser draws a thread from.</summary>
     private static Task<IResult> HistoryAsync(
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
-        ICallStore calls,
-        string callId,
+        IConversations conversations,
+        string conversationId,
+        [AsParameters] HistoryQuery query,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (_, _) =>
         {
+            if (!HistoryWindow.TryRead(query, out var window))
+            {
+                return HistoryWindow.Refuse(query);
+            }
+
             // A chat that never asked for a person is not staff's to read.
-            if (await store.LatestAsync(callId, cancellationToken).ConfigureAwait(false) is null
-                || await calls.GetAsync(callId, cancellationToken).ConfigureAwait(false) is not { } record)
+            if (await store.LatestAsync(conversationId, cancellationToken).ConfigureAwait(false) is null
+                || await conversations.LoadWindowAsync(conversationId, window, cancellationToken).ConfigureAwait(false) is not { } stored)
             {
                 return TypedResults.NotFound();
             }
 
-            var rows = await calls.ReadAsync(callId, cancellationToken).ConfigureAwait(false);
-
-            return TypedResults.Ok(ThreadHistory.Of(record, rows));
+            return TypedResults.Ok(ThreadHistory.Of(stored));
         });
 
     /// <summary>Takes a waiting chat for the caller.</summary>
@@ -182,15 +217,15 @@ public static class StaffHandoffEndpoints
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
-        ICallStore calls,
+        IConversations conversations,
+        IConversationReadStore reads,
         IHandoffNotifier notifier,
         HandoffDesk desk,
-        TimeProvider clock,
-        string callId,
+        string conversationId,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (key, member) =>
         {
-            var claim = await store.ClaimAsync(callId, key, member.Name, cancellationToken).ConfigureAwait(false);
+            var claim = await store.ClaimAsync(conversationId, key, member.Name, cancellationToken).ConfigureAwait(false);
 
             switch (claim.Result)
             {
@@ -204,14 +239,14 @@ public static class StaffHandoffEndpoints
                     break;
             }
 
-            await NoteAsync(calls, clock, callId, $"{member.Name} joined", cancellationToken).ConfigureAwait(false);
+            await desk.NoteAsync(conversationId, $"{member.Name} joined", cancellationToken).ConfigureAwait(false);
 
-            await notifier.ClaimedAsync(callId, new HandoffAssignee(key, member.Name), cancellationToken).ConfigureAwait(false);
+            await notifier.ClaimedAsync(conversationId, new HandoffAssignee(key, member.Name), cancellationToken).ConfigureAwait(false);
 
             // Everyone behind the chat just taken moved up one.
             await desk.AnnounceQueueAsync(cancellationToken).ConfigureAwait(false);
 
-            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, calls, claim.Row!, cancellationToken).ConfigureAwait(false));
+            return TypedResults.Ok(await HandoffSummaries.OfAsync(store, conversations, reads, key, claim.Row!, cancellationToken).ConfigureAwait(false));
         });
 
     /// <summary>Puts the caller's words in a chat they hold.</summary>
@@ -220,7 +255,7 @@ public static class StaffHandoffEndpoints
         StaffGate staff,
         IHandoffStore store,
         HandoffDesk desk,
-        string callId,
+        string conversationId,
         HandoffReplyRequest? body,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (key, member) =>
@@ -230,7 +265,7 @@ public static class StaffHandoffEndpoints
                 return Problem(StatusCodes.Status400BadRequest, "The request cannot be read.", "text must be a non-blank string.");
             }
 
-            if (await store.OpenAsync(callId, cancellationToken).ConfigureAwait(false) is not { } row)
+            if (await store.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false) is not { } row)
             {
                 return TypedResults.NotFound();
             }
@@ -247,7 +282,7 @@ public static class StaffHandoffEndpoints
 
             var created = await desk.StaffSaysAsync(row, member, text, cancellationToken).ConfigureAwait(false);
 
-            return TypedResults.Created($"{Pattern}/{callId}/messages", created);
+            return TypedResults.Created($"{Pattern}/{conversationId}/messages", created);
         });
 
     /// <summary>Hands the chat back to the bot, from waiting or from human.</summary>
@@ -255,15 +290,14 @@ public static class StaffHandoffEndpoints
         HttpContext http,
         StaffGate staff,
         IHandoffStore store,
-        ICallStore calls,
+        IConversations conversations,
         IHandoffNotifier notifier,
         HandoffDesk desk,
-        TimeProvider clock,
-        string callId,
+        string conversationId,
         CancellationToken cancellationToken)
         => ForStaffAsync(http, staff, async (_, _) =>
         {
-            if (await store.OpenAsync(callId, cancellationToken).ConfigureAwait(false) is not { } row)
+            if (await store.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false) is not { } row)
             {
                 return TypedResults.NotFound();
             }
@@ -272,17 +306,17 @@ public static class StaffHandoffEndpoints
             // read no longer finds it.
             var leaving = row.Status == HandoffStatus.Human ? row.AssigneeName : null;
 
-            if (!await store.DoneAsync(callId, cancellationToken).ConfigureAwait(false))
+            if (!await store.DoneAsync(conversationId, cancellationToken).ConfigureAwait(false))
             {
                 return TypedResults.NotFound();
             }
 
             if (leaving is not null)
             {
-                await NoteAsync(calls, clock, callId, $"{leaving} left", cancellationToken).ConfigureAwait(false);
+                await desk.NoteAsync(conversationId, $"{leaving} left", cancellationToken).ConfigureAwait(false);
             }
 
-            await notifier.DoneAsync(callId, cancellationToken).ConfigureAwait(false);
+            await notifier.DoneAsync(conversationId, cancellationToken).ConfigureAwait(false);
 
             // A chat closed straight from waiting leaves the line; the ones behind it move up.
             await desk.AnnounceQueueAsync(cancellationToken).ConfigureAwait(false);
@@ -290,19 +324,30 @@ public static class StaffHandoffEndpoints
             return TypedResults.NoContent();
         });
 
-    /// <summary>Writes one of the host's own lines, "joined" or "left", into the chat.</summary>
-    private static async Task NoteAsync(
-        ICallStore calls,
-        TimeProvider clock,
-        string callId,
-        string text,
+    /// <summary>
+    /// Moves the caller's read mark to the chat's latest line, so the chat stops reading as
+    /// unread for them. The browser calls it when it opens a chat and again as visitor lines land
+    /// while the chat is on screen. Idempotent; a mark never moves back.
+    /// </summary>
+    private static Task<IResult> SeenAsync(
+        HttpContext http,
+        StaffGate staff,
+        IHandoffStore store,
+        IConversationReadStore reads,
+        string conversationId,
         CancellationToken cancellationToken)
-    {
-        var line = new ChatMessage(ChatRole.Assistant, text) { CreatedAt = clock.GetUtcNow() };
-        SpeakerProperty.Attach(line, HandoffSpeaker.System());
+        => ForStaffAsync(http, staff, async (key, _) =>
+        {
+            // A chat that never asked for a person is not staff's to read.
+            if (await store.LatestAsync(conversationId, cancellationToken).ConfigureAwait(false) is null)
+            {
+                return TypedResults.NotFound();
+            }
 
-        await calls.AppendMessageAsync(callId, line, cancellationToken).ConfigureAwait(false);
-    }
+            await reads.MarkSeenAsync(conversationId, key, cancellationToken).ConfigureAwait(false);
+
+            return TypedResults.NoContent();
+        });
 
     private static ProblemHttpResult Problem(int statusCode, string title, string detail)
         => TypedResults.Problem(detail, statusCode: statusCode, title: title);

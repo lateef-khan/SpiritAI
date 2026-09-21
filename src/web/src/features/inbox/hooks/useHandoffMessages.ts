@@ -1,33 +1,31 @@
 import type { ExportedMessageRepository } from "@assistant-ui/react";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 
+import type { HistoryPage, OlderMessagesSource } from "@/lib/history";
 import { createHandoffsApi, type HandoffsApi } from "../api/handoffsApi";
+import { handoffKeys } from "../cache/handoffKeys";
+import { prependOlderPage, reloadNewestPage } from "../cache/transcriptPages";
 
-/**
- * The signed-in api, built once.
- *
- * A default parameter is re-evaluated on every render, so `api: HandoffsApi =
- * createHandoffsApi()` would hand the hook a new object each time — and since `api`
- * sits in the load effect's dependency array, that new object would refire the effect on every
- * render, forever. Building it once at module scope keeps the default stable across renders.
- */
+/** See `useHandoffs.ts` for why the default api is built once, here, and not per render. */
 const defaultApi = createHandoffsApi();
 
 /**
  * Loads one handoff's transcript.
  *
  * `callId` of `null` means no row is selected yet, so it loads nothing and answers `history:
- * null`. A row picked while an earlier load is still in flight must not let that earlier answer
- * land after the newer one — the effect's cleanup guards against that with a cancelled flag.
+ * null`. The transcript is the cache's, under `handoffKeys.messages(callId)`: a message push
+ * marks it stale and it refetches while on screen, without clearing what is already drawn, so a
+ * reply does not flash a skeleton over the transcript it is about to replace.
  *
- * A `reload` re-runs the load for the same `callId` without clearing what is already on screen:
- * `loading` only reports true while there is no history yet for this `callId`, so a reply that
- * triggers a reload does not flash a skeleton over the transcript it is about to replace.
+ * The host answers the newest page of it. The pages before that arrive through `older`, as the
+ * reader scrolls up for them, and go into the same cached entry — so a refetch puts the newest
+ * page over what is held rather than in place of it, and the older pages stay on screen.
  *
  * @param callId The handoff to load, or `null` when none is selected.
  * @param api The handoffs api to load from. Defaults to the signed-in one.
  * @returns The loaded transcript, or `null` before one is picked or while it loads, plus a way
- * to ask again.
+ * to ask again and where its older pages come from.
  */
 export function useHandoffMessages(
   callId: string | null,
@@ -37,43 +35,48 @@ export function useHandoffMessages(
   loading: boolean;
   error: string | null;
   reload: () => void;
+  older: OlderMessagesSource | undefined;
 } {
-  const [attempt, setAttempt] = useState(0);
-  const [result, setResult] = useState<
-    { for: string; history: ExportedMessageRepository } | { for: string; error: string } | null
-  >(null);
+  const cache = useQueryClient();
+  const key = handoffKeys.messages(callId ?? "");
 
-  const reload = useCallback(() => setAttempt((n) => n + 1), []);
+  const { data, isPending, error, refetch } = useQuery({
+    queryKey: key,
+    queryFn: async () => {
+      const fresh = await api.history(callId ?? "");
 
-  useEffect(() => {
-    if (callId === null) return;
+      // Read after the fetch, not before: an older page that lands while the newest one is in
+      // flight is held by then, and must not be lost under the answer.
+      const held = cache.getQueryData<HistoryPage>(key);
 
-    let current = true;
+      return held ? reloadNewestPage(held, fresh) : fresh;
+    },
+    enabled: callId !== null,
+  });
 
-    void (async () => {
-      try {
-        const history = await api.messages(callId);
+  const initialCursor = data?.nextCursor;
 
-        if (current) setResult({ for: callId, history });
-      } catch (failure) {
-        if (current) {
-          setResult({
-            for: callId,
-            error: failure instanceof Error ? failure.message : String(failure),
-          });
-        }
-      }
-    })();
+  const older = useMemo<OlderMessagesSource | undefined>(
+    () =>
+      callId === null
+        ? undefined
+        : {
+            id: callId,
+            initialCursor,
+            fetchPage: (before) => api.history(callId, before),
+            merge: (page) =>
+              cache.setQueryData<HistoryPage>(handoffKeys.messages(callId), (held) =>
+                held === undefined ? held : prependOlderPage(held, page),
+              ),
+          },
+    [api, cache, callId, initialCursor],
+  );
 
-    return () => {
-      current = false;
-    };
-  }, [callId, api, attempt]);
-
-  const current = callId !== null && result?.for === callId ? result : null;
-  const history = current && "history" in current ? current.history : null;
-  const error = current && "error" in current ? current.error : null;
-  const loading = callId !== null && current === null;
-
-  return { history, loading, error, reload };
+  return {
+    history: callId === null ? null : (data?.repository ?? null),
+    loading: callId !== null && isPending,
+    error: callId === null ? null : (error?.message ?? null),
+    reload: () => void refetch(),
+    older,
+  };
 }

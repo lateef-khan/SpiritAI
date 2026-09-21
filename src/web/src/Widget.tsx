@@ -2,9 +2,16 @@ import { Hidden, Thread } from "@/components/assistant-ui/thread";
 import { LauncherBubble } from "@/components/assistant-ui/elements/launcher-bubble";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useAgentCoreRuntime } from "./features/threads/AgentCoreRuntime";
+import { readVisitorMemory, visitorFetch } from "./features/widget/api/visitorIdentity";
+import { createWidgetApi } from "./features/widget/api/widgetApi";
+import { TypingReporter } from "./features/handoff/TypingReporter";
+import { HandoffBanner } from "./features/widget/components/HandoffBanner";
+import { useHandoffDesk } from "./features/widget/hooks/useHandoffDesk";
+import { useWidgetRuntime } from "./features/widget/hooks/useWidgetRuntime";
+import { useWidgetSocket } from "./features/widget/hooks/useWidgetSocket";
 
 /**
  * The embeddable form of the chat: a bubble on someone else's page that opens into a panel.
@@ -27,7 +34,21 @@ const SIZE = {
 /*
  * The widget's own route, and not the app's.
  */
-const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/public/responses";
+const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/public/main/responses";
+
+/*
+ * Who this widget is, on every request it makes. Built once: the key is read per request, so
+ * nothing here goes stale.
+ */
+const send = visitorFetch(readVisitorMemory);
+const api = createWidgetApi(send);
+
+/**
+ * The pages of history the reader scrolls up for, once read.
+ */
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: Infinity, retry: 1 } },
+});
 
 const WIDGET_COMPONENTS = {
   ToolGroup: Hidden,
@@ -52,32 +73,54 @@ function useFrameSize(phase: Phase) {
 }
 
 export function Widget() {
-  const runtime = useAgentCoreRuntime(endpoint, (url, init) => fetch(url, init));
+  const desk = useHandoffDesk(api);
+  const widget = useWidgetRuntime(endpoint, api, send, desk);
   const [phase, setPhase] = useState<Phase>("closed");
+  // Replies that landed while the panel was closed. The bubble shows the count; opening clears it.
+  const [unread, setUnread] = useState(0);
+
+  const { typing, sayTyping } = useWidgetSocket({
+    desk,
+    widget,
+    onMessage: () => {
+      if (phase === "closed") setUnread((n) => n + 1);
+    },
+  });
 
   useFrameSize(phase);
 
+  const open = () => {
+    setUnread(0);
+    setPhase("open");
+  };
+
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
-      <TooltipProvider>
-        <div className="flex h-dvh w-full items-end justify-end p-3">
-          {phase === "open" ? (
-            <div className="bg-background border-border/60 relative flex h-full w-full flex-col overflow-hidden rounded-2xl border shadow-xl">
-              <button
-                type="button"
-                onClick={() => setPhase("closed")}
-                aria-label="Close chat"
-                className="hover:bg-accent absolute end-2 top-2 z-10 rounded-full p-1.5"
-              >
-                <XIcon className="size-4" />
-              </button>
-              <Thread components={WIDGET_COMPONENTS} />
-            </div>
-          ) : (
-            <LauncherBubble unread={0} onToggle={() => setPhase("open")} />
-          )}
-        </div>
-      </TooltipProvider>
+    <AssistantRuntimeProvider runtime={widget.runtime}>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <div className="flex h-dvh w-full items-end justify-end p-3">
+            {phase === "open" ? (
+              <div className="bg-background border-border/60 relative flex h-full w-full flex-col overflow-hidden rounded-2xl border shadow-xl">
+                <button
+                  type="button"
+                  onClick={() => setPhase("closed")}
+                  aria-label="Close chat"
+                  className="hover:bg-accent absolute end-2 top-2 z-10 rounded-full p-1.5"
+                >
+                  <XIcon className="size-4" />
+                </button>
+                <HandoffBanner state={desk.state} typing={typing} onLeaveEmail={desk.leaveEmail} />
+                <div className="min-h-0 flex-1">
+                  <Thread components={WIDGET_COMPONENTS} olderMessages={widget.older} />
+                </div>
+                <TypingReporter sayTyping={sayTyping} />
+              </div>
+            ) : (
+              <LauncherBubble unread={unread} onToggle={open} />
+            )}
+          </div>
+        </TooltipProvider>
+      </QueryClientProvider>
     </AssistantRuntimeProvider>
   );
 }

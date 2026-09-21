@@ -7,6 +7,7 @@ import { reviveHistory } from "@/lib/history";
 
 import type { Handoff } from "../api/handoffsApi";
 import { HandoffChat } from "./HandoffChat";
+import { queryWrapper } from "@/test/query.tsx";
 
 /**
  * The reply box, fed a revived transcript.
@@ -49,6 +50,8 @@ function handoff(over: Partial<Handoff> = {}): Handoff {
     title: "Treadmill belt slips at 8 mph",
     firstLine: "Hi, my CT800 belt slips when I go above 8 mph.",
     position: null,
+    awaitingReply: false,
+    unread: false,
     ...over,
   };
 }
@@ -66,6 +69,7 @@ function chat(
   meKey: string,
   reload: () => void = () => {},
 ) {
+  const { wrapper } = queryWrapper();
   return render(
     <HandoffChat
       handoff={handoff(over)}
@@ -76,6 +80,7 @@ function chat(
       meKey={meKey}
       onChanged={() => {}}
     />,
+    { wrapper },
   );
 }
 
@@ -128,7 +133,7 @@ describe("HandoffComposer", () => {
     await waitFor(() =>
       expect(replyToHandoff).toHaveBeenCalledWith(
         expect.objectContaining({
-          path: { callId: "call-1" },
+          path: { conversationId: "call-1" },
           body: { text: "Sure, one sec." },
         }),
       ),

@@ -157,4 +157,58 @@ describe("createThreadsApi", () => {
 
     await assert.rejects(() => createThreadsApi(fetch.send).fetch("call-1"), /404/);
   });
+
+  it("asks for the newest page with no cursor", async () => {
+    const fetch = fakeFetch({ headId: null, messages: [], nextCursor: null });
+
+    await createThreadsApi(fetch.send).history("call-1");
+
+    const asked = new URL(fetch.calls[0]!.url, "http://localhost");
+    assert.equal(asked.searchParams.has("before"), false);
+    assert.equal(asked.searchParams.has("limit"), false);
+  });
+
+  it("carries a page's before cursor and limit to the host", async () => {
+    const fetch = fakeFetch({ headId: null, messages: [], nextCursor: null });
+
+    await createThreadsApi(fetch.send).history("call-1", "cursor-9", 50);
+
+    const asked = new URL(fetch.calls[0]!.url, "http://localhost");
+    assert.equal(asked.pathname, `${ThreadsPath}/call-1/messages`);
+    assert.equal(asked.searchParams.get("before"), "cursor-9");
+    assert.equal(asked.searchParams.get("limit"), "50");
+  });
+
+  it("hands back the host's nextCursor beside the revived repository", async () => {
+    const fetch = fakeFetch({
+      headId: "m2",
+      messages: [
+        {
+          parentId: null,
+          message: {
+            id: "m2",
+            role: "assistant",
+            content: [{ type: "text", text: "Belt slips" }],
+            createdAt: "2026-08-31T09:00:00Z",
+            metadata: {},
+          },
+        },
+      ],
+      nextCursor: "cursor-before-m2",
+    });
+
+    const page = await createThreadsApi(fetch.send).history("call-1");
+
+    assert.equal(page.nextCursor, "cursor-before-m2");
+    assert.equal(page.repository.headId, "m2");
+    assert.equal(page.repository.messages[0]!.message.createdAt instanceof Date, true);
+  });
+
+  it("reads a nextCursor the host left out as null, not undefined", async () => {
+    const fetch = fakeFetch({ headId: null, messages: [] });
+
+    const page = await createThreadsApi(fetch.send).history("call-1");
+
+    assert.equal(page.nextCursor, null);
+  });
 });

@@ -40,7 +40,7 @@ public sealed class HandoffNotifierTests
     [Fact]
     public async Task WaitingGoesToStaff()
     {
-        var summary = new HandoffSummary(1, "c1", "waiting", "visitor", null, At, null, null, null, null, "Title", "Hello?", 1);
+        var summary = new HandoffSummary(1, "c1", "waiting", "visitor", null, At, null, null, null, null, "Title", "Hello?", 1, true, true);
 
         await _notifier.WaitingAsync(summary, Cancel);
 

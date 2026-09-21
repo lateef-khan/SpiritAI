@@ -3,7 +3,7 @@ using System.Buffers;
 namespace SpiritAI.PublicChat;
 
 /// <summary>
-/// Turns the random key the widget keeps in <c>localStorage</c> into the opaque key its calls are
+/// Turns the random key the widget keeps in <c>localStorage</c> into the opaque key its conversations are
 /// filed under. Section 4.4 of the handoff spec.
 /// </summary>
 public static class VisitorPrincipal
@@ -20,7 +20,7 @@ public static class VisitorPrincipal
     private static readonly SearchValues<char> Allowed =
         SearchValues.Create("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-");
 
-    /// <summary>The key one visitor's calls are filed under.</summary>
+    /// <summary>The key one visitor's conversations are filed under.</summary>
     /// <param name="visitorKey">What the widget sent.</param>
     /// <returns>The key, with the prefix on it.</returns>
     public static string KeyOf(string visitorKey)
@@ -31,7 +31,7 @@ public static class VisitorPrincipal
     }
 
     /// <summary>
-    /// Whether a key the browser sent is one this host will file calls under: not empty, at most
+    /// Whether a key the browser sent is one this host will file conversations under: not empty, at most
     /// <see cref="MaxLength"/> characters, and nothing but letters, digits, <c>_</c>, and <c>-</c>.
     /// </summary>
     /// <param name="visitorKey">What the widget sent.</param>

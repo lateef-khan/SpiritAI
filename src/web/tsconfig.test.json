@@ -7,7 +7,6 @@
     // The renderer tests mount React, so this project compiles JSX and resolves the same "@"
     // alias the app and the vendored components use.
     "jsx": "react-jsx",
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
@@ -23,5 +22,10 @@
     "allowImportingTsExtensions": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo"
   },
-  "include": ["src/features/threads/transport.ts", "src/**/*.test.ts", "src/**/*.test.tsx"]
+  "include": [
+    "src/features/threads/transport.ts",
+    "src/test/setup.ts",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
+  ]
 }

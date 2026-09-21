@@ -84,13 +84,7 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
-
       - uses: superfly/flyctl-actions/setup-flyctl@master
-
-      # --remote-only builds the image on Fly's builder, so this runner needs no
-      # Docker and no Tailscale. The app's own secrets (OPENAI_API_KEY,
-      # QDRANT_API_KEY, TS_AUTHKEY) already live on Fly and are NOT passed from
-      # here — see sync-fly-secrets.yml.
       - name: Deploy
         run: flyctl deploy --remote-only --wait-timeout 300
         env:

@@ -1,15 +1,16 @@
-import type { ExportedMessageRepository } from "@assistant-ui/react";
+import type { Client } from "@/api/client";
 import {
   claimHandoff,
+  countHandoffs,
   finishHandoff,
   getHandoffMessages,
   listHandoffs,
+  markHandoffSeen,
   replyToHandoff,
 } from "@/api/sdk.gen";
-import type { HandoffSummary } from "@/api/types.gen";
+import type { HandoffCounts, HandoffSummary } from "@/api/types.gen";
 import { apiClient } from "@/lib/apiClient";
-import type { Client } from "@/api/client";
-import { reviveHistory } from "@/lib/history";
+import { pageQuery, revivePage, type ReadHistory } from "@/lib/history";
 
 /**
  * Everything the inbox asks the host about handoffs.
@@ -40,13 +41,37 @@ export type Handoff = Omit<
   doneAt: Date | null;
 };
 
+/** The two halves of the inbox: rows still open for a human, and rows already closed. */
+export type HandoffView = "open" | "done";
+
+/** Whose rows a listing keeps: the caller's, nobody's, or everyone's. */
+export type HandoffOwner = "me" | "none" | "all";
+
+/** Which end of a listing comes first. */
+export type HandoffOrder = "oldest" | "newest";
+
+/** What one listing walks. The same three fields name its cache entry. */
+export type HandoffFilter = {
+  readonly view: HandoffView;
+  readonly owner: HandoffOwner;
+  readonly order: HandoffOrder;
+};
+
+/** One page of a listing, and the cursor that fetches the page after it. */
+export type HandoffPage = {
+  readonly items: Handoff[];
+  readonly nextCursor: string | null;
+};
+
 /** Every question the inbox asks about handoffs. */
 export type HandoffsApi = {
-  list(status: HandoffStatus): Promise<Handoff[]>;
-  messages(callId: string): Promise<ExportedMessageRepository>;
+  list(filter: HandoffFilter, cursor: string | null): Promise<HandoffPage>;
+  counts(view: HandoffView): Promise<HandoffCounts>;
+  history: ReadHistory;
   claim(callId: string): Promise<Handoff>;
   finish(callId: string): Promise<void>;
   reply(callId: string, text: string): Promise<void>;
+  seen(callId: string): Promise<void>;
 };
 
 /**
@@ -65,7 +90,7 @@ function dateOrNull(value: string | null): Date | null {
  * @param raw The row the host sent.
  * @returns The same row, with real `Date`s and a narrowed `status`.
  */
-function reviveHandoff(raw: WireHandoff): Handoff {
+export function reviveHandoff(raw: WireHandoff): Handoff {
   return {
     ...raw,
     // The generated type widens the wire's enum to `string`; the OpenAPI document is the source
@@ -86,25 +111,55 @@ function reviveHandoff(raw: WireHandoff): Handoff {
  */
 export function createHandoffsApi(client: Client = apiClient): HandoffsApi {
   return {
-    list: async (status) =>
-      (await listHandoffs({ client, throwOnError: true, query: { status } })).data.items.map(
-        reviveHandoff,
-      ),
+    list: async ({ view, owner, order }, cursor) => {
+      const { data } = await listHandoffs({
+        client,
+        throwOnError: true,
+        query: {
+          view,
+          ...(owner === "all" ? {} : { owner }),
+          order,
+          ...(cursor === null ? {} : { cursor }),
+        },
+      });
+      return { items: data.items.map(reviveHandoff), nextCursor: data.nextCursor };
+    },
 
-    messages: async (callId) =>
-      reviveHistory(
-        (await getHandoffMessages({ client, throwOnError: true, path: { callId } })).data,
+    counts: async (view) =>
+      (await countHandoffs({ client, throwOnError: true, query: { view } })).data,
+
+    history: async (callId, before, limit) =>
+      revivePage(
+        (
+          await getHandoffMessages({
+            client,
+            throwOnError: true,
+            path: { conversationId: callId },
+            query: pageQuery(before, limit),
+          })
+        ).data,
       ),
 
     claim: async (callId) =>
-      reviveHandoff((await claimHandoff({ client, throwOnError: true, path: { callId } })).data),
+      reviveHandoff(
+        (await claimHandoff({ client, throwOnError: true, path: { conversationId: callId } })).data,
+      ),
 
     finish: async (callId) => {
-      await finishHandoff({ client, throwOnError: true, path: { callId } });
+      await finishHandoff({ client, throwOnError: true, path: { conversationId: callId } });
     },
 
     reply: async (callId, text) => {
-      await replyToHandoff({ client, throwOnError: true, path: { callId }, body: { text } });
+      await replyToHandoff({
+        client,
+        throwOnError: true,
+        path: { conversationId: callId },
+        body: { text },
+      });
+    },
+
+    seen: async (callId) => {
+      await markHandoffSeen({ client, throwOnError: true, path: { conversationId: callId } });
     },
   };
 }

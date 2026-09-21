@@ -8,6 +8,8 @@ type OpenUIRendererProps = {
   response: string;
   isStreaming: boolean;
   onAction: (event: ActionEvent) => void;
+  initialState?: Record<string, unknown> | undefined;
+  onStateUpdate?: ((state: Record<string, unknown>) => void) | undefined;
 };
 
 /**
@@ -17,12 +19,20 @@ type OpenUIRendererProps = {
  * hooks and the markdown fallback, both already in the initial chunk) and
  * owns the click-to-turn logic.
  */
-const OpenUIRenderer: FC<OpenUIRendererProps> = ({ response, isStreaming, onAction }) => (
+const OpenUIRenderer: FC<OpenUIRendererProps> = ({
+  response,
+  isStreaming,
+  onAction,
+  initialState,
+  onStateUpdate,
+}) => (
   <Renderer
     response={response}
     library={spiritChatLibrary}
     isStreaming={isStreaming}
     onAction={onAction}
+    initialState={initialState}
+    onStateUpdate={onStateUpdate}
   />
 );
 

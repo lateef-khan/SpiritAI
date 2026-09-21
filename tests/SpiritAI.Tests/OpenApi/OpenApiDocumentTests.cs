@@ -1,6 +1,8 @@
 using System.Text.Json;
 
-using AgentCore.Application.Calls.Memory;
+using AgentCore.Application.Cache;
+using AgentCore.Application.Conversation;
+using AgentCore.Application.Conversation.Memory;
 using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Builder;
@@ -13,10 +15,13 @@ using SpiritAI.Auth.Users;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Notifications;
+using SpiritAI.Handoffs.Reads;
 using SpiritAI.Handoffs.Staff;
 using SpiritAI.Handoffs.Store;
+using SpiritAI.Handoffs.Visitors;
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
+using SpiritAI.PublicChat;
 using SpiritAI.RealTime.Presence;
 using SpiritAI.Tests.Auth.Users;
 using SpiritAI.Tests.Handoffs;
@@ -61,11 +66,19 @@ public sealed class OpenApiDocumentTests
         "getUnit",
         "getOrder",
         "listHandoffs",
+        "countHandoffs",
         "getHandoff",
         "getHandoffMessages",
         "claimHandoff",
         "replyToHandoff",
         "finishHandoff",
+        "markHandoffSeen",
+        "createPublicThread",
+        "getPublicThreadMessages",
+        "askForHuman",
+        "getHandoffState",
+        "leaveEmail",
+        "sendVisitorMessage",
     ];
 
     /// <summary>
@@ -117,15 +130,6 @@ public sealed class OpenApiDocumentTests
                 $"{operationId} answers with an inline schema rather than a named type. "
                     + "Give its route a Produces<T>() naming the record it returns.");
         }
-    }
-
-    /// <summary>The title route is left out, and a client must not be generated for it.</summary>
-    [Fact]
-    public async Task TheTitleStreamIsNotInTheDocument()
-    {
-        using var document = JsonDocument.Parse(await BuildAsync());
-
-        Assert.DoesNotContain("/title", document.RootElement.GetProperty("paths").EnumerateObject().Select(p => p.Name));
     }
 
     /// <summary>Reads each operation's id and the schema of its success body, if it has one.</summary>
@@ -180,10 +184,11 @@ public sealed class OpenApiDocumentTests
 
                     // Present so the route builder reads these as injected services rather than as
                     // request bodies. Nothing calls them: no route is ever invoked here.
-                    services.AddSingleton<ICallStore>(new InMemoryCallStore());
-                    services.AddSingleton<ICallTitler>(new SilentTitler());
-                    services.AddSingleton(new UnitLookup(
-                        (_, _, _) => ValueTask.FromResult(default(System.Text.Json.JsonElement))));
+                    services.AddSingleton<IConversations>(new Conversations(new InMemoryConversationStore(), blobs: null));
+                    services.AddSingleton<IConversationTitler>(new SilentTitler());
+                    services.AddSingleton(new CachedUnitLookup(
+                        new UnitLookup((_, _, _) => ValueTask.FromResult(default(System.Text.Json.JsonElement))),
+                        PassThroughHybridCache.Instance));
 
                     // The inbox's routes, present so the route builder reads them as injected
                     // services. Nothing calls them: no route is ever invoked here, so a fake
@@ -192,6 +197,8 @@ public sealed class OpenApiDocumentTests
                     services.AddScoped<StaffGate>();
                     services.AddSingleton(TimeProvider.System);
                     services.AddSingleton<IHandoffStore>(new FakeHandoffStore(TimeProvider.System));
+                    services.AddSingleton<IConversationReadStore>(new FakeConversationReadStore(
+                        new Conversations(new InMemoryConversationStore(), blobs: null)));
                     services.AddSingleton<IHandoffNotifier>(new RecordingHandoffNotifier());
                     services.AddSingleton<IPresenceStore>(new FakePresenceStore(TimeProvider.System, TimeSpan.FromSeconds(90)));
                     services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());
@@ -205,6 +212,8 @@ public sealed class OpenApiDocumentTests
                         endpoints.MapThreads();
                         endpoints.MapLookup();
                         endpoints.MapStaffHandoffs();
+                        endpoints.MapPublicThreads();
+                        endpoints.MapVisitorHandoffs();
                         endpoints.MapOpenApi();
                     });
                 }))
@@ -231,13 +240,13 @@ public sealed class OpenApiDocumentTests
     }
 
     /// <summary>A titler that is registered and never asked for anything.</summary>
-    private sealed class SilentTitler : ICallTitler
+    private sealed class SilentTitler : IConversationTitler
     {
-        public IAsyncEnumerable<string> GenerateAsync(string callId, CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<string> GenerateAsync(string conversationId, CancellationToken cancellationToken = default)
             => AsyncEnumerable.Empty<string>();
 
         public IAsyncEnumerable<string> GenerateFromAsync(
-            string callId,
+            string conversationId,
             IReadOnlyList<Microsoft.Extensions.AI.ChatMessage> messages,
             CancellationToken cancellationToken = default)
             => AsyncEnumerable.Empty<string>();

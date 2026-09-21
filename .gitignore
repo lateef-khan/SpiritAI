@@ -6,6 +6,8 @@
 # dotenv files
 .env
 
+src/SpiritAI/config/spirit.local.yaml
+
 # User-specific files
 *.rsuser
 *.suo

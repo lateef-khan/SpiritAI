@@ -64,6 +64,23 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends tailscale \
  && rm -rf /var/lib/apt/lists/*
 
+# Shell tools the agent can use,
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 python3-venv unixodbc \
+ && . /etc/os-release \
+ && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+      | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+ && curl -fsSL "https://packages.microsoft.com/config/${ID}/${VERSION_ID}/prod.list" \
+      -o /etc/apt/sources.list.d/mssql-release.list \
+ && apt-get update \
+ && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 mssql-tools18 \
+ && ln -s /opt/mssql-tools18/bin/sqlcmd /usr/local/bin/sqlcmd \
+ && python3 -m venv /opt/venv \
+ && /opt/venv/bin/pip install --no-cache-dir \
+      pandas matplotlib reportlab openpyxl pyodbc \
+ && rm -rf /var/lib/apt/lists/*
+ENV PATH="/opt/venv/bin:${PATH}"
+
 WORKDIR /app
 COPY --from=build /app/publish ./
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

@@ -13,6 +13,8 @@ import { Hidden, Thread, type ThreadComponents } from "@/components/assistant-ui
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TypingReporter } from "@/features/handoff/TypingReporter";
+import type { OlderMessagesSource } from "@/lib/history";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { HostRefusedError } from "@/lib/apiClient";
 
@@ -48,7 +50,10 @@ export function HandoffChat({
   loading,
   error,
   reload,
+  older,
   meKey,
+  typing = false,
+  onTyping,
   onChanged,
   onBack,
 }: {
@@ -57,7 +62,11 @@ export function HandoffChat({
   loading: boolean;
   error: string | null;
   reload: () => void;
+  /** Where the pages before `history` come from. Without one, the transcript is what it is. */
+  older?: OlderMessagesSource | undefined;
   meKey: string;
+  typing?: boolean;
+  onTyping?: (on: boolean) => void;
   onChanged(next: Handoff): void;
   onBack?: () => void;
 }) {
@@ -69,7 +78,13 @@ export function HandoffChat({
       <div className="flex items-center border-b">
         {onBack ? <BackButton onBack={onBack} /> : null}
         <div className="min-w-0 flex-1">
-          <HandoffChatHeader handoff={handoff} now={now} meKey={meKey} onChanged={onChanged} />
+          <HandoffChatHeader
+            handoff={handoff}
+            now={now}
+            meKey={meKey}
+            typing={typing}
+            onChanged={onChanged}
+          />
         </div>
       </div>
 
@@ -79,7 +94,14 @@ export function HandoffChat({
         ) : error ? (
           <p className="p-3.5 text-sm text-destructive">{error}</p>
         ) : (
-          <HandoffThread handoff={handoff} meKey={meKey} history={history} reload={reload} />
+          <HandoffThread
+            handoff={handoff}
+            meKey={meKey}
+            history={history}
+            reload={reload}
+            older={older}
+            onTyping={onTyping}
+          />
         )}
       </div>
 
@@ -127,11 +149,15 @@ function HandoffThread({
   meKey,
   history,
   reload,
+  older,
+  onTyping,
 }: {
   handoff: Handoff;
   meKey: string;
   history: ExportedMessageRepository | null;
   reload: () => void;
+  older: OlderMessagesSource | undefined;
+  onTyping?: (on: boolean) => void;
 }) {
   const messages = useMemo(() => history?.messages.map((item) => item.message) ?? [], [history]);
   const [sending, setSending] = useState(false);
@@ -180,7 +206,8 @@ function HandoffThread({
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <HandoffComposerContext.Provider value={{ handoff, canReply, sendError }}>
-        <Thread components={COMPONENTS} />
+        <Thread components={COMPONENTS} olderMessages={older} />
+        {canReply && onTyping ? <TypingReporter sayTyping={onTyping} /> : null}
       </HandoffComposerContext.Provider>
     </AssistantRuntimeProvider>
   );

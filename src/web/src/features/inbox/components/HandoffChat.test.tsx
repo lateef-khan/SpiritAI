@@ -5,6 +5,7 @@ import { reviveHistory } from "@/lib/history";
 
 import type { Handoff } from "../api/handoffsApi";
 import { HandoffChat } from "./HandoffChat";
+import { queryWrapper } from "@/test/query.tsx";
 
 /**
  * The chat pane, fed a revived transcript.
@@ -85,6 +86,8 @@ function handoff(over: Partial<Handoff> = {}): Handoff {
     title: "Treadmill belt slips at 8 mph",
     firstLine: "Hi, my CT800 belt slips when I go above 8 mph.",
     position: null,
+    awaitingReply: false,
+    unread: false,
     ...over,
   };
 }
@@ -106,6 +109,7 @@ function chat(
   over: Partial<Handoff> = {},
   meKey = "user:dana",
 ) {
+  const { wrapper } = queryWrapper();
   render(
     <HandoffChat
       handoff={handoff(over)}
@@ -116,6 +120,7 @@ function chat(
       meKey={meKey}
       onChanged={() => {}}
     />,
+    { wrapper },
   );
 }
 

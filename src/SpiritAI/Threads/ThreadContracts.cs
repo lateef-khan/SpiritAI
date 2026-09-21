@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using AgentCore.Application.Calls;
+using AgentCore.Application.Conversation;
 
 namespace SpiritAI.Threads;
 
@@ -40,13 +40,13 @@ public sealed record ThreadSummary(
     /// <summary>Describes one stored call to the browser.</summary>
     /// <param name="record">The row store 0 holds.</param>
     /// <returns>The row, with the host's own bookkeeping taken back out of <c>custom</c>.</returns>
-    public static ThreadSummary Of(CallRecord record)
+    public static ThreadSummary Of(ConversationRecord record)
     {
         ArgumentNullException.ThrowIfNull(record);
 
         return new ThreadSummary(
-            record.CallId,
-            record.Status == CallStatus.Archived ? ThreadStatus.Archived : ThreadStatus.Regular,
+            record.ConversationId,
+            record.Status == ConversationStatus.Archived ? ThreadStatus.Archived : ThreadStatus.Regular,
             record.ExternalId,
             record.Title,
             record.LastMessageAt,
@@ -73,16 +73,16 @@ public sealed record ThreadSummary(
     /// <param name="text">What the caller sent.</param>
     /// <param name="status">The status it named.</param>
     /// <returns><see langword="true"/> when the value was one this host knows.</returns>
-    public static bool TryReadStatus(string? text, out CallStatus status)
+    public static bool TryReadStatus(string? text, out ConversationStatus status)
     {
-        status = CallStatus.Regular;
+        status = ConversationStatus.Regular;
 
         switch (text)
         {
             case Regular:
                 return true;
             case Archived:
-                status = CallStatus.Archived;
+                status = ConversationStatus.Archived;
                 return true;
             default:
                 return false;
@@ -94,7 +94,7 @@ public sealed record ThreadSummary(
 /// <param name="Threads">The page's rows, most recently active first.</param>
 /// <param name="NextCursor">
 /// What to send back as <c>after</c> for the following page, or <see langword="null"/> when this
-/// page was the last. It is <see cref="CallCursor"/>'s value, passed through unread.
+/// page was the last. It is <see cref="ConversationCursor"/>'s value, passed through unread.
 /// </param>
 public sealed record ThreadPage(IReadOnlyList<ThreadSummary> Threads, string? NextCursor);
 
@@ -102,16 +102,16 @@ public sealed record ThreadPage(IReadOnlyList<ThreadSummary> Threads, string? Ne
 /// The answer to a thread's creation, in the shape assistant-ui's <c>initialize</c> returns.
 /// </summary>
 /// <param name="RemoteId">
-/// The call id. A turn sends it back as the Responses conversation, so one id names the thread
-/// and the call alike rather than two that have to be kept in step.
+/// The conversation id. A turn sends it back as the Responses conversation, so one id names the thread
+/// and the conversation alike rather than two that have to be kept in step.
 /// </param>
-/// <param name="ExternalId">A consumer's own id for the call. Nothing sets one yet.</param>
+/// <param name="ExternalId">A consumer's own id for the conversation. Nothing sets one yet.</param>
 public sealed record ThreadCreated(string RemoteId, string? ExternalId);
 
 /// <summary>
 /// What the host keeps in the <c>custom</c> column, which is not what the browser put there.
 /// </summary>
-/// <param name="Owner">The <see cref="CallerPrincipal"/> key allowed to see this call.</param>
+/// <param name="Owner">The <see cref="CallerPrincipal"/> key allowed to see this conversation.</param>
 /// <param name="App">The browser's own fields, or <see langword="null"/> when it has none.</param>
 public sealed record ThreadEnvelope(
     string Owner,
@@ -120,7 +120,7 @@ public sealed record ThreadEnvelope(
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     /// <summary>Builds the value to store, detached from the request that carried it.</summary>
-    /// <param name="owner">The key that may see the call.</param>
+    /// <param name="owner">The key that may see the conversation.</param>
     /// <param name="app">The browser's own fields, or <see langword="null"/> to clear them.</param>
     /// <returns>A standalone element, safe to hold after the request body is gone.</returns>
     public static JsonElement Build(string owner, JsonElement? app)
@@ -130,7 +130,7 @@ public sealed record ThreadEnvelope(
         return JsonSerializer.SerializeToElement(new ThreadEnvelope(owner, app), Json);
     }
 
-    /// <summary>Reads who owns a call.</summary>
+    /// <summary>Reads who owns a conversation.</summary>
     /// <param name="custom">The stored column, or <see langword="null"/>.</param>
     /// <returns>The owner's key, or <see langword="null"/> when the row names none.</returns>
     public static string? OwnerOf(JsonElement? custom)

@@ -1,34 +1,35 @@
-# A throwaway PostgreSQL to develop against, so the app never touches the real Neon database.
-#
-# Nothing is on a volume: `just db-down` wipes the lot. AgentCore migrates on startup, so a blank
-# database is all the app needs. The container's own user is a superuser, which the first migration
-# requires — it creates the `agentcore_writer` role.
+# Throwaway PostgreSQL and MinIO to develop against. Nothing is on a volume; `db-down` and
+# `blob-down` wipe the lot. AgentCore migrates on startup, so a blank database is enough.
 
 container := "spirit-pg"
 image := "postgres:17"
-
-# 55432, so this does not fight a PostgreSQL already listening on 5432.
 port := "55432"
-
 user := "spirit"
 password := "spirit"
 database := "spirit"
-
 pg_conn := "Host=localhost;Port=" + port + ";Database=" + database + ";Username=" + user + ";Password=" + password
 
-# The secret AgentCore reads the connection string from.
-#
-# The dashed name and not POSTGRES_CONNECTION_STRING. `AgentCore:Secrets:postgres-connection-string`
-# is already set in user secrets, pointing at Neon, and the configuration chain is read before the
-# environment — so the plain variable is never reached. This overrides that exact key instead.
+# Dashed, not POSTGRES_CONNECTION_STRING: user secrets already set this exact key to Neon and
+# win over the environment, so only overriding the same key takes effect.
 pg_secret := "AgentCore__Secrets__postgres-connection-string"
 
-# Personal values live in .env, git-ignored. See .env.example.
+blob_container := "spirit-s3"
+# Quay, because Docker Hub stopped serving minio/minio in 2025.
+blob_image := "quay.io/minio/minio"
+blob_port := "59000"
+blob_key := "spirit"
+blob_secret := "spiritspirit"
+blob_bucket := "spirit"
+blob_endpoint := "http://localhost:" + blob_port
+blob_key_secret := "AgentCore__Secrets__s3-access-key-id"
+blob_secret_secret := "AgentCore__Secrets__s3-secret-access-key"
+
+# spirit.yaml with its blobs: line pointed at MinIO. Git-ignored; rewritten on every run.
+local_config := "config/spirit.local.yaml"
+
 set dotenv-load
 
-# The one developer the seed makes staff. Neon Auth owns the real table; locally it is a copy with
-# this row in it, so a signed-in browser passes the staff gate. The email must be the one you sign
-# in with; set SPIRIT_STAFF_EMAIL in .env when it is not your git email.
+# Who the seed makes staff. Must be the email you sign in with; override in .env if needed.
 staff_email := env_var_or_default("SPIRIT_STAFF_EMAIL", `git config user.email`)
 staff_name := env_var_or_default("SPIRIT_STAFF_NAME", `git config user.name`)
 
@@ -36,7 +37,7 @@ staff_name := env_var_or_default("SPIRIT_STAFF_NAME", `git config user.name`)
 default:
     @just --list
 
-# Start the throwaway PostgreSQL and wait until it answers.
+# Start PostgreSQL and wait until it answers.
 db-up:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -66,7 +67,7 @@ db-up:
     echo "{{container}} never became ready. Try: docker logs {{container}}" >&2
     exit 1
 
-# Remove the throwaway PostgreSQL and everything written to it.
+# Remove PostgreSQL and everything in it.
 db-down:
     -docker rm --force {{container}}
 
@@ -74,11 +75,11 @@ db-down:
 db-url:
     @echo '{{pg_conn}}'
 
-# Open a psql shell on the throwaway PostgreSQL.
+# Open psql.
 db-shell:
     docker exec --interactive --tty {{container}} psql --username={{user}} --dbname={{database}}
 
-# Load dev/seed.pgsql: the staff sign-in and a few handoffs. Waits for the host to migrate first.
+# Load dev/seed.pgsql once the host has migrated.
 db-seed:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -98,7 +99,62 @@ db-seed:
     echo "spirit.handoff never appeared; is the host running?" >&2
     exit 1
 
-# Run the host on http://localhost:5299/chat against the throwaway PostgreSQL, and seed it once it has migrated.
-run: db-up
+# Start MinIO, wait until it answers, and make the bucket.
+blob-up:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ -z "$(docker ps --quiet --filter 'name=^{{blob_container}}$')" ]; then
+        docker rm --force {{blob_container}} >/dev/null 2>&1 || true
+
+        docker run --detach --name {{blob_container}} \
+            --env MINIO_ROOT_USER={{blob_key}} \
+            --env MINIO_ROOT_PASSWORD={{blob_secret}} \
+            --publish {{blob_port}}:9000 \
+            {{blob_image}} server /data >/dev/null
+    fi
+
+    for _ in $(seq 1 60); do
+        if curl --silent --fail {{blob_endpoint}}/minio/health/live >/dev/null 2>&1; then
+            # mc runs inside the container, so it talks to the container's own port.
+            docker exec {{blob_container}} mc alias set local http://localhost:9000 {{blob_key}} {{blob_secret}} >/dev/null
+            docker exec {{blob_container}} mc mb --ignore-existing local/{{blob_bucket}} >/dev/null
+            echo "{{blob_container}} is ready on {{blob_endpoint}}, bucket {{blob_bucket}}."
+            exit 0
+        fi
+        sleep 1
+    done
+
+    echo "{{blob_container}} never became ready. Try: docker logs {{blob_container}}" >&2
+    exit 1
+
+# Remove MinIO and everything in it.
+blob-down:
+    -docker rm --force {{blob_container}}
+
+# List the bucket.
+blob-ls:
+    docker exec {{blob_container}} mc ls --recursive local/{{blob_bucket}}
+
+# Write config/spirit.local.yaml with blobs: pointed at MinIO.
+local-config:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd src/SpiritAI
+
+    if ! grep -q '^  blobs: ' config/spirit.yaml; then
+        echo "config/spirit.yaml has no top-level 'blobs:' line under providers: to swap." >&2
+        exit 1
+    fi
+
+    sed 's|^  blobs: .*|  blobs: { kind: s3, endpoint: {{blob_endpoint}}, bucket: {{blob_bucket}} }|' \
+        config/spirit.yaml > {{local_config}}
+
+# Run the host on http://localhost:5299/chat against PostgreSQL and MinIO, and seed it.
+run: db-up blob-up local-config
     (just db-seed &)
-    cd src/SpiritAI && env "{{pg_secret}}={{pg_conn}}" dotnet run --launch-profile spirit
+    cd src/SpiritAI && env "{{pg_secret}}={{pg_conn}}" \
+        "{{blob_key_secret}}={{blob_key}}" "{{blob_secret_secret}}={{blob_secret}}" \
+        ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5299 \
+        AgentCore__ConfigurationPath={{local_config}} \
+        dotnet run --no-launch-profile

@@ -52,7 +52,7 @@ internal static class DabEnvelope
     /// <summary>Digs the JSON body out of whatever the tool layer handed back.</summary>
     /// <remarks>
     /// An MCP tool answers with content parts, and the part carrying the rows is a string of JSON.
-    /// Depending on how the call was made, that arrives already parsed, as that string, or still
+    /// Depending on how the conversation was made, that arrives already parsed, as that string, or still
     /// inside its <c>content</c> array. All three are the same body.
     /// </remarks>
     /// <param name="payload">What the tool answered.</param>

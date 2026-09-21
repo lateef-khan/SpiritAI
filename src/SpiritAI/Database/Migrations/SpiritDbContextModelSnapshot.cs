@@ -23,15 +23,15 @@ namespace SpiritAI.Database.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("SpiritAI.Handoffs.Model.CallStub", b =>
+            modelBuilder.Entity("SpiritAI.Handoffs.Model.ConversationStub", b =>
                 {
-                    b.Property<string>("CallId")
+                    b.Property<string>("ConversationId")
                         .HasColumnType("text")
-                        .HasColumnName("call_id");
+                        .HasColumnName("conversation_id");
 
-                    b.HasKey("CallId");
+                    b.HasKey("ConversationId");
 
-                    b.ToTable("call", "agentcore", t =>
+                    b.ToTable("conversation", "agentcore", t =>
                         {
                             t.ExcludeFromMigrations();
                         });
@@ -65,14 +65,14 @@ namespace SpiritAI.Database.Migrations
                         .HasColumnType("text")
                         .HasColumnName("assignee_name");
 
-                    b.Property<string>("CallId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("call_id");
-
                     b.Property<DateTimeOffset?>("ClaimedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("claimed_at");
+
+                    b.Property<string>("ConversationId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("conversation_id");
 
                     b.Property<DateTimeOffset?>("DoneAt")
                         .HasColumnType("timestamp with time zone")
@@ -93,9 +93,9 @@ namespace SpiritAI.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CallId")
+                    b.HasIndex("ConversationId")
                         .IsUnique()
-                        .HasDatabaseName("handoff_open_per_call")
+                        .HasDatabaseName("handoff_open_per_conversation")
                         .HasFilter("status <> 'done'");
 
                     b.HasIndex("Status", "AskedAt")
@@ -107,6 +107,31 @@ namespace SpiritAI.Database.Migrations
 
                             t.HasCheckConstraint("handoff_status_check", "status IN ('waiting', 'human', 'done')");
                         });
+                });
+
+            modelBuilder.Entity("SpiritAI.Handoffs.Reads.ConversationRead", b =>
+                {
+                    b.Property<string>("ConversationId")
+                        .HasColumnType("text")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<string>("StaffKey")
+                        .HasColumnType("text")
+                        .HasColumnName("staff_key");
+
+                    b.Property<DateTimeOffset>("SeenAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("seen_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int>("SeenOrdinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("seen_ordinal");
+
+                    b.HasKey("ConversationId", "StaffKey");
+
+                    b.ToTable("conversation_read", "spirit");
                 });
 
             modelBuilder.Entity("SpiritAI.RealTime.Presence.Presence", b =>
@@ -151,9 +176,18 @@ namespace SpiritAI.Database.Migrations
 
             modelBuilder.Entity("SpiritAI.Handoffs.Model.Handoff", b =>
                 {
-                    b.HasOne("SpiritAI.Handoffs.Model.CallStub", null)
+                    b.HasOne("SpiritAI.Handoffs.Model.ConversationStub", null)
                         .WithMany()
-                        .HasForeignKey("CallId")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SpiritAI.Handoffs.Reads.ConversationRead", b =>
+                {
+                    b.HasOne("SpiritAI.Handoffs.Model.ConversationStub", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

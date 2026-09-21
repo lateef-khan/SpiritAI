@@ -11,32 +11,32 @@
 CREATE SCHEMA IF NOT EXISTS neon_auth;
 
 CREATE TABLE IF NOT EXISTS neon_auth."user" (
-    id     text PRIMARY KEY,
+    id     uuid PRIMARY KEY,
     name   text NOT NULL,
     email  text NOT NULL,
     banned boolean
 );
 
 INSERT INTO neon_auth."user" (id, name, email)
-VALUES ('dev-staff', :'staff_name', :'staff_email')
+VALUES ('00000000-0000-4000-8000-000000000001', :'staff_name', :'staff_email')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email;
 
--- One chat: the call, its visitor, the visitor's first message.
-CREATE OR REPLACE FUNCTION pg_temp.seed_chat(p_call_id text, p_visitor text, p_text text, p_at timestamptz)
+-- One chat: the conversation, its visitor, the visitor's first message.
+CREATE OR REPLACE FUNCTION pg_temp.seed_chat(p_conversation_id text, p_visitor text, p_text text, p_at timestamptz)
 RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
-    INSERT INTO agentcore.call (call_id, title, status, external_id, custom, state, next_ordinal, created_at, updated_at)
-    VALUES (p_call_id, NULL, 'regular', NULL, jsonb_build_object('owner', 'visitor:' || p_visitor), NULL, 1, p_at, p_at)
-    ON CONFLICT (call_id) DO NOTHING;
+    INSERT INTO agentcore.conversation (conversation_id, title, status, external_id, custom, state, next_ordinal, created_at, updated_at)
+    VALUES (p_conversation_id, NULL, 'regular', NULL, jsonb_build_object('owner', 'visitor:' || p_visitor), NULL, 1, p_at, p_at)
+    ON CONFLICT (conversation_id) DO NOTHING;
 
-    INSERT INTO agentcore.call_principal (call_id, principal_key, role, attached_at)
-    VALUES (p_call_id, 'visitor:' || p_visitor, 'visitor', p_at)
+    INSERT INTO agentcore.conversation_principal (conversation_id, principal_key, role, attached_at)
+    VALUES (p_conversation_id, 'visitor:' || p_visitor, 'visitor', p_at)
     ON CONFLICT DO NOTHING;
 
-    INSERT INTO agentcore.call_message (call_id, ordinal, turn_index, role, content, message_id, created_at, updated_at)
-    VALUES (p_call_id, 0, 0, 'user',
+    INSERT INTO agentcore.conversation_message (conversation_id, ordinal, turn_index, role, content, message_id, created_at, updated_at)
+    VALUES (p_conversation_id, 0, 0, 'user',
         jsonb_build_object('role', 'user', 'contents', jsonb_build_array(jsonb_build_object('$type', 'text', 'text', p_text))),
-        md5(p_call_id || ':0'), p_at, p_at)
+        md5(p_conversation_id || ':0'), p_at, p_at)
     ON CONFLICT DO NOTHING;
 END $$;
 
@@ -55,7 +55,7 @@ BEGIN
 END $$;
 
 -- The handoffs. Three waiting, one taken by a colleague, one closed.
-INSERT INTO spirit.handoff (call_id, status, asked_by, reason, asked_at, assignee_key, assignee_name, claimed_at, email, done_at)
+INSERT INTO spirit.handoff (conversation_id, status, asked_by, reason, asked_at, assignee_key, assignee_name, claimed_at, email, done_at)
 SELECT v.*
 FROM (VALUES
     ('a4175d6a463c4671b9d2658d0d4c6840', 'waiting', 'bot',
@@ -73,5 +73,5 @@ FROM (VALUES
     ('d4c3b2a1f6e5d4c3b2a1f0e9d8c7b6a5', 'done', 'visitor',
         NULL, now() - interval '2 hours',
         'user:dev-marco', 'Marco', now() - interval '116 minutes', NULL, now() - interval '110 minutes')
-) AS v(call_id, status, asked_by, reason, asked_at, assignee_key, assignee_name, claimed_at, email, done_at)
-WHERE NOT EXISTS (SELECT 1 FROM spirit.handoff h WHERE h.call_id = v.call_id);
+) AS v(conversation_id, status, asked_by, reason, asked_at, assignee_key, assignee_name, claimed_at, email, done_at)
+WHERE NOT EXISTS (SELECT 1 FROM spirit.handoff h WHERE h.conversation_id = v.conversation_id);

@@ -6,6 +6,7 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 import { useAgentCoreRuntime } from "./AgentCoreRuntime.ts";
 import { type FetchLike } from "./transport.ts";
+import { queryWrapper } from "@/test/query.tsx";
 
 /**
  * The approval round-trip, through the real kit: the host's ask pauses the run with the kit's
@@ -94,6 +95,7 @@ const EXPANDED_COMPONENTS: ThreadComponents = {
 
 function mount(fetch: FetchLike) {
   const captured: { aui?: Aui } = {};
+  const { wrapper } = queryWrapper();
   function Harness() {
     const runtime = useAgentCoreRuntime("/v1/responses", (url, init) => fetch(url, init));
     return (
@@ -103,7 +105,7 @@ function mount(fetch: FetchLike) {
       </AssistantRuntimeProvider>
     );
   }
-  render(<Harness />);
+  render(<Harness />, { wrapper });
   if (!captured.aui) throw new Error("the harness never captured its aui handle.");
   return captured.aui;
 }

@@ -15,14 +15,14 @@ internal sealed class RecordingHandoffNotifier : IHandoffNotifier
     public ValueTask WaitingAsync(HandoffSummary handoff, CancellationToken cancellationToken)
         => Record("handoff.waiting", handoff);
 
-    public ValueTask QueueAsync(string callId, int position, CancellationToken cancellationToken)
-        => Record("handoff.queue", (callId, position));
+    public ValueTask QueueAsync(string conversationId, int position, CancellationToken cancellationToken)
+        => Record("handoff.queue", (conversationId, position));
 
-    public ValueTask ClaimedAsync(string callId, HandoffAssignee assignee, CancellationToken cancellationToken)
-        => Record("handoff.claimed", (callId, assignee));
+    public ValueTask ClaimedAsync(string conversationId, HandoffAssignee assignee, CancellationToken cancellationToken)
+        => Record("handoff.claimed", (conversationId, assignee));
 
-    public ValueTask DoneAsync(string callId, CancellationToken cancellationToken)
-        => Record("handoff.done", callId);
+    public ValueTask DoneAsync(string conversationId, CancellationToken cancellationToken)
+        => Record("handoff.done", conversationId);
 
     public ValueTask MessageCreatedAsync(HandoffMessage message, CancellationToken cancellationToken)
         => Record("message.created", message);

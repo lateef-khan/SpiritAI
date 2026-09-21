@@ -28,6 +28,8 @@ const summary: Handoff = {
   title: null,
   firstLine: null,
   position: null,
+  awaitingReply: false,
+  unread: false,
 };
 
 /** Fails a test that reaches a route it has no business calling. */
@@ -39,10 +41,12 @@ describe("useHandoffActions take", () => {
   it("resolves the claimed handoff and returns busy to false", async () => {
     const api: HandoffsApi = {
       list: async () => notNeeded(),
-      messages: async () => notNeeded(),
+      counts: async () => notNeeded(),
+      history: async () => notNeeded(),
       claim: async () => summary,
       finish: async () => notNeeded(),
       reply: async () => notNeeded(),
+      seen: async () => notNeeded(),
     };
 
     const view = renderHook(() => useHandoffActions(api));
@@ -59,10 +63,12 @@ describe("useHandoffActions take", () => {
   it("sets error to the refusal's title", async () => {
     const api: HandoffsApi = {
       list: async () => notNeeded(),
-      messages: async () => notNeeded(),
+      counts: async () => notNeeded(),
+      history: async () => notNeeded(),
       claim: async () => Promise.reject(new HostRefusedError(409, "/x", "Somebody has this chat.")),
       finish: async () => notNeeded(),
       reply: async () => notNeeded(),
+      seen: async () => notNeeded(),
     };
 
     const view = renderHook(() => useHandoffActions(api));
@@ -77,10 +83,12 @@ describe("useHandoffActions take", () => {
   it("sets error to a plain Error's message", async () => {
     const api: HandoffsApi = {
       list: async () => notNeeded(),
-      messages: async () => notNeeded(),
+      counts: async () => notNeeded(),
+      history: async () => notNeeded(),
       claim: async () => Promise.reject(new Error("host refused")),
       finish: async () => notNeeded(),
       reply: async () => notNeeded(),
+      seen: async () => notNeeded(),
     };
 
     const view = renderHook(() => useHandoffActions(api));
@@ -97,10 +105,12 @@ describe("useHandoffActions finish", () => {
   it("resolves true on success", async () => {
     const api: HandoffsApi = {
       list: async () => notNeeded(),
-      messages: async () => notNeeded(),
+      counts: async () => notNeeded(),
+      history: async () => notNeeded(),
       claim: async () => notNeeded(),
       finish: async () => undefined,
       reply: async () => notNeeded(),
+      seen: async () => notNeeded(),
     };
 
     const view = renderHook(() => useHandoffActions(api));
@@ -119,13 +129,15 @@ describe("useHandoffActions finish", () => {
     let calls = 0;
     const api: HandoffsApi = {
       list: async () => notNeeded(),
-      messages: async () => notNeeded(),
+      counts: async () => notNeeded(),
+      history: async () => notNeeded(),
       claim: async () => notNeeded(),
       finish: async () => {
         calls += 1;
         await first;
       },
       reply: async () => notNeeded(),
+      seen: async () => notNeeded(),
     };
 
     const view = renderHook(() => useHandoffActions(api));

@@ -29,7 +29,10 @@ public sealed class UnitLookupTests
           "SerialNo": "5808881004036047", "ModelNo": "580888", "ModelName": "SOLE WF80 2010",
           "Sole": true, "FG": "TREADMILL", "ModelVersion": 2, "MfgDate": "04/2010",
           "PurchasedDate": "2010-10-23T00:00:00", "SetupDate": "2010-09-01T12:25:00",
-          "ServiceId": 796955, "CallDate": "2025-01-15T15:18:00",
+          "CustomerName": "Kurtis M.", "Address": "12 Elm St", "City": "Austin", "State": "TX",
+          "Zip": "78701", "Phone": "5125550100", "Phone2": "", "Email": "kurtis@example.com",
+          "DealerNo": "DICK'S",
+          "ServiceId": 796955, "ConversationDate": "2025-01-15T15:18:00",
           "ServiceDate": "2025-01-15T16:21:00", "ServiceRep": "tiana.bills",
           "Description": "Missing Parts", "Solution": null,
           "ServiceStatus": "CLOSED", "OrderId": 1, "CaseStatus": "CLOSED"
@@ -37,7 +40,7 @@ public sealed class UnitLookupTests
         {
           "SerialNo": "5808881004036047", "ModelNo": "580888", "ModelName": "SOLE WF80 2010",
           "Sole": true, "FG": "TREADMILL", "ModelVersion": 2,
-          "ServiceId": 800001, "CallDate": "2026-02-01T09:00:00",
+          "ServiceId": 800001, "ConversationDate": "2026-02-01T09:00:00",
           "ServiceRep": "sam", "Description": "Belt slips",
           "ServiceStatus": "IN PROGRESS", "OrderId": 2, "CaseStatus": "IN PROGRESS"
         }
@@ -150,7 +153,7 @@ public sealed class UnitLookupTests
     }
 
     [Fact]
-    public async Task JobsAreTheCallsThatAreNotClosed()
+    public async Task JobsAreTheConversationsThatAreNotClosed()
     {
         var unit = await Lookup().ReadUnitAsync(Serial, TestContext.Current.CancellationToken);
 
@@ -211,10 +214,91 @@ public sealed class UnitLookupTests
         Assert.NotNull(sent);
         Assert.Equal(Serial, sent!["SerialNo"] as string);
         Assert.Equal(100, sent["Top"] as int?);
+        Assert.Equal(0, sent["Skip"] as int?);
 
         // search_parts errors with 51070 unless exactly one of SerialNo, ModelNo and Name is given.
         Assert.False(sent.ContainsKey("ModelNo"));
         Assert.False(sent.ContainsKey("Name"));
+    }
+
+    [Fact]
+    public async Task TheOwnerIsReadOffTheHistoryRow()
+    {
+        var unit = await Lookup().ReadUnitAsync(Serial, TestContext.Current.CancellationToken);
+
+        var owner = unit!.Header!.Owner;
+
+        Assert.NotNull(owner);
+        Assert.Equal("Kurtis M.", owner.Name);
+        Assert.Equal("12 Elm St", owner.Address);
+        Assert.Equal("Austin", owner.City);
+        Assert.Equal("TX", owner.State);
+        Assert.Equal("78701", owner.Zip);
+        Assert.Equal("5125550100", owner.Phone);
+        Assert.Null(owner.Phone2);
+        Assert.Equal("kurtis@example.com", owner.Email);
+        Assert.Equal("DICK'S", owner.Dealer);
+    }
+
+    [Fact]
+    public async Task AHistoryRowWithNoContactColumnHasNoOwner()
+    {
+        // The procedure before 2026-09-18 returned no contact column; a row shaped that way is a
+        // machine whose owner the panel cannot show, not one owned by nobody-with-blank-fields.
+        var unit = await Lookup(history: HistoryJson
+                .Replace("\"CustomerName\": \"Kurtis M.\", ", "")
+                .Replace("\"Address\": \"12 Elm St\", \"City\": \"Austin\", \"State\": \"TX\",", "")
+                .Replace("\"Zip\": \"78701\", \"Phone\": \"5125550100\", \"Phone2\": \"\", \"Email\": \"kurtis@example.com\",", "")
+                .Replace("\"DealerNo\": \"DICK'S\",", ""))
+            .ReadUnitAsync(Serial, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(unit!.Header);
+        Assert.Null(unit.Header.Owner);
+    }
+
+    [Fact]
+    public async Task ThePartsListIsReadAPageAtATimeUntilTotalRows()
+    {
+        // 150 parts: a full page of 100, then a page of 50. The panel is a screen, not a prompt, so
+        // it shows all of them rather than the first 100.
+        List<int> skips = [];
+
+        var lookup = new UnitLookup((toolId, arguments, _) =>
+        {
+            if (toolId != "search_parts")
+            {
+                return ValueTask.FromResult(Json(toolId == "get_service_history_by_sn" ? HistoryJson : WarrantyJson));
+            }
+
+            var skip = (int)arguments["Skip"]!;
+            skips.Add(skip);
+
+            return ValueTask.FromResult(Json(PartsPage(skip, skip == 0 ? 100 : 50, total: 150)));
+        });
+
+        var unit = await lookup.ReadUnitAsync(Serial, TestContext.Current.CancellationToken);
+
+        Assert.Equal([0, 100], skips);
+        Assert.Equal(150, unit!.Parts!.Count);
+        Assert.Equal("P0", unit.Parts[0].SpNo);
+        Assert.Equal("P149", unit.Parts[149].SpNo);
+    }
+
+    [Fact]
+    public async Task ALaterPartsPageFailingMakesTheWholeSectionUnavailable()
+    {
+        var lookup = new UnitLookup((toolId, arguments, _) => ValueTask.FromResult(Json(toolId switch
+        {
+            "get_service_history_by_sn" => HistoryJson,
+            "search_parts" => (int)arguments["Skip"]! == 0 ? PartsPage(0, 100, total: 150) : ErrorJson,
+            _ => WarrantyJson,
+        })));
+
+        var unit = await lookup.ReadUnitAsync(Serial, TestContext.Current.CancellationToken);
+
+        // A list that is quietly short reads as a machine with fewer parts, so it is not shown at all.
+        Assert.Equal([UnitSection.Parts], unit!.Unavailable);
+        Assert.Null(unit.Parts);
     }
 
     [Fact]
@@ -327,6 +411,25 @@ public sealed class UnitLookupTests
             "search_parts" => parts ?? PartsJson,
             _ => warranty ?? WarrantyJson,
         })));
+
+    /// <summary>One page of a parts list, numbered P0, P1, ... across pages.</summary>
+    /// <param name="skip">Where the page starts.</param>
+    /// <param name="count">How many rows it carries.</param>
+    /// <param name="total">What <c>TotalRows</c> says.</param>
+    /// <returns>The payload <c>search_parts</c> answers.</returns>
+    private static string PartsPage(int skip, int count, int total)
+        => JsonSerializer.Serialize(new
+        {
+            entity = "SearchParts",
+            status = "success",
+            value = new
+            {
+                value = Enumerable.Range(skip, count).Select(i => new
+                {
+                    SerialNo = Serial, ModelNo = "580888", ModelVersion = 2, SpNo = $"P{i}", Qty = 1, TotalRows = total,
+                }),
+            },
+        });
 
     private static JsonElement Json(string text) => JsonDocument.Parse(text).RootElement.Clone();
 }

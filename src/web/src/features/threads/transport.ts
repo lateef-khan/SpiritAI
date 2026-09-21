@@ -8,6 +8,8 @@
  * this.
  */
 
+import type { ReplyFile } from "@/lib/files";
+
 /** The conversation id the reply files the turn under, on the request and on the answer. */
 export const ConversationField = "conversation";
 
@@ -19,6 +21,21 @@ export const ConversationField = "conversation";
  * rides the *last* event, so it says where the machine ended up, never where it is.
  */
 export const StageHeader = "X-AgentCore-Stage";
+
+/**
+ * The request header naming the zone this browser is in, as an IANA id. The host reads the date
+ * in it when it tells the model what day it is; without it the model would read the server's.
+ */
+export const TimeZoneHeader = "X-AgentCore-Time-Zone";
+
+/** The zone this browser is in, or nothing where the runtime does not say. */
+function browserTimeZone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
 
 /** The prefix every server-sent event's data line carries. */
 const DataPrefix = "data: ";
@@ -88,6 +105,40 @@ export type SourceFrame = {
   origin?: string;
 };
 
+/** One file the reply produced this turn. Arrives after the words, once the host has the bytes. */
+export type FilePart = ReplyFile;
+
+/**
+ * One file as the wire spells it. Every field is optional: the browser never trusts the host's shape.
+ */
+export type FileFrame = {
+  name?: string;
+  media_type?: string;
+  length?: number;
+  url?: string | null;
+};
+
+/**
+ * One compaction notice: a pass that opens, then closes with how it went.
+ */
+export type CompactionNotePart = {
+  readonly id: string;
+  readonly kind: "compaction";
+  readonly phase: "start" | "end";
+  readonly outcome?: string;
+};
+
+/**
+ * One out-of-band notice about the run itself.
+ */
+export type NotePart = CompactionNotePart;
+
+/** One compaction notice as the wire spells it. */
+export type CompactionFrame = {
+  phase?: string;
+  outcome?: string;
+};
+
 /** Anything `JSON.parse` can produce. */
 export type JsonValue =
   string | number | boolean | null | readonly JsonValue[] | { readonly [key: string]: JsonValue };
@@ -124,13 +175,30 @@ export type ApprovalAsk = {
   readonly requestId: string;
 };
 
+/**
+ * One piece of the reply in the order it arrived: a run of words, or a tool by its call id. Words
+ * before a tool and words after it stay apart, so a sentence said before a slow step is not glued
+ * to the answer that follows it.
+ */
+export type TurnItem =
+  | { readonly type: "text"; readonly text: string }
+  | { readonly type: "tool"; readonly callId: string }
+  | { readonly type: "note"; readonly noteId: string };
+
 /** Everything one turn has produced so far. */
 export type TurnState = {
+  /** Every word so far, as one string. */
   readonly text: string;
+  /** The reply in arrival order: each run of words and each tool call, interleaved. */
+  readonly items: readonly TurnItem[];
   /** Every tool this turn has called, in call order, each with its result once it has one. */
   readonly tools: readonly ToolPart[];
   /** Every source this turn cited, in cite order. */
   readonly sources: readonly SourcePart[];
+  /** Every file the reply produced and the host kept, in the order the host linked them. */
+  readonly files: readonly FilePart[];
+  /** Every notice the run has posted, each held under its own stable id. */
+  readonly notes: readonly NotePart[];
   /** The stage the pipeline is in: the turn's own stage, then the stage it moved to at the end. */
   readonly stage: string | null;
   /** Whether the stage the turn moved to ends the call. Only ever true on the final state. */
@@ -244,12 +312,39 @@ export type StreamChunk = {
   readonly agentcore_source?: SourceFrame;
   readonly agentcore_tool?: ToolFrame;
   readonly agentcore_approval?: ApprovalFrame;
+  readonly agentcore_file?: FileFrame;
+  readonly agentcore_compaction?: CompactionFrame;
 };
 
-/** The body of one refusal. */
+/**
+ * The body of one refusal: the endpoint's own shape, or the problem details a door in front of it
+ * answers with (`type` is the door's code, such as `handoff_open`).
+ */
 type WireError = {
   error?: { message?: string; code?: string };
+  title?: string;
+  detail?: string;
+  type?: string;
 };
+
+/**
+ * A turn the endpoint refused, with the status and the code it refused it with.
+ *
+ * Both are on the object as well as in the message. A caller that owns its call id — the widget —
+ * tells "the host forgot this call" (a 404 with {@link ContinuationNotFound}) from every other
+ * refusal, and the first is the one it recovers from by minting a new call. Reading the status
+ * back out of the sentence would break the first time the sentence was reworded.
+ */
+export class TurnRefusedError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "TurnRefusedError";
+  }
+}
 
 /**
  * The last user text, which the endpoint runs. The call owns the history, so earlier turns stay
@@ -309,6 +404,9 @@ async function failureOf(response: Response): Promise<{ message: string; code?: 
     if (body.error?.message) {
       return { message: body.error.message, code: body.error.code };
     }
+    if (body.title || body.detail) {
+      return { message: body.detail ?? body.title!, ...(body.type ? { code: body.type } : {}) };
+    }
   } catch {
     // A body that is not the documented shape tells us nothing the status line does not.
   }
@@ -321,9 +419,13 @@ function post(options: TurnOptions, session: string | null): Promise<Response> {
   // A thread-owned turn names its thread as the conversation, so the host files the call under
   // the id the thread list already has. A bare tab keeps its minted conversation in the session.
   const conversation = options.threadId ?? session;
+  const timeZone = browserTimeZone();
   return options.fetch(options.endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(timeZone ? { [TimeZoneHeader]: timeZone } : {}),
+    },
     body: JSON.stringify({
       ...(conversation ? { [ConversationField]: conversation } : {}),
       input: options.approval ? [] : options.input,
@@ -350,6 +452,24 @@ function post(options: TurnOptions, session: string | null): Promise<Response> {
     }),
     signal: options.abortSignal,
   });
+}
+
+/** Adds words to the open run of words, or opens one when the last item is a tool. */
+export function foldTextItem(items: readonly TurnItem[], delta: string): readonly TurnItem[] {
+  const last = items[items.length - 1];
+  if (last?.type === "text") {
+    return [...items.slice(0, -1), { type: "text", text: last.text + delta }];
+  }
+  return [...items, { type: "text", text: delta }];
+}
+
+/** Places a tool call in the order it arrived. A result frame changes no order, so it adds nothing. */
+export function foldToolItem(items: readonly TurnItem[], frame: ToolFrame): readonly TurnItem[] {
+  const callId = frame.call_id;
+  if (!callId || frame.phase === "result") {
+    return items;
+  }
+  return [...items, { type: "tool", callId }];
 }
 
 /**
@@ -417,6 +537,35 @@ export function foldApproval(
 }
 
 /**
+ * Folds one wire frame into the files held so far.
+ *
+ * Keyed by name, last write winning in place: a second write with the same name replaced the
+ * first in the store, so the later frame is the one whose link works.
+ */
+export function foldFile(files: readonly FilePart[], frame: FileFrame): readonly FilePart[] {
+  const name = frame.name;
+  if (!name) {
+    return files;
+  }
+
+  const part: FilePart = {
+    name,
+    mediaType: frame.media_type ?? "application/octet-stream",
+    length: typeof frame.length === "number" ? frame.length : 0,
+    url: frame.url ?? null,
+  };
+
+  const at = files.findIndex((file) => file.name === name);
+  if (at < 0) {
+    return [...files, part];
+  }
+
+  const next = [...files];
+  next[at] = part;
+  return next;
+}
+
+/**
  * Folds one wire frame into the sources held so far.
  *
  * Keyed by id, last write winning in the place the first took: the host already de-duplicates
@@ -452,6 +601,65 @@ export function foldSource(
   return next;
 }
 
+/** Places a notice in the order it first arrived. A later phase of the same id changes no order. */
+export function foldNoteItem(items: readonly TurnItem[], noteId: string): readonly TurnItem[] {
+  if (items.some((item) => item.type === "note" && item.noteId === noteId)) {
+    return items;
+  }
+  return [...items, { type: "note", noteId }];
+}
+
+/**
+ * Folds one compaction frame into the notices held so far.
+ */
+export function foldCompactionNote(
+  notes: readonly NotePart[],
+  frame: CompactionFrame,
+): readonly NotePart[] {
+  const phase = frame.phase;
+
+  if (phase !== "start" && phase !== "end") {
+    return notes;
+  }
+
+  const note: CompactionNotePart = {
+    id: "compaction",
+    kind: "compaction",
+    phase,
+    outcome: frame.outcome,
+  };
+
+  const at = notes.findIndex((existing) => existing.id === note.id);
+
+  if (at < 0) {
+    return [...notes, note];
+  }
+
+  const next = [...notes];
+
+  next[at] = note;
+
+  return next;
+}
+
+/**
+ * Every notice kind the run knows how to fold, keyed by nothing but its own place in this array.
+ */
+const NoticeFolds: readonly {
+  readonly apply: (
+    chunk: StreamChunk,
+    notes: readonly NotePart[],
+  ) => { readonly notes: readonly NotePart[]; readonly noteId: string } | null;
+}[] = [
+  {
+    apply: (chunk, notes) => {
+      const frame = chunk.agentcore_compaction;
+      if (!frame) return null;
+      return { notes: foldCompactionNote(notes, frame), noteId: "compaction" };
+    },
+  },
+];
+
 /**
  * Runs one turn and yields the reply as it grows.
  *
@@ -475,7 +683,7 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
   if (response.status === 404 && !options.threadId) {
     const failure = await failureOf(response);
     if (failure.code !== ContinuationNotFound) {
-      throw new Error(failure.message);
+      throw new TurnRefusedError(response.status, failure.message, failure.code);
     }
 
     session.current = null;
@@ -483,7 +691,8 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
   }
 
   if (!response.ok) {
-    throw new Error((await failureOf(response)).message);
+    const failure = await failureOf(response);
+    throw new TurnRefusedError(response.status, failure.message, failure.code);
   }
 
   if (!response.body) {
@@ -498,8 +707,11 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let pending = "";
   let text = "";
+  let items: readonly TurnItem[] = [];
   let tools: readonly ToolPart[] = [];
   let sources: readonly SourcePart[] = [];
+  let files: readonly FilePart[] = [];
+  let notes: readonly NotePart[] = [];
 
   try {
     for (;;) {
@@ -517,8 +729,11 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
         for (const chunk of readEvent(event)) {
           const state = () => ({
             text,
+            items,
             tools,
             sources,
+            files,
+            notes,
             stage,
             isTerminal,
             speaker: null,
@@ -551,6 +766,7 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
           const tool = chunk.agentcore_tool;
           if (tool) {
             tools = foldTool(tools, tool);
+            items = foldToolItem(items, tool);
             yield state();
           }
 
@@ -566,12 +782,28 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
             yield state();
           }
 
+          const file = chunk.agentcore_file;
+          if (file) {
+            files = foldFile(files, file);
+            yield state();
+          }
+
+          for (const { apply } of NoticeFolds) {
+            const applied = apply(chunk, notes);
+            if (applied) {
+              notes = applied.notes;
+              items = foldNoteItem(items, applied.noteId);
+              yield state();
+            }
+          }
+
           if (
             chunk.type === "response.output_text.delta" &&
             typeof chunk.delta === "string" &&
             chunk.delta.length > 0
           ) {
             text += chunk.delta;
+            items = foldTextItem(items, chunk.delta);
             yield state();
           }
           // The minted conversation rides the created event; a continued one rides it too.

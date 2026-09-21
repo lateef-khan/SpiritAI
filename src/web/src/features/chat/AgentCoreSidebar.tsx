@@ -1,16 +1,14 @@
 import type * as React from "react";
-import { InboxIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
 import { AccountMenu } from "@/features/auth/AccountMenu";
+import { InboxMenuItem } from "@/features/inbox/components/InboxMenuItem";
 
 /**
  * `thread-list.tsx`'s own `data-slot` names for the two clicks that actually navigate: picking a
@@ -22,11 +20,13 @@ const NAVIGATING_THREAD_LIST_SLOTS =
   '[data-slot="aui_thread-list-item-trigger"], [data-slot="aui_thread-list-new"]';
 
 export function AgentCoreSidebar({
+  meKey,
   inboxOpen,
   onOpenInbox,
   onOpenChat,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
+  meKey: string;
   inboxOpen: boolean;
   onOpenInbox: () => void;
   onOpenChat: () => void;
@@ -35,12 +35,7 @@ export function AgentCoreSidebar({
     <Sidebar {...props}>
       <SidebarContent className="px-2 py-2">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton isActive={inboxOpen} onClick={onOpenInbox}>
-              <InboxIcon />
-              Inbox
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          <InboxMenuItem meKey={meKey} active={inboxOpen} onOpen={onOpenInbox} />
         </SidebarMenu>
         {/* Picking a thread, or starting a new one, is `ThreadList`'s own click handling several
             layers down; catching the click on the way up is simpler than threading a callback

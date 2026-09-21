@@ -212,6 +212,21 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -224,6 +239,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ThreadHistory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -308,7 +333,21 @@
         "operationId": "listHandoffs",
         "parameters": [
           {
-            "name": "status",
+            "name": "view",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order",
             "in": "query",
             "schema": {
               "type": "string"
@@ -320,6 +359,13 @@
             "schema": {
               "type": "integer",
               "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -360,7 +406,59 @@
         }
       }
     },
-    "/v1/handoff/{callId}": {
+    "/v1/handoff/counts": {
+      "get": {
+        "tags": [
+          "Handoff"
+        ],
+        "operationId": "countHandoffs",
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffCounts"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/handoff/{conversationId}": {
       "get": {
         "tags": [
           "Handoff"
@@ -368,7 +466,7 @@
         "operationId": "getHandoff",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -406,7 +504,7 @@
         }
       }
     },
-    "/v1/handoff/{callId}/messages": {
+    "/v1/handoff/{conversationId}/messages": {
       "get": {
         "tags": [
           "Handoff"
@@ -414,11 +512,26 @@
         "operationId": "getHandoffMessages",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -458,7 +571,7 @@
         "operationId": "replyToHandoff",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -532,7 +645,7 @@
         }
       }
     },
-    "/v1/handoff/{callId}/claim": {
+    "/v1/handoff/{conversationId}/claim": {
       "post": {
         "tags": [
           "Handoff"
@@ -540,7 +653,7 @@
         "operationId": "claimHandoff",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -588,7 +701,7 @@
         }
       }
     },
-    "/v1/handoff/{callId}/done": {
+    "/v1/handoff/{conversationId}/done": {
       "post": {
         "tags": [
           "Handoff"
@@ -596,7 +709,7 @@
         "operationId": "finishHandoff",
         "parameters": [
           {
-            "name": "callId",
+            "name": "conversationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -626,6 +739,366 @@
           }
         }
       }
+    },
+    "/v1/handoff/{conversationId}/seen": {
+      "post": {
+        "tags": [
+          "Handoff"
+        ],
+        "operationId": "markHandoffSeen",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/public/threads": {
+      "post": {
+        "tags": [
+          "PublicThreads"
+        ],
+        "operationId": "createPublicThread",
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadCreated"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/threads/{conversationId}/messages": {
+      "get": {
+        "tags": [
+          "PublicThreads"
+        ],
+        "operationId": "getPublicThreadMessages",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadHistory"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/public/handoff": {
+      "post": {
+        "tags": [
+          "PublicHandoff"
+        ],
+        "operationId": "askForHuman",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/VisitorAskRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffState"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/public/handoff/{conversationId}": {
+      "get": {
+        "tags": [
+          "PublicHandoff"
+        ],
+        "operationId": "getHandoffState",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/public/handoff/{conversationId}/email": {
+      "patch": {
+        "tags": [
+          "PublicHandoff"
+        ],
+        "operationId": "leaveEmail",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/VisitorEmailRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/handoff/{conversationId}/messages": {
+      "post": {
+        "tags": [
+          "PublicHandoff"
+        ],
+        "operationId": "sendVisitorMessage",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/VisitorMessageRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -642,6 +1115,33 @@
           },
           "name": {
             "type": "string"
+          }
+        }
+      },
+      "HandoffCounts": {
+        "required": [
+          "mine",
+          "unassigned",
+          "all",
+          "awaitingReply"
+        ],
+        "type": "object",
+        "properties": {
+          "mine": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unassigned": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "all": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "awaitingReply": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -686,7 +1186,8 @@
       },
       "HandoffPage": {
         "required": [
-          "items"
+          "items",
+          "nextCursor"
         ],
         "type": "object",
         "properties": {
@@ -695,6 +1196,12 @@
             "items": {
               "$ref": "#/components/schemas/HandoffSummary"
             }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -731,6 +1238,35 @@
           }
         }
       },
+      "HandoffState": {
+        "required": [
+          "status",
+          "assigneeName",
+          "staffOnline",
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "assigneeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "staffOnline": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "HandoffSummary": {
         "required": [
           "id",
@@ -745,7 +1281,9 @@
           "doneAt",
           "title",
           "firstLine",
-          "position"
+          "position",
+          "awaitingReply",
+          "unread"
         ],
         "type": "object",
         "properties": {
@@ -820,6 +1358,12 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "awaitingReply": {
+            "type": "boolean"
+          },
+          "unread": {
+            "type": "boolean"
           }
         }
       },
@@ -1048,6 +1592,12 @@
             "items": {
               "$ref": "#/components/schemas/ThreadHistoryItem"
             }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -1170,6 +1720,9 @@
           },
           {
             "$ref": "#/components/schemas/ThreadPartThreadSourcePart"
+          },
+          {
+            "$ref": "#/components/schemas/ThreadPartThreadFilePart"
           }
         ],
         "discriminator": {
@@ -1177,7 +1730,37 @@
           "mapping": {
             "text": "#/components/schemas/ThreadPartThreadTextPart",
             "tool-call": "#/components/schemas/ThreadPartThreadToolCallPart",
-            "source": "#/components/schemas/ThreadPartThreadSourcePart"
+            "source": "#/components/schemas/ThreadPartThreadSourcePart",
+            "file": "#/components/schemas/ThreadPartThreadFilePart"
+          }
+        }
+      },
+      "ThreadPartThreadFilePart": {
+        "required": [
+          "name",
+          "mediaType",
+          "length",
+          "url"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "file"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "mediaType": {
+            "type": "string"
+          },
+          "length": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "url": {
+            "type": "string"
           }
         }
       },
@@ -1439,7 +2022,8 @@
           "isSole",
           "manufacturedOn",
           "purchasedOn",
-          "setUpOn"
+          "setUpOn",
+          "owner"
         ],
         "type": "object",
         "properties": {
@@ -1490,6 +2074,16 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "owner": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UnitOwner"
+              }
+            ]
           }
         }
       },
@@ -1565,6 +2159,76 @@
           }
         }
       },
+      "UnitOwner": {
+        "required": [
+          "name",
+          "address",
+          "city",
+          "state",
+          "zip",
+          "phone",
+          "phone2",
+          "email",
+          "dealer"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "address": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "city": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "state": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "zip": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phone2": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dealer": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "UnitPart": {
         "required": [
           "spNo",
@@ -1606,6 +2270,46 @@
           "parts",
           "warranty"
         ]
+      },
+      "VisitorAskRequest": {
+        "required": [
+          "callId",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "callId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "VisitorEmailRequest": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        }
+      },
+      "VisitorMessageRequest": {
+        "required": [
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        }
       },
       "WarrantyTerm": {
         "required": [
@@ -1649,6 +2353,12 @@
     },
     {
       "name": "Handoff"
+    },
+    {
+      "name": "PublicThreads"
+    },
+    {
+      "name": "PublicHandoff"
     }
   ]
 }

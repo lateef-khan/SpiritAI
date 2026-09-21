@@ -8,6 +8,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createThreadsApi, type ThreadsApi, type WireThread } from "./api/threadsApi.ts";
 import { flatten } from "./AgentCoreRuntime.ts";
+import { setInitialOlderCursor } from "./historyCursors.ts";
 
 /**
  * The thread list, kept by the host.
@@ -89,7 +90,15 @@ function useServerHistory(api: ThreadsApi): RuntimeAdapters {
 
       // A thread the host has never heard of is a thread with no words, not an error. It is the
       // one assistant-ui opens on a fresh tab before anybody has typed.
-      return remoteId ? api.history(remoteId) : { messages: [] };
+      if (!remoteId) return { messages: [] };
+
+      const page = await api.history(remoteId);
+
+      // Recorded so `useOlderMessages` — a separate hook, mounted lower in the tree — knows
+      // where the page before this one starts, without a second request of its own.
+      setInitialOlderCursor(remoteId, page.nextCursor);
+
+      return page.repository;
     },
 
     async append() {

@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import { describe, expect, it, test } from "vitest";
 import {
   ContinuationNotFound,
+  TurnRefusedError,
   ConversationField,
+  foldCompactionNote,
   foldSource,
   readEvent,
   runTurn,
+  TimeZoneHeader,
   splitEvents,
   wireMessages,
   type FetchLike,
@@ -26,7 +29,7 @@ import {
 // -------------------------------------------------------------------------------------------------
 
 /** One recorded request. */
-type Sent = { conversation: string | null; body: unknown };
+type Sent = { conversation: string | null; body: unknown; headers: Record<string, string> };
 
 /** Builds a response whose body arrives in exactly the pieces given. */
 function streaming(pieces: string[], headers: Record<string, string> = {}): Response {
@@ -62,6 +65,7 @@ function scripted(responses: Response[]): { fetch: FetchLike; sent: Sent[] } {
       conversation:
         typeof body[ConversationField] === "string" ? (body[ConversationField] as string) : null,
       body,
+      headers: { ...(init.headers as Record<string, string>) },
     });
 
     const response = responses[index++];
@@ -207,6 +211,14 @@ test("the first turn names no conversation and keeps the one the stream mints", 
   assert.equal(session.current, "conv_1");
 });
 
+test("every turn names the browser's zone, so the host reads the date in it", async () => {
+  const { sent } = await collect([streaming([created("conv_1"), delta("hi"), completed()])], {
+    current: null,
+  });
+
+  assert.equal(sent[0]!.headers[TimeZoneHeader], Intl.DateTimeFormat().resolvedOptions().timeZone);
+});
+
 test("the next turn sends the conversation back", async () => {
   const session: Session = { current: "conv_1" };
 
@@ -318,6 +330,66 @@ test("a thread-owned 404 is not retried nameless", async () => {
   );
   assert.deepEqual(drained, []);
   assert.equal(sent.length, 1);
+});
+
+test("a thread-owned refusal names its status and code on the error", async () => {
+  // The widget owns its call id and recovers from exactly one refusal: a 404 for a call the host
+  // forgot. It needs the status and the code, not the sentence.
+  const { fetch } = scripted([
+    refusal(404, "no call opens under 'thread-7'.", ContinuationNotFound),
+  ]);
+
+  const thrown = await (async () => {
+    for await (const state of runTurn({
+      endpoint: "/v1/responses",
+      session: { current: null },
+      input: "hi",
+      abortSignal: new AbortController().signal,
+      fetch,
+      threadId: "thread-7",
+    })) {
+      void state;
+    }
+  })().then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  assert.ok(thrown instanceof TurnRefusedError);
+  assert.equal(thrown.status, 404);
+  assert.equal(thrown.code, ContinuationNotFound);
+});
+
+test("a door's problem body names its type as the code", async () => {
+  // The door in front of the public chat answers problem details, not the endpoint's shape. Its
+  // `type` is the code the widget switches doors on.
+  const { fetch } = scripted([
+    new Response(
+      JSON.stringify({ title: "A person has this chat.", status: 409, type: "handoff_open" }),
+      { status: 409, headers: { "Content-Type": "application/problem+json" } },
+    ),
+  ]);
+
+  const thrown = await (async () => {
+    for await (const state of runTurn({
+      endpoint: "/v1/responses",
+      session: { current: null },
+      input: "hi",
+      abortSignal: new AbortController().signal,
+      fetch,
+      threadId: "thread-7",
+    })) {
+      void state;
+    }
+  })().then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  assert.ok(thrown instanceof TurnRefusedError);
+  assert.equal(thrown.status, 409);
+  assert.equal(thrown.code, "handoff_open");
+  assert.equal(thrown.message, "A person has this chat.");
 });
 
 test("a 404 that is not a lost conversation is not retried", async () => {
@@ -533,6 +605,28 @@ test("runTurn keeps two tool calls apart and pairs each with its own result", as
   assert.equal(collected[3]!.tools[1]!.result, "second");
 });
 
+test("runTurn keeps words and tools in the order they arrived", async () => {
+  // The model says a sentence, calls a tool, then answers with a program. Glued into one string
+  // the program would start mid-line and not draw; kept apart, each run keeps its place.
+  const collected = await states([
+    created("conv_1"),
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"Checking "}\n\n',
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"the orders."}\n\n',
+    'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"call","arguments":{}}}\n\n',
+    'data: {"agentcore_tool":{"call_id":"c1","name":"read_records","phase":"result","result":"42 rows","failed":false}}\n\n',
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"root = Card([])"}\n\n',
+    completed(),
+  ]);
+
+  const last = collected[collected.length - 1]!;
+  assert.deepEqual(last.items, [
+    { type: "text", text: "Checking the orders." },
+    { type: "tool", callId: "c1" },
+    { type: "text", text: "root = Card([])" },
+  ]);
+  assert.equal(last.text, "Checking the orders.root = Card([])");
+});
+
 test("a tool survives a later text-only yield", async () => {
   const collected = await states([
     created("conv_1"),
@@ -601,6 +695,45 @@ describe("foldSource", () => {
     });
 
     expect(sources[0]!.sourceType).toBe("url");
+  });
+});
+
+describe("foldCompactionNote", () => {
+  it("opens a note on start", () => {
+    const notes = foldCompactionNote([], { phase: "start" });
+
+    expect(notes).toEqual([
+      { id: "compaction", kind: "compaction", phase: "start", outcome: undefined },
+    ]);
+  });
+
+  it("replaces the start row with end rather than adding a second row", () => {
+    const started = foldCompactionNote([], { phase: "start" });
+    const ended = foldCompactionNote(started, { phase: "end", outcome: "compacted" });
+
+    expect(ended).toHaveLength(1);
+    expect(ended[0]).toMatchObject({ phase: "end", outcome: "compacted" });
+  });
+
+  it("ignores a frame with no known phase", () => {
+    expect(foldCompactionNote([], { outcome: "compacted" })).toEqual([]);
+  });
+});
+
+describe("runTurn: compaction notice", () => {
+  it("places one note item that carries the finished notice through", async () => {
+    const collected = await states([
+      created("conv_1"),
+      'data: {"agentcore_compaction":{"phase":"start"}}\n\n',
+      'data: {"agentcore_compaction":{"phase":"end","outcome":"compacted"}}\n\n',
+      completed(),
+    ]);
+
+    const last = collected[collected.length - 1]!;
+    expect(last.items).toEqual([{ type: "note", noteId: "compaction" }]);
+    expect(last.notes).toEqual([
+      { id: "compaction", kind: "compaction", phase: "end", outcome: "compacted" },
+    ]);
   });
 });
 

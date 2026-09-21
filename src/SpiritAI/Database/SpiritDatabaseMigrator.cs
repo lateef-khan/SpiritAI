@@ -16,10 +16,10 @@ internal sealed class SpiritDatabaseMigrator(IServiceScopeFactory scopes) : IHos
     {
         await using var scope = scopes.CreateAsyncScope();
 
-        // spirit.handoff has a foreign key into agentcore.call, and AgentCore creates that table on
-        // its own schedule: the first time its call store is resolved. Resolving the store here
+        // spirit.handoff has a foreign key into agentcore.conversation, and AgentCore creates that table on
+        // its own schedule: the first time its conversation store is resolved. Resolving the store here
         // makes that happen first, so the table the key points at exists when the key is created.
-        _ = scope.ServiceProvider.GetRequiredService<ICallStore>();
+        _ = scope.ServiceProvider.GetRequiredService<IConversations>();
 
         var database = scope.ServiceProvider.GetRequiredService<SpiritDbContext>().Database;
 
