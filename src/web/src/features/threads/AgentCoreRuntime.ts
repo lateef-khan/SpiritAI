@@ -15,6 +15,7 @@ import {
   runTurn,
   wireMessages,
   type ApprovalAnswer,
+  type NotePart,
   type Session,
   type SourcePart,
   type ToolPart,
@@ -171,6 +172,14 @@ export function sourceContent(source: SourcePart) {
     sourceType: "document" as const,
     mediaType: source.mediaType,
   };
+}
+
+/**
+ * Turns one run notice into the content part assistant-ui draws it as.
+ */
+export function noteContent(note: NotePart) {
+  const { kind, ...data } = note;
+  return { type: "data" as const, name: kind, data };
 }
 
 /**
@@ -360,11 +369,16 @@ async function* streamTurn(
   
     const links = fileLinks(state.files);
     const toolsById = new Map(state.tools.map((tool) => [tool.callId, tool]));
-    
+    const notesById = new Map(state.notes.map((note) => [note.id, note]));
+
     content = [
       ...state.items.flatMap((item): ThreadAssistantMessagePart[] => {
         if (item.type === "text") {
           return [{ type: "text", text: resolveSandboxLinks(item.text, links) }];
+        }
+        if (item.type === "note") {
+          const note = notesById.get(item.noteId);
+          return note ? [noteContent(note)] : [];
         }
         const tool = toolsById.get(item.callId);
         return tool ? [toolContent(tool)] : [];

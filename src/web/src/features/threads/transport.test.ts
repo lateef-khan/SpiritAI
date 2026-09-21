@@ -4,6 +4,7 @@ import {
   ContinuationNotFound,
   TurnRefusedError,
   ConversationField,
+  foldCompactionNote,
   foldSource,
   readEvent,
   runTurn,
@@ -698,6 +699,43 @@ describe("foldSource", () => {
     });
 
     expect(sources[0]!.sourceType).toBe("url");
+  });
+});
+
+describe("foldCompactionNote", () => {
+  it("opens a note on start", () => {
+    const notes = foldCompactionNote([], { phase: "start" });
+
+    expect(notes).toEqual([{ id: "compaction", kind: "compaction", phase: "start", outcome: undefined }]);
+  });
+
+  it("replaces the start row with end rather than adding a second row", () => {
+    const started = foldCompactionNote([], { phase: "start" });
+    const ended = foldCompactionNote(started, { phase: "end", outcome: "compacted" });
+
+    expect(ended).toHaveLength(1);
+    expect(ended[0]).toMatchObject({ phase: "end", outcome: "compacted" });
+  });
+
+  it("ignores a frame with no known phase", () => {
+    expect(foldCompactionNote([], { outcome: "compacted" })).toEqual([]);
+  });
+});
+
+describe("runTurn: compaction notice", () => {
+  it("places one note item that carries the finished notice through", async () => {
+    const collected = await states([
+      created("conv_1"),
+      'data: {"agentcore_compaction":{"phase":"start"}}\n\n',
+      'data: {"agentcore_compaction":{"phase":"end","outcome":"compacted"}}\n\n',
+      completed(),
+    ]);
+
+    const last = collected[collected.length - 1]!;
+    expect(last.items).toEqual([{ type: "note", noteId: "compaction" }]);
+    expect(last.notes).toEqual([
+      { id: "compaction", kind: "compaction", phase: "end", outcome: "compacted" },
+    ]);
   });
 });
 

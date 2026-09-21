@@ -6,6 +6,7 @@ import {
   UserMessageAttachments,
 } from "@/components/assistant-ui/attachment";
 import { ComposerDraft } from "@/components/assistant-ui/draft";
+import { CompactionNoteUI } from "@/components/assistant-ui/elements/compaction-note";
 import { DayDivider } from "@/components/assistant-ui/elements/day-separator";
 import { ErrorState } from "@/components/assistant-ui/elements/error-state";
 import { MessageTiming as MessageTimingStats } from "@/components/assistant-ui/elements/message-timing";
@@ -158,6 +159,7 @@ export const Thread: FC<ThreadProps> = ({ components = EMPTY_COMPONENTS, olderMe
   return (
     <ThreadComponentsContext.Provider value={components}>
       <TranscriptModeContext.Provider value={components.isTranscript ?? false}>
+        <CompactionNoteUI />
         <ThreadRoot isEmpty={isEmpty} olderMessages={olderMessages} />
       </TranscriptModeContext.Provider>
     </ThreadComponentsContext.Provider>

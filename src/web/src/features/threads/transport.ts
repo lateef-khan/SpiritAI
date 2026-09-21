@@ -108,12 +108,35 @@ export type SourceFrame = {
 /** One file the reply produced this turn. Arrives after the words, once the host has the bytes. */
 export type FilePart = ReplyFile;
 
-/** One file as the wire spells it. Every field is optional: the browser never trusts the host's shape. */
+/** 
+ * One file as the wire spells it. Every field is optional: the browser never trusts the host's shape.
+ */
 export type FileFrame = {
   name?: string;
   media_type?: string;
   length?: number;
   url?: string | null;
+};
+
+/**
+ * One compaction notice: a pass that opens, then closes with how it went.
+ */
+export type CompactionNotePart = {
+  readonly id: string;
+  readonly kind: "compaction";
+  readonly phase: "start" | "end";
+  readonly outcome?: string;
+};
+
+/**
+ * One out-of-band notice about the run itself.
+ */
+export type NotePart = CompactionNotePart;
+
+/** One compaction notice as the wire spells it. */
+export type CompactionFrame = {
+  phase?: string;
+  outcome?: string;
 };
 
 /** Anything `JSON.parse` can produce. */
@@ -159,7 +182,8 @@ export type ApprovalAsk = {
  */
 export type TurnItem =
   | { readonly type: "text"; readonly text: string }
-  | { readonly type: "tool"; readonly callId: string };
+  | { readonly type: "tool"; readonly callId: string }
+  | { readonly type: "note"; readonly noteId: string };
 
 /** Everything one turn has produced so far. */
 export type TurnState = {
@@ -173,6 +197,8 @@ export type TurnState = {
   readonly sources: readonly SourcePart[];
   /** Every file the reply produced and the host kept, in the order the host linked them. */
   readonly files: readonly FilePart[];
+  /** Every notice the run has posted, each held under its own stable id. */
+  readonly notes: readonly NotePart[];
   /** The stage the pipeline is in: the turn's own stage, then the stage it moved to at the end. */
   readonly stage: string | null;
   /** Whether the stage the turn moved to ends the call. Only ever true on the final state. */
@@ -287,6 +313,7 @@ export type StreamChunk = {
   readonly agentcore_tool?: ToolFrame;
   readonly agentcore_approval?: ApprovalFrame;
   readonly agentcore_file?: FileFrame;
+  readonly agentcore_compaction?: CompactionFrame;
 };
 
 /**
@@ -415,11 +442,11 @@ function post(options: TurnOptions, session: string | null): Promise<Response> {
           : {}),
         ...(options.approval
           ? {
-              approval: {
-                request_id: options.approval.requestId,
-                approved: options.approval.approved,
-              },
-            }
+            approval: {
+              request_id: options.approval.requestId,
+              approved: options.approval.approved,
+            },
+          }
           : {}),
       },
     }),
@@ -574,6 +601,65 @@ export function foldSource(
   return next;
 }
 
+/** Places a notice in the order it first arrived. A later phase of the same id changes no order. */
+export function foldNoteItem(items: readonly TurnItem[], noteId: string): readonly TurnItem[] {
+  if (items.some((item) => item.type === "note" && item.noteId === noteId)) {
+    return items;
+  }
+  return [...items, { type: "note", noteId }];
+}
+
+/**
+ * Folds one compaction frame into the notices held so far.
+ */
+export function foldCompactionNote(
+  notes: readonly NotePart[],
+  frame: CompactionFrame,
+): readonly NotePart[] {
+  const phase = frame.phase;
+
+  if (phase !== "start" && phase !== "end") {
+    return notes;
+  }
+
+  const note: CompactionNotePart = {
+    id: "compaction",
+    kind: "compaction",
+    phase,
+    outcome: frame.outcome,
+  };
+
+  const at = notes.findIndex((existing) => existing.id === note.id);
+
+  if (at < 0) {
+    return [...notes, note];
+  }
+
+  const next = [...notes];
+
+  next[at] = note;
+
+  return next;
+}
+
+/**
+ * Every notice kind the run knows how to fold, keyed by nothing but its own place in this array.
+ */
+const NoticeFolds: readonly {
+  readonly apply: (
+    chunk: StreamChunk,
+    notes: readonly NotePart[],
+  ) => { readonly notes: readonly NotePart[]; readonly noteId: string } | null;
+}[] = [
+    {
+      apply: (chunk, notes) => {
+        const frame = chunk.agentcore_compaction;
+        if (!frame) return null;
+        return { notes: foldCompactionNote(notes, frame), noteId: "compaction" };
+      },
+    },
+  ];
+
 /**
  * Runs one turn and yields the reply as it grows.
  *
@@ -625,9 +711,10 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
   let tools: readonly ToolPart[] = [];
   let sources: readonly SourcePart[] = [];
   let files: readonly FilePart[] = [];
+  let notes: readonly NotePart[] = [];
 
   try {
-    for (;;) {
+    for (; ;) {
       const { done, value } = await reader.read();
       if (done) {
         break;
@@ -646,6 +733,7 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
             tools,
             sources,
             files,
+            notes,
             stage,
             isTerminal,
             speaker: null,
@@ -698,6 +786,15 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
           if (file) {
             files = foldFile(files, file);
             yield state();
+          }
+
+          for (const { apply } of NoticeFolds) {
+            const applied = apply(chunk, notes);
+            if (applied) {
+              notes = applied.notes;
+              items = foldNoteItem(items, applied.noteId);
+              yield state();
+            }
           }
 
           if (
