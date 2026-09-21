@@ -71,13 +71,17 @@ export function Widget() {
   const widget = useWidgetRuntime(endpoint, api, send, desk);
   const [phase, setPhase] = useState<Phase>("closed");
   const [unread, setUnread] = useState(0);
+  const [bounceKey, setBounceKey] = useState(0);
   const isOpen = phase === "open";
 
   const { typing, sayTyping } = useWidgetSocket({
     desk,
     widget,
     onMessage: () => {
-      if (phase === "closed") setUnread((n) => n + 1);
+      if (phase === "closed") {
+        setUnread((n) => n + 1);
+        setBounceKey((k) => k + 1);
+      }
     },
   });
 
@@ -96,7 +100,7 @@ export function Widget() {
             <div className="flex h-dvh w-full items-end justify-end p-3">
               <PopoverTrigger asChild>
                 <div>
-                  <LauncherBubble open={isOpen} unread={unread} />
+                  <LauncherBubble open={isOpen} unread={unread} bounceKey={bounceKey} />
                 </div>
               </PopoverTrigger>
 
