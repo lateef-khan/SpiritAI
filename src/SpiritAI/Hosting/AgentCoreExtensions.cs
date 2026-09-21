@@ -1,6 +1,7 @@
 using System.ComponentModel;
 
 using AgentCore.Application.Tools;
+using AgentCore.AspNetCore.Conversation;
 using AgentCore.AspNetCore.DependencyInjection;
 using AgentCore.AspNetCore.Endpoints;
 using AgentCore.Hosting;
@@ -53,6 +54,8 @@ public static class AgentCoreExtensions
         builder.Services
             .AddOptions<AgentCoreOptions>()
             .Configure<IServiceProvider, IHostEnvironment>(Configure);
+
+        builder.Services.AddConversationSweep();
 
         return builder;
     }
