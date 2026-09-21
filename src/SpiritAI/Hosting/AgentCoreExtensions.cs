@@ -1,7 +1,6 @@
 using System.ComponentModel;
 
 using AgentCore.Application.Tools;
-using AgentCore.AspNetCore.Conversation;
 using AgentCore.AspNetCore.DependencyInjection;
 using AgentCore.AspNetCore.Endpoints;
 using AgentCore.Hosting;

@@ -16,7 +16,7 @@ using SpiritAI.Threads;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSpiritCache();
+builder.Services.AddSpiritCache(builder.Configuration);
 
 builder.AddSpiritAgentCore();
 
