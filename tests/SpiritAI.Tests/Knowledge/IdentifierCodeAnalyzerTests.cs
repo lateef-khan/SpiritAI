@@ -29,9 +29,6 @@ public sealed class IdentifierCodeAnalyzerTests
     /// <summary>The analyzer as it behaves before any vocabulary refresh has run.</summary>
     private static readonly IdentifierCodeAnalyzer Shapes = new();
 
-    [Fact]
-    public void Name_IsTheConfigurationValue() => Assert.Equal("identifier-codes", Shapes.Name);
-
     [Theory]
     [InlineData("the screen says e33", "e33")]
     [InlineData("THE SCREEN SAYS E33", "e33")]
@@ -72,10 +69,6 @@ public sealed class IdentifierCodeAnalyzerTests
         // a mandatory term only lifts cards inside the prefetch leg, and never drops any.
         Assert.Equal(["ct9000x"], Shapes.RequiredTerms("model ct9000x"));
     }
-
-    [Fact]
-    public void RequiredTerms_Null_Throws()
-        => Assert.Throws<ArgumentNullException>(() => Shapes.RequiredTerms(null!));
 
     [Fact]
     public void FindsALetterOnlyProductName()

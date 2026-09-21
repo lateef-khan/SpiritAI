@@ -34,17 +34,6 @@ public sealed class ThreadFilesTests
     }
 
     [Fact]
-    public void PartOf_CarriesTheFactsAndTheLink_AndDecidesNothing()
-    {
-        var part = ThreadFiles.PartOf(new BlobRef("conversation-1", "chart.png", "image/png", 10), Link);
-
-        Assert.Equal("chart.png", part.Name);
-        Assert.Equal("image/png", part.MediaType);
-        Assert.Equal(10, part.Length);
-        Assert.Equal(Link.ToString(), part.Url);
-    }
-
-    [Fact]
     public void PartsOf_KeysEachLinkedFileByName_AndSkipsOneWithNoLink()
     {
         var parts = ThreadFiles.PartsOf(

@@ -14,5 +14,8 @@ internal static class ConversationWords
     /// <summary>Every word of a conversation, oldest first.</summary>
     public static async Task<IReadOnlyList<ConversationMessage>> AllAsync(
         this IConversations conversations, string conversationId, CancellationToken cancellationToken)
-        => await conversations.ReadWindowAsync(conversationId, new TranscriptWindow(null, HistoryWindow.MaxTurns), cancellationToken);
+    {
+        var stored = await conversations.LoadWindowAsync(conversationId, new TranscriptWindow(null, HistoryWindow.MaxTurns), cancellationToken);
+        return stored?.Messages ?? [];
+    }
 }

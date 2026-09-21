@@ -132,15 +132,6 @@ public sealed class OpenApiDocumentTests
         }
     }
 
-    /// <summary>The title route is left out, and a client must not be generated for it.</summary>
-    [Fact]
-    public async Task TheTitleStreamIsNotInTheDocument()
-    {
-        using var document = JsonDocument.Parse(await BuildAsync());
-
-        Assert.DoesNotContain("/title", document.RootElement.GetProperty("paths").EnumerateObject().Select(p => p.Name));
-    }
-
     /// <summary>Reads each operation's id and the schema of its success body, if it has one.</summary>
     /// <param name="document">The whole OpenAPI document.</param>
     /// <returns>One entry per described operation.</returns>

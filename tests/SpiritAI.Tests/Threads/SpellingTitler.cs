@@ -15,7 +15,7 @@ internal sealed class SpellingTitler(IConversationStore conversations) : IConver
         string conversationId,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var rows = await conversations.ReadAsync(conversationId, cancellationToken).ConfigureAwait(false);
+        var rows = await conversations.ReadForSessionAsync(conversationId, cancellationToken).ConfigureAwait(false);
 
         if (rows.Count == 0)
         {

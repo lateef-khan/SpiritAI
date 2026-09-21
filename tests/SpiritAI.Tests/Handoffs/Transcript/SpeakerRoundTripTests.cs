@@ -30,7 +30,7 @@ public sealed class SpeakerRoundTripTests(PostgresFixture fixture) : IClassFixtu
 
             var written = await store.AppendMessageAsync(conversationId, reply, TestContext.Current.CancellationToken);
 
-            var row = Assert.Single(await store.ReadAsync(conversationId, TestContext.Current.CancellationToken));
+            var row = Assert.Single(await store.ReadForSessionAsync(conversationId, TestContext.Current.CancellationToken));
             Assert.Equal(written.MessageId, row.MessageId);
             Assert.Equal(ChatRole.Assistant, row.Content.Role);
             Assert.Equal("Try the tension bolt.", row.Content.Text);

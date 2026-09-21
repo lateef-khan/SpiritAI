@@ -31,7 +31,7 @@ internal static class HandoffSummaries
 
     /// <summary>Summarises every row of a listing, for one reader.</summary>
     /// <remarks>
-    /// Three reads per row, one row at a time, and one read of the reader's marks for the lot.
+    /// Two reads per row, one row at a time, and one read of the reader's marks for the lot.
     /// The queue is tens of rows at most, so the N+1 is cheaper than a join this host has no way
     /// to write: the rows live in two schemas behind two ports.
     /// </remarks>
@@ -104,17 +104,19 @@ internal static class HandoffSummaries
         int? seenOrdinal,
         CancellationToken cancellationToken)
     {
-        var conversation = await conversations.GetAsync(row.ConversationId, cancellationToken).ConfigureAwait(false);
+        var opening = await conversations.LoadWindowAsync(row.ConversationId, OpeningTurn, cancellationToken).ConfigureAwait(false);
+        var latest = await conversations.LoadWindowAsync(row.ConversationId, LatestTurns, cancellationToken).ConfigureAwait(false);
 
-        var opening = await conversations.ReadWindowAsync(row.ConversationId, OpeningTurn, cancellationToken).ConfigureAwait(false);
-        var latest = await conversations.ReadWindowAsync(row.ConversationId, LatestTurns, cancellationToken).ConfigureAwait(false);
+        var conversation = opening?.Conversation;
+        var openingRows = opening?.Messages ?? [];
+        var latestRows = latest?.Messages ?? [];
 
         var position = row.Status == HandoffStatus.Waiting
             ? await store.PositionAsync(row.ConversationId, cancellationToken).ConfigureAwait(false)
             : null;
 
         return HandoffSummary.Of(
-            row, conversation, FirstLineOf(opening), position, ReplyDue.Of(latest), Unread.Of(latest, seenOrdinal));
+            row, conversation, FirstLineOf(openingRows), position, ReplyDue.Of(latestRows), Unread.Of(latestRows, seenOrdinal));
     }
 
     /// <summary>The first thing the visitor said: the text of the lowest user row.</summary>
