@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useState, useEffect, useRef, type PropsWithChildren } from "react";
-import { createPortal } from "react-dom";
 import { cva, type VariantProps } from "class-variance-authority";
 import {
   CopyIcon,
@@ -13,6 +12,8 @@ import {
   ShieldAlertIcon,
 } from "lucide-react";
 import type { ImageMessagePart, ImageMessagePartComponent } from "@assistant-ui/react";
+import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 const extensionForMimeType = (mimeType?: string): string => {
@@ -200,72 +201,29 @@ type ImageZoomProps = PropsWithChildren<{
 }>;
 
 function ImageZoom({ src, alt = "Image preview", children }: ImageZoomProps) {
-  const [isMounted, setIsMounted] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const handleOpen = () => setIsOpen(true);
-  const handleClose = () => setIsOpen(false);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsOpen(false);
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = originalOverflow;
-    };
-  }, [isOpen]);
-
   return (
-    <>
-      <div
-        onClick={handleOpen}
-        onKeyDown={(e) => e.key === "Enter" && handleOpen()}
-        role="button"
-        tabIndex={0}
+    <Dialog>
+      <DialogTrigger
         className="aui-image-zoom-trigger cursor-zoom-in"
         aria-label="Click to zoom image"
+        asChild
       >
         {children}
-      </div>
-      {isMounted &&
-        isOpen &&
-        createPortal(
-          <div
-            data-slot="image-zoom-overlay"
-            role="button"
-            tabIndex={0}
-            className="aui-image-zoom-overlay fade-in animate-in fixed inset-0 z-50 flex items-center justify-center bg-black/80 duration-200"
-            onClick={handleClose}
-            onKeyDown={(e) => e.key === "Enter" && handleClose()}
-            aria-label="Close zoomed image"
-          >
-            <img
-              data-slot="image-zoom-content"
-              src={src}
-              alt={alt}
-              className="aui-image-zoom-content fade-in zoom-in-95 animate-in max-h-[90vh] max-w-[90vw] cursor-zoom-out object-contain duration-200"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleClose();
-              }}
-            />
-          </div>,
-          document.body,
-        )}
-    </>
+      </DialogTrigger>
+      <DialogContent
+        data-slot="image-zoom-content"
+        className="aui-image-zoom-dialog-content [&>button]:bg-foreground/60 [&>button]:hover:bg-foreground/80 [&_svg]:text-background p-2 sm:max-w-3xl [&>button]:rounded-full [&>button]:p-1 [&>button]:opacity-100 [&>button]:ring-0!"
+      >
+        <DialogTitle className="aui-sr-only sr-only">{alt}</DialogTitle>
+        <div className="aui-image-zoom bg-background relative mx-auto flex max-h-[80dvh] w-full items-center justify-center overflow-hidden rounded-sm">
+          <img
+            src={src}
+            alt={alt}
+            className="block h-auto max-h-[80vh] w-auto max-w-full rounded-sm object-contain"
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -310,8 +268,8 @@ export type ImageActionsProps = {
 function RegenerateButton({ onRegenerate }: { onRegenerate: () => void | Promise<void> }) {
   const [isRegenerating, setIsRegenerating] = useState(false);
   return (
-    <button
-      type="button"
+    <TooltipIconButton
+      tooltip="Regenerate image"
       onClick={async () => {
         setIsRegenerating(true);
         try {
@@ -322,37 +280,31 @@ function RegenerateButton({ onRegenerate }: { onRegenerate: () => void | Promise
       }}
       disabled={isRegenerating}
       data-slot="image-regenerate"
-      aria-label="Regenerate image"
-      className="hover:bg-muted inline-flex size-7 items-center justify-center rounded disabled:opacity-50"
     >
       <RefreshCwIcon className={cn("size-4", isRegenerating && "animate-spin")} />
-    </button>
+    </TooltipIconButton>
   );
 }
 
 function ImageActions({ part, onRegenerate, className }: ImageActionsProps) {
   return (
     <div data-slot="image-actions" className={cn("flex items-center gap-1 p-1", className)}>
-      <button
-        type="button"
+      <TooltipIconButton
+        tooltip="Download image"
         onClick={() => downloadImagePart(part)}
         data-slot="image-download"
-        aria-label="Download image"
-        className="hover:bg-muted inline-flex size-7 items-center justify-center rounded"
       >
         <DownloadIcon className="size-4" />
-      </button>
-      <button
-        type="button"
+      </TooltipIconButton>
+      <TooltipIconButton
+        tooltip="Copy image"
         onClick={() => {
           copyImagePart(part).catch(() => {});
         }}
         data-slot="image-copy"
-        aria-label="Copy image"
-        className="hover:bg-muted inline-flex size-7 items-center justify-center rounded"
       >
         <CopyIcon className="size-4" />
-      </button>
+      </TooltipIconButton>
       {onRegenerate && <RegenerateButton onRegenerate={onRegenerate} />}
     </div>
   );
@@ -383,7 +335,10 @@ const ImageImpl: ImageMessagePartComponent = (props) => {
       <ImageZoom src={image} alt={filename || "Image content"}>
         <ImagePreview src={image} alt={filename || "Image content"} />
       </ImageZoom>
-      <ImageFilename>{filename}</ImageFilename>
+      <div className="flex items-center justify-between">
+        <ImageFilename>{filename}</ImageFilename>
+        <ImageActions part={props} />
+      </div>
     </ImageRoot>
   );
 };
