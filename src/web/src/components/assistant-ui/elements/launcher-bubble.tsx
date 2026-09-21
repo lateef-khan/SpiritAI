@@ -111,13 +111,9 @@ export function LauncherBubble({
 
         {unread > 0 && !open && (
           <span
-            className={cn(
-              mono,
-              "bg-background text-foreground absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full tabular-nums",
-            )}
-          >
-            {unread}
-          </span>
+            aria-hidden="true"
+            className="bg-aui-success ring-background absolute -top-0.5 -right-0.5 size-3 rounded-full ring-2"
+          />
         )}
       </button>
     </div>
