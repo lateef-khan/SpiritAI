@@ -18,22 +18,27 @@ vi.mock("@tanstack/react-virtual", () => ({
   ) => {
     const { count, estimateSize } = options;
 
+    const items = Array.from({ length: count }, (_, index) => ({
+      index,
+      key: options.getItemKey?.(index) ?? index,
+      start: index * estimateSize(index),
+      size: estimateSize(index),
+      end: (index + 1) * estimateSize(index),
+      lane: 0,
+    }));
+
     return {
-      getVirtualItems: () =>
-        Array.from({ length: count }, (_, index) => ({
-          index,
-          key: options.getItemKey?.(index) ?? index,
-          start: index * estimateSize(index),
-          size: estimateSize(index),
-          end: (index + 1) * estimateSize(index),
-          lane: 0,
-        })),
+      getVirtualItems: () => items,
+      measurementsCache: items,
       getTotalSize: () => count * estimateSize(0),
       measureElement: () => {},
       // Every row is already drawn, so "the bottom" is always on screen.
       isAtEnd: () => true,
       scrollToEnd: () => {},
       scrollToIndex: () => {},
+      scrollToOffset: () => {},
+      scrollRect: null,
+      scrollOffset: 0,
       options,
     };
   },

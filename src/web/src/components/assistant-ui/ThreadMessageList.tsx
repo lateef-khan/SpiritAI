@@ -1,37 +1,71 @@
 "use client";
 
-import { ThreadPrimitive, unstable_useThreadMessageIds, useAuiEvent } from "@assistant-ui/react";
-import { useVirtualizer, type ScrollToOptions } from "@tanstack/react-virtual";
+import { NEAR_TOP_ROWS, useOlderMessages, type OlderMessagesSource } from "@/lib/history";
+import {
+  ThreadPrimitive,
+  unstable_useThreadMessageIds,
+  useAui,
+  useAuiEvent,
+  useAuiState,
+} from "@assistant-ui/react";
+import {
+  useVirtualizer,
+  type ScrollToOptions,
+  type VirtualItem,
+  type Virtualizer,
+} from "@tanstack/react-virtual";
 import {
   forwardRef,
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
+  useState,
   type ComponentProps,
   type ComponentType,
   type FC,
 } from "react";
-import { NEAR_TOP_ROWS, useOlderMessages, type OlderMessagesSource } from "@/lib/history";
 
-/** How long a glide to the end may keep re-aiming before it gives up and leaves the reader be. */
+/** How long a glide to a sent message may keep re-aiming before it gives up and leaves the reader be. */
 const GLIDE_MS = 1500;
 
 /**
  * A guessed row height, before the virtualizer has measured anything.
- *
- * Only the first paint of the first render for a size the reader never sees settle — every row
- * carries `ref={measureElement}`, so the real height replaces this the moment a row mounts.
  */
 const ESTIMATED_ROW_HEIGHT = 96;
 
 /**
- * The vertical space between messages, reproduced as padding rather than a flex `gap` — an
- * absolutely positioned row has no siblings for `gap-y-6` to sit between. Matches that class's
- * `1.5rem`.
+ * The vertical space between messages, reproduced as padding rather than a flex `gap`.
  */
 const ROW_GAP_PX = 24;
+
+/**
+ * How far from the end of the list, in pixels, still counts as being there.
+ */
+const AT_END_PX = 80;
+
+/**
+ * A sent message taller than this is pinned by its foot rather than its head, so the reply under
+ * it starts on screen.
+ */
+const TALL_ANCHOR_PX = 160;
+
+const TALL_ANCHOR_VISIBLE_PX = 96;
+
+/**
+ * Whether a row that changed size should move the scroll position by the change, so what is on
+ * screen stays put.
+ */
+function keepsViewInPlace(
+  item: VirtualItem,
+  _delta: number,
+  instance: Virtualizer<HTMLElement, Element>,
+): boolean {
+  const fold = (instance.scrollOffset ?? 0) + instance.scrollAdjustments;
+  return instance.itemSizeCache.has(item.key) ? item.end <= fold : item.start < fold;
+}
 
 export type ThreadMessageListHandle = {
   isAtEnd: () => boolean;
@@ -59,14 +93,6 @@ export type ThreadMessageListProps = {
 
 /**
  * The thread's messages, virtualized.
- *
- * Rows are keyed by message id (`getItemKey`), not by index — the id is stable across a prepend,
- * so a row already on screen keeps its DOM node (and, for OpenUI forms, its focus and scroll
- * position) when 100 older messages appear above it.
- *
- * `anchorTo: "end"` with `followOnAppend: true` is the only anchor: the list follows the bottom
- * while the reader is there, and a turn streaming in never has to fight a second anchor that
- * also wants the scroll position.
  */
 export const ThreadMessageList = forwardRef<ThreadMessageListHandle, ThreadMessageListProps>(
   function ThreadMessageList(
@@ -75,83 +101,144 @@ export const ThreadMessageList = forwardRef<ThreadMessageListHandle, ThreadMessa
   ) {
     const ids = unstable_useThreadMessageIds();
 
+    const count = ids.length;
+
+    const aui = useAui();
+
+    const isRunning = useAuiState((s) => s.thread.isRunning);
+
+    const [listElement, setListElement] = useState<HTMLDivElement | null>(null);
+
+    const [scrollMargin, setScrollMargin] = useState(0);
+
+    const empty = count === 0;
+
+    useLayoutEffect(() => {
+      setScrollMargin(listElement?.offsetTop ?? 0);
+    }, [listElement, empty]);
+
+    const [anchorId, setAnchorId] = useState<string | null>(null);
+
+    const anchorIndex = useMemo(
+      () => (anchorId === null ? -1 : ids.indexOf(anchorId)),
+      [ids, anchorId],
+    );
+
+    const pinned = anchorIndex >= 0;
+
+    useEffect(() => {
+      if (anchorId !== null && !pinned) setAnchorId(null);
+    }, [anchorId, pinned]);
+
+    const reserveRef = useRef(0);
+
+    const followingEnd = !(pinned && (isRunning || reserveRef.current > 0));
+
     const virtualizer = useVirtualizer({
-      count: ids.length,
+      count,
       getScrollElement: () => scrollElement,
       estimateSize: () => ESTIMATED_ROW_HEIGHT + ROW_GAP_PX,
       getItemKey: (index) => ids[index]!,
       anchorTo: "end",
-      followOnAppend: true,
-      scrollEndThreshold: 80,
+      followOnAppend: false,
+      scrollEndThreshold: followingEnd ? AT_END_PX : -1,
+      scrollMargin,
       overscan: 6,
-      paddingEnd,
+      paddingEnd: empty ? 0 : paddingEnd,
     });
+
+    virtualizer.shouldAdjustScrollPositionOnItemSizeChange = keepsViewInPlace;
+
+    const items = virtualizer.getVirtualItems();
+
+    const measurements = virtualizer.measurementsCache;
+
+    const anchor = pinned ? measurements[anchorIndex] : undefined;
+
+    const last = count > 0 ? measurements[count - 1] : undefined;
+
+    const anchorHeight = anchor ? anchor.size - ROW_GAP_PX : 0;
+
+    const pinTarget = anchor
+      ? anchor.start + (anchorHeight > TALL_ANCHOR_PX ? anchorHeight - TALL_ANCHOR_VISIBLE_PX : 0)
+      : null;
+
+    const viewportHeight = virtualizer.scrollRect?.height ?? 0;
+
+    const reserve =
+      pinTarget !== null && last
+        ? Math.max(0, pinTarget + viewportHeight - last.end - paddingEnd)
+        : 0;
+
+    reserveRef.current = reserve;
+
+    const atEnd = virtualizer.isAtEnd(AT_END_PX);
 
     useImperativeHandle(
       ref,
       () => ({
-        isAtEnd: () => virtualizer.isAtEnd(),
+        isAtEnd: () => virtualizer.isAtEnd(AT_END_PX),
         scrollToEnd: (options) => virtualizer.scrollToEnd(options),
       }),
       [virtualizer],
     );
 
-    // A reader who sent from part-way up glides down to their own message. Smooth through the
-    // virtualizer and not through CSS: the virtualizer skips its scroll corrections while a smooth
-    // scroll of its own is in flight, and would fight one it did not start. One glide is aimed at
-    // the end as it was when the run started; the reply then grows under it and it lands short,
-    // outside the follow threshold. So the aim is renewed on every render until the end is reached
-    // or the glide has had its time.
     const glideUntil = useRef(0);
+
     useAuiEvent("thread.runStart", () => {
+      const messages = aui.thread.getState().messages;
+      let sent = messages.length - 1;
+      while (sent >= 0 && messages[sent]!.role !== "user") sent -= 1;
+      if (sent < 0) return;
       glideUntil.current = Date.now() + GLIDE_MS;
-      virtualizer.scrollToEnd({ behavior: "smooth" });
+      setAnchorId(messages[sent]!.id);
     });
-    useEffect(() => {
-      if (glideUntil.current === 0) return;
-      if (virtualizer.isAtEnd() || Date.now() > glideUntil.current) {
+
+    const gliding = () => glideUntil.current !== 0;
+
+    useFollowAppend({ virtualizer, lastId: ids[count - 1] ?? null, count, atEnd, gliding });
+
+    useLayoutEffect(() => {
+      if (!gliding() || pinTarget === null) return;
+      const at = scrollElement?.scrollTop ?? 0;
+      if (Math.abs(at - pinTarget) <= 1 || Date.now() > glideUntil.current) {
         glideUntil.current = 0;
         return;
       }
-      virtualizer.scrollToEnd({ behavior: "smooth" });
+      virtualizer.scrollToOffset(pinTarget, { behavior: "smooth" });
     });
 
-    const items = virtualizer.getVirtualItems();
     const firstRenderedIndex = items[0]?.index ?? null;
-    // Where the range above was computed. The element's `scrollTop` moves the moment anything
-    // scrolls it — the virtualizer pinning a fresh list to its end, say — and the range only
-    // follows on the render after; equal means the range is of where the box is.
+
     const rangeOffset = virtualizer.scrollOffset ?? 0;
+
     const isRangeCurrent = useCallback(
       () => scrollElement !== null && rangeOffset === scrollElement.scrollTop,
       [rangeOffset, scrollElement],
     );
-    // The virtualizer re-renders this component on every scroll tick (it subscribes to the
-    // scroll element itself), so reading `isAtEnd()` here is already live — it just needs
-    // forwarding to whatever draws the button, which lives outside this subtree.
-    const atEnd = virtualizer.isAtEnd();
+
     const lastReportedAtEnd = useRef<boolean | null>(null);
+
     useEffect(() => {
       if (lastReportedAtEnd.current === atEnd) return;
       lastReportedAtEnd.current = atEnd;
       onAtEndChange?.(atEnd);
     }, [atEnd, onAtEndChange]);
 
-    // `Unstable_MessageById` compares `components` by identity, so a fresh object per render
-    // would remount every row's subtree on every scroll frame.
     const components: ComponentProps<typeof ThreadPrimitive.Unstable_MessageById>["components"] =
       useMemo(() => ({ Message }), [Message]);
 
     return (
       <div
+        ref={setListElement}
         data-slot="aui_message-group"
-        style={{ position: "relative", height: virtualizer.getTotalSize() }}
+        style={{ position: "relative", height: virtualizer.getTotalSize() + reserve }}
       >
         {olderMessages ? (
           <OlderMessages
             source={olderMessages}
             firstRenderedIndex={firstRenderedIndex}
-            messageCount={ids.length}
+            messageCount={count}
             atEnd={atEnd}
             isRangeCurrent={isRangeCurrent}
           />
@@ -166,7 +253,7 @@ export const ThreadMessageList = forwardRef<ThreadMessageListHandle, ThreadMessa
               top: 0,
               left: 0,
               width: "100%",
-              transform: `translateY(${item.start}px)`,
+              transform: `translateY(${item.start - scrollMargin}px)`,
               paddingBottom: ROW_GAP_PX,
             }}
           >
@@ -182,11 +269,34 @@ export const ThreadMessageList = forwardRef<ThreadMessageListHandle, ThreadMessa
 );
 
 /**
+ * Scrolls to the end when a message is appended while the reader was there.
+ */
+function useFollowAppend({
+  virtualizer,
+  lastId,
+  count,
+  atEnd,
+  gliding,
+}: {
+  virtualizer: { scrollToEnd: (options?: Pick<ScrollToOptions, "behavior">) => void };
+  lastId: string | null;
+  count: number;
+  atEnd: boolean;
+  gliding: () => boolean;
+}) {
+  const previous = useRef({ lastId, count, atEnd });
+
+  useLayoutEffect(() => {
+    const before = previous.current;
+    previous.current = { lastId, count, atEnd };
+
+    const appended = lastId !== before.lastId && count > before.count;
+    if (appended && before.atEnd && !gliding()) virtualizer.scrollToEnd();
+  });
+}
+
+/**
  * Asks for older pages as the reader nears the top, and says so while one is in flight.
- *
- * Its own component rather than a hook in the list: the loader runs a TanStack Query, which
- * needs a `QueryClientProvider` above it, and a list with no source to page from — a test, a
- * runtime that holds everything already — should not need one.
  */
 const OlderMessages: FC<{
   source: OlderMessagesSource;
