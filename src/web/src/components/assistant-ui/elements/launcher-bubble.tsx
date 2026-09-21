@@ -91,7 +91,7 @@ export function LauncherBubble({
         onClick={onToggle}
         className={cn(
           inkButton,
-          "relative flex size-12 shrink-0 items-center justify-center rounded-full",
+          "relative flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground",
         )}
       >
         <span className="grid">
