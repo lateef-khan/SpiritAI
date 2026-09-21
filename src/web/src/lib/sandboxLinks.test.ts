@@ -47,8 +47,11 @@ describe("resolveSandboxLinks", () => {
   });
 
   it("reads a percent-encoded name", () => {
-    expect(resolveSandboxLinks("[x](sandbox:/mnt/data/chart%20one.png)", new Map([["chart one.png", "https://f/1"]]))).toBe(
-      "[x](https://f/1)",
-    );
+    expect(
+      resolveSandboxLinks(
+        "[x](sandbox:/mnt/data/chart%20one.png)",
+        new Map([["chart one.png", "https://f/1"]]),
+      ),
+    ).toBe("[x](https://f/1)");
   });
 });

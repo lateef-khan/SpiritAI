@@ -3,7 +3,10 @@
 import { useAui, useAuiState } from "@assistant-ui/react";
 import type { ActionEvent } from "@openuidev/react-lang";
 import { lazy, Suspense, type FC } from "react";
-import { readOpenUiFormState, writeOpenUiFormState } from "@/components/assistant-ui/openUiFormStore";
+import {
+  readOpenUiFormState,
+  writeOpenUiFormState,
+} from "@/components/assistant-ui/openUiFormStore";
 import { TypingIndicator } from "./elements/typing-indicator";
 import { MarkdownText } from "./markdown-text";
 
@@ -23,7 +26,7 @@ function scalarOf(state: unknown): string | null {
   if (!["string", "number", "boolean"].includes(typeof value)) return null;
 
   const text = String(value).trim();
-  
+
   return text.length > 0 ? text : null;
 }
 
@@ -48,7 +51,7 @@ export function formMessage(
  */
 const OpenUIAssistantMessage: FC = () => {
   const messageId = useAuiState((s) => s.message.id);
-  
+
   const text = useAuiState((s) => (s.part.type === "text" ? s.part.text : null));
 
   const partStatusType = useAuiState((s) =>

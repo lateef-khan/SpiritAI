@@ -349,7 +349,7 @@ export function useWidgetRuntime(
         );
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
-        
+
         setRunning(false);
       }
     },

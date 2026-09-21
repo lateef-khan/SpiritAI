@@ -366,7 +366,6 @@ async function* streamTurn(
       },
     };
 
-  
     const links = fileLinks(state.files);
     const toolsById = new Map(state.tools.map((tool) => [tool.callId, tool]));
     const notesById = new Map(state.notes.map((note) => [note.id, note]));

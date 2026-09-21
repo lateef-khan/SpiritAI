@@ -212,15 +212,11 @@ test("the first turn names no conversation and keeps the one the stream mints", 
 });
 
 test("every turn names the browser's zone, so the host reads the date in it", async () => {
-  const { sent } = await collect(
-    [streaming([created("conv_1"), delta("hi"), completed()])],
-    { current: null },
-  );
+  const { sent } = await collect([streaming([created("conv_1"), delta("hi"), completed()])], {
+    current: null,
+  });
 
-  assert.equal(
-    sent[0]!.headers[TimeZoneHeader],
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-  );
+  assert.equal(sent[0]!.headers[TimeZoneHeader], Intl.DateTimeFormat().resolvedOptions().timeZone);
 });
 
 test("the next turn sends the conversation back", async () => {
@@ -706,7 +702,9 @@ describe("foldCompactionNote", () => {
   it("opens a note on start", () => {
     const notes = foldCompactionNote([], { phase: "start" });
 
-    expect(notes).toEqual([{ id: "compaction", kind: "compaction", phase: "start", outcome: undefined }]);
+    expect(notes).toEqual([
+      { id: "compaction", kind: "compaction", phase: "start", outcome: undefined },
+    ]);
   });
 
   it("replaces the start row with end rather than adding a second row", () => {

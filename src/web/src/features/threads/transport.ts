@@ -108,7 +108,7 @@ export type SourceFrame = {
 /** One file the reply produced this turn. Arrives after the words, once the host has the bytes. */
 export type FilePart = ReplyFile;
 
-/** 
+/**
  * One file as the wire spells it. Every field is optional: the browser never trusts the host's shape.
  */
 export type FileFrame = {
@@ -442,11 +442,11 @@ function post(options: TurnOptions, session: string | null): Promise<Response> {
           : {}),
         ...(options.approval
           ? {
-            approval: {
-              request_id: options.approval.requestId,
-              approved: options.approval.approved,
-            },
-          }
+              approval: {
+                request_id: options.approval.requestId,
+                approved: options.approval.approved,
+              },
+            }
           : {}),
       },
     }),
@@ -651,14 +651,14 @@ const NoticeFolds: readonly {
     notes: readonly NotePart[],
   ) => { readonly notes: readonly NotePart[]; readonly noteId: string } | null;
 }[] = [
-    {
-      apply: (chunk, notes) => {
-        const frame = chunk.agentcore_compaction;
-        if (!frame) return null;
-        return { notes: foldCompactionNote(notes, frame), noteId: "compaction" };
-      },
+  {
+    apply: (chunk, notes) => {
+      const frame = chunk.agentcore_compaction;
+      if (!frame) return null;
+      return { notes: foldCompactionNote(notes, frame), noteId: "compaction" };
     },
-  ];
+  },
+];
 
 /**
  * Runs one turn and yields the reply as it grows.
@@ -714,7 +714,7 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
   let notes: readonly NotePart[] = [];
 
   try {
-    for (; ;) {
+    for (;;) {
       const { done, value } = await reader.read();
       if (done) {
         break;

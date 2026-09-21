@@ -140,7 +140,11 @@ export async function authFetch(input: RequestInfo | URL, init?: RequestInit): P
   return response;
 }
 
-function send(input: RequestInfo | URL, init: RequestInit | undefined, token: string): Promise<Response> {
+function send(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  token: string,
+): Promise<Response> {
   const headers = new Headers(
     init?.headers ?? (input instanceof Request ? input.headers : undefined),
   );

@@ -55,20 +55,20 @@ export function useHandoffMessages(
   });
 
   const initialCursor = data?.nextCursor;
-  
+
   const older = useMemo<OlderMessagesSource | undefined>(
     () =>
       callId === null
         ? undefined
         : {
-          id: callId,
-          initialCursor,
-          fetchPage: (before) => api.history(callId, before),
-          merge: (page) =>
-            cache.setQueryData<HistoryPage>(handoffKeys.messages(callId), (held) =>
-              held === undefined ? held : prependOlderPage(held, page),
-            ),
-        },
+            id: callId,
+            initialCursor,
+            fetchPage: (before) => api.history(callId, before),
+            merge: (page) =>
+              cache.setQueryData<HistoryPage>(handoffKeys.messages(callId), (held) =>
+                held === undefined ? held : prependOlderPage(held, page),
+              ),
+          },
     [api, cache, callId, initialCursor],
   );
 

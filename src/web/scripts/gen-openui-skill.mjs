@@ -11,7 +11,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const out = fileURLToPath(new URL("../../../src/SpiritAI/skills/openui/SKILL.md", import.meta.url));
-const rules = fileURLToPath(new URL("../../../src/SpiritAI/skills/openui/spirit-rules.md", import.meta.url));
+const rules = fileURLToPath(
+  new URL("../../../src/SpiritAI/skills/openui/spirit-rules.md", import.meta.url),
+);
 
 const frontmatter = `---
 name: openui

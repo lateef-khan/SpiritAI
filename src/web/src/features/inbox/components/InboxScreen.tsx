@@ -67,7 +67,7 @@ export function InboxScreen({
   const live = rows.find((row) => row.id === selectedId) ?? null;
 
   if (live && !loading && live !== pinned) setPinned(live);
-  
+
   const selected = loading ? (pinned ?? live) : (live ?? pinned);
 
   // The context rail lives above this screen, so the pick is mirrored up for it — including a
