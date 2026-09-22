@@ -163,7 +163,7 @@ entries:
 
 providers:
   llm:
-    - { kind: opencode-go, model: muse-spark-1.3-contributor-free, as: reply, reasoningEffort: medium }
+    - { kind: opencode-go, model: muse-spark-1.3-contributor, as: reply, reasoningEffort: medium }
 
   embeddings: { kind: openai, model: text-embedding-3-small, dimensions: 1024 }
 

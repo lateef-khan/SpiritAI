@@ -16,8 +16,3 @@ Three overrides, and only these:
    the host serves no query loader and they render nothing. A form's answer arrives as
    the person's next message.
 3. The screen keeps what you drew. Do not re-emit it to talk about it.
-4. Never draw a Button, Buttons, or ListItem action next to an Image, ImageBlock,
-   or ImageGallery whose purpose is to download or save the picture. The chat
-   surface already puts a download button on every image it renders; a second
-   one from you does nothing (this vocabulary's actions message the assistant,
-   they cannot save a file) and only confuses the person.
