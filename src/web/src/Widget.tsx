@@ -1,15 +1,16 @@
-import { Hidden, Thread } from "@/components/assistant-ui/thread";
 import { LauncherBubble } from "@/components/assistant-ui/elements/launcher-bubble";
+import { Hidden, Thread } from "@/components/assistant-ui/thread";
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { TypingReporter } from "./features/handoff/TypingReporter";
 import { readVisitorMemory, visitorFetch } from "./features/widget/api/visitorIdentity";
 import { createWidgetApi } from "./features/widget/api/widgetApi";
-import { TypingReporter } from "./features/handoff/TypingReporter";
 import { HandoffBanner } from "./features/widget/components/HandoffBanner";
+import { WidgetWelcome } from "./features/widget/components/WidgetWelcome";
 import { useHandoffDesk } from "./features/widget/hooks/useHandoffDesk";
 import { useWidgetRuntime } from "./features/widget/hooks/useWidgetRuntime";
 import { useWidgetSocket } from "./features/widget/hooks/useWidgetSocket";
@@ -18,10 +19,19 @@ import { useWidgetSocket } from "./features/widget/hooks/useWidgetSocket";
  * The embeddable form of the chat: a bubble on someone else's page that opens into a panel.
  */
 
+/** The panel itself, in CSS pixels. The frame below is sized to hold this plus the bubble. */
+const PANEL = { width: 384, height: 600 } as const;
+
+/** What the panel needs around it: the page padding, the gap to the bubble, and the bubble. */
+const CHROME = { width: 24, height: 24 + 10 + 48 } as const;
+
 /** The size the frame should be, in CSS pixels, for each state. */
 const SIZE = {
   closed: { width: 96, height: 96 },
-  open: { width: 400, height: 620 },
+  open: {
+    width: PANEL.width + CHROME.width,
+    height: PANEL.height + CHROME.height,
+  },
 } as const;
 
 /*
@@ -45,6 +55,8 @@ const queryClient = new QueryClient({
 });
 
 const WIDGET_COMPONENTS = {
+  Welcome: WidgetWelcome,
+  dockComposer: true,
   ToolGroup: Hidden,
   ToolFallback: Hidden,
   Sources: Hidden,
@@ -60,8 +72,6 @@ type Phase = "closed" | "open";
 function useFrameSize(phase: Phase) {
   useEffect(() => {
     const size = SIZE[phase];
-    // "*" rather than a fixed origin: the widget is embedded on sites it cannot know the names of,
-    // and the message carries no secret — only two numbers.
     window.parent?.postMessage({ source: "agentcore-widget", type: "resize", ...size }, "*");
   }, [phase]);
 }
@@ -106,7 +116,8 @@ export function Widget() {
 
               <PopoverContent
                 onOpenAutoFocus={(event) => event.preventDefault()}
-                className="flex h-[500px] w-[352px] flex-col overflow-hidden p-0"
+                style={{ height: PANEL.height, width: PANEL.width }}
+                className="flex flex-col overflow-hidden p-0"
               >
                 <PopoverClose
                   aria-label="Close chat"

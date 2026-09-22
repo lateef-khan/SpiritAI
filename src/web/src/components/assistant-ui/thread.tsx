@@ -100,6 +100,7 @@ export type ThreadComponents = {
   Timing?: ComponentType | undefined;
   Composer?: ComponentType | undefined;
   isTranscript?: boolean | undefined;
+  dockComposer?: boolean | undefined;
 };
 
 export type ThreadProps = {
@@ -155,19 +156,20 @@ const ThreadHistorySkeleton: FC = () => (
 
 export const Thread: FC<ThreadProps> = ({ components = EMPTY_COMPONENTS, olderMessages }) => {
   const isEmpty = useAuiState(isNewChatView);
+  const centered = isEmpty && !components.dockComposer;
 
   return (
     <ThreadComponentsContext.Provider value={components}>
       <TranscriptModeContext.Provider value={components.isTranscript ?? false}>
         <CompactionNoteUI />
-        <ThreadRoot isEmpty={isEmpty} olderMessages={olderMessages} />
+        <ThreadRoot centered={centered} olderMessages={olderMessages} />
       </TranscriptModeContext.Provider>
     </ThreadComponentsContext.Provider>
   );
 };
 
-const ThreadRoot: FC<{ isEmpty: boolean; olderMessages: OlderMessagesSource | undefined }> = ({
-  isEmpty,
+const ThreadRoot: FC<{ centered: boolean; olderMessages: OlderMessagesSource | undefined }> = ({
+  centered,
   olderMessages,
 }) => {
   const { Welcome = ThreadWelcome, Composer: ComposerComponent = Composer } =
@@ -198,7 +200,7 @@ const ThreadRoot: FC<{ isEmpty: boolean; olderMessages: OlderMessagesSource | un
         <div
           className={cn(
             "mx-auto flex w-full max-w-(--thread-max-width) flex-1 flex-col px-4 pt-4",
-            isEmpty && "justify-center",
+            centered && "justify-center",
           )}
         >
           <AuiIf condition={isNewChatView}>
@@ -217,12 +219,12 @@ const ThreadRoot: FC<{ isEmpty: boolean; olderMessages: OlderMessagesSource | un
             olderMessages={olderMessages}
           />
 
-          <div className={cn("flex flex-col", !isEmpty && "sticky bottom-0 mt-auto h-0")}>
+          <div className={cn("flex flex-col", !centered && "sticky bottom-0 mt-auto h-0")}>
             <ThreadPrimitive.ViewportFooter
               ref={setFooterElement}
               className={cn(
                 "aui-thread-viewport-footer bg-background flex flex-col gap-4 overflow-visible pb-4 md:pb-6",
-                !isEmpty && "absolute inset-x-0 bottom-0 rounded-t-(--composer-radius)",
+                !centered && "absolute inset-x-0 bottom-0 rounded-t-(--composer-radius)",
               )}
             >
               <ThreadScrollToBottom
