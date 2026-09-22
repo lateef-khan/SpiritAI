@@ -64,36 +64,6 @@ public sealed class ContactResolverTests(PostgresFixture fixture) : IClassFixtur
     }
 
     [Fact]
-    public async Task AMergedContactResolvesToTheSurvivor()
-    {
-        var key = NewVisitorKey();
-        var clock = new TestTimeProvider(Start);
-
-        await using var database = fixture.Open();
-        var resolver = new ContactResolver(database, clock);
-
-        try
-        {
-            var loser = await resolver.ResolveAsync(key, Cancel);
-
-            var survivor = new Contact { CreatedAt = clock.GetUtcNow() };
-            database.Contacts.Add(survivor);
-            await database.SaveChangesAsync(Cancel);
-
-            await database.Contacts.Where(c => c.Id == loser)
-                .ExecuteUpdateAsync(s => s.SetProperty(c => c.MergedInto, survivor.Id), Cancel);
-
-            var resolved = await resolver.ResolveAsync(key, Cancel);
-
-            Assert.Equal(survivor.Id, resolved);
-        }
-        finally
-        {
-            await CleanUpAsync(key);
-        }
-    }
-
-    [Fact]
     public async Task ConcurrentFirstTimeResolvesOfOneKeyAnswerOneId()
     {
         var key = NewVisitorKey();
@@ -125,9 +95,9 @@ public sealed class ContactResolverTests(PostgresFixture fixture) : IClassFixtur
     }
 
     /// <summary>
-    /// Deletes every identity this test made and every contact those identities, or a merge made,
-    /// pointed at. A contact orphaned by a lost race between two resolves of the same unknown key is
-    /// left behind: nothing else here references it, and the throwaway database is wiped between runs.
+    /// Deletes every identity this test made and every contact those identities pointed at. A
+    /// contact orphaned by a lost race between two resolves of the same unknown key is left behind:
+    /// nothing else here references it, and the throwaway database is wiped between runs.
     /// </summary>
     private async Task CleanUpAsync(string key)
     {
@@ -141,12 +111,7 @@ public sealed class ContactResolverTests(PostgresFixture fixture) : IClassFixtur
 
         await database.ContactIdentities.Where(i => i.Value == value).ExecuteDeleteAsync(Cancel);
 
-        var survivors = await database.Contacts.AsNoTracking()
-            .Where(c => contactIds.Contains(c.Id) && c.MergedInto != null)
-            .Select(c => c.MergedInto!.Value)
-            .ToListAsync(Cancel);
-
-        await database.Contacts.Where(c => contactIds.Contains(c.Id) || survivors.Contains(c.Id)).ExecuteDeleteAsync(Cancel);
+        await database.Contacts.Where(c => contactIds.Contains(c.Id)).ExecuteDeleteAsync(Cancel);
     }
 
     private static string NewVisitorKey() => "visitor:test-" + Guid.NewGuid().ToString("N");

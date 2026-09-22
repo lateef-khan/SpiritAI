@@ -20,15 +20,13 @@ public sealed class ContactResolver(SpiritDbContext database, TimeProvider clock
 
         var (kind, value) = ParseKey(channelKey);
 
-        var contactId = await database.ContactIdentities
+        return await database.ContactIdentities
             .AsNoTracking()
             .Where(i => i.Kind == kind && i.Value == value)
             .Select(i => (long?)i.ContactId)
             .SingleOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false)
             ?? await CreateAsync(kind, value, cancellationToken).ConfigureAwait(false);
-
-        return await FollowMergeAsync(contactId, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -73,27 +71,6 @@ public sealed class ContactResolver(SpiritDbContext database, TimeProvider clock
         }
 
         return contact.Id;
-    }
-
-    /// <summary>Follows <see cref="Contact.MergedInto"/> to the surviving contact.</summary>
-    private async Task<long> FollowMergeAsync(long contactId, CancellationToken cancellationToken)
-    {
-        var current = contactId;
-
-        var seen = new HashSet<long> { current };
-
-        while (await database.Contacts
-                   .AsNoTracking()
-                   .Where(c => c.Id == current)
-                   .Select(c => c.MergedInto)
-                   .SingleOrDefaultAsync(cancellationToken)
-                   .ConfigureAwait(false)
-               is { } next && seen.Add(next))
-        {
-            current = next;
-        }
-
-        return current;
     }
 
     /// <summary>Splits a channel key into the kind and value <c>contact_identity</c> keeps them as.</summary>

@@ -4,11 +4,11 @@ using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Http.HttpResults;
 
+using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.PublicChat;
-using SpiritAI.Threads;
 
 namespace SpiritAI.Handoffs.Visitors;
 
@@ -76,6 +76,8 @@ public static class VisitorHandoffEndpoints
     /// <summary>Runs a route body against a chat the visitor owns, or refuses the request.</summary>
     /// <param name="http">The request, carrying the visitor's key.</param>
     /// <param name="conversations">The store the row is read from.</param>
+    /// <param name="contacts">The resolver a channel key is followed to a contact through.</param>
+    /// <param name="contactConversations">The store <c>contact_conversation</c> is read through.</param>
     /// <param name="conversationId">The call the request named, which may be anything at all.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <param name="body">The route.</param>
@@ -86,6 +88,8 @@ public static class VisitorHandoffEndpoints
     private static async Task<IResult> ForOwnedAsync(
         HttpContext http,
         IConversations conversations,
+        IContactResolver contacts,
+        IContactConversationStore contactConversations,
         string conversationId,
         CancellationToken cancellationToken,
         Func<Task<IResult>> body)
@@ -100,7 +104,9 @@ public static class VisitorHandoffEndpoints
                 $"Send a well-formed {VisitorPrincipal.Header} header: letters, digits, '_' and '-', at most {VisitorPrincipal.MaxLength} characters.");
         }
 
-        if (await ThreadOwnership.ReadAsync(conversations, conversationId, VisitorPrincipal.KeyOf(sent), cancellationToken).ConfigureAwait(false)
+        if (await ContactConversationOwnership
+                .ReadAsync(conversations, contactConversations, contacts, conversationId, VisitorPrincipal.KeyOf(sent), cancellationToken)
+                .ConfigureAwait(false)
             is null)
         {
             return TypedResults.NotFound();
@@ -113,6 +119,8 @@ public static class VisitorHandoffEndpoints
     private static Task<IResult> AskAsync(
         HttpContext http,
         IConversations conversations,
+        IContactResolver contacts,
+        IContactConversationStore contactConversations,
         HandoffDesk desk,
         VisitorAskRequest? body,
         CancellationToken cancellationToken)
@@ -123,7 +131,7 @@ public static class VisitorHandoffEndpoints
                 Problem(StatusCodes.Status400BadRequest, "The request cannot be read.", "callId must be a non-blank string."));
         }
 
-        return ForOwnedAsync(http, conversations, conversationId, cancellationToken, async () =>
+        return ForOwnedAsync(http, conversations, contacts, contactConversations, conversationId, cancellationToken, async () =>
         {
             var asked = await desk.AskAsync(conversationId, HandoffAskedBy.Visitor, body.Reason, cancellationToken).ConfigureAwait(false);
 
@@ -139,21 +147,25 @@ public static class VisitorHandoffEndpoints
     private static Task<IResult> StateAsync(
         HttpContext http,
         IConversations conversations,
+        IContactResolver contacts,
+        IContactConversationStore contactConversations,
         HandoffDesk desk,
         string conversationId,
         CancellationToken cancellationToken)
-        => ForOwnedAsync(http, conversations, conversationId, cancellationToken, async ()
+        => ForOwnedAsync(http, conversations, contacts, contactConversations, conversationId, cancellationToken, async ()
             => TypedResults.Ok(await desk.StateAsync(conversationId, cancellationToken).ConfigureAwait(false)));
 
     /// <summary>Records where a reply goes when the visitor is not there to read it.</summary>
     private static Task<IResult> EmailAsync(
         HttpContext http,
         IConversations conversations,
+        IContactResolver contacts,
+        IContactConversationStore contactConversations,
         HandoffDesk desk,
         string conversationId,
         VisitorEmailRequest? body,
         CancellationToken cancellationToken)
-        => ForOwnedAsync(http, conversations, conversationId, cancellationToken, async () =>
+        => ForOwnedAsync(http, conversations, contacts, contactConversations, conversationId, cancellationToken, async () =>
         {
             if (body is not { Email: { } email } || !MailAddress.TryCreate(email, out _))
             {
@@ -172,11 +184,13 @@ public static class VisitorHandoffEndpoints
     private static Task<IResult> SayAsync(
         HttpContext http,
         IConversations conversations,
+        IContactResolver contacts,
+        IContactConversationStore contactConversations,
         HandoffDesk desk,
         string conversationId,
         VisitorMessageRequest? body,
         CancellationToken cancellationToken)
-        => ForOwnedAsync(http, conversations, conversationId, cancellationToken, async () =>
+        => ForOwnedAsync(http, conversations, contacts, contactConversations, conversationId, cancellationToken, async () =>
         {
             if (body is not { Text: { } text } || string.IsNullOrWhiteSpace(text))
             {

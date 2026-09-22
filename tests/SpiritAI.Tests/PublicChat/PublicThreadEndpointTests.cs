@@ -117,15 +117,35 @@ public sealed class PublicThreadEndpointTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    /// <summary>
+    /// A conversation with no <c>contact_conversation</c> row, such as one the backfill has not
+    /// reached, reads as no chat at all: the same denial <see cref="AnotherVisitorsHistoryLooksLikeNoChatAtAll"/>
+    /// gets for the wrong key.
+    /// </summary>
+    [Fact]
+    public async Task HistoryOfAConversationWithNoContactRowIsNotFound()
+    {
+        await using var world = await World.StartAsync();
+        var conversationId = Guid.NewGuid().ToString("N");
+
+        await world.Conversations.CreateAsync(conversationId, TestContext.Current.CancellationToken);
+        await world.Conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(world.Visitor.Key!, app: null), TestContext.Current.CancellationToken);
+
+        var response = await world.Visitor.GetAsync($"{Threads}/{conversationId}/messages");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     /// <summary>The public thread routes on a test server, with the real token check leaving them open.</summary>
     private sealed class World : IAsyncDisposable
     {
         private readonly IHost _host;
 
-        private World(IHost host, IConversations conversations, FakeContactConversationStore contactConversations)
+        private World(IHost host, IConversations conversations, FakeContactResolver contacts, FakeContactConversationStore contactConversations)
         {
             _host = host;
             Conversations = conversations;
+            Contacts = contacts;
             ContactConversations = contactConversations;
             Visitor = Caller("widget-one");
             Stranger = Caller("widget-two");
@@ -133,6 +153,8 @@ public sealed class PublicThreadEndpointTests
         }
 
         public IConversations Conversations { get; }
+
+        public FakeContactResolver Contacts { get; }
 
         public FakeContactConversationStore ContactConversations { get; }
 
@@ -147,6 +169,7 @@ public sealed class PublicThreadEndpointTests
         public static async Task<World> StartAsync()
         {
             IConversations conversations = new Conversations(new InMemoryConversationStore(), blobs: null);
+            FakeContactResolver contacts = new();
             FakeContactConversationStore contactConversations = new();
 
             var host = await ThreadTestHost.StartAsync(
@@ -154,7 +177,7 @@ public sealed class PublicThreadEndpointTests
                 services =>
                 {
                     services.AddSingleton<IConversations>(conversations);
-                    services.AddSingleton<IContactResolver>(new FakeContactResolver());
+                    services.AddSingleton<IContactResolver>(contacts);
                     services.AddSingleton<IContactConversationStore>(contactConversations);
                 },
                 app =>
@@ -165,7 +188,7 @@ public sealed class PublicThreadEndpointTests
                 },
                 options => options.OpenPathPrefixes = ["/v1/public"]);
 
-            return new World(host, conversations, contactConversations);
+            return new World(host, conversations, contacts, contactConversations);
         }
 
         /// <summary>Makes a chat owned by one key, with one finished turn in it.</summary>
@@ -177,6 +200,9 @@ public sealed class PublicThreadEndpointTests
             await Conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(ownerKey, app: null), TestContext.Current.CancellationToken);
             await Conversations.AppendMessageAsync(conversationId, new ChatMessage(ChatRole.User, said), TestContext.Current.CancellationToken);
             await Conversations.AppendMessageAsync(conversationId, new ChatMessage(ChatRole.Assistant, "Let me check."), TestContext.Current.CancellationToken);
+
+            var contactId = await Contacts.ResolveAsync(ownerKey, TestContext.Current.CancellationToken);
+            await ContactConversations.EnsureAsync(conversationId, contactId, ContactChannel.Chat, TestContext.Current.CancellationToken);
 
             return conversationId;
         }

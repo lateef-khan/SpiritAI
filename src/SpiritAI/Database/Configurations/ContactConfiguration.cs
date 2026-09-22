@@ -26,13 +26,5 @@ internal sealed class ContactConfiguration : IEntityTypeConfiguration<Contact>
         builder.Property(c => c.CreatedAt)
                .HasColumnName("created_at")
                .HasDefaultValueSql("now()");
-
-        builder.Property(c => c.MergedInto)
-                .HasColumnName("merged_into");
-
-        builder.HasOne<Contact>()
-               .WithMany()
-               .HasForeignKey(c => c.MergedInto)
-               .OnDelete(DeleteBehavior.Restrict);
     }
 }

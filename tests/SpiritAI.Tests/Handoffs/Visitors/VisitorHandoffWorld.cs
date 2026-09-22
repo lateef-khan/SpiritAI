@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using SpiritAI.Auth;
+using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Notifications;
@@ -19,6 +20,7 @@ using SpiritAI.Handoffs.Visitors;
 using SpiritAI.PublicChat;
 using SpiritAI.RealTime.Presence;
 using SpiritAI.Tests.Auth;
+using SpiritAI.Tests.Contacts;
 using SpiritAI.Tests.PublicChat;
 using SpiritAI.Tests.RealTime;
 using SpiritAI.Tests.Threads;
@@ -43,6 +45,8 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
         IHost host,
         FakeHandoffStore store,
         IConversations conversations,
+        FakeContactResolver contacts,
+        FakeContactConversationStore contactConversations,
         RecordingHandoffNotifier notifier,
         FakePresenceStore presence,
         TestTimeProvider clock)
@@ -50,6 +54,8 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
         _host = host;
         Store = store;
         Conversations = conversations;
+        Contacts = contacts;
+        ContactConversations = contactConversations;
         Notifier = notifier;
         Presence = presence;
         Clock = clock;
@@ -62,6 +68,10 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
 
     /// <summary>The chats, and every word the desk put in them.</summary>
     public IConversations Conversations { get; }
+
+    public FakeContactResolver Contacts { get; }
+
+    public FakeContactConversationStore ContactConversations { get; }
 
     public RecordingHandoffNotifier Notifier { get; }
 
@@ -83,6 +93,8 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
         TestTimeProvider clock = new(Start);
         FakeHandoffStore store = new(clock);
         IConversations conversations = new Conversations(new InMemoryConversationStore(clock), blobs: null);
+        FakeContactResolver contacts = new();
+        FakeContactConversationStore contactConversations = new();
         RecordingHandoffNotifier notifier = new();
         FakePresenceStore presence = new(clock, TimeSpan.FromSeconds(90));
 
@@ -92,6 +104,8 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
             {
                 services.AddSingleton<TimeProvider>(clock);
                 services.AddSingleton<IConversations>(conversations);
+                services.AddSingleton<IContactResolver>(contacts);
+                services.AddSingleton<IContactConversationStore>(contactConversations);
                 services.AddSingleton<IHandoffStore>(store);
                 services.AddSingleton<IHandoffNotifier>(notifier);
                 services.AddSingleton<IPresenceStore>(presence);
@@ -106,7 +120,7 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
             },
             options => options.OpenPathPrefixes = ["/v1/public"]);
 
-        return new VisitorHandoffWorld(host, store, conversations, notifier, presence, clock);
+        return new VisitorHandoffWorld(host, store, conversations, contacts, contactConversations, notifier, presence, clock);
     }
 
     /// <summary>Makes a chat one widget owns, with one finished turn in it.</summary>
@@ -118,6 +132,9 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
         await Conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(owner.Key!, app: null), TestContext.Current.CancellationToken);
         await Conversations.AppendMessageAsync(conversationId, new ChatMessage(ChatRole.User, said), TestContext.Current.CancellationToken);
         await Conversations.AppendMessageAsync(conversationId, new ChatMessage(ChatRole.Assistant, "Let me check."), TestContext.Current.CancellationToken);
+
+        var contactId = await Contacts.ResolveAsync(owner.Key!, TestContext.Current.CancellationToken);
+        await ContactConversations.EnsureAsync(conversationId, contactId, ContactChannel.Chat, TestContext.Current.CancellationToken);
 
         return conversationId;
     }

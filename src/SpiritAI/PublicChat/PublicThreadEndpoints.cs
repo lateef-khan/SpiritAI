@@ -97,6 +97,8 @@ public static class PublicThreadEndpoints
     private static Task<IResult> HistoryAsync(
         HttpContext http,
         IConversations conversations,
+        IContactResolver contacts,
+        IContactConversationStore contactConversations,
         string conversationId,
         [AsParameters] HistoryQuery query,
         CancellationToken cancellationToken)
@@ -108,7 +110,7 @@ public static class PublicThreadEndpoints
             }
 
             if (await conversations.LoadWindowAsync(conversationId, window, cancellationToken).ConfigureAwait(false) is not { } stored
-                || !ThreadOwnership.Owns(stored.Conversation, key))
+                || !await ContactConversationOwnership.OwnsAsync(contactConversations, contacts, conversationId, key, cancellationToken).ConfigureAwait(false))
             {
                 return TypedResults.NotFound();
             }

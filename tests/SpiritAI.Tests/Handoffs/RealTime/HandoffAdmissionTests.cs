@@ -7,12 +7,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 
 using SpiritAI.Auth.Users;
+using SpiritAI.Contacts;
 using SpiritAI.Handoffs.RealTime;
 using SpiritAI.Handoffs.Staff;
 using SpiritAI.PublicChat;
 using SpiritAI.RealTime;
 using SpiritAI.Tests.Auth;
 using SpiritAI.Tests.Auth.Users;
+using SpiritAI.Tests.Contacts;
 using SpiritAI.Threads;
 
 using Xunit;
@@ -28,13 +30,17 @@ public sealed class HandoffAdmissionTests
 
     private readonly InMemoryConversationStore _conversations = new(new TestTimeProvider(new DateTimeOffset(2026, 9, 11, 9, 0, 0, TimeSpan.Zero)));
 
+    private readonly FakeContactResolver _contacts = new();
+
+    private readonly FakeContactConversationStore _contactConversations = new();
+
     private readonly HandoffAdmission _admission;
 
     public HandoffAdmissionTests()
     {
         var staff = new StaffGate(new FakeUserDirectory(new AuthUser("user_dana", "Dana Rivera", "dana@example.com")));
 
-        _admission = new HandoffAdmission(new Conversations(_conversations, blobs: null), staff);
+        _admission = new HandoffAdmission(new Conversations(_conversations, blobs: null), _contacts, _contactConversations, staff);
     }
 
     [Fact]
@@ -107,9 +113,13 @@ public sealed class HandoffAdmissionTests
     private async Task<string> MakeVisitorChatAsync(string visitorKey)
     {
         var conversationId = Guid.NewGuid().ToString("N");
+        var key = VisitorPrincipal.KeyOf(visitorKey);
 
         await _conversations.CreateAsync(conversationId, Cancel);
-        await _conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(VisitorPrincipal.KeyOf(visitorKey), null), Cancel);
+        await _conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(key, null), Cancel);
+
+        var contactId = await _contacts.ResolveAsync(key, Cancel);
+        await _contactConversations.EnsureAsync(conversationId, contactId, ContactChannel.Chat, Cancel);
 
         return conversationId;
     }

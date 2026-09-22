@@ -13,10 +13,4 @@ public sealed class Contact
 
     /// <summary>When the row was made. The database fills it in when left unset.</summary>
     public DateTimeOffset CreatedAt { get; set; }
-
-    /// <summary>
-    /// Set when staff join this row into another. The row is never deleted; reads follow this to
-    /// the surviving contact.
-    /// </summary>
-    public long? MergedInto { get; set; }
 }

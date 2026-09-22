@@ -2,6 +2,7 @@ using System.Security.Claims;
 
 using AgentCore.Application.Ports;
 
+using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Staff;
 using SpiritAI.PublicChat;
 using SpiritAI.RealTime;
@@ -14,7 +15,11 @@ namespace SpiritAI.Handoffs.RealTime;
 /// the staff group and may signal any chat. A visitor names a chat and their key, is checked to
 /// own that chat, joins its group, and may signal staff. Anyone else is left to another feature.
 /// </summary>
-public sealed class HandoffAdmission(IConversations conversations, StaffGate staff) : IRealTimeAdmission
+public sealed class HandoffAdmission(
+    IConversations conversations,
+    IContactResolver contacts,
+    IContactConversationStore contactConversations,
+    StaffGate staff) : IRealTimeAdmission
 {
     /// <summary>The kind a member of staff is counted under.</summary>
     public const string StaffKind = "staff";
@@ -71,7 +76,8 @@ public sealed class HandoffAdmission(IConversations conversations, StaffGate sta
 
         var key = VisitorPrincipal.KeyOf(visitor);
 
-        if (await ThreadOwnership.ReadAsync(conversations, conversationId, key, cancellationToken).ConfigureAwait(false) is null)
+        if (await ContactConversationOwnership.ReadAsync(conversations, contactConversations, contacts, conversationId, key, cancellationToken).ConfigureAwait(false)
+            is null)
         {
             return null;
         }

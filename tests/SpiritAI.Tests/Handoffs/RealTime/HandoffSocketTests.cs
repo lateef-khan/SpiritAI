@@ -13,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 
 using SpiritAI.Auth;
 using SpiritAI.Auth.Users;
+using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Notifications;
 using SpiritAI.Handoffs.RealTime;
@@ -22,6 +23,7 @@ using SpiritAI.RealTime;
 using SpiritAI.RealTime.Presence;
 using SpiritAI.Tests.Auth;
 using SpiritAI.Tests.Auth.Users;
+using SpiritAI.Tests.Contacts;
 using SpiritAI.Tests.RealTime;
 using SpiritAI.Tests.Threads;
 using SpiritAI.Threads;
@@ -46,6 +48,8 @@ public sealed class HandoffSocketTests : IAsyncDisposable
     private IHost? _host;
     private NeonAuthTestKit? _kit;
     private IConversations? _conversations;
+    private FakeContactResolver? _contacts;
+    private FakeContactConversationStore? _contactConversations;
 
     [Fact]
     public async Task AVisitorsTypingReachesStaffAndTheirsReachesTheVisitor()
@@ -98,6 +102,8 @@ public sealed class HandoffSocketTests : IAsyncDisposable
         _kit = new NeonAuthTestKit();
         TestTimeProvider clock = new(Start);
         _conversations = new Conversations(new InMemoryConversationStore(clock), blobs: null);
+        _contacts = new FakeContactResolver();
+        _contactConversations = new FakeContactConversationStore();
 
         _host = await ThreadTestHost.StartAsync(
             _kit,
@@ -107,6 +113,8 @@ public sealed class HandoffSocketTests : IAsyncDisposable
                 services.AddHandoffRealTime();
                 services.AddSingleton<TimeProvider>(clock);
                 services.AddSingleton(_conversations);
+                services.AddSingleton<IContactResolver>(_contacts);
+                services.AddSingleton<IContactConversationStore>(_contactConversations);
                 services.AddSingleton<IUserDirectory>(new FakeUserDirectory(new AuthUser("user_dana", "Dana Rivera", "dana@example.com")));
                 services.AddScoped<StaffGate>();
                 services.AddSingleton<IPresenceStore>(new FakePresenceStore(clock, TimeSpan.FromSeconds(90)));
@@ -124,8 +132,13 @@ public sealed class HandoffSocketTests : IAsyncDisposable
             });
 
         var conversationId = Guid.NewGuid().ToString("N");
+        var key = VisitorPrincipal.KeyOf(VisitorKey);
+
         await _conversations.CreateAsync(conversationId, Cancel);
-        await _conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(VisitorPrincipal.KeyOf(VisitorKey), app: null), Cancel);
+        await _conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(key, app: null), Cancel);
+
+        var contactId = await _contacts.ResolveAsync(key, Cancel);
+        await _contactConversations.EnsureAsync(conversationId, contactId, ContactChannel.Chat, Cancel);
 
         return conversationId;
     }

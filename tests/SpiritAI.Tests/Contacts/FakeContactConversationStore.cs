@@ -19,4 +19,17 @@ internal sealed class FakeContactConversationStore : IContactConversationStore
 
         return Task.CompletedTask;
     }
+
+    public Task<long?> ContactIdOfAsync(string conversationId, CancellationToken cancellationToken)
+    {
+        foreach (var row in Rows)
+        {
+            if (row.ConversationId == conversationId)
+            {
+                return Task.FromResult<long?>(row.ContactId);
+            }
+        }
+
+        return Task.FromResult<long?>(null);
+    }
 }

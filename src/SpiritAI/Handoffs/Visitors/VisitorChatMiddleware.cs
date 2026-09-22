@@ -60,7 +60,8 @@ internal sealed class VisitorChatMiddleware(RequestDelegate next, string pattern
 
         var key = VisitorPrincipal.KeyOf(sent);
 
-        if (await ThreadOwnership.ReadAsync(conversations, namedChat, key, context.RequestAborted).ConfigureAwait(false) is null)
+        if (await ContactConversationOwnership.ReadAsync(conversations, contactConversations, contacts, namedChat, key, context.RequestAborted).ConfigureAwait(false)
+            is null)
         {
             await RefuseAsync(
                 context,
@@ -69,9 +70,6 @@ internal sealed class VisitorChatMiddleware(RequestDelegate next, string pattern
                 $"This caller has no thread named '{namedChat}'.").ConfigureAwait(false);
             return;
         }
-
-        var contactId = await contacts.ResolveAsync(key, context.RequestAborted).ConfigureAwait(false);
-        await contactConversations.EnsureAsync(namedChat, contactId, ContactChannel.Chat, context.RequestAborted).ConfigureAwait(false);
 
         if (await handoffs.OpenAsync(namedChat, context.RequestAborted).ConfigureAwait(false) is not null)
         {

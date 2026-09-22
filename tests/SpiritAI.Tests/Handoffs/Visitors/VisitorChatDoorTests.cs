@@ -89,6 +89,25 @@ public sealed class VisitorChatDoorTests
         Assert.Empty(world.Sessions.Reopened);
     }
 
+    /// <summary>
+    /// Ownership now reads <c>contact_conversation</c>, not <c>ThreadEnvelope.Owner</c>, so a
+    /// conversation whose row never got written must stay refused, and naming it must not be a way
+    /// to plant that row: the fix for the claiming hole step 1's per-turn <c>EnsureAsync</c> would
+    /// have opened once ownership moved off <c>Owner</c>.
+    /// </summary>
+    [Fact]
+    public async Task AnOwnedChatWithNoContactRowIsRefusedAndNoRowIsMade()
+    {
+        await using var world = await World.StartAsync();
+        var conversationId = await world.MakeChatWithNoContactRowAsync(VisitorPrincipal.KeyOf(VisitorKey));
+
+        var response = await world.PostAsync(VisitorKey, conversationId);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(0, world.TurnsRun);
+        Assert.DoesNotContain(world.ContactConversations.Rows, row => row.ConversationId == conversationId);
+    }
+
     [Fact]
     public async Task AKeyThisHostWillNotFileUnderIsRefused()
     {
@@ -112,12 +131,23 @@ public sealed class VisitorChatDoorTests
     {
         private readonly IHost _host;
         private readonly InMemoryConversationStore _conversations;
+        private readonly FakeContactResolver _contacts;
+        private readonly FakeContactConversationStore _contactConversations;
         private readonly HttpClient _client;
 
-        private World(IHost host, InMemoryConversationStore conversations, FakeHandoffStore handoffs, FakeSessions sessions, List<string> turns)
+        private World(
+            IHost host,
+            InMemoryConversationStore conversations,
+            FakeContactResolver contacts,
+            FakeContactConversationStore contactConversations,
+            FakeHandoffStore handoffs,
+            FakeSessions sessions,
+            List<string> turns)
         {
             _host = host;
             _conversations = conversations;
+            _contacts = contacts;
+            _contactConversations = contactConversations;
             _client = host.GetTestClient();
             Handoffs = handoffs;
             Sessions = sessions;
@@ -128,6 +158,10 @@ public sealed class VisitorChatDoorTests
 
         public FakeSessions Sessions { get; }
 
+        public FakeContactResolver Contacts => _contacts;
+
+        public FakeContactConversationStore ContactConversations => _contactConversations;
+
         /// <summary>The thread each turn that reached the stub behind the door named.</summary>
         private List<string> Turns { get; }
 
@@ -135,6 +169,23 @@ public sealed class VisitorChatDoorTests
         public int TurnsRun => Turns.Count;
 
         public async Task<string> MakeChatAsync(string ownerKey)
+        {
+            var conversationId = Guid.NewGuid().ToString("N");
+
+            await _conversations.CreateAsync(conversationId, TestContext.Current.CancellationToken);
+            await _conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(ownerKey, app: null), TestContext.Current.CancellationToken);
+
+            var contactId = await _contacts.ResolveAsync(ownerKey, TestContext.Current.CancellationToken);
+            await _contactConversations.EnsureAsync(conversationId, contactId, ContactChannel.Chat, TestContext.Current.CancellationToken);
+
+            return conversationId;
+        }
+
+        /// <summary>
+        /// Makes a chat with <c>ThreadEnvelope.Owner</c> set but no <c>contact_conversation</c> row,
+        /// the shape a conversation the backfill has not reached yet would have.
+        /// </summary>
+        public async Task<string> MakeChatWithNoContactRowAsync(string ownerKey)
         {
             var conversationId = Guid.NewGuid().ToString("N");
 
@@ -168,6 +219,8 @@ public sealed class VisitorChatDoorTests
         {
             TestTimeProvider clock = new(new DateTimeOffset(2026, 9, 11, 9, 0, 0, TimeSpan.Zero));
             InMemoryConversationStore conversations = new(clock);
+            FakeContactResolver contacts = new();
+            FakeContactConversationStore contactConversations = new();
             FakeHandoffStore handoffs = new(clock);
             FakeSessions sessions = new();
             List<string> turns = [];
@@ -179,8 +232,8 @@ public sealed class VisitorChatDoorTests
                     services.AddSingleton<IConversations>(new Conversations(conversations, blobs: null));
                     services.AddSingleton<IHandoffStore>(handoffs);
                     services.AddSingleton<IThreadSessions>(sessions);
-                    services.AddSingleton<IContactResolver>(new FakeContactResolver());
-                    services.AddSingleton<IContactConversationStore>(new FakeContactConversationStore());
+                    services.AddSingleton<IContactResolver>(contacts);
+                    services.AddSingleton<IContactConversationStore>(contactConversations);
                 },
                 app =>
                 {
@@ -198,7 +251,7 @@ public sealed class VisitorChatDoorTests
                 },
                 options => options.OpenPathPrefixes = [PublicResponses]);
 
-            return new World(host, conversations, handoffs, sessions, turns);
+            return new World(host, conversations, contacts, contactConversations, handoffs, sessions, turns);
         }
 
         public async ValueTask DisposeAsync()

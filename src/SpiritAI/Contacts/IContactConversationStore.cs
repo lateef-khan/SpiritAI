@@ -11,4 +11,10 @@ public interface IContactConversationStore
     /// <param name="channel">How the conversation started.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     Task EnsureAsync(string conversationId, long contactId, ContactChannel channel, CancellationToken cancellationToken);
+
+    /// <summary>Reads which contact a conversation's row names.</summary>
+    /// <param name="conversationId">The conversation to look up.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The row's contact id, or <see langword="null"/> when the conversation has no row.</returns>
+    Task<long?> ContactIdOfAsync(string conversationId, CancellationToken cancellationToken);
 }

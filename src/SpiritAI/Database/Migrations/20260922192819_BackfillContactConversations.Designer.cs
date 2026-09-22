@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SpiritAI.Database;
@@ -11,9 +12,11 @@ using SpiritAI.Database;
 namespace SpiritAI.Database.Migrations
 {
     [DbContext(typeof(SpiritDbContext))]
-    partial class SpiritDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260922192819_BackfillContactConversations")]
+    partial class BackfillContactConversations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -42,7 +45,13 @@ namespace SpiritAI.Database.Migrations
                         .HasColumnType("text")
                         .HasColumnName("display_name");
 
+                    b.Property<long?>("MergedInto")
+                        .HasColumnType("bigint")
+                        .HasColumnName("merged_into");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("MergedInto");
 
                     b.ToTable("contact", "spirit");
                 });
@@ -270,6 +279,14 @@ namespace SpiritAI.Database.Migrations
                         .HasDatabaseName("presence_kind_seen_at");
 
                     b.ToTable("presence", "spirit");
+                });
+
+            modelBuilder.Entity("SpiritAI.Contacts.Contact", b =>
+                {
+                    b.HasOne("SpiritAI.Contacts.Contact", null)
+                        .WithMany()
+                        .HasForeignKey("MergedInto")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("SpiritAI.Contacts.ContactConversation", b =>
