@@ -23,7 +23,7 @@ checkout. See `CLAUDE.md` for the full story.
 Deploys happen in CI: merging to `main` runs `.github/workflows/deploy.yml`, which builds,
 tests, creates the Fly app if needed, syncs secrets and deploys. Nothing to run locally.
 
-The repository secrets it needs: `FLY_API_TOKEN`, `OPENAI_API_KEY`, `QDRANT_API_KEY`,
+The repository secrets it needs: `FLY_API_TOKEN`, `OPENAI_API_KEY`, `OPENCODE_GO_API_KEY`, `QDRANT_API_KEY`,
 `POSTGRES_CONNECTION_STRING`, `TS_AUTHKEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
 (the Backblaze B2 keyID and applicationKey), `CUSTSERVICE_SQL_PASSWORD` (the
 `SpiritReadOnlyUser` password the analytics desk's shell reads; the same value DAB holds as
