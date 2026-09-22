@@ -2,6 +2,7 @@ using AgentCore.Hosting;
 using SpiritAI.Auth;
 using SpiritAI.Auth.Users;
 using SpiritAI.Caching;
+using SpiritAI.Contacts;
 using SpiritAI.Database;
 using SpiritAI.Handoffs;
 using SpiritAI.Handoffs.Mail;
@@ -31,6 +32,8 @@ builder.Services.AddSpiritDatabase(builder.Configuration);
 builder.Services.AddNeonUsers();
 
 builder.Services.AddRealTime(builder.Configuration);
+
+builder.Services.AddContacts();
 
 builder.Services.AddHandoffs();
 

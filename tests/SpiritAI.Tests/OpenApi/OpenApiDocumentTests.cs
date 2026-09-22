@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using SpiritAI.Auth.Users;
+using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Notifications;
@@ -24,6 +25,7 @@ using SpiritAI.Lookup;
 using SpiritAI.PublicChat;
 using SpiritAI.RealTime.Presence;
 using SpiritAI.Tests.Auth.Users;
+using SpiritAI.Tests.Contacts;
 using SpiritAI.Tests.Handoffs;
 using SpiritAI.Tests.RealTime;
 using SpiritAI.Threads;
@@ -203,6 +205,8 @@ public sealed class OpenApiDocumentTests
                     services.AddSingleton<IPresenceStore>(new FakePresenceStore(TimeProvider.System, TimeSpan.FromSeconds(90)));
                     services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());
                     services.AddScoped<HandoffDesk>();
+                    services.AddSingleton<IContactResolver>(new FakeContactResolver());
+                    services.AddSingleton<IContactConversationStore>(new FakeContactConversationStore());
                 })
                 .Configure(app =>
                 {

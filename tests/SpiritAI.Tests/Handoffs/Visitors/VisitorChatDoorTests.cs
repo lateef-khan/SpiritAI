@@ -13,11 +13,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using SpiritAI.Auth;
+using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Store;
 using SpiritAI.Handoffs.Visitors;
 using SpiritAI.PublicChat;
 using SpiritAI.Tests.Auth;
+using SpiritAI.Tests.Contacts;
 using SpiritAI.Tests.Threads;
 using SpiritAI.Threads;
 
@@ -177,6 +179,8 @@ public sealed class VisitorChatDoorTests
                     services.AddSingleton<IConversations>(new Conversations(conversations, blobs: null));
                     services.AddSingleton<IHandoffStore>(handoffs);
                     services.AddSingleton<IThreadSessions>(sessions);
+                    services.AddSingleton<IContactResolver>(new FakeContactResolver());
+                    services.AddSingleton<IContactConversationStore>(new FakeContactConversationStore());
                 },
                 app =>
                 {

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
+using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Reads;
 using SpiritAI.RealTime.Presence;
@@ -22,6 +23,15 @@ public sealed class SpiritDbContext(DbContextOptions<SpiritDbContext> options) :
 
     /// <summary>Every open socket, whoever is on it.</summary>
     public DbSet<Presence> Presence => Set<Presence>();
+
+    /// <summary>Every person, one row each.</summary>
+    public DbSet<Contact> Contacts => Set<Contact>();
+
+    /// <summary>Every key that names a person.</summary>
+    public DbSet<ContactIdentity> ContactIdentities => Set<ContactIdentity>();
+
+    /// <summary>Which conversation belongs to which person.</summary>
+    public DbSet<ContactConversation> ContactConversations => Set<ContactConversation>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)

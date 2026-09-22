@@ -11,8 +11,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using SpiritAI.Auth;
+using SpiritAI.Contacts;
 using SpiritAI.PublicChat;
 using SpiritAI.Tests.Auth;
+using SpiritAI.Tests.Contacts;
 using SpiritAI.Tests.Threads;
 using SpiritAI.Threads;
 
@@ -44,6 +46,9 @@ public sealed class PublicThreadEndpointTests
 
         var page = await world.Conversations.ListAsync(world.Visitor.Key!, after: null, limit: 10, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal([created.RemoteId], page.Conversations.Select(conversation => conversation.ConversationId));
+
+        var row = Assert.Single(world.ContactConversations.Rows, row => row.ConversationId == created.RemoteId);
+        Assert.Equal(ContactChannel.Chat, row.Channel);
     }
 
     [Fact]
@@ -117,16 +122,19 @@ public sealed class PublicThreadEndpointTests
     {
         private readonly IHost _host;
 
-        private World(IHost host, IConversations conversations)
+        private World(IHost host, IConversations conversations, FakeContactConversationStore contactConversations)
         {
             _host = host;
             Conversations = conversations;
+            ContactConversations = contactConversations;
             Visitor = Caller("widget-one");
             Stranger = Caller("widget-two");
             Anonymous = Caller(null);
         }
 
         public IConversations Conversations { get; }
+
+        public FakeContactConversationStore ContactConversations { get; }
 
         public VisitorCaller Visitor { get; }
 
@@ -139,12 +147,15 @@ public sealed class PublicThreadEndpointTests
         public static async Task<World> StartAsync()
         {
             IConversations conversations = new Conversations(new InMemoryConversationStore(), blobs: null);
+            FakeContactConversationStore contactConversations = new();
 
             var host = await ThreadTestHost.StartAsync(
                 new NeonAuthTestKit(),
                 services =>
                 {
                     services.AddSingleton<IConversations>(conversations);
+                    services.AddSingleton<IContactResolver>(new FakeContactResolver());
+                    services.AddSingleton<IContactConversationStore>(contactConversations);
                 },
                 app =>
                 {
@@ -154,7 +165,7 @@ public sealed class PublicThreadEndpointTests
                 },
                 options => options.OpenPathPrefixes = ["/v1/public"]);
 
-            return new World(host, conversations);
+            return new World(host, conversations, contactConversations);
         }
 
         /// <summary>Makes a chat owned by one key, with one finished turn in it.</summary>

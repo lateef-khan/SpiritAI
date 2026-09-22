@@ -1,14 +1,12 @@
-using AgentCore.Application.Conversation;
 using AgentCore.Application.Ports;
 
+using SpiritAI.Contacts;
 using SpiritAI.Threads;
 
 namespace SpiritAI.PublicChat;
 
 /// <summary>
 /// The widget's own thread, as REST: made before the first turn, found again after a reload.
-/// Section 4.4 of the handoff spec. Nobody here is signed in; the visitor's key in
-/// <see cref="VisitorPrincipal.Header"/> is the whole identity.
 /// </summary>
 public static class PublicThreadEndpoints
 {
@@ -78,6 +76,8 @@ public static class PublicThreadEndpoints
     private static Task<IResult> CreateAsync(
         HttpContext http,
         IConversations conversations,
+        IContactResolver contacts,
+        IContactConversationStore contactConversations,
         CancellationToken cancellationToken)
         => ForVisitorAsync(http, async key =>
         {
@@ -86,6 +86,9 @@ public static class PublicThreadEndpoints
             await conversations.CreateAsync(conversationId, cancellationToken).ConfigureAwait(false);
             await conversations.SetCustomAsync(conversationId, ThreadEnvelope.Build(key, app: null), cancellationToken).ConfigureAwait(false);
             await conversations.AttachPrincipalAsync(conversationId, key, VisitorRole, cancellationToken).ConfigureAwait(false);
+
+            var contactId = await contacts.ResolveAsync(key, cancellationToken).ConfigureAwait(false);
+            await contactConversations.EnsureAsync(conversationId, contactId, ContactChannel.Chat, cancellationToken).ConfigureAwait(false);
 
             return TypedResults.Created($"{Pattern}/{conversationId}/messages", new ThreadCreated(conversationId, ExternalId: null));
         });

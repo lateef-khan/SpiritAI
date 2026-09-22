@@ -2,6 +2,7 @@ using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Mvc;
 
+using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Store;
 using SpiritAI.PublicChat;
 using SpiritAI.Threads;
@@ -13,14 +14,15 @@ namespace SpiritAI.Handoffs.Visitors;
 /// through once the chat is proved to be the visitor's and nobody has it; its session is reopened
 /// when a reloaded widget carries on days later.
 /// </summary>
-/// <remarks>
-/// A turn with no <see cref="VisitorPrincipal.Header"/> passes untouched. That is today's widget,
-/// which sends none and keeps its session in memory; the rule that every public turn must carry a
-/// key arrives with the widget spec, once there is a widget that can obey it.
-/// </remarks>
 internal sealed class VisitorChatMiddleware(RequestDelegate next, string pattern)
 {
-    public async Task InvokeAsync(HttpContext context, IConversations conversations, IHandoffStore handoffs, IThreadSessions sessions)
+    public async Task InvokeAsync(
+        HttpContext context,
+        IConversations conversations,
+        IHandoffStore handoffs,
+        IThreadSessions sessions,
+        IContactResolver contacts,
+        IContactConversationStore contactConversations)
     {
         if (!context.Request.Path.StartsWithSegments(pattern, StringComparison.OrdinalIgnoreCase))
         {
@@ -68,6 +70,9 @@ internal sealed class VisitorChatMiddleware(RequestDelegate next, string pattern
             return;
         }
 
+        var contactId = await contacts.ResolveAsync(key, context.RequestAborted).ConfigureAwait(false);
+        await contactConversations.EnsureAsync(namedChat, contactId, ContactChannel.Chat, context.RequestAborted).ConfigureAwait(false);
+
         if (await handoffs.OpenAsync(namedChat, context.RequestAborted).ConfigureAwait(false) is not null)
         {
             await RefuseAsync(
@@ -76,6 +81,7 @@ internal sealed class VisitorChatMiddleware(RequestDelegate next, string pattern
                 "A person has this chat.",
                 "Send the message to the handoff route instead.",
                 VisitorChatDoor.HandoffOpenType).ConfigureAwait(false);
+                
             return;
         }
 
