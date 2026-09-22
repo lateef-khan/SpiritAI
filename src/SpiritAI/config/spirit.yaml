@@ -163,7 +163,7 @@ entries:
 
 providers:
   llm:
-    - { kind: openai, model: gpt-5.6-luna, as: reply, reasoningEffort: medium }
+    - { kind: opencode-go, model: muse-spark-1.3-contributor, as: reply, reasoningEffort: low }
 
   embeddings: { kind: openai, model: text-embedding-3-small, dimensions: 1024 }
 
@@ -219,7 +219,7 @@ providers:
     endpoint: https://otlp-gateway-prod-us-east-3.grafana.net/otlp
     serviceName: spirit-chat
     exportIntervalMs: 60000
-    sources: [Microsoft.AspNetCore, System.Net.Http]
+    sources: [Microsoft.AspNetCore, System.Net.Http, Experimental.Microsoft.Extensions.AI, Experimental.Microsoft.Agents.AI]
     meters:  [Microsoft.AspNetCore.Hosting, Microsoft.AspNetCore.Server.Kestrel, System.Net.Http]
 
   audit: { kind: postgres }

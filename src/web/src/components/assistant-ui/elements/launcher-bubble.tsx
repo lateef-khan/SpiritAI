@@ -15,6 +15,7 @@ import { field, floating, inkButton, mono } from "./surfaces";
 export function LauncherBubble({
   open = false,
   unread,
+  bounceKey = 0,
   greeting,
   prompts,
   onToggle,
@@ -24,10 +25,19 @@ export function LauncherBubble({
   ...props
 }: Omit<
   ComponentProps<"div">,
-  "children" | "open" | "unread" | "greeting" | "prompts" | "onToggle" | "onPick" | "onStart"
+  | "children"
+  | "open"
+  | "unread"
+  | "bounceKey"
+  | "greeting"
+  | "prompts"
+  | "onToggle"
+  | "onPick"
+  | "onStart"
 > & {
   open?: boolean;
   unread: number;
+  bounceKey?: number;
   greeting?: string;
   prompts?: readonly string[];
   onToggle?: () => void;
@@ -85,13 +95,15 @@ export function LauncherBubble({
       )}
 
       <button
+        key={bounceKey}
         type="button"
         aria-expanded={open}
         aria-label={open ? "Close the assistant" : "Open the assistant"}
         onClick={onToggle}
         className={cn(
           inkButton,
-          "relative flex size-12 shrink-0 items-center justify-center rounded-full",
+          bounceKey > 0 && !open && "animate-bouncy-ball",
+          "relative flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground",
         )}
       >
         <span className="grid">
@@ -111,13 +123,9 @@ export function LauncherBubble({
 
         {unread > 0 && !open && (
           <span
-            className={cn(
-              mono,
-              "bg-background text-foreground absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full tabular-nums",
-            )}
-          >
-            {unread}
-          </span>
+            aria-hidden="true"
+            className="bg-aui-success ring-background absolute -top-0.5 -right-0.5 size-3 rounded-full ring-2"
+          />
         )}
       </button>
     </div>

@@ -743,14 +743,10 @@ const AssistantMessage: FC = () => {
                   </div>
                 );
               case "image":
-                return (
-                  <div data-slot="aui_assistant-message-image" className="py-1">
-                    <Image {...part} />
-                  </div>
-                );
+                // OpenUI already draws the assistant's pictures.
+                return null;
               case "source":
-                // Drawn collectively in `MessageSources`, below — the element is a collection
-                // (one grid, `sources: {domain,title}[]`).
+                // Drawn collectively in `MessageSources`.
                 return null;
               case "indicator":
                 return (

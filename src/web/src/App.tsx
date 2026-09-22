@@ -30,8 +30,9 @@ import {
   useDefaultLayout,
 } from "@/components/ui/resizable";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { PanelRightIcon } from "lucide-react";
+import { PanelRightIcon, PrinterIcon } from "lucide-react";
 
 /** Which of the two screens the main area shows. */
 type View = "chat" | "inbox";
@@ -77,7 +78,18 @@ function useThreadRuntime() {
 
 /** The open thread, paging back through its history as the reader scrolls up. */
 function ChatThread() {
-  return <Thread olderMessages={useThreadListOlderMessages()} />;
+  return (
+    <div className="relative h-full">
+      <TooltipIconButton
+        tooltip="Print conversation"
+        onClick={() => window.print()}
+        className="absolute end-14 top-3 z-10 size-8 rounded-md border bg-background hover:bg-accent"
+      >
+        <PrinterIcon className="size-4" />
+      </TooltipIconButton>
+      <Thread olderMessages={useThreadListOlderMessages()} />
+    </div>
+  );
 }
 
 /**
