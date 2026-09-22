@@ -20,14 +20,28 @@ public sealed class ContactResolver(SpiritDbContext database, TimeProvider clock
 
         var (kind, value) = ParseKey(channelKey);
 
-        return await database.ContactIdentities
+        return await FindAsync(kind, value, cancellationToken).ConfigureAwait(false)
+            ?? await CreateAsync(kind, value, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<long?> FindAsync(string channelKey, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(channelKey);
+
+        var (kind, value) = ParseKey(channelKey);
+
+        return await FindAsync(kind, value, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Reads the id of the contact a kind and value name, without writing anything.</summary>
+    private async Task<long?> FindAsync(ContactIdentityKind kind, string value, CancellationToken cancellationToken)
+        => await database.ContactIdentities
             .AsNoTracking()
             .Where(i => i.Kind == kind && i.Value == value)
             .Select(i => (long?)i.ContactId)
             .SingleOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false)
-            ?? await CreateAsync(kind, value, cancellationToken).ConfigureAwait(false);
-    }
+            .ConfigureAwait(false);
 
     /// <summary>
     /// Makes a contact and its first identity, or, when another request just made the same one,

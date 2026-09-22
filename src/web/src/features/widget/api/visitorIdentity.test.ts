@@ -11,7 +11,39 @@ import { readVisitorMemory, rememberCall, VisitorHeader, visitorFetch } from "./
  */
 const WellFormed = /^[A-Za-z0-9_-]{1,128}$/;
 
-beforeEach(() => localStorage.clear());
+/** A second tab's `sessionStorage`: its own store, empty until something writes to it. */
+class MemoryStorage implements Storage {
+  private readonly entries = new Map<string, string>();
+
+  get length(): number {
+    return this.entries.size;
+  }
+
+  clear(): void {
+    this.entries.clear();
+  }
+
+  getItem(key: string): string | null {
+    return this.entries.get(key) ?? null;
+  }
+
+  key(index: number): string | null {
+    return Array.from(this.entries.keys())[index] ?? null;
+  }
+
+  removeItem(key: string): void {
+    this.entries.delete(key);
+  }
+
+  setItem(key: string, value: string): void {
+    this.entries.set(key, value);
+  }
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});
 
 describe("readVisitorMemory", () => {
   it("mints a key the host accepts and answers the same key on the next read", () => {
@@ -31,6 +63,20 @@ describe("rememberCall", () => {
 
     rememberCall(null);
     expect(readVisitorMemory().callId).toBeNull();
+  });
+
+  it("starts a new conversation in a new tab, under the same visitor", () => {
+    const sharedKeyStore = localStorage;
+    const firstTab = sessionStorage;
+    const secondTab = new MemoryStorage();
+
+    const first = readVisitorMemory(sharedKeyStore, firstTab);
+    rememberCall("call-1", firstTab);
+
+    const second = readVisitorMemory(sharedKeyStore, secondTab);
+
+    expect(second.key).toBe(first.key);
+    expect(second.callId).toBeNull();
   });
 });
 

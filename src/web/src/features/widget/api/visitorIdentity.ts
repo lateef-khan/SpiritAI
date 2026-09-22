@@ -2,14 +2,6 @@ import type { FetchLike } from "@/lib/apiClient";
 
 /**
  * Who the widget is, as far as the host can tell.
- *
- * Nobody is signed in on a stranger's page. The widget mints one random key, keeps it in
- * `localStorage`, and sends it on every request as {@link VisitorHeader}; the host files the
- * visitor's call under that key and checks it on every route that names the call. The call id is
- * kept beside it so a reload finds the same chat.
- *
- * Two entries rather than one blob: the call is forgotten on its own when the host has lost it
- * (a retention sweep, a database reset), and the key never is.
  */
 
 /** The header every public request carries the key in. */
@@ -34,27 +26,31 @@ function mintKey(): string {
 /**
  * Reads what the widget remembers, minting and storing a key on the first read.
  *
- * @param storage Where the memory lives. Defaults to the page's `localStorage`.
+ * @param keyStore Where the visitor key lives. Defaults to the page's `localStorage`.
+ * @param callStore Where the call id lives. Defaults to the page's `sessionStorage`.
  * @returns The key, and the call id or `null` when there is none.
  */
-export function readVisitorMemory(storage: Storage = localStorage): VisitorMemory {
-  let key = storage.getItem(KeyEntry);
+export function readVisitorMemory(
+  keyStore: Storage = localStorage,
+  callStore: Storage = sessionStorage,
+): VisitorMemory {
+  let key = keyStore.getItem(KeyEntry);
 
   if (!key) {
     key = mintKey();
-    storage.setItem(KeyEntry, key);
+    keyStore.setItem(KeyEntry, key);
   }
 
-  return { key, callId: storage.getItem(CallEntry) };
+  return { key, callId: callStore.getItem(CallEntry) };
 }
 
 /**
  * Remembers which call the widget is talking in, or forgets it.
  *
  * @param callId The call, or `null` to forget.
- * @param storage Where the memory lives. Defaults to the page's `localStorage`.
+ * @param storage Where the call id lives. Defaults to the page's `sessionStorage`.
  */
-export function rememberCall(callId: string | null, storage: Storage = localStorage): void {
+export function rememberCall(callId: string | null, storage: Storage = sessionStorage): void {
   if (callId === null) {
     storage.removeItem(CallEntry);
   } else {

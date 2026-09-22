@@ -21,4 +21,7 @@ internal sealed class FakeContactResolver : IContactResolver
 
         return Task.FromResult(contactId);
     }
+
+    public Task<long?> FindAsync(string channelKey, CancellationToken cancellationToken)
+        => Task.FromResult(_contacts.TryGetValue(channelKey, out var contactId) ? contactId : (long?)null);
 }

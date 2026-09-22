@@ -11,7 +11,7 @@ public static class ContactConversationOwnership
     /// <summary>Reads a conversation, but only for the contact its <c>contact_conversation</c> row names.</summary>
     /// <param name="conversations">The store the row is read from.</param>
     /// <param name="contactConversations">The store <c>contact_conversation</c> is read through.</param>
-    /// <param name="contacts">The resolver a channel key is followed to a contact through.</param>
+    /// <param name="contacts">The resolver a channel key is looked up against. Never creates.</param>
     /// <param name="conversationId">The conversation the request named, which may be anything at all.</param>
     /// <param name="channelKey">The caller's key, such as one <see cref="PublicChat.VisitorPrincipal"/> made.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
@@ -46,11 +46,15 @@ public static class ContactConversationOwnership
 
     /// <summary>Whether a conversation's <c>contact_conversation</c> row names the caller's contact.</summary>
     /// <param name="contactConversations">The store <c>contact_conversation</c> is read through.</param>
-    /// <param name="contacts">The resolver a channel key is followed to a contact through.</param>
+    /// <param name="contacts">The resolver a channel key is looked up against. Never creates.</param>
     /// <param name="conversationId">The conversation to check. Not proved to exist.</param>
     /// <param name="channelKey">The caller's key, such as one <see cref="PublicChat.VisitorPrincipal"/> made.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns><see langword="true"/> when the row's contact is the caller's own.</returns>
+    /// <returns>
+    /// <see langword="true"/> when the row's contact is the caller's own. A key this host has never
+    /// seen is not the owner of anything, so it answers <see langword="false"/> rather than making
+    /// a contact just to fail the comparison.
+    /// </returns>
     public static async ValueTask<bool> OwnsAsync(
         IContactConversationStore contactConversations,
         IContactResolver contacts,
@@ -68,8 +72,8 @@ public static class ContactConversationOwnership
             return false;
         }
 
-        var caller = await contacts.ResolveAsync(channelKey, cancellationToken).ConfigureAwait(false);
+        var caller = await contacts.FindAsync(channelKey, cancellationToken).ConfigureAwait(false);
 
-        return owner == caller;
+        return caller is { } id && owner == id;
     }
 }

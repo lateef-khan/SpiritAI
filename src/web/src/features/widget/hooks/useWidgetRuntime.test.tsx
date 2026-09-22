@@ -198,7 +198,10 @@ async function send({ runtime }: ReturnType<typeof useWidgetRuntime>, text: stri
   });
 }
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});
 
 describe("useWidgetRuntime", () => {
   it("restores a remembered call's history on mount", async () => {

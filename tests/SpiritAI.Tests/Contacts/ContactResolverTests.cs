@@ -86,6 +86,41 @@ public sealed class ContactResolverTests(PostgresFixture fixture) : IClassFixtur
         }
     }
 
+    [Fact]
+    public async Task FindAnswersTheContactOfAKeyResolveAlreadySaw()
+    {
+        var key = NewVisitorKey();
+
+        await using var database = fixture.Open();
+        var resolver = new ContactResolver(database, new TestTimeProvider(Start));
+
+        try
+        {
+            var resolved = await resolver.ResolveAsync(key, Cancel);
+            var found = await resolver.FindAsync(key, Cancel);
+
+            Assert.Equal(resolved, found);
+        }
+        finally
+        {
+            await CleanUpAsync(key);
+        }
+    }
+
+    [Fact]
+    public async Task FindAnswersNullForAKeyNeverResolved()
+    {
+        var key = NewVisitorKey();
+
+        await using var database = fixture.Open();
+        var resolver = new ContactResolver(database, new TestTimeProvider(Start));
+
+        var found = await resolver.FindAsync(key, Cancel);
+
+        Assert.Null(found);
+        Assert.Equal(0, await database.ContactIdentities.CountAsync(i => i.Value == ValueOf(key), Cancel));
+    }
+
     private async Task<long> ResolveWithNewContextAsync(string key)
     {
         await using var database = fixture.Open();

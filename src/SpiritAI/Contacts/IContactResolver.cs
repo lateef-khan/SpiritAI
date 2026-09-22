@@ -14,4 +14,13 @@ public interface IContactResolver
     /// <param name="cancellationToken">Cancels the read or write.</param>
     /// <returns>The id of the contact the key names.</returns>
     Task<long> ResolveAsync(string channelKey, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Looks up a channel key, such as <c>visitor:abc123</c>, without creating a contact or an
+    /// identity for one this host has not seen.
+    /// </summary>
+    /// <param name="channelKey">The key, as <c>&lt;kind&gt;:&lt;value&gt;</c>.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The id of the contact the key names, or <see langword="null"/> when the key is unknown.</returns>
+    Task<long?> FindAsync(string channelKey, CancellationToken cancellationToken);
 }

@@ -107,7 +107,10 @@ const reply: WireHandoffMessage = {
   at: "2026-09-16T09:00:00Z",
 };
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});
 
 describe("useWidgetSocket", () => {
   it("stays closed with the bot, and opens for the chat once a person is asked for", () => {

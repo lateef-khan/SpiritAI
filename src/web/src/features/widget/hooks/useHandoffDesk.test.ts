@@ -41,7 +41,10 @@ function fakeApi(handoffState: (callId: string) => Promise<HandoffState>): {
   };
 }
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});
 
 describe("useHandoffDesk", () => {
   it("starts with the bot when nothing is remembered", () => {
