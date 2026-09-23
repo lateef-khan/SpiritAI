@@ -15,15 +15,12 @@ using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Notifications;
-using SpiritAI.Handoffs.RealTime;
 using SpiritAI.Handoffs.Store;
 using SpiritAI.Handoffs.Visitors;
 using SpiritAI.PublicChat;
-using SpiritAI.RealTime.Presence;
 using SpiritAI.Tests.Auth;
 using SpiritAI.Tests.Contacts;
 using SpiritAI.Tests.PublicChat;
-using SpiritAI.Tests.RealTime;
 using SpiritAI.Tests.Threads;
 using SpiritAI.Threads;
 
@@ -49,7 +46,7 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
         FakeContactResolver contacts,
         FakeContactConversationStore contactConversations,
         RecordingHandoffNotifier notifier,
-        FakePresenceStore presence,
+        FakeStaffPresence staff,
         TestTimeProvider clock)
     {
         _host = host;
@@ -58,7 +55,7 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
         Contacts = contacts;
         ContactConversations = contactConversations;
         Notifier = notifier;
-        Presence = presence;
+        Staff = staff;
         Clock = clock;
         Visitor = new VisitorCaller(host.GetTestClient(), "widget-one");
         Stranger = new VisitorCaller(host.GetTestClient(), "widget-two");
@@ -76,7 +73,7 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
 
     public RecordingHandoffNotifier Notifier { get; }
 
-    public FakePresenceStore Presence { get; }
+    public FakeStaffPresence Staff { get; }
 
     public TestTimeProvider Clock { get; }
 
@@ -97,7 +94,7 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
         FakeContactResolver contacts = new();
         FakeContactConversationStore contactConversations = new();
         RecordingHandoffNotifier notifier = new();
-        FakePresenceStore presence = new(clock, TimeSpan.FromSeconds(90));
+        FakeStaffPresence staff = new();
 
         var host = await ThreadTestHost.StartAsync(
             new NeonAuthTestKit(),
@@ -109,7 +106,7 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
                 services.AddSingleton<IContactConversationStore>(contactConversations);
                 services.AddSingleton<IHandoffStore>(store);
                 services.AddSingleton<IHandoffNotifier>(notifier);
-                services.AddSingleton<IPresenceStore>(presence);
+                services.AddSingleton<IStaffPresence>(staff);
                 services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());
                 services.AddScoped<HandoffDesk>();
                 services.AddOptions();
@@ -123,7 +120,7 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
             },
             options => options.OpenPathPrefixes = ["/v1/public"]);
 
-        return new VisitorHandoffWorld(host, store, conversations, contacts, contactConversations, notifier, presence, clock);
+        return new VisitorHandoffWorld(host, store, conversations, contacts, contactConversations, notifier, staff, clock);
     }
 
     /// <summary>Makes a chat one widget owns, with one finished turn in it.</summary>
@@ -146,19 +143,8 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
     public async Task<IReadOnlyList<ConversationMessage>> WordsAsync(string conversationId)
         => await Conversations.AllAsync(conversationId, TestContext.Current.CancellationToken);
 
-    /// <summary>Puts this many members of staff on a socket, each a different person.</summary>
-    public async Task StaffOnlineAsync(int count)
-    {
-        for (var index = 0; index < count; index++)
-        {
-            await Presence.ConnectAsync(
-                $"socket-{index}",
-                $"user:staff-{index}",
-                $"Staff {index}",
-                HandoffAdmission.StaffKind,
-                TestContext.Current.CancellationToken);
-        }
-    }
+    /// <summary>Says this many members of staff are online.</summary>
+    public void StaffOnline(int count) => Staff.Online = count;
 
     public async ValueTask DisposeAsync()
     {

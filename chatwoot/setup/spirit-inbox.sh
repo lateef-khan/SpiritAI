@@ -1,19 +1,14 @@
 #!/usr/bin/env bash
-# Makes (or updates) what Spirit needs in Chatwoot: one API inbox whose webhook calls Spirit,
-# and one agent bot whose token Spirit posts the AI's messages with. The bot is connected to the
-# inbox, so Chatwoot treats every conversation there as the bot's until a person takes it: new
-# ones start pending, and a resolved one reopens as pending, not open. Safe to run again: both
-# are found by name, and only the webhook URL and the connection are set on a second run.
-#
 # Needs, in the environment or chatwoot/.env:
 #   CHATWOOT_ADMIN_TOKEN  an administrator's access token (Profile settings > Access token)
 #   CHATWOOT_ACCOUNT_ID   the account id from the dashboard URL (/app/accounts/<id>/...)
 #   SPIRIT_WEBHOOK_URL    where Chatwoot sends inbox events, e.g. https://spirit.example.com/chatwoot/webhook
 # Optional:
 #   CHATWOOT_URL          defaults to http://localhost:$CHATWOOT_PORT
-#
-# Prints Spirit's settings. They include secrets: put them in user secrets or the host's
-# environment, never in a committed file.
+#   CHATWOOT_SERVICE_TOKEN  the access token of a plain agent that Spirit reads who is online as.
+#                         Make it once per server in the Super Admin console (/super_admin):
+#                         Users > New user, confirmed, then Add account user as an agent. Its page
+#                         shows the token. Without it, Spirit counts nobody online.
 set -euo pipefail
 
 inbox_name="Spirit"
@@ -24,7 +19,7 @@ env_file="$(dirname "$0")/../.env"
 from_env_file() {
     [ -f "$env_file" ] && grep -oP "^$1=\K.*" "$env_file" | tail -1 || true
 }
-for key in CHATWOOT_ADMIN_TOKEN CHATWOOT_ACCOUNT_ID SPIRIT_WEBHOOK_URL CHATWOOT_URL CHATWOOT_PORT; do
+for key in CHATWOOT_ADMIN_TOKEN CHATWOOT_ACCOUNT_ID SPIRIT_WEBHOOK_URL CHATWOOT_URL CHATWOOT_PORT CHATWOOT_SERVICE_TOKEN; do
     [ -z "${!key:-}" ] && printf -v "$key" '%s' "$(from_env_file "$key")"
 done
 
@@ -69,8 +64,6 @@ else
     echo "Found the agent bot '$bot_name' (id $bot_id)." >&2
 fi
 
-# The bot has no outgoing_url, so connecting it sends no webhooks; it only makes Chatwoot treat
-# the inbox as a bot's (Inbox#active_bot?).
 call POST "/inboxes/$inbox_id/set_agent_bot" "$(jq -n --argjson bot "$bot_id" '{agent_bot: $bot}')" >/dev/null
 echo "Connected the agent bot to the inbox." >&2
 
@@ -86,3 +79,9 @@ Chatwoot__InboxIdentifier=$(jq -r '.inbox_identifier' <<<"$inbox")
 Chatwoot__WebhookSecret=$(jq -r '.secret' <<<"$inbox")
 Chatwoot__BotToken=$(jq -r '.access_token' <<<"$bot")
 EOF
+
+if [ -n "${CHATWOOT_SERVICE_TOKEN:-}" ]; then
+    echo "Chatwoot__ServiceToken=$CHATWOOT_SERVICE_TOKEN"
+else
+    echo "CHATWOOT_SERVICE_TOKEN is not set: Spirit will count nobody online. See the top of this script." >&2
+fi

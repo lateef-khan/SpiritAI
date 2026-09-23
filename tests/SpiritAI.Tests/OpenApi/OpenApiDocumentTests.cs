@@ -21,10 +21,8 @@ using SpiritAI.Handoffs.Visitors;
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
 using SpiritAI.PublicChat;
-using SpiritAI.RealTime.Presence;
 using SpiritAI.Tests.Contacts;
 using SpiritAI.Tests.Handoffs;
-using SpiritAI.Tests.RealTime;
 using SpiritAI.Threads;
 
 using Xunit;
@@ -184,11 +182,11 @@ public sealed class OpenApiDocumentTests
 
                     // The visitor's handoff routes, present so the route builder reads them as
                     // injected services. Nothing calls them: no route is ever invoked here, so a
-                    // fake stands in for the real store, mailer, notifier, and presence table.
+                    // fake stands in for the real store, mailer, notifier, and staff count.
                     services.AddSingleton(TimeProvider.System);
                     services.AddSingleton<IHandoffStore>(new FakeHandoffStore(TimeProvider.System));
                     services.AddSingleton<IHandoffNotifier>(new RecordingHandoffNotifier());
-                    services.AddSingleton<IPresenceStore>(new FakePresenceStore(TimeProvider.System, TimeSpan.FromSeconds(90)));
+                    services.AddSingleton<IStaffPresence>(new FakeStaffPresence());
                     services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());
                     services.AddScoped<HandoffDesk>();
                     services.AddOptions();

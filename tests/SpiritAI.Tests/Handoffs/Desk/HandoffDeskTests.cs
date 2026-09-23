@@ -4,7 +4,6 @@ using AgentCore.Application.Ports;
 
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Tests.Auth;
-using SpiritAI.Tests.RealTime;
 
 using Xunit;
 
@@ -27,7 +26,7 @@ public sealed class HandoffDeskTests
     {
         _store = new FakeHandoffStore(_clock);
         _conversations = new Conversations(new InMemoryConversationStore(_clock), blobs: null);
-        _desk = new HandoffDesk(_store, _conversations, _notifier, new FakePresenceStore(_clock, TimeSpan.FromSeconds(90)), _clock);
+        _desk = new HandoffDesk(_store, _conversations, _notifier, new FakeStaffPresence(), _clock);
     }
 
     [Fact]

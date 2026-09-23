@@ -132,13 +132,34 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
         await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Every agent in the account, with the status Chatwoot shows for them.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>Each agent's id and status: <c>online</c>, <c>busy</c>, or <c>offline</c>.</returns>
+    public async Task<IReadOnlyList<ChatwootAgent>> ListAgentsAsync(CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(HttpMethod.Get, $"{Account}/agents", body: null, cancellationToken, Settings.ServiceToken)
+            .ConfigureAwait(false);
+
+        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+
+        var agents = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
+
+        return [.. agents.EnumerateArray().Select(a => new ChatwootAgent(
+            a.GetProperty("id").GetInt32(),
+            a.GetProperty("availability_status").GetString() ?? string.Empty))];
+    }
+
     private string ConversationUrl(int conversationId)
         => $"{Account}/conversations/{conversationId.ToString(CultureInfo.InvariantCulture)}";
 
-    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, JsonObject? body, CancellationToken cancellationToken)
+    /// <summary>Sends as the bot, unless another <paramref name="token"/> is given.</summary>
+    private async Task<HttpResponseMessage> SendAsync(
+        HttpMethod method, string url, JsonObject? body, CancellationToken cancellationToken, string? token = null)
     {
         using var request = new HttpRequestMessage(method, url);
-        request.Headers.Add(TokenHeader, Settings.BotToken);
+        request.Headers.Add(TokenHeader, token ?? Settings.BotToken);
 
         if (body is not null)
         {

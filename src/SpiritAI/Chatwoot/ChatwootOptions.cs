@@ -27,6 +27,11 @@ public sealed class ChatwootOptions
     /// <summary>The agent bot's access token, which the AI's messages are posted with.</summary>
     public string BotToken { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The access token of a plain agent that Spirit reads who is online as.
+    /// </summary>
+    public string ServiceToken { get; set; } = string.Empty;
+
     /// <summary>The route Chatwoot's inbox webhook posts to.</summary>
     public string WebhookPattern { get; set; } = "/chatwoot/webhook";
 
@@ -35,6 +40,9 @@ public sealed class ChatwootOptions
 
     /// <summary>Whether the webhook is on.</summary>
     public bool WebhookEnabled => WebhookSecret.Length > 0;
+
+    /// <summary>Whether who is online is read from Chatwoot: every setting the read needs is set.</summary>
+    public bool PresenceEnabled => BaseUrl.Length > 0 && AccountId > 0 && ServiceToken.Length > 0;
 
     /// <summary>Whether widget chats are copied into Chatwoot: every setting the copy needs is set.</summary>
     public bool CopyEnabled => BaseUrl.Length > 0 && AccountId > 0 && InboxId > 0 && InboxIdentifier.Length > 0 && BotToken.Length > 0;

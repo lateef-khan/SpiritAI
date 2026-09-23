@@ -12,6 +12,7 @@ x-chatwoot: &chatwoot
     NODE_ENV: production
     RAILS_ENV: production
     INSTALLATION_ENV: docker
+    PRESENCE_DURATION: "60"
     # Tables go in the chatwoot schema, not public, so Chatwoot can share a database.
     DATABASE_URL: ${DATABASE_URL:-postgres://chatwoot:chatwoot@postgres:5432/chatwoot?schema_search_path=chatwoot,public}
   volumes:

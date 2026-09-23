@@ -1,16 +1,20 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
+using SpiritAI.Handoffs.Desk;
 using SpiritAI.RealTime;
 
 namespace SpiritAI.Chatwoot;
 
-/// <summary>Registers the Chatwoot webhook, the copy of widget chats into Chatwoot, and the visitor's typing.</summary>
+/// <summary>
+/// Registers the Chatwoot webhook, the copy of widget chats into Chatwoot, the visitor's typing,
+/// and who of staff is online.
+/// </summary>
 public static class ChatwootServiceCollectionExtensions
 {
     /// <summary>
     /// Adds the <see cref="ChatwootOptions"/>, the webhook's event queue, worker, and handler, and
-    /// the copy's client, queue, and worker, and the typing's queue, which hears the socket, and its
-    /// worker.
+    /// the copy's client, queue, and worker, the typing's queue, which hears the socket, and its
+    /// worker, and the <see cref="IStaffPresence"/> read from Chatwoot's agents.
     /// </summary>
     /// <param name="services">The host's services.</param>
     /// <param name="configuration">Where <see cref="ChatwootOptions.SectionName"/> is read from.</param>
@@ -47,6 +51,8 @@ public static class ChatwootServiceCollectionExtensions
         services.AddScoped<ChatwootTypingSender>();
 
         services.AddHostedService<ChatwootTypingWorker>();
+
+        services.AddScoped<IStaffPresence, ChatwootStaffPresence>();
 
         return services;
     }

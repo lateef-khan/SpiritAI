@@ -1,6 +1,3 @@
-using System.Net;
-using System.Net.Http.Headers;
-
 using Microsoft.Extensions.Options;
 
 using SpiritAI.Chatwoot;
@@ -55,31 +52,24 @@ public sealed class ChatwootClientTests
         Assert.Equal($$"""{"typing_status":"{{status}}"}""", request.Body);
     }
 
-    /// <summary>
-    /// Keeps each request and answers every one with the same saved Chatwoot reply, or with an
-    /// empty 200 when there is none.
-    /// </summary>
-    private sealed class ReplayingHandler(string? payload) : HttpMessageHandler
+    [Fact]
+    public async Task AgentsAreListedAsTheServiceUserWithTheirStatus()
     {
-        public List<(string Url, string Body)> Requests { get; } = [];
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        var wire = new ReplayingHandler("agents");
+        var client = new ChatwootClient(new HttpClient(wire), Options.Create(new ChatwootOptions
         {
-            Requests.Add((request.RequestUri!.ToString(), await request.Content!.ReadAsStringAsync(cancellationToken)));
+            BaseUrl = "http://chatwoot.test/",
+            AccountId = 2,
+            BotToken = "bot-token",
+            ServiceToken = "service-token",
+        }));
 
-            if (payload is null)
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            }
+        var agents = await client.ListAgentsAsync(TestContext.Current.CancellationToken);
 
-            var reply = await File.ReadAllTextAsync(
-                Path.Combine(AppContext.BaseDirectory, "Chatwoot", "Payloads", payload + ".json"),
-                cancellationToken);
+        Assert.Equal([new ChatwootAgent(2, "online"), new ChatwootAgent(3, "offline")], agents);
 
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(reply, new MediaTypeHeaderValue("application/json")),
-            };
-        }
+        var request = Assert.Single(wire.Requests);
+        Assert.Equal("http://chatwoot.test/api/v1/accounts/2/agents", request.Url);
+        Assert.Equal("service-token", request.Token);
     }
 }

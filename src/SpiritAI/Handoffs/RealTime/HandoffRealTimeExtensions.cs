@@ -9,9 +9,10 @@ namespace SpiritAI.Handoffs.RealTime;
 public static class HandoffRealTimeExtensions
 {
     /// <summary>
-    /// Registers <see cref="HandoffAdmission"/> with the hub and puts <see cref="HandoffNotifier"/>
-    /// in place of the silent one <c>AddHandoffs</c> registered. Add it after <c>AddRealTime</c>
-    /// and <c>AddHandoffs</c>.
+    /// Registers <see cref="HandoffAdmission"/> with the hub, puts <see cref="HandoffNotifier"/>
+    /// in place of the silent one <c>AddHandoffs</c> registered, and adds the
+    /// <see cref="StaffPresenceWatch"/> that tells widgets who of staff is online. Add it after
+    /// <c>AddRealTime</c> and <c>AddHandoffs</c>.
     /// </summary>
     /// <param name="services">The host's services.</param>
     /// <returns>The same collection.</returns>
@@ -24,6 +25,10 @@ public static class HandoffRealTimeExtensions
         services.AddScoped<IRealTimeAdmission, HandoffAdmission>();
 
         services.Replace(ServiceDescriptor.Singleton<IHandoffNotifier, HandoffNotifier>());
+
+        services.AddSingleton<StaffPresenceWatch>();
+
+        services.AddHostedService<StaffPresenceWorker>();
 
         return services;
     }

@@ -25,7 +25,7 @@ public sealed class VisitorHandoffEndpointTests
     public async Task AskingOpensAWaitingHandoff()
     {
         await using var world = await VisitorHandoffWorld.StartAsync();
-        await world.StaffOnlineAsync(2);
+        world.StaffOnline(2);
         var conversationId = await world.MakeChatAsync(world.Visitor);
 
         var response = await world.Visitor.PostAsync(Handoff, new { callId = conversationId, reason = "I want a person" });

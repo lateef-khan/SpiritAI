@@ -5,35 +5,29 @@ using Microsoft.Extensions.AI;
 using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.Notifications;
-using SpiritAI.Handoffs.RealTime;
 using SpiritAI.Handoffs.Store;
-using SpiritAI.RealTime.Presence;
 
 namespace SpiritAI.Handoffs.Desk;
 
 /// <summary>
 /// The visitor's side of a handoff: the ask, where the chat stands, and the words the visitor says
-/// while a person is on the way or on the chat. The public routes and the bot's own tool both come
-/// through here, so a chat asks for a person the same way whichever side asked. Staff work in
-/// Chatwoot; their side reaches the chat through <c>ChatwootEventHandler</c>. Every word of the
-/// human phase goes into the chat's own history through <see cref="IConversations.AppendMessageAsync"/>,
-/// so the bot's next turn after Done reads the human phase.
+/// while a person is on the way or on the chat.
 /// </summary>
 public sealed class HandoffDesk(
     IHandoffStore handoffs,
     IConversations conversations,
     IHandoffNotifier notifier,
-    IPresenceStore presence,
+    IStaffPresence staff,
     TimeProvider clock)
 {
     /// <summary>The role a visitor's message is stored and pushed under.</summary>
     public const string VisitorRole = "user";
 
-    /// <summary>How many members of staff are on a socket right now.</summary>
+    /// <summary>How many members of staff are online right now.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
-    /// <returns>Distinct people, so two tabs of one person count once.</returns>
+    /// <returns>Distinct people. Zero when the count cannot be read.</returns>
     public Task<int> StaffOnlineAsync(CancellationToken cancellationToken)
-        => presence.CountOnlineAsync(HandoffAdmission.StaffKind, cancellationToken);
+        => staff.CountOnlineAsync(cancellationToken);
 
     /// <summary>Where one chat stands, as the visitor sees it.</summary>
     /// <param name="conversationId">The chat.</param>

@@ -5,9 +5,7 @@ using AgentCore.Application.Ports;
 using SpiritAI.Handoffs.Bot;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Model;
-using SpiritAI.Handoffs.RealTime;
 using SpiritAI.Tests.Auth;
-using SpiritAI.Tests.RealTime;
 
 using Xunit;
 
@@ -24,20 +22,19 @@ public sealed class RequestHumanToolTests
     private readonly FakeHandoffStore _store;
     private readonly IConversations _conversations;
     private readonly RecordingHandoffNotifier _notifier = new();
-    private readonly FakePresenceStore _presence;
+    private readonly FakeStaffPresence _staff = new();
     private readonly RequestHumanTool _tool;
 
     public RequestHumanToolTests()
     {
         _store = new FakeHandoffStore(_clock);
         _conversations = new Conversations(new InMemoryConversationStore(_clock), blobs: null);
-        _presence = new FakePresenceStore(_clock, TimeSpan.FromSeconds(90));
         _tool = new RequestHumanTool(
             new HandoffDesk(
                 _store,
                 _conversations,
                 _notifier,
-                _presence,
+                _staff,
                 _clock));
     }
 
@@ -46,7 +43,7 @@ public sealed class RequestHumanToolTests
     {
         var conversationId = Guid.NewGuid().ToString("N");
         await _conversations.CreateAsync(conversationId, Cancel);
-        await _presence.ConnectAsync("socket-1", "user:dana", "Dana R.", HandoffAdmission.StaffKind, Cancel);
+        _staff.Online = 1;
 
         var answer = await _tool.AskAsync(conversationId, "they want a real person", email: null, Cancel);
 
