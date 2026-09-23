@@ -42,7 +42,7 @@ export function useSocket(
   handlers: SocketHandlers,
   open: typeof openSocket = openSocket,
 ): SocketHandle {
-  const key = auth === null ? null : auth.kind === "staff" ? "staff" : `visitor:${auth.callId}`;
+  const key = auth === null ? null : `visitor:${auth.callId}`;
 
   // The latest of each, read by the socket's callbacks, which outlive the render they were made
   // in. Reopening the socket on every render would drop pushes for nothing.

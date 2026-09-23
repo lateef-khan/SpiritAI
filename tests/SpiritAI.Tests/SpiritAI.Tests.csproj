@@ -17,4 +17,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Chatwoot/Payloads/*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

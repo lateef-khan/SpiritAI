@@ -1,12 +1,13 @@
 import {
   createPublicThread,
   getHandoffState,
+  getLatestPublicThread,
   getPublicThreadMessages,
   leaveEmail,
   sendVisitorMessage,
 } from "@/api/sdk.gen";
 import type { HandoffMessage, HandoffState as WireHandoffState } from "@/api/types.gen";
-import { createApiClient, type FetchLike } from "@/lib/apiClient";
+import { createApiClient, HostRefusedError, type FetchLike } from "@/lib/apiClient";
 import { pageQuery, revivePage, type ReadHistory } from "@/lib/history";
 
 /**
@@ -31,6 +32,8 @@ export type WireHandoffMessage = HandoffMessage;
 export type WidgetApi = {
   /** Makes the visitor's thread on the host, and answers the call id it was filed under. */
   createThread(): Promise<string>;
+  /** The visitor's newest chat, which a new visit opens again, or `null` when there is none. */
+  latestThread(): Promise<string | null>;
   history: ReadHistory;
   /** Where the chat stands: the truth after a reload or a reconnect. */
   handoffState(callId: string): Promise<HandoffState>;
@@ -60,6 +63,15 @@ export function createWidgetApi(send: FetchLike): WidgetApi {
   return {
     createThread: async () =>
       (await createPublicThread({ client, throwOnError: true })).data.remoteId,
+
+    latestThread: async () => {
+      try {
+        return (await getLatestPublicThread({ client, throwOnError: true })).data.remoteId;
+      } catch (error) {
+        if (error instanceof HostRefusedError && error.status === 404) return null;
+        throw error;
+      }
+    },
 
     history: async (callId, before, limit) =>
       revivePage(

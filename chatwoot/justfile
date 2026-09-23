@@ -46,6 +46,10 @@ logs:
 console:
     {{dev}} exec web bundle exec rails console
 
+# Make or update the Spirit API inbox and agent bot, and print Spirit's settings. See setup/spirit-inbox.sh.
+setup:
+    ./setup/spirit-inbox.sh
+
 # Production: first start, or start after prod-down. Needs DATABASE_URL in .env.
 prod-up:
     {{prod}} up --detach --build

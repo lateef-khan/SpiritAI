@@ -26,5 +26,11 @@ internal sealed class ContactConfiguration : IEntityTypeConfiguration<Contact>
         builder.Property(c => c.CreatedAt)
                .HasColumnName("created_at")
                .HasDefaultValueSql("now()");
+
+        builder.Property(c => c.ChatwootContactId)
+               .HasColumnName("chatwoot_contact_id");
+
+        builder.Property(c => c.ChatwootSourceId)
+               .HasColumnName("chatwoot_source_id");
     }
 }

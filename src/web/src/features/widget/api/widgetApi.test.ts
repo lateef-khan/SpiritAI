@@ -9,15 +9,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  */
 vi.mock("@/api/sdk.gen", () => ({
   createPublicThread: vi.fn(),
+  getLatestPublicThread: vi.fn(),
   getPublicThreadMessages: vi.fn(),
   getHandoffState: vi.fn(),
   leaveEmail: vi.fn(),
   sendVisitorMessage: vi.fn(),
 }));
 
-const { createPublicThread, getPublicThreadMessages, getHandoffState, sendVisitorMessage } =
-  await import("@/api/sdk.gen");
+const {
+  createPublicThread,
+  getLatestPublicThread,
+  getPublicThreadMessages,
+  getHandoffState,
+  sendVisitorMessage,
+} = await import("@/api/sdk.gen");
 const { createWidgetApi } = await import("./widgetApi");
+const { HostRefusedError } = await import("@/lib/apiClient");
 
 const send = async () => new Response();
 
@@ -30,6 +37,20 @@ describe("createWidgetApi", () => {
     } as never);
 
     expect(await createWidgetApi(send).createThread()).toBe("call-9");
+  });
+
+  it("answers the visitor's newest chat off remoteId", async () => {
+    vi.mocked(getLatestPublicThread).mockResolvedValue({ data: { remoteId: "call-7" } } as never);
+
+    expect(await createWidgetApi(send).latestThread()).toBe("call-7");
+  });
+
+  it("answers null when the host has no chat for the visitor", async () => {
+    vi.mocked(getLatestPublicThread).mockRejectedValue(
+      new HostRefusedError(404, "/v1/public/threads/latest"),
+    );
+
+    expect(await createWidgetApi(send).latestThread()).toBeNull();
   });
 
   it("revives createdAt into a Date", async () => {

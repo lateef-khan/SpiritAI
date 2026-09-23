@@ -2,7 +2,6 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Socket, SocketAuth } from "@/lib/realtime/socket";
-import { rememberCall } from "../api/visitorIdentity";
 import type { HandoffState, WireHandoffMessage } from "../api/widgetApi";
 import type { HandoffDesk } from "./useHandoffDesk";
 import type { useWidgetRuntime } from "./useWidgetRuntime";
@@ -109,12 +108,10 @@ const reply: WireHandoffMessage = {
 
 beforeEach(() => {
   localStorage.clear();
-  sessionStorage.clear();
 });
 
 describe("useWidgetSocket", () => {
   it("stays closed with the bot, and opens for the chat once a person is asked for", () => {
-    rememberCall("call-1");
     const socket = fakeOpen();
     const desk = fakeDesk({ ...waiting, status: "bot" });
     const widget = fakeWidget("call-1");

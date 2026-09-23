@@ -38,36 +38,12 @@ public sealed class HandoffNotifierTests
     }
 
     [Fact]
-    public async Task WaitingGoesToStaff()
-    {
-        var summary = new HandoffSummary(1, "c1", "waiting", "visitor", null, At, null, null, null, null, "Title", "Hello?", 1, true, true);
-
-        await _notifier.WaitingAsync(summary, Cancel);
-
-        var (groups, name, payload) = Assert.Single(_publisher.Pushed);
-        Assert.Equal([HandoffGroups.Staff], groups);
-        Assert.Equal(HandoffEvents.Waiting, name);
-        Assert.Same(summary, payload);
-    }
-
-    [Fact]
-    public async Task QueueGoesToThatChat()
-    {
-        await _notifier.QueueAsync("c1", 3, Cancel);
-
-        var (groups, name, payload) = Assert.Single(_publisher.Pushed);
-        Assert.Equal(["call:c1"], groups);
-        Assert.Equal(HandoffEvents.Queue, name);
-        Assert.Equal(new HandoffQueuePosition("c1", 3), payload);
-    }
-
-    [Fact]
-    public async Task ClaimedGoesToStaffAndThatChat()
+    public async Task ClaimedGoesToThatChat()
     {
         await _notifier.ClaimedAsync("c1", new HandoffAssignee("user:dana", "Dana R."), Cancel);
 
         var (groups, name, payload) = Assert.Single(_publisher.Pushed);
-        Assert.Equal([HandoffGroups.Staff, "call:c1"], groups);
+        Assert.Equal(["call:c1"], groups);
         Assert.Equal(HandoffEvents.Claimed, name);
         var wire = Wire(payload);
         Assert.Equal("c1", wire.GetProperty("callId").GetString());
@@ -75,25 +51,25 @@ public sealed class HandoffNotifierTests
     }
 
     [Fact]
-    public async Task DoneGoesToStaffAndThatChat()
+    public async Task DoneGoesToThatChat()
     {
         await _notifier.DoneAsync("c1", Cancel);
 
         var (groups, name, payload) = Assert.Single(_publisher.Pushed);
-        Assert.Equal([HandoffGroups.Staff, "call:c1"], groups);
+        Assert.Equal(["call:c1"], groups);
         Assert.Equal(HandoffEvents.Done, name);
         Assert.Equal("c1", Wire(payload).GetProperty("callId").GetString());
     }
 
     [Fact]
-    public async Task MessageCreatedGoesToStaffAndTheMessagesChat()
+    public async Task MessageCreatedGoesToTheMessagesChat()
     {
         var message = new HandoffMessage("c1", "m7", "assistant", "On my way.", HandoffSpeaker.Human("Dana R.", "Support"), At);
 
         await _notifier.MessageCreatedAsync(message, Cancel);
 
         var (groups, name, payload) = Assert.Single(_publisher.Pushed);
-        Assert.Equal([HandoffGroups.Staff, "call:c1"], groups);
+        Assert.Equal(["call:c1"], groups);
         Assert.Equal(HandoffEvents.MessageCreated, name);
         Assert.Same(message, payload);
     }

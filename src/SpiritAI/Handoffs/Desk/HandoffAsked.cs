@@ -1,13 +1,13 @@
-using SpiritAI.Handoffs.Store;
+using SpiritAI.Handoffs.Model;
 
 namespace SpiritAI.Handoffs.Desk;
 
 /// <summary>
-/// What the desk answers an ask with: the ticket, and whether this ask is the one that made the row.
+/// What the desk answers an ask with: the open row, and whether this ask is the one that made it.
 /// </summary>
-/// <param name="Ticket">The open row and its place in the line.</param>
+/// <param name="Row">The open handoff for the chat, whether this ask made it or an earlier one did.</param>
 /// <param name="Created">
-/// <see langword="true"/> when the chat joined the queue on this ask. <see langword="false"/> when
+/// <see langword="true"/> when the chat asked for a person on this ask. <see langword="false"/> when
 /// it was already open, so a second tap of the button changes nothing.
 /// </param>
-public sealed record HandoffAsked(HandoffTicket Ticket, bool Created);
+public sealed record HandoffAsked(Handoff Row, bool Created);

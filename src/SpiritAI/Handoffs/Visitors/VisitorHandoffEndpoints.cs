@@ -4,6 +4,7 @@ using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Http.HttpResults;
 
+using SpiritAI.Chatwoot;
 using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Desk;
@@ -122,6 +123,7 @@ public static class VisitorHandoffEndpoints
         IContactResolver contacts,
         IContactConversationStore contactConversations,
         HandoffDesk desk,
+        ChatwootCopyQueue copies,
         VisitorAskRequest? body,
         CancellationToken cancellationToken)
     {
@@ -134,6 +136,8 @@ public static class VisitorHandoffEndpoints
         return ForOwnedAsync(http, conversations, contacts, contactConversations, conversationId, cancellationToken, async () =>
         {
             var asked = await desk.AskAsync(conversationId, HandoffAskedBy.Visitor, body.Reason, cancellationToken).ConfigureAwait(false);
+
+            copies.Enqueue(conversationId);
 
             var state = await desk.StateAsync(conversationId, cancellationToken).ConfigureAwait(false);
 
@@ -162,6 +166,7 @@ public static class VisitorHandoffEndpoints
         IContactResolver contacts,
         IContactConversationStore contactConversations,
         HandoffDesk desk,
+        ChatwootCopyQueue copies,
         string conversationId,
         VisitorEmailRequest? body,
         CancellationToken cancellationToken)
@@ -177,6 +182,8 @@ public static class VisitorHandoffEndpoints
                 return Problem(StatusCodes.Status409Conflict, "Nothing is waiting.", "Ask for a person first.");
             }
 
+            copies.Enqueue(conversationId);
+
             return TypedResults.NoContent();
         });
 
@@ -187,6 +194,7 @@ public static class VisitorHandoffEndpoints
         IContactResolver contacts,
         IContactConversationStore contactConversations,
         HandoffDesk desk,
+        ChatwootCopyQueue copies,
         string conversationId,
         VisitorMessageRequest? body,
         CancellationToken cancellationToken)
@@ -201,6 +209,8 @@ public static class VisitorHandoffEndpoints
             {
                 return Problem(StatusCodes.Status409Conflict, "The assistant has this chat.", "Send it there.");
             }
+
+            copies.Enqueue(conversationId);
 
             return TypedResults.Created($"{Pattern}/{conversationId}/messages", created);
         });

@@ -1,13 +1,12 @@
 using AgentCore.Hosting;
 using SpiritAI.Auth;
-using SpiritAI.Auth.Users;
 using SpiritAI.Caching;
+using SpiritAI.Chatwoot;
 using SpiritAI.Contacts;
 using SpiritAI.Database;
 using SpiritAI.Handoffs;
 using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.RealTime;
-using SpiritAI.Handoffs.Staff;
 using SpiritAI.Handoffs.Visitors;
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
@@ -29,8 +28,6 @@ builder.Services.AddThreadSessions();
 
 builder.Services.AddSpiritDatabase(builder.Configuration);
 
-builder.Services.AddNeonUsers();
-
 builder.Services.AddRealTime(builder.Configuration);
 
 builder.Services.AddContacts();
@@ -42,6 +39,8 @@ builder.Services.AddHandoffMail(builder.Configuration);
 builder.Services.AddHandoffRealTime();
 
 builder.Services.AddUnitLookup();
+
+builder.Services.AddChatwoot(builder.Configuration);
 
 builder.Services.AddSpiritOpenApi();
 
@@ -73,6 +72,8 @@ app.UseThreadSessions();
 
 app.UseVisitorChat(AgentCoreExtensions.RouteOf(publicChat.Pattern));
 
+app.UseChatwootCopy(AgentCoreExtensions.RouteOf(publicChat.Pattern));
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -88,11 +89,11 @@ app.MapVisitorHandoffs();
 
 app.MapThreads();
 
-app.MapStaffHandoffs();
-
 app.MapRealTime();
 
 app.MapLookup();
+
+app.MapChatwootWebhook();
 
 app.UseWidgetFrameAncestors(builder.Configuration);
 

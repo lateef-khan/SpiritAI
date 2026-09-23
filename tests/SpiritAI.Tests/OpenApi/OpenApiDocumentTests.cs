@@ -11,20 +11,17 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-using SpiritAI.Auth.Users;
+using SpiritAI.Chatwoot;
 using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Notifications;
-using SpiritAI.Handoffs.Reads;
-using SpiritAI.Handoffs.Staff;
 using SpiritAI.Handoffs.Store;
 using SpiritAI.Handoffs.Visitors;
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
 using SpiritAI.PublicChat;
 using SpiritAI.RealTime.Presence;
-using SpiritAI.Tests.Auth.Users;
 using SpiritAI.Tests.Contacts;
 using SpiritAI.Tests.Handoffs;
 using SpiritAI.Tests.RealTime;
@@ -67,15 +64,8 @@ public sealed class OpenApiDocumentTests
         "deleteThread",
         "getUnit",
         "getOrder",
-        "listHandoffs",
-        "countHandoffs",
-        "getHandoff",
-        "getHandoffMessages",
-        "claimHandoff",
-        "replyToHandoff",
-        "finishHandoff",
-        "markHandoffSeen",
         "createPublicThread",
+        "getLatestPublicThread",
         "getPublicThreadMessages",
         "askForHuman",
         "getHandoffState",
@@ -192,19 +182,17 @@ public sealed class OpenApiDocumentTests
                         new UnitLookup((_, _, _) => ValueTask.FromResult(default(System.Text.Json.JsonElement))),
                         PassThroughHybridCache.Instance));
 
-                    // The inbox's routes, present so the route builder reads them as injected
-                    // services. Nothing calls them: no route is ever invoked here, so a fake
-                    // stands in for the real store, mailer, notifier, and presence table.
-                    services.AddSingleton<IUserDirectory>(new FakeUserDirectory());
-                    services.AddScoped<StaffGate>();
+                    // The visitor's handoff routes, present so the route builder reads them as
+                    // injected services. Nothing calls them: no route is ever invoked here, so a
+                    // fake stands in for the real store, mailer, notifier, and presence table.
                     services.AddSingleton(TimeProvider.System);
                     services.AddSingleton<IHandoffStore>(new FakeHandoffStore(TimeProvider.System));
-                    services.AddSingleton<IConversationReadStore>(new FakeConversationReadStore(
-                        new Conversations(new InMemoryConversationStore(), blobs: null)));
                     services.AddSingleton<IHandoffNotifier>(new RecordingHandoffNotifier());
                     services.AddSingleton<IPresenceStore>(new FakePresenceStore(TimeProvider.System, TimeSpan.FromSeconds(90)));
                     services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());
                     services.AddScoped<HandoffDesk>();
+                    services.AddOptions();
+                    services.AddSingleton<ChatwootCopyQueue>();
                     services.AddSingleton<IContactResolver>(new FakeContactResolver());
                     services.AddSingleton<IContactConversationStore>(new FakeContactConversationStore());
                 })
@@ -215,7 +203,6 @@ public sealed class OpenApiDocumentTests
                     {
                         endpoints.MapThreads();
                         endpoints.MapLookup();
-                        endpoints.MapStaffHandoffs();
                         endpoints.MapPublicThreads();
                         endpoints.MapVisitorHandoffs();
                         endpoints.MapOpenApi();

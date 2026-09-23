@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using SpiritAI.Auth;
+using SpiritAI.Chatwoot;
 using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Mail;
@@ -111,6 +112,8 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
                 services.AddSingleton<IPresenceStore>(presence);
                 services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());
                 services.AddScoped<HandoffDesk>();
+                services.AddOptions();
+                services.AddSingleton<ChatwootCopyQueue>();
             },
             app =>
             {

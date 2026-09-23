@@ -72,6 +72,44 @@ public sealed class ContactConversationStoreTests(PostgresFixture fixture) : ICl
         }
     }
 
+    [Fact]
+    public async Task TheLatestChatIsTheOneThatStartedLastOnThatChannel()
+    {
+        string[] conversationIds = [NewConversationId(), NewConversationId(), NewConversationId()];
+        foreach (var conversationId in conversationIds)
+        {
+            await fixture.MakeConversationAsync(conversationId);
+        }
+
+        var contactId = await MakeContactAsync();
+        var otherContactId = await MakeContactAsync();
+
+        try
+        {
+            await using var database = fixture.Open();
+            var (older, newer, phone) = (conversationIds[0], conversationIds[1], conversationIds[2]);
+
+            await new ContactConversationStore(database, new TestTimeProvider(Start.AddDays(2))).EnsureAsync(newer, contactId, ContactChannel.Chat, Cancel);
+            await new ContactConversationStore(database, new TestTimeProvider(Start)).EnsureAsync(older, contactId, ContactChannel.Chat, Cancel);
+            await new ContactConversationStore(database, new TestTimeProvider(Start.AddDays(3))).EnsureAsync(phone, contactId, ContactChannel.Phone, Cancel);
+
+            var store = new ContactConversationStore(database, new TestTimeProvider(Start));
+
+            Assert.Equal(newer, await store.LatestAsync(contactId, ContactChannel.Chat, Cancel));
+            Assert.Null(await store.LatestAsync(otherContactId, ContactChannel.Chat, Cancel));
+        }
+        finally
+        {
+            foreach (var conversationId in conversationIds)
+            {
+                await fixture.DeleteConversationAsync(conversationId);
+            }
+
+            await DeleteContactAsync(contactId);
+            await DeleteContactAsync(otherContactId);
+        }
+    }
+
     private async Task EnsureWithNewContextAsync(string conversationId, long contactId)
     {
         await using var database = fixture.Open();

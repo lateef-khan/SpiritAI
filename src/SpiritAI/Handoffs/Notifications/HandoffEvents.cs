@@ -6,12 +6,6 @@ namespace SpiritAI.Handoffs.Notifications;
 /// </summary>
 public static class HandoffEvents
 {
-    /// <summary>A chat joined the queue. Carries a <c>HandoffSummary</c>.</summary>
-    public const string Waiting = "handoff.waiting";
-
-    /// <summary>A waiting chat's place in the line moved. Carries a <c>HandoffQueuePosition</c>.</summary>
-    public const string Queue = "handoff.queue";
-
     /// <summary>A member of staff took a chat. Carries the chat and the assignee.</summary>
     public const string Claimed = "handoff.claimed";
 

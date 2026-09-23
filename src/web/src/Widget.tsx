@@ -7,7 +7,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { TypingReporter } from "./features/handoff/TypingReporter";
-import { readVisitorMemory, visitorFetch } from "./features/widget/api/visitorIdentity";
+import {
+  readVisitorKey,
+  shareVisitorKey,
+  visitorFetch,
+} from "./features/widget/api/visitorIdentity";
 import { createWidgetApi } from "./features/widget/api/widgetApi";
 import { HandoffBanner } from "./features/widget/components/HandoffBanner";
 import { WidgetWelcome } from "./features/widget/components/WidgetWelcome";
@@ -43,7 +47,9 @@ const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/publ
  * Who this widget is, on every request it makes. Built once: the key is read per request, so
  * nothing here goes stale.
  */
-const send = visitorFetch(readVisitorMemory);
+const send = visitorFetch(readVisitorKey);
+
+shareVisitorKey(readVisitorKey());
 
 const api = createWidgetApi(send);
 
@@ -97,6 +103,11 @@ export function Widget() {
 
   useFrameSize(phase);
 
+  // An email box only shows on a chat waiting for a person, which always has a call.
+  const leaveEmail = async (email: string) => {
+    if (widget.callId !== null) await desk.leaveEmail(widget.callId, email);
+  };
+
   const onOpenChange = (next: boolean) => {
     setPhase(next ? "open" : "closed");
     if (next) setUnread(0);
@@ -125,7 +136,7 @@ export function Widget() {
                 >
                   <XIcon className="size-4" />
                 </PopoverClose>
-                <HandoffBanner state={desk.state} typing={typing} onLeaveEmail={desk.leaveEmail} />
+                <HandoffBanner state={desk.state} typing={typing} onLeaveEmail={leaveEmail} />
                 <div className="min-h-0 flex-1">
                   <Thread components={WIDGET_COMPONENTS} olderMessages={widget.older} />
                 </div>

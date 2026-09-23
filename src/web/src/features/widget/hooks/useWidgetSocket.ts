@@ -4,7 +4,7 @@ import * as Events from "@/features/handoff/events";
 import { useTypingIndicator } from "@/features/handoff/useTypingIndicator";
 import type { Presence, Signal } from "@/lib/realtime/socket";
 import { useSocket } from "@/lib/realtime/useSocket";
-import { readVisitorMemory } from "../api/visitorIdentity";
+import { readVisitorKey } from "../api/visitorIdentity";
 import type { WireHandoffMessage } from "../api/widgetApi";
 import type { HandoffDesk } from "./useHandoffDesk";
 import type { WidgetRuntime } from "./useWidgetRuntime";
@@ -57,7 +57,7 @@ export function useWidgetSocket({
 
   const handle = useSocket(
     callId !== null && listening
-      ? { kind: "visitor", callId, visitorKey: readVisitorMemory().key }
+      ? { kind: "visitor", callId, visitorKey: readVisitorKey() }
       : null,
     {
       onOpen: () => {

@@ -22,7 +22,7 @@ public sealed class VisitorHandoffEndpointTests
     private const string Handoff = "/v1/public/handoff";
 
     [Fact]
-    public async Task AskingJoinsTheQueueAndTellsStaff()
+    public async Task AskingOpensAWaitingHandoff()
     {
         await using var world = await VisitorHandoffWorld.StartAsync();
         await world.StaffOnlineAsync(2);
@@ -38,7 +38,7 @@ public sealed class VisitorHandoffEndpointTests
         var row = Assert.Single(world.Store.Rows);
         Assert.Equal(HandoffAskedBy.Visitor, row.AskedBy);
         Assert.Equal("I want a person", row.Reason);
-        Assert.Equal(["handoff.waiting"], world.Notifier.Events);
+        Assert.Empty(world.Notifier.Events);
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public sealed class VisitorHandoffEndpointTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("waiting", (await response.ReadAsync<HandoffState>()).Status);
         Assert.Single(world.Store.Rows);
-        Assert.Equal(["handoff.waiting"], world.Notifier.Events);
+        Assert.Empty(world.Notifier.Events);
     }
 
     [Fact]

@@ -1,17 +1,15 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 
 import { HostRefusedError } from "@/lib/apiClient";
-import { rememberCall } from "../api/visitorIdentity";
 import type { HandoffState, WidgetApi } from "../api/widgetApi";
 import { useHandoffDesk, WithBot } from "./useHandoffDesk";
 
 /**
  * The desk, one test per way the state moves.
  *
- * The api is a fake that answers one state; what is held in place is that a remembered call is
- * read on mount, that a refresh answers what it read, and that a call the host has no row for
- * reads as `bot` rather than as an error.
+ * The api is a fake that answers one state; what is held in place is that a refresh answers what
+ * it read, and that a call the host has no row for reads as `bot` rather than as an error.
  */
 const waiting: HandoffState = {
   status: "waiting",
@@ -29,6 +27,7 @@ function fakeApi(handoffState: (callId: string) => Promise<HandoffState>): {
     emails,
     api: {
       createThread: async () => "call-1",
+      latestThread: async () => null,
       history: async () => ({ repository: { messages: [] }, nextCursor: null }),
       handoffState,
       leaveEmail: async (callId, email) => {
@@ -41,27 +40,13 @@ function fakeApi(handoffState: (callId: string) => Promise<HandoffState>): {
   };
 }
 
-beforeEach(() => {
-  localStorage.clear();
-  sessionStorage.clear();
-});
-
 describe("useHandoffDesk", () => {
-  it("starts with the bot when nothing is remembered", () => {
+  it("starts with the bot", () => {
     const { api } = fakeApi(async () => waiting);
 
     const view = renderHook(() => useHandoffDesk(api));
 
     expect(view.result.current.state).toEqual(WithBot);
-  });
-
-  it("reads a remembered call's state on mount", async () => {
-    rememberCall("call-kept");
-    const { api } = fakeApi(async () => waiting);
-
-    const view = renderHook(() => useHandoffDesk(api));
-
-    await waitFor(() => expect(view.result.current.state).toEqual(waiting));
   });
 
   it("answers what a refresh read, and reads a forgotten call as the bot", async () => {
@@ -88,15 +73,16 @@ describe("useHandoffDesk", () => {
     expect(view.result.current.state).toEqual(WithBot);
   });
 
-  it("leaves the email on the remembered call and keeps it on the state", async () => {
-    rememberCall("call-kept");
+  it("leaves the email on the call it is given and keeps it on the state", async () => {
     const { api, emails } = fakeApi(async () => waiting);
 
     const view = renderHook(() => useHandoffDesk(api));
-    await waitFor(() => expect(view.result.current.state.status).toBe("waiting"));
+    await act(async () => {
+      await view.result.current.refresh("call-kept");
+    });
 
     await act(async () => {
-      await view.result.current.leaveEmail("pat@example.com");
+      await view.result.current.leaveEmail("call-kept", "pat@example.com");
     });
 
     expect(emails).toEqual([{ callId: "call-kept", email: "pat@example.com" }]);
@@ -104,11 +90,12 @@ describe("useHandoffDesk", () => {
   });
 
   it("applies what a push said, over what it holds", async () => {
-    rememberCall("call-kept");
     const { api } = fakeApi(async () => waiting);
 
     const view = renderHook(() => useHandoffDesk(api));
-    await waitFor(() => expect(view.result.current.state.status).toBe("waiting"));
+    await act(async () => {
+      await view.result.current.refresh("call-kept");
+    });
 
     act(() => view.result.current.apply({ status: "human", assigneeName: "Dana R." }));
 

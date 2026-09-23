@@ -1,27 +1,25 @@
-using System.Security.Claims;
-
 using AgentCore.Application.Ports;
 
 using SpiritAI.Contacts;
-using SpiritAI.Handoffs.Staff;
 using SpiritAI.PublicChat;
 using SpiritAI.RealTime;
-using SpiritAI.Threads;
 
 namespace SpiritAI.Handoffs.RealTime;
 
 /// <summary>
-/// Admits the two callers of section 6.1 of the handoff spec. A signed-in member of staff joins
-/// the staff group and may signal any chat. A visitor names a chat and their key, is checked to
-/// own that chat, joins its group, and may signal staff. Anyone else is left to another feature.
+/// Admits a visitor to the socket: they name a chat and their key, are checked to own that chat,
+/// join its group, and may signal staff. Staff work in Chatwoot and never join. Anyone else is
+/// left to another feature.
 /// </summary>
 public sealed class HandoffAdmission(
     IConversations conversations,
     IContactResolver contacts,
-    IContactConversationStore contactConversations,
-    StaffGate staff) : IRealTimeAdmission
+    IContactConversationStore contactConversations) : IRealTimeAdmission
 {
-    /// <summary>The kind a member of staff is counted under.</summary>
+    /// <summary>
+    /// The kind a member of staff is counted and signals under. Nobody joins as staff now; the
+    /// Chatwoot webhook signs its typing signals with it, and the widget listens for it.
+    /// </summary>
     public const string StaffKind = "staff";
 
     /// <summary>The kind a visitor is counted under.</summary>
@@ -38,30 +36,7 @@ public sealed class HandoffAdmission(
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return request.User is { } user
-            ? AdmitStaffAsync(user, cancellationToken)
-            : AdmitVisitorAsync(request.Query, cancellationToken);
-    }
-
-    /// <summary>
-    /// A signed-in caller the gate knows. One it does not gets <see langword="null"/>, not a
-    /// refusal: another feature may still know them.
-    /// </summary>
-    private async ValueTask<RealTimeCaller?> AdmitStaffAsync(ClaimsPrincipal user, CancellationToken cancellationToken)
-    {
-        if (CallerPrincipal.KeyOf(user) is not { } key)
-        {
-            return null;
-        }
-
-        var member = await staff.MemberOfAsync(user, cancellationToken).ConfigureAwait(false);
-
-        if (member is null)
-        {
-            return null;
-        }
-
-        return new RealTimeCaller(key, member.Name, StaffKind, [HandoffGroups.Staff], HandoffGroups.IsConversation);
+        return AdmitVisitorAsync(request.Query, cancellationToken);
     }
 
     private async ValueTask<RealTimeCaller?> AdmitVisitorAsync(IQueryCollection query, CancellationToken cancellationToken)

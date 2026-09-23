@@ -11,6 +11,11 @@
  * the turn requests are same-origin with the frame — so the API needs no CORS at all.
  *
  * An iframe cannot size itself, so the page inside posts what it needs and this applies it.
+ *
+ * The visitor's key is kept here, on the host page, as the first-party cookie `spirit_visitor`:
+ * a frame from another site gets the least storage a browser gives. It goes into the frame as
+ * `#visitor=<key>`, which never reaches a server log, and the frame posts its key back on every
+ * start. Any script on the host page can read the cookie, as with Chatwoot's own widget.
  */
 (function () {
   "use strict";
@@ -23,10 +28,28 @@
   var origin = new URL(self.src, window.location.href).origin;
   var src = origin + "/chat/widget.html";
 
+  var visitorCookie = "spirit_visitor";
+  var visitorYear = 365 * 24 * 60 * 60;
+  // The host's rule for a key (VisitorPrincipal.IsWellFormed); a cookie outside it is dropped.
+  var wellFormed = /^[A-Za-z0-9_-]{1,128}$/;
+
+  function readVisitor() {
+    var found = document.cookie.match(/(?:^|;\s*)spirit_visitor=([^;]*)/);
+    return found && wellFormed.test(found[1]) ? found[1] : null;
+  }
+
+  function keepVisitor(key) {
+    document.cookie =
+      visitorCookie + "=" + key + "; max-age=" + visitorYear + "; path=/; SameSite=Lax" +
+      (window.location.protocol === "https:" ? "; Secure" : "");
+  }
+
+  var visitor = readVisitor();
+
   if (document.querySelector("iframe[data-agentcore-widget]")) return;
 
   var frame = document.createElement("iframe");
-  frame.src = src;
+  frame.src = visitor ? src + "#visitor=" + visitor : src;
   frame.title = "Chat";
   frame.setAttribute("data-agentcore-widget", "");
   frame.setAttribute("allow", "clipboard-write");
@@ -53,7 +76,14 @@
     if (event.origin !== origin) return;
 
     var data = event.data;
-    if (!data || data.source !== "agentcore-widget" || data.type !== "resize") return;
+    if (!data || data.source !== "agentcore-widget") return;
+
+    if (data.type === "visitor") {
+      if (typeof data.key === "string" && wellFormed.test(data.key)) keepVisitor(data.key);
+      return;
+    }
+
+    if (data.type !== "resize") return;
 
     var width = Number(data.width);
     var height = Number(data.height);

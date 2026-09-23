@@ -39,8 +39,11 @@ First setup on the server:
 1. Copy this folder to the server. Install Docker and `just`.
 2. `just env`, then edit `.env`: `DATABASE_URL`, `FRONTEND_URL` (the public HTTPS address),
    `REDIS_PASSWORD`, the `STORAGE_*` bucket values, and the `SMTP_*` and `MAILER_SENDER_EMAIL` values.
+   Set `SAFE_FETCH_ALLOW_PRIVATE_NETWORK=false` unless Spirit's webhook URL is a private address.
 3. On the database, run `create schema chatwoot;` once. Use Neon's direct host, not `-pooler`.
 4. `just prod-up`.
+5. `just setup` with `CHATWOOT_ADMIN_TOKEN`, `CHATWOOT_ACCOUNT_ID`, and `SPIRIT_WEBHOOK_URL`.
+   Put the settings it prints in Spirit's environment.
 
 | Recipe | Does |
 | --- | --- |
@@ -66,7 +69,7 @@ Web listens on `127.0.0.1:53000` only. Put the server's HTTPS proxy in front of 
 | Production differences | `compose.prod.yaml` |
 | Local schema setup | `local-db.sql` |
 | Small code patches | `Dockerfile`, below `FROM`. Last resort |
-| Webhooks, agent bot, Dashboard Apps, inboxes | `setup/` scripts that call the Chatwoot API (to come) |
+| Spirit's API inbox and agent bot | `just setup` (`setup/spirit-inbox.sh`) |
 | Webhook receivers | `src/SpiritAI` (to come) |
 
 ## Tables in their own schema

@@ -32,4 +32,8 @@ internal sealed class FakeContactConversationStore : IContactConversationStore
 
         return Task.FromResult<long?>(null);
     }
+
+    /// <summary>The row added last wins: rows are added in the order the chats started.</summary>
+    public Task<string?> LatestAsync(long contactId, ContactChannel channel, CancellationToken cancellationToken)
+        => Task.FromResult<string?>(Rows.LastOrDefault(row => row.ContactId == contactId && row.Channel == channel).ConversationId);
 }

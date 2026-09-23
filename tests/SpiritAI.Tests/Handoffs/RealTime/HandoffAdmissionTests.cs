@@ -6,14 +6,11 @@ using AgentCore.Application.Conversation.Memory;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 
-using SpiritAI.Auth.Users;
 using SpiritAI.Contacts;
 using SpiritAI.Handoffs.RealTime;
-using SpiritAI.Handoffs.Staff;
 using SpiritAI.PublicChat;
 using SpiritAI.RealTime;
 using SpiritAI.Tests.Auth;
-using SpiritAI.Tests.Auth.Users;
 using SpiritAI.Tests.Contacts;
 using SpiritAI.Threads;
 
@@ -22,7 +19,8 @@ using Xunit;
 namespace SpiritAI.Tests.Handoffs.RealTime;
 
 /// <summary>
-/// Section 6.1 of the handoff spec: who the two kinds of caller are, and what each may say.
+/// Who may join the handoff socket, and what they may say. Only a visitor who owns the chat joins;
+/// staff work in Chatwoot.
 /// </summary>
 public sealed class HandoffAdmissionTests
 {
@@ -38,30 +36,13 @@ public sealed class HandoffAdmissionTests
 
     public HandoffAdmissionTests()
     {
-        var staff = new StaffGate(new FakeUserDirectory(new AuthUser("user_dana", "Dana Rivera", "dana@example.com")));
-
-        _admission = new HandoffAdmission(new Conversations(_conversations, blobs: null), _contacts, _contactConversations, staff);
+        _admission = new HandoffAdmission(new Conversations(_conversations, blobs: null), _contacts, _contactConversations);
     }
 
     [Fact]
-    public async Task StaffJoinTheStaffGroupAndMaySignalAnyChat()
+    public async Task ASignedInCallerIsNobodyToThisFeature()
     {
-        var caller = await _admission.AdmitAsync(new RealTimeRequest(SignedIn("user_dana", "Dana@Example.com"), Query()), Cancel);
-
-        Assert.NotNull(caller);
-        Assert.Equal("user:user_dana", caller.Key);
-        Assert.Equal("Dana R.", caller.Name);
-        Assert.Equal(HandoffAdmission.StaffKind, caller.Kind);
-        Assert.Equal([HandoffGroups.Staff], caller.Groups);
-        Assert.True(caller.MaySignal("call:x"));
-        Assert.False(caller.MaySignal(HandoffGroups.Staff));
-        Assert.False(caller.MaySignal(HandoffGroups.Visitors));
-    }
-
-    [Fact]
-    public async Task ADealerIsNobodyToThisFeature()
-    {
-        var caller = await _admission.AdmitAsync(new RealTimeRequest(SignedIn("user_dealer", "dealer@example.com"), Query()), Cancel);
+        var caller = await _admission.AdmitAsync(new RealTimeRequest(SignedIn("user_dana", "dana@example.com"), Query()), Cancel);
 
         Assert.Null(caller);
     }

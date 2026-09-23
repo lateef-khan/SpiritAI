@@ -12,17 +12,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using SpiritAI.Auth;
-using SpiritAI.Auth.Users;
 using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Notifications;
 using SpiritAI.Handoffs.RealTime;
-using SpiritAI.Handoffs.Staff;
 using SpiritAI.PublicChat;
 using SpiritAI.RealTime;
 using SpiritAI.RealTime.Presence;
 using SpiritAI.Tests.Auth;
-using SpiritAI.Tests.Auth.Users;
 using SpiritAI.Tests.Contacts;
 using SpiritAI.Tests.RealTime;
 using SpiritAI.Tests.Threads;
@@ -33,10 +30,9 @@ using Xunit;
 namespace SpiritAI.Tests.Handoffs.RealTime;
 
 /// <summary>
-/// The two browsers of a handoff on the real hub with the real admission: a member of staff who
-/// sends a token the way a browser socket can, and a visitor who names their chat. What the
-/// inbox and the widget rely on is that a typing signal crosses from one to the other, and that a
-/// message push reaches both.
+/// The visitor's browser on the real hub with the real admission. Staff work in Chatwoot, and the
+/// Chatwoot webhook reaches the visitor through the publisher: what the widget relies on is that
+/// a staff typing signal and a message push both reach the chat's visitor.
 /// </summary>
 public sealed class HandoffSocketTests : IAsyncDisposable
 {
@@ -52,48 +48,37 @@ public sealed class HandoffSocketTests : IAsyncDisposable
     private FakeContactConversationStore? _contactConversations;
 
     [Fact]
-    public async Task AVisitorsTypingReachesStaffAndTheirsReachesTheVisitor()
+    public async Task AStaffTypingSignalReachesTheVisitor()
     {
         var conversationId = await StartAsync();
-        var staff = Staff();
         var visitor = Visitor(conversationId);
-        var toStaff = new Inbox<RealTimeSignal>(staff, RealTimeEvents.Signal);
         var toVisitor = new Inbox<RealTimeSignal>(visitor, RealTimeEvents.Signal);
-        Assert.True(await SpiritHubWorld.AdmittedAsync(staff), "staff was not admitted");
         Assert.True(await SpiritHubWorld.AdmittedAsync(visitor), "the visitor was not admitted");
 
-        await visitor.InvokeAsync(nameof(SpiritHub.Signal), HandoffGroups.Staff, "typing", new { callId = conversationId, on = true }, Cancel);
+        var group = HandoffGroups.ForConversation(conversationId);
+        var payload = System.Text.Json.JsonSerializer.SerializeToElement(new { callId = conversationId, on = true });
+        var signal = new RealTimeSignal(new RealTimeSender("chatwoot:7", HandoffAdmission.StaffKind), group, "typing", payload);
+        await _host!.Services.GetRequiredService<IRealTimePublisher>().PublishAsync(group, RealTimeEvents.Signal, signal, Cancel);
 
-        var heardByStaff = await toStaff.NextAsync();
-        Assert.Equal(HandoffAdmission.VisitorKind, heardByStaff.Sender.Kind);
-        Assert.Equal("typing", heardByStaff.Name);
-        Assert.Equal(conversationId, heardByStaff.Payload.GetProperty("callId").GetString());
-        Assert.True(heardByStaff.Payload.GetProperty("on").GetBoolean());
-
-        await staff.InvokeAsync(nameof(SpiritHub.Signal), HandoffGroups.ForConversation(conversationId), "typing", new { callId = conversationId, on = true }, Cancel);
-
-        var heardByVisitor = await toVisitor.NextAsync();
-        Assert.Equal(HandoffAdmission.StaffKind, heardByVisitor.Sender.Kind);
-        Assert.Equal(HandoffGroups.ForConversation(conversationId), heardByVisitor.Group);
+        var heard = await toVisitor.NextAsync();
+        Assert.Equal(HandoffAdmission.StaffKind, heard.Sender.Kind);
+        Assert.Equal("typing", heard.Name);
+        Assert.True(heard.Payload.GetProperty("on").GetBoolean());
     }
 
     [Fact]
-    public async Task AMessagePushReachesStaffAndTheChatsVisitor()
+    public async Task AMessagePushReachesTheChatsVisitor()
     {
         var conversationId = await StartAsync();
-        var staff = Staff();
         var visitor = Visitor(conversationId);
-        var toStaff = new Inbox<HandoffMessage>(staff, HandoffEvents.MessageCreated);
         var toVisitor = new Inbox<HandoffMessage>(visitor, HandoffEvents.MessageCreated);
-        Assert.True(await SpiritHubWorld.AdmittedAsync(staff));
         Assert.True(await SpiritHubWorld.AdmittedAsync(visitor));
 
         var notifier = _host!.Services.GetRequiredService<IHandoffNotifier>();
-        var message = new HandoffMessage(conversationId, "m-1", "assistant", "Dana R. joined", HandoffSpeaker.System(), Start);
+        var message = new HandoffMessage(conversationId, "m-1", "assistant", "Hi, Dana here.", HandoffSpeaker.Human("Dana R.", "Support"), Start);
         await notifier.MessageCreatedAsync(message, Cancel);
 
-        Assert.Equal("Dana R. joined", (await toStaff.NextAsync()).Text);
-        Assert.Equal("Dana R. joined", (await toVisitor.NextAsync()).Text);
+        Assert.Equal("Hi, Dana here.", (await toVisitor.NextAsync()).Text);
     }
 
     /// <summary>Starts the host with one chat owned by the visitor, and answers its id.</summary>
@@ -115,8 +100,6 @@ public sealed class HandoffSocketTests : IAsyncDisposable
                 services.AddSingleton(_conversations);
                 services.AddSingleton<IContactResolver>(_contacts);
                 services.AddSingleton<IContactConversationStore>(_contactConversations);
-                services.AddSingleton<IUserDirectory>(new FakeUserDirectory(new AuthUser("user_dana", "Dana Rivera", "dana@example.com")));
-                services.AddScoped<StaffGate>();
                 services.AddSingleton<IPresenceStore>(new FakePresenceStore(clock, TimeSpan.FromSeconds(90)));
             },
             app =>
@@ -144,10 +127,6 @@ public sealed class HandoffSocketTests : IAsyncDisposable
     }
 
     private const string VisitorKey = "visitor-abc";
-
-    /// <summary>A member of staff's socket, the token in the query the way a browser sends it.</summary>
-    private HubConnection Staff()
-        => Connect($"access_token={_kit!.Token(subject: "user_dana", email: "dana@example.com")}");
 
     /// <summary>The visitor's socket, naming the chat and their key.</summary>
     private HubConnection Visitor(string conversationId)

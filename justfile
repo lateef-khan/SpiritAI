@@ -29,12 +29,13 @@ local_config := "config/spirit.local.yaml"
 
 set dotenv-load
 
+# Spirit also listens on Docker's host address, so Chatwoot's webhooks can reach it. The
+# firewall must let Docker's networks in: `sudo ufw allow from 172.16.0.0/12 to any port 5299 proto tcp`.
+docker_host_ip := `ip -4 -o addr show docker0 2>/dev/null | awk '{split($4, a, "/"); print a[1]}'`
+spirit_urls := if docker_host_ip == "" { "http://localhost:5299" } else { "http://localhost:5299;http://" + docker_host_ip + ":5299" }
+
 # Chatwoot recipes: `just chatwoot <recipe>`. See chatwoot/README.md.
 mod chatwoot
-
-# Who the seed makes staff. Must be the email you sign in with; override in .env if needed.
-staff_email := env_var_or_default("SPIRIT_STAFF_EMAIL", `git config user.email`)
-staff_name := env_var_or_default("SPIRIT_STAFF_NAME", `git config user.name`)
 
 # List the recipes.
 default:
@@ -81,26 +82,6 @@ db-url:
 # Open psql.
 db-shell:
     docker exec --interactive --tty {{container}} psql --username={{user}} --dbname={{database}}
-
-# Load dev/seed.pgsql once the host has migrated.
-db-seed:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    for _ in $(seq 1 180); do
-        if docker exec {{container}} psql --username={{user}} --dbname={{database}} --tuples-only --no-align \
-            --command="select to_regclass('spirit.handoff')" | grep -q handoff; then
-            docker exec --interactive {{container}} psql --username={{user}} --dbname={{database}} --quiet \
-                --set=ON_ERROR_STOP=1 --set=staff_email='{{staff_email}}' --set=staff_name='{{staff_name}}' \
-                < dev/seed.pgsql
-            echo "Seeded {{database}}: {{staff_email}} is staff, and the inbox has rows."
-            exit 0
-        fi
-        sleep 1
-    done
-
-    echo "spirit.handoff never appeared; is the host running?" >&2
-    exit 1
 
 # Start MinIO, wait until it answers, and make the bucket.
 blob-up:
@@ -153,11 +134,10 @@ local-config:
     sed 's|^  blobs: .*|  blobs: { kind: s3, endpoint: {{blob_endpoint}}, bucket: {{blob_bucket}} }|' \
         config/spirit.yaml > {{local_config}}
 
-# Run the host on http://localhost:5299/chat against PostgreSQL and MinIO, and seed it.
+# Run the host on http://localhost:5299/chat against PostgreSQL and MinIO.
 run: db-up blob-up local-config
-    (just db-seed &)
     cd src/SpiritAI && env "{{pg_secret}}={{pg_conn}}" \
         "{{blob_key_secret}}={{blob_key}}" "{{blob_secret_secret}}={{blob_secret}}" \
-        ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5299 \
+        ASPNETCORE_ENVIRONMENT=Development "ASPNETCORE_URLS={{spirit_urls}}" \
         AgentCore__ConfigurationPath={{local_config}} \
         dotnet run --no-launch-profile

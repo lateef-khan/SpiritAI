@@ -23,6 +23,39 @@ namespace SpiritAI.Database.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("SpiritAI.Chatwoot.ChatwootLink", b =>
+                {
+                    b.Property<string>("ConversationId")
+                        .HasColumnType("text")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<long?>("AnnouncedHandoffId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("announced_handoff_id");
+
+                    b.Property<int>("ChatwootConversationId")
+                        .HasColumnType("integer")
+                        .HasColumnName("chatwoot_conversation_id");
+
+                    b.Property<int>("CopiedThrough")
+                        .HasColumnType("integer")
+                        .HasColumnName("copied_through");
+
+                    b.Property<string>("NotedEmail")
+                        .HasColumnType("text")
+                        .HasColumnName("noted_email");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.HasKey("ConversationId");
+
+                    b.ToTable("chatwoot_link", "spirit");
+                });
+
             modelBuilder.Entity("SpiritAI.Contacts.Contact", b =>
                 {
                     b.Property<long>("Id")
@@ -31,6 +64,14 @@ namespace SpiritAI.Database.Migrations
                         .HasColumnName("id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<int?>("ChatwootContactId")
+                        .HasColumnType("integer")
+                        .HasColumnName("chatwoot_contact_id");
+
+                    b.Property<string>("ChatwootSourceId")
+                        .HasColumnType("text")
+                        .HasColumnName("chatwoot_source_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -207,31 +248,6 @@ namespace SpiritAI.Database.Migrations
                         });
                 });
 
-            modelBuilder.Entity("SpiritAI.Handoffs.Reads.ConversationRead", b =>
-                {
-                    b.Property<string>("ConversationId")
-                        .HasColumnType("text")
-                        .HasColumnName("conversation_id");
-
-                    b.Property<string>("StaffKey")
-                        .HasColumnType("text")
-                        .HasColumnName("staff_key");
-
-                    b.Property<DateTimeOffset>("SeenAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("seen_at")
-                        .HasDefaultValueSql("now()");
-
-                    b.Property<int>("SeenOrdinal")
-                        .HasColumnType("integer")
-                        .HasColumnName("seen_ordinal");
-
-                    b.HasKey("ConversationId", "StaffKey");
-
-                    b.ToTable("conversation_read", "spirit");
-                });
-
             modelBuilder.Entity("SpiritAI.RealTime.Presence.Presence", b =>
                 {
                     b.Property<string>("ConnectionId")
@@ -272,6 +288,15 @@ namespace SpiritAI.Database.Migrations
                     b.ToTable("presence", "spirit");
                 });
 
+            modelBuilder.Entity("SpiritAI.Chatwoot.ChatwootLink", b =>
+                {
+                    b.HasOne("SpiritAI.Handoffs.Model.ConversationStub", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SpiritAI.Contacts.ContactConversation", b =>
                 {
                     b.HasOne("SpiritAI.Contacts.Contact", null)
@@ -297,15 +322,6 @@ namespace SpiritAI.Database.Migrations
                 });
 
             modelBuilder.Entity("SpiritAI.Handoffs.Model.Handoff", b =>
-                {
-                    b.HasOne("SpiritAI.Handoffs.Model.ConversationStub", null)
-                        .WithMany()
-                        .HasForeignKey("ConversationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("SpiritAI.Handoffs.Reads.ConversationRead", b =>
                 {
                     b.HasOne("SpiritAI.Handoffs.Model.ConversationStub", null)
                         .WithMany()

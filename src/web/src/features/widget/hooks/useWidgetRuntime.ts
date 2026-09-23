@@ -10,7 +10,6 @@ import { flatten, sourceContent, toolContent } from "@/features/threads/AgentCor
 import { runTurn, TurnRefusedError, type TurnState } from "@/features/threads/transport";
 import type { OlderMessagesSource } from "@/lib/history";
 import { HostRefusedError, type FetchLike } from "@/lib/apiClient";
-import { readVisitorMemory, rememberCall } from "../api/visitorIdentity";
 import type { WidgetApi, WireHandoffMessage } from "../api/widgetApi";
 import { heldFromPage, holds, hostMessageId, prependOlder, reloadPage, type Held } from "./held";
 import type { HandoffDesk } from "./useHandoffDesk";
@@ -146,7 +145,9 @@ export function useWidgetRuntime(
   const [store, setStore] = useState<Store>({ messages: [], olderCursor: undefined });
   const { messages, olderCursor } = store;
   const [isRunning, setRunning] = useState(false);
-  const [callId, setCallId] = useState<string | null>(() => readVisitorMemory().callId);
+  const [callId, setCallId] = useState<string | null>(null);
+  // The same call, for the async paths below: they must see a call made after their render.
+  const callRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const setMessages = useCallback(
@@ -157,7 +158,7 @@ export function useWidgetRuntime(
 
   // A call just made has nothing older than what is on screen; no call has no pages at all.
   const remember = useCallback((id: string | null) => {
-    rememberCall(id);
+    callRef.current = id;
     setCallId(id);
     setStore((s) => ({ ...s, olderCursor: id === null ? undefined : null }));
   }, []);
@@ -168,7 +169,7 @@ export function useWidgetRuntime(
    * the id and what is on screen; the next send finds out.
    */
   const reload = useCallback((): Promise<void> => {
-    const id = readVisitorMemory().callId;
+    const id = callRef.current;
     if (id === null) return Promise.resolve();
 
     return api.history(id).then(
@@ -190,10 +191,34 @@ export function useWidgetRuntime(
     );
   }, [api, remember]);
 
-  // A remembered call is restored on mount.
+  // Held in a ref: the restore below runs once per mount, whatever desk object a render brings.
+  const refreshDesk = useRef(desk.refresh);
   useEffect(() => {
-    void reload();
-  }, [reload]);
+    refreshDesk.current = desk.refresh;
+  }, [desk.refresh]);
+
+  // On mount the widget opens the visitor's newest chat, as a new visit does: unless a send made
+  // a call while the host was being asked.
+  useEffect(() => {
+    let cancelled = false;
+
+    const restore = async () => {
+      const latest = await api.latestThread().catch(() => null);
+      if (cancelled || latest === null || callRef.current !== null) return;
+
+      callRef.current = latest;
+      setCallId(latest);
+      void refreshDesk.current(latest).catch(() => {});
+
+      await reload();
+    };
+
+    void restore();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, reload]);
 
   const receive = useCallback(
     (message: WireHandoffMessage) => {
@@ -300,7 +325,7 @@ export function useWidgetRuntime(
         withPerson(status) ? person(callId) : bot(callId);
 
       try {
-        let id = readVisitorMemory().callId;
+        let id = callRef.current;
         if (id === null) {
           id = await api.createThread();
           remember(id);

@@ -325,460 +325,6 @@
         }
       }
     },
-    "/v1/handoff": {
-      "get": {
-        "tags": [
-          "Handoff"
-        ],
-        "operationId": "listHandoffs",
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "owner",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "order",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "cursor",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HandoffPage"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/handoff/counts": {
-      "get": {
-        "tags": [
-          "Handoff"
-        ],
-        "operationId": "countHandoffs",
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HandoffCounts"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/handoff/{conversationId}": {
-      "get": {
-        "tags": [
-          "Handoff"
-        ],
-        "operationId": "getHandoff",
-        "parameters": [
-          {
-            "name": "conversationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HandoffSummary"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      }
-    },
-    "/v1/handoff/{conversationId}/messages": {
-      "get": {
-        "tags": [
-          "Handoff"
-        ],
-        "operationId": "getHandoffMessages",
-        "parameters": [
-          {
-            "name": "conversationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "before",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ThreadHistory"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Handoff"
-        ],
-        "operationId": "replyToHandoff",
-        "parameters": [
-          {
-            "name": "conversationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "$ref": "#/components/schemas/HandoffReplyRequest"
-                  }
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HandoffMessage"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/handoff/{conversationId}/claim": {
-      "post": {
-        "tags": [
-          "Handoff"
-        ],
-        "operationId": "claimHandoff",
-        "parameters": [
-          {
-            "name": "conversationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HandoffSummary"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/handoff/{conversationId}/done": {
-      "post": {
-        "tags": [
-          "Handoff"
-        ],
-        "operationId": "finishHandoff",
-        "parameters": [
-          {
-            "name": "conversationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      }
-    },
-    "/v1/handoff/{conversationId}/seen": {
-      "post": {
-        "tags": [
-          "Handoff"
-        ],
-        "operationId": "markHandoffSeen",
-        "parameters": [
-          {
-            "name": "conversationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      }
-    },
     "/v1/public/threads": {
       "post": {
         "tags": [
@@ -805,6 +351,39 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/v1/public/threads/latest": {
+      "get": {
+        "tags": [
+          "PublicThreads"
+        ],
+        "operationId": "getLatestPublicThread",
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LatestPublicThread"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -1103,48 +682,6 @@
   },
   "components": {
     "schemas": {
-      "HandoffAssignee": {
-        "required": [
-          "key",
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          }
-        }
-      },
-      "HandoffCounts": {
-        "required": [
-          "mine",
-          "unassigned",
-          "all",
-          "awaitingReply"
-        ],
-        "type": "object",
-        "properties": {
-          "mine": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "unassigned": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "all": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "awaitingReply": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
       "HandoffMessage": {
         "required": [
           "callId",
@@ -1181,38 +718,6 @@
           "at": {
             "type": "string",
             "format": "date-time"
-          }
-        }
-      },
-      "HandoffPage": {
-        "required": [
-          "items",
-          "nextCursor"
-        ],
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HandoffSummary"
-            }
-          },
-          "nextCursor": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
-      "HandoffReplyRequest": {
-        "required": [
-          "text"
-        ],
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string"
           }
         }
       },
@@ -1267,106 +772,6 @@
           }
         }
       },
-      "HandoffSummary": {
-        "required": [
-          "id",
-          "callId",
-          "status",
-          "askedBy",
-          "reason",
-          "askedAt",
-          "assignee",
-          "claimedAt",
-          "email",
-          "doneAt",
-          "title",
-          "firstLine",
-          "position",
-          "awaitingReply",
-          "unread"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "callId": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "askedBy": {
-            "type": "string"
-          },
-          "reason": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "askedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "assignee": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/HandoffAssignee"
-              }
-            ]
-          },
-          "claimedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "email": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "doneAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "title": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "firstLine": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "position": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "awaitingReply": {
-            "type": "boolean"
-          },
-          "unread": {
-            "type": "boolean"
-          }
-        }
-      },
       "JobStatus": {
         "enum": [
           "open",
@@ -1375,6 +780,17 @@
         ]
       },
       "JsonElement": { },
+      "LatestPublicThread": {
+        "required": [
+          "remoteId"
+        ],
+        "type": "object",
+        "properties": {
+          "remoteId": {
+            "type": "string"
+          }
+        }
+      },
       "OrderDocument": {
         "required": [
           "orderNumber",
@@ -2350,9 +1766,6 @@
     },
     {
       "name": "Lookup"
-    },
-    {
-      "name": "Handoff"
     },
     {
       "name": "PublicThreads"

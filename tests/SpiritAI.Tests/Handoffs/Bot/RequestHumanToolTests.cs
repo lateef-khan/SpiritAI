@@ -2,8 +2,6 @@ using AgentCore.Application.Conversation;
 using AgentCore.Application.Conversation.Memory;
 using AgentCore.Application.Ports;
 
-using Microsoft.Extensions.Logging.Abstractions;
-
 using SpiritAI.Handoffs.Bot;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Model;
@@ -16,7 +14,7 @@ using Xunit;
 namespace SpiritAI.Tests.Handoffs.Bot;
 
 /// <summary>
-/// The bot's door into the queue, section 9.4 of the handoff spec.
+/// The bot's way to ask for a person, section 9.4 of the handoff spec.
 /// </summary>
 public sealed class RequestHumanToolTests
 {
@@ -40,13 +38,11 @@ public sealed class RequestHumanToolTests
                 _conversations,
                 _notifier,
                 _presence,
-                new RecordingHandoffMailer(),
-                _clock,
-                NullLogger<HandoffDesk>.Instance));
+                _clock));
     }
 
     [Fact]
-    public async Task InsideAChatTheToolJoinsTheQueueAndSaysWhere()
+    public async Task InsideAChatTheToolAsksForAPerson()
     {
         var conversationId = Guid.NewGuid().ToString("N");
         await _conversations.CreateAsync(conversationId, Cancel);
@@ -61,7 +57,7 @@ public sealed class RequestHumanToolTests
         Assert.Equal(HandoffStatus.Waiting, row.Status);
         Assert.Equal(HandoffAskedBy.Bot, row.AskedBy);
         Assert.Equal("they want a real person", row.Reason);
-        Assert.Equal(["handoff.waiting"], _notifier.Events);
+        Assert.Empty(_notifier.Events);
     }
 
     [Fact]

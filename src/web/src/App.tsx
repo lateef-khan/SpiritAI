@@ -1,16 +1,10 @@
-import { useCallback, useState } from "react";
-
 import { Thread } from "@/components/assistant-ui/thread";
-import { ContextRail } from "@/components/ContextRail";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider, useRemoteThreadListRuntime } from "@assistant-ui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AgentCoreSidebar } from "@/features/chat/AgentCoreSidebar";
 import { AuthGate } from "@/features/auth/AuthGate";
-import { currentToken } from "@/features/auth";
-import * as Events from "@/features/handoff/events";
-import { SocketProvider } from "@/lib/realtime/SocketProvider";
 import { useAgentCoreRuntime } from "./features/threads/AgentCoreRuntime";
 import {
   createAgentCoreThreadListAdapter,
@@ -18,10 +12,6 @@ import {
 } from "./features/threads/AgentCoreThreadListAdapter";
 import { useThreadListOlderMessages } from "./features/threads/useThreadListOlderMessages";
 import { authFetch } from "@/features/auth/authFetch";
-import { useSession } from "@/features/auth/authClient";
-import { callerKeyOf, type Handoff } from "@/features/inbox/api/handoffsApi";
-import { InboxScreen } from "@/features/inbox/components/InboxScreen";
-import { useHandoffMessages } from "@/features/inbox/hooks/useHandoffMessages";
 import { ThreadContextPanel } from "@/features/unit/ThreadContextPanel";
 import {
   ResizableHandle,
@@ -33,9 +23,6 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PanelRightIcon, PrinterIcon } from "lucide-react";
-
-/** Which of the two screens the main area shows. */
-type View = "chat" | "inbox";
 
 /**
  * The route the text endpoint answers on.
@@ -52,15 +39,10 @@ const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/main
  */
 const threads = createAgentCoreThreadListAdapter();
 
-/** Who the app's socket speaks as. The hub counts staff online by it, whichever screen is up. */
-const staff = { kind: "staff", token: currentToken } as const;
-
 /**
  * Every answer the host has given, by name. Built once: the cache is the app's, not a render's.
  *
- * Nothing goes stale on a clock. The socket says when an answer changed, and `useHandoffPushes`
- * edits it in place or marks it stale; a reconnect marks everything stale. Left at the default
- * of "stale at once", every remount would ask the host again for rows a push already kept right.
+ * Nothing goes stale on a clock: an older page of a thread's history never changes once read.
  */
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: Infinity, retry: 1 } },
@@ -118,78 +100,38 @@ function ChatAndUnitSheet() {
   );
 }
 
-/**
- * The app: its providers, and the shell under them.
- *
- * The session and the runtime are read here, above `AuthGate`, so `meKey` is `"user:"` on the
- * render before the session resolves; it is only consumed once `AuthGate` lets the shell
- * through, by which point the session has resolved to the signed-in user.
- */
+/** The app: its providers, and the shell under them. */
 export function App() {
   const runtime = useRemoteThreadListRuntime({
     runtimeHook: useThreadRuntime,
     adapter: threads,
   });
-  const { data } = useSession();
-  const meKey = callerKeyOf(data?.user.id ?? "");
 
   return (
     <AuthGate>
       <QueryClientProvider client={queryClient}>
-        <SocketProvider auth={staff} events={Events.StaffEvents}>
-          <AssistantRuntimeProvider runtime={runtime}>
-            <TooltipProvider>
-              <SidebarProvider>
-                <Shell meKey={meKey} />
-              </SidebarProvider>
-            </TooltipProvider>
-          </AssistantRuntimeProvider>
-        </SocketProvider>
+        <AssistantRuntimeProvider runtime={runtime}>
+          <TooltipProvider>
+            <SidebarProvider>
+              <Shell />
+            </SidebarProvider>
+          </TooltipProvider>
+        </AssistantRuntimeProvider>
       </QueryClientProvider>
     </AuthGate>
   );
 }
 
-/**
- * The sidebar, one main pane, and the context rail.
- *
- * The rail is the one unchanging column whatever the main pane shows — an agent thread reads
- * the unit off the live conversation, a picked handoff reads the visitor and the unit off the
- * shared transcript load, and with no pick yet the rail says so. The inbox mirrors its pick up
- * here for the rail; the transcript loads once here for both the chat and the rail.
- */
-function Shell({ meKey }: { meKey: string }) {
+/** The sidebar, the chat, and the unit rail beside it. */
+function Shell() {
   const isMobile = useIsMobile();
-  const [view, setView] = useState<View>("chat");
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: "spirit-shell" });
-
-  const [selectedHandoff, setSelectedHandoff] = useState<Handoff | null>(null);
-  const handleInboxSelection = useCallback((handoff: Handoff | null) => {
-    setSelectedHandoff(handoff);
-  }, []);
-  // Gated on the inbox view: nothing selected — or nothing shown — loads nothing.
-  const transcript = useHandoffMessages(
-    view === "inbox" ? (selectedHandoff?.callId ?? null) : null,
-  );
 
   return (
     <div className="flex h-dvh w-full">
-      <AgentCoreSidebar
-        meKey={meKey}
-        inboxOpen={view === "inbox"}
-        onOpenInbox={() => setView("inbox")}
-        onOpenChat={() => setView("chat")}
-      />
+      <AgentCoreSidebar />
       {isMobile ? (
-        view === "inbox" ? (
-          <InboxScreen
-            meKey={meKey}
-            transcript={transcript}
-            onSelectionChange={handleInboxSelection}
-          />
-        ) : (
-          <ChatAndUnitSheet />
-        )
+        <ChatAndUnitSheet />
       ) : (
         <ResizablePanelGroup
           orientation="horizontal"
@@ -198,15 +140,7 @@ function Shell({ meKey }: { meKey: string }) {
           onLayoutChanged={onLayoutChanged}
         >
           <ResizablePanel id="main" minSize="24rem">
-            {view === "inbox" ? (
-              <InboxScreen
-                meKey={meKey}
-                transcript={transcript}
-                onSelectionChange={handleInboxSelection}
-              />
-            ) : (
-              <ChatThread />
-            )}
+            <ChatThread />
           </ResizablePanel>
           <ResizableHandle />
           <ResizablePanel
@@ -216,11 +150,7 @@ function Shell({ meKey }: { meKey: string }) {
             maxSize="40rem"
             groupResizeBehavior="preserve-pixel-size"
           >
-            <ContextRail
-              mode={view === "inbox" ? "handoff" : "thread"}
-              handoff={selectedHandoff}
-              history={transcript.history}
-            />
+            <ThreadContextPanel className="border-l-0" />
           </ResizablePanel>
         </ResizablePanelGroup>
       )}

@@ -17,4 +17,11 @@ public interface IContactConversationStore
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The row's contact id, or <see langword="null"/> when the conversation has no row.</returns>
     Task<long?> ContactIdOfAsync(string conversationId, CancellationToken cancellationToken);
+
+    /// <summary>Reads a contact's newest conversation on one channel.</summary>
+    /// <param name="contactId">The contact.</param>
+    /// <param name="channel">The channel the conversation started on.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>The conversation that started last, or <see langword="null"/> when there is none.</returns>
+    Task<string?> LatestAsync(long contactId, ContactChannel channel, CancellationToken cancellationToken);
 }

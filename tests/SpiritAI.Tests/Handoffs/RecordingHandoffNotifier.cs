@@ -12,12 +12,6 @@ internal sealed class RecordingHandoffNotifier : IHandoffNotifier
     /// <summary>The names alone, for a test that cares about the order and not the payloads.</summary>
     public IEnumerable<string> Events => Pushed.Select(push => push.Event);
 
-    public ValueTask WaitingAsync(HandoffSummary handoff, CancellationToken cancellationToken)
-        => Record("handoff.waiting", handoff);
-
-    public ValueTask QueueAsync(string conversationId, int position, CancellationToken cancellationToken)
-        => Record("handoff.queue", (conversationId, position));
-
     public ValueTask ClaimedAsync(string conversationId, HandoffAssignee assignee, CancellationToken cancellationToken)
         => Record("handoff.claimed", (conversationId, assignee));
 

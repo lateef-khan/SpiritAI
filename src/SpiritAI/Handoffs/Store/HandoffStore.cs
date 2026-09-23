@@ -4,7 +4,6 @@ using Npgsql;
 
 using SpiritAI.Database;
 using SpiritAI.Database.Configurations;
-using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Model;
 
 namespace SpiritAI.Handoffs.Store;
@@ -14,37 +13,16 @@ namespace SpiritAI.Handoffs.Store;
 /// </summary>
 public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) : IHandoffStore
 {
-    /// <summary>The most rows one list answers with.</summary>
-    public const int MaxListSize = 100;
-
     private readonly HandoffQueries _queries = new(database);
 
     /// <inheritdoc />
-    public async Task<HandoffTicket> AskAsync(
+    public async Task<Handoff> AskAsync(
         string conversationId, HandoffAskedBy askedBy, string? reason, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(conversationId);
 
-        var row = await _queries.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false)
+        return await _queries.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false)
             ?? await InsertWaitingAsync(conversationId, askedBy, reason, cancellationToken).ConfigureAwait(false);
-
-        var position = row.Status == HandoffStatus.Waiting
-            ? await _queries.PositionOfAsync(row, cancellationToken).ConfigureAwait(false)
-            : 0;
-
-        return new HandoffTicket(row, position);
-    }
-
-    /// <inheritdoc />
-    public async Task<int?> PositionAsync(string conversationId, CancellationToken cancellationToken)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(conversationId);
-
-        var row = await _queries.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false);
-
-        return row is { Status: HandoffStatus.Waiting }
-            ? await _queries.PositionOfAsync(row, cancellationToken).ConfigureAwait(false)
-            : null;
     }
 
     /// <inheritdoc />
@@ -61,24 +39,6 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
         ArgumentException.ThrowIfNullOrEmpty(conversationId);
 
         return _queries.LatestAsync(conversationId, cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public Task<HandoffListing> ListAsync(
-        HandoffFilter filter, int limit, HandoffCursor? after, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(filter);
-        filter.Check();
-
-        return _queries.ListAsync(filter, limit, after, cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public Task<HandoffCounts> CountAsync(HandoffView view, string staffKey, CancellationToken cancellationToken)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(staffKey);
-
-        return _queries.CountAsync(view, staffKey, cancellationToken);
     }
 
     /// <inheritdoc />

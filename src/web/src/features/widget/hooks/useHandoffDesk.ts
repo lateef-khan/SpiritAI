@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { HostRefusedError } from "@/lib/apiClient";
-import { readVisitorMemory } from "../api/visitorIdentity";
 import type { HandoffState, WidgetApi } from "../api/widgetApi";
 
 /**
@@ -22,14 +21,15 @@ export type HandoffDesk = {
   readonly state: HandoffState;
   /** Reads the state again for one call, and answers what it read. */
   refresh(callId: string): Promise<HandoffState>;
-  /** Leaves an email on the waiting row of the remembered call. */
-  leaveEmail(email: string): Promise<void>;
+  /** Leaves an email on the waiting row of one call. */
+  leaveEmail(callId: string, email: string): Promise<void>;
   /** Moves the state the way a push said it moved, without a read. The next open reads the truth. */
   apply(change: Partial<HandoffState>): void;
 };
 
 /**
- * Holds the chat's handoff state, read from the host.
+ * Holds the chat's handoff state, read from the host. The desk holds no call of its own: the
+ * runtime refreshes it for the call it opens.
  *
  * @param api The widget's routes.
  * @returns The state, and the two ways it moves.
@@ -55,31 +55,8 @@ export function useHandoffDesk(api: WidgetApi): HandoffDesk {
     [api],
   );
 
-  useEffect(() => {
-    const { callId } = readVisitorMemory();
-    if (callId === null) return;
-
-    let cancelled = false;
-
-    api
-      .handoffState(callId)
-      .then((read) => {
-        if (!cancelled) setState(read);
-      })
-      .catch(() => {
-        // Nothing to show is the right answer to any refusal here; the next send finds out.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [api]);
-
   const leaveEmail = useCallback(
-    async (email: string) => {
-      const { callId } = readVisitorMemory();
-      if (callId === null) return;
-
+    async (callId: string, email: string) => {
       await api.leaveEmail(callId, email);
       setState((held) => ({ ...held, email }));
     },

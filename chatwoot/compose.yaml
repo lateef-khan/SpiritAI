@@ -16,6 +16,9 @@ x-chatwoot: &chatwoot
     DATABASE_URL: ${DATABASE_URL:-postgres://chatwoot:chatwoot@postgres:5432/chatwoot?schema_search_path=chatwoot,public}
   volumes:
     - storage:/app/storage
+  # Lets webhooks reach Spirit running on the host in local dev.
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   depends_on:
     postgres:
       condition: service_healthy

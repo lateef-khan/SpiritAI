@@ -1,4 +1,3 @@
-using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Model;
 
 namespace SpiritAI.Handoffs.Desk;
@@ -32,7 +31,7 @@ public sealed record HandoffState(string Status, string? AssigneeName, bool Staf
         => row is null
             ? new HandoffState(Bot, null, staffOnline > 0, Email: null)
             : new HandoffState(
-                HandoffSummary.StatusOf(row.Status),
+                row.Status.ToString().ToLowerInvariant(),
                 row.Status == HandoffStatus.Human ? row.AssigneeName : null,
                 staffOnline > 0,
                 row.Status == HandoffStatus.Done ? null : row.Email);

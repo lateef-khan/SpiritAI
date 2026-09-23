@@ -9,14 +9,6 @@ namespace SpiritAI.Handoffs.Notifications;
 internal sealed class SilentHandoffNotifier : IHandoffNotifier
 {
     /// <inheritdoc />
-    public ValueTask WaitingAsync(HandoffSummary handoff, CancellationToken cancellationToken)
-        => ValueTask.CompletedTask;
-
-    /// <inheritdoc />
-    public ValueTask QueueAsync(string conversationId, int position, CancellationToken cancellationToken)
-        => ValueTask.CompletedTask;
-
-    /// <inheritdoc />
     public ValueTask ClaimedAsync(string conversationId, HandoffAssignee assignee, CancellationToken cancellationToken)
         => ValueTask.CompletedTask;
 

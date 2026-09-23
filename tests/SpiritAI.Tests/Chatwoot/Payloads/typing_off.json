@@ -1,0 +1,110 @@
+{
+  "event": "conversation_typing_off",
+  "user": {
+    "id": 2,
+    "name": "Dana Staff",
+    "email": "dana@example.com",
+    "type": "user"
+  },
+  "conversation": {
+    "additional_attributes": {},
+    "can_reply": true,
+    "channel": "Channel::Api",
+    "contact_inbox": {
+      "id": 2,
+      "contact_id": 2,
+      "inbox_id": 1,
+      "source_id": "eab2bfc3-0cda-4be8-96d0-4407a9eb1def",
+      "created_at": "2026-09-23T18:50:08.496Z",
+      "updated_at": "2026-09-23T18:50:08.496Z",
+      "hmac_verified": false,
+      "pubsub_token": "KGF4ibTA5kczjwEgq8p6FwiA"
+    },
+    "id": 2,
+    "inbox_id": 1,
+    "messages": [
+      {
+        "id": 9,
+        "content": "Hello from the AI",
+        "account_id": 2,
+        "inbox_id": 1,
+        "conversation_id": 2,
+        "message_type": 1,
+        "created_at": 1790189413,
+        "updated_at": "2026-09-23T18:50:13.627Z",
+        "private": false,
+        "status": "sent",
+        "source_id": null,
+        "content_type": "text",
+        "content_attributes": {},
+        "sender_type": "AgentBot",
+        "sender_id": 1,
+        "external_source_ids": {},
+        "additional_attributes": {},
+        "processed_message_content": "Hello from the AI",
+        "sentiment": {},
+        "conversation": {
+          "assignee_id": 2,
+          "unread_count": 1,
+          "last_activity_at": 1790189418,
+          "contact_inbox": {
+            "source_id": "eab2bfc3-0cda-4be8-96d0-4407a9eb1def"
+          }
+        },
+        "sender": {
+          "id": 1,
+          "name": "Spirit AI",
+          "avatar_url": "",
+          "type": "agent_bot"
+        }
+      }
+    ],
+    "labels": [],
+    "meta": {
+      "sender": {
+        "additional_attributes": {},
+        "custom_attributes": {},
+        "email": "visitor@example.com",
+        "id": 2,
+        "identifier": "contact-1",
+        "name": "E2E Visitor",
+        "phone_number": null,
+        "thumbnail": "",
+        "blocked": false,
+        "type": "contact"
+      },
+      "assignee": {
+        "id": 2,
+        "name": "Dana Staff",
+        "available_name": "Dana Staff",
+        "avatar_url": "",
+        "type": "user",
+        "availability_status": null,
+        "thumbnail": ""
+      },
+      "assignee_type": "User",
+      "team": null,
+      "hmac_verified": false
+    },
+    "status": "open",
+    "custom_attributes": {
+      "spirit_conversation_id": "conv_1"
+    },
+    "snoozed_until": null,
+    "unread_count": 1,
+    "first_reply_created_at": null,
+    "priority": null,
+    "waiting_since": 1790189415,
+    "agent_last_seen_at": 0,
+    "contact_last_seen_at": 0,
+    "last_activity_at": 1790189418,
+    "timestamp": 1790189418,
+    "created_at": 1790189408,
+    "updated_at": 1790189418.264962,
+    "account": {
+      "id": 2,
+      "name": "Spirit"
+    }
+  },
+  "is_private": false
+}

@@ -4,18 +4,16 @@ import { HubConnectionBuilder, HubConnectionState, LogLevel } from "@microsoft/s
  * The browser's end of the host's one socket, `/v1/realtime/hub`, with no React and no feature
  * in sight.
  *
- * The hub admits two kinds of caller. A member of staff sends the Neon token; a browser socket
- * cannot set a header, so it goes as `?access_token=`, which the host reads on this path alone.
- * A visitor names the chat and sends their key in the query string, and the hub checks they own
- * it. Once in, both hear named events and may signal a group the hub lets them address.
+ * The hub admits visitors: a visitor names the chat and sends their key in the query string, and
+ * the hub checks they own it. Once in, they hear named events and may signal a group the hub
+ * lets them address. Staff work in Chatwoot and never connect.
  *
  * What arrives is a hint. The truth is REST, and a feature that owns a socket reads it again on
  * every open — so a push lost while the socket was down is late, never missed.
  *
  * The hub keeps no timer of its own: the client says it is still here every
- * {@link HeartbeatSeconds}, and a socket silent for three of those is swept. Presence is what the
- * host counts staff by and what decides whether a reply also goes out by mail, so the heartbeat is
- * not optional.
+ * {@link HeartbeatSeconds}, and a socket silent for three of those is swept. Presence is what
+ * decides whether a staff reply also goes out by mail, so the heartbeat is not optional.
  */
 
 /** Where the host maps the hub. */
@@ -27,10 +25,8 @@ export const HeartbeatSeconds = 30;
 /** How long a start that failed waits before it is tried again. */
 const RetrySeconds = 5;
 
-/** Who the socket speaks as. */
-export type SocketAuth =
-  | { readonly kind: "staff"; readonly token: () => Promise<string | null> }
-  | { readonly kind: "visitor"; readonly callId: string; readonly visitorKey: string };
+/** Who the socket speaks as: a visitor, naming their chat. Staff work in Chatwoot and never connect. */
+export type SocketAuth = { readonly kind: "visitor"; readonly callId: string; readonly visitorKey: string };
 
 /**
  * One socket's word to a group, as the hub relays it under the `signal` event: the sender is
@@ -75,18 +71,13 @@ export type Socket = {
 
 /** Builds the real connection to the hub for one caller. */
 function connectTo(auth: SocketAuth): HubLike {
-  const builder = new HubConnectionBuilder();
+  const query = new URLSearchParams({ call: auth.callId, visitor: auth.visitorKey });
 
-  if (auth.kind === "staff") {
-    builder.withUrl(HubPath, {
-      accessTokenFactory: async () => (await auth.token()) ?? "",
-    });
-  } else {
-    const query = new URLSearchParams({ call: auth.callId, visitor: auth.visitorKey });
-    builder.withUrl(`${HubPath}?${query}`);
-  }
-
-  return builder.withAutomaticReconnect().configureLogging(LogLevel.Warning).build();
+  return new HubConnectionBuilder()
+    .withUrl(`${HubPath}?${query}`)
+    .withAutomaticReconnect()
+    .configureLogging(LogLevel.Warning)
+    .build();
 }
 
 /**

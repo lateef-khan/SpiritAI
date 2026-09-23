@@ -84,6 +84,29 @@ public sealed class PublicThreadEndpointTests
     }
 
     [Fact]
+    public async Task TheLatestThreadIsTheVisitorsNewestChat()
+    {
+        await using var world = await World.StartAsync();
+        var older = await (await world.Visitor.PostAsync(Threads)).ReadAsync<ThreadCreated>();
+        var newer = await (await world.Visitor.PostAsync(Threads)).ReadAsync<ThreadCreated>();
+
+        var latest = await world.Visitor.ReadAsync<LatestPublicThread>($"{Threads}/latest");
+
+        Assert.NotEqual(older.RemoteId, newer.RemoteId);
+        Assert.Equal(newer.RemoteId, latest.RemoteId);
+    }
+
+    [Fact]
+    public async Task AKeyWithNoChatHasNoLatestThread()
+    {
+        await using var world = await World.StartAsync();
+
+        var response = await world.Visitor.GetAsync($"{Threads}/latest");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task TheHistoryIsTheVisitorsToRead()
     {
         await using var world = await World.StartAsync();

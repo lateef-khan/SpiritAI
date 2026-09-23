@@ -6,7 +6,7 @@ using SpiritAI.Threads;
 namespace SpiritAI.PublicChat;
 
 /// <summary>
-/// The widget's own thread, as REST: made before the first turn, found again after a reload.
+/// The widget's own thread, as REST: made before the first turn, found again on the next visit.
 /// </summary>
 public static class PublicThreadEndpoints
 {
@@ -28,6 +28,11 @@ public static class PublicThreadEndpoints
         endpoints.MapPost(Pattern, CreateAsync)
             .Describe("createPublicThread")
             .Produces<ThreadCreated>(StatusCodes.Status201Created);
+
+        endpoints.MapGet($"{Pattern}/latest", LatestAsync)
+            .Describe("getLatestPublicThread")
+            .Produces<LatestPublicThread>()
+            .Produces(StatusCodes.Status404NotFound);
 
         endpoints.MapGet($"{One}/messages", HistoryAsync)
             .Describe("getPublicThreadMessages")
@@ -94,6 +99,26 @@ public static class PublicThreadEndpoints
         });
 
     /// <summary>One window of a thread's words, newest first, in the shape a reloaded widget restores it from.</summary>
+    /// <summary>
+    /// The visitor's newest chat, which the widget opens again on a new visit. A key this host has
+    /// never seen reads as no chat, and makes no contact.
+    /// </summary>
+    private static Task<IResult> LatestAsync(
+        HttpContext http,
+        IContactResolver contacts,
+        IContactConversationStore contactConversations,
+        CancellationToken cancellationToken)
+        => ForVisitorAsync(http, async key =>
+        {
+            if (await contacts.FindAsync(key, cancellationToken).ConfigureAwait(false) is not { } contactId
+                || await contactConversations.LatestAsync(contactId, ContactChannel.Chat, cancellationToken).ConfigureAwait(false) is not { } conversationId)
+            {
+                return TypedResults.NotFound();
+            }
+
+            return TypedResults.Ok(new LatestPublicThread(conversationId));
+        });
+
     private static Task<IResult> HistoryAsync(
         HttpContext http,
         IConversations conversations,

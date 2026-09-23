@@ -57,6 +57,15 @@ public sealed class ContactConversationStore(SpiritDbContext database, TimeProvi
             .SingleOrDefaultAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
+    public Task<string?> LatestAsync(long contactId, ContactChannel channel, CancellationToken cancellationToken)
+        => database.ContactConversations
+            .AsNoTracking()
+            .Where(c => c.ContactId == contactId && c.Channel == channel)
+            .OrderByDescending(c => c.StartedAt)
+            .Select(c => c.ConversationId)
+            .FirstOrDefaultAsync(cancellationToken);
+
     /// <summary>Whether the database refused a second row for one conversation.</summary>
     private static bool IsAlreadyThere(DbUpdateException exception)
         => exception.InnerException is PostgresException { ConstraintName: ContactConversationConfiguration.PrimaryKeyName };

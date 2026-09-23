@@ -4,7 +4,16 @@
 
 name: spirit-chatwoot-prod
 
+# Docker keeps each container's stdout in a file on the host. Without a cap it grows forever.
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
 x-production: &production
+  <<: *logging
   environment:
     DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in chatwoot/.env for production}
     ACTIVE_STORAGE_SERVICE: s3_compatible
@@ -21,6 +30,7 @@ services:
   web: *production
   worker: *production
   redis:
+    <<: *logging
     command: [ "sh", "-c", "redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes --maxmemory 512mb --maxmemory-policy noeviction" ]
     volumes:
       - redis:/data
