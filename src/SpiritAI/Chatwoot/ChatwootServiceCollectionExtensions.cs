@@ -1,16 +1,16 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
+using SpiritAI.RealTime;
+
 namespace SpiritAI.Chatwoot;
 
-/// <summary>Registers the Chatwoot webhook and the copy of widget chats into Chatwoot.</summary>
+/// <summary>Registers the Chatwoot webhook, the copy of widget chats into Chatwoot, and the visitor's typing.</summary>
 public static class ChatwootServiceCollectionExtensions
 {
     /// <summary>
     /// Adds the <see cref="ChatwootOptions"/>, the webhook's event queue, worker, and handler, and
-    /// the copy's client, queue, and worker. Add it after <c>AddSpiritCache</c>, whose cache the
-    /// webhook dedupes with, <c>AddSpiritDatabase</c> and <c>AddContacts</c>, which the copy reads,
-    /// and <c>AddHandoffs</c>, <c>AddHandoffMail</c>, and <c>AddRealTime</c>, whose ports the
-    /// handler uses.
+    /// the copy's client, queue, and worker, and the typing's queue, which hears the socket, and its
+    /// worker.
     /// </summary>
     /// <param name="services">The host's services.</param>
     /// <param name="configuration">Where <see cref="ChatwootOptions.SectionName"/> is read from.</param>
@@ -39,6 +39,14 @@ public static class ChatwootServiceCollectionExtensions
         services.AddScoped<ChatwootCopy>();
 
         services.AddHostedService<ChatwootCopyWorker>();
+
+        services.AddSingleton<ChatwootTypingQueue>();
+
+        services.AddSingleton<IRealTimeSignalListener>(provider => provider.GetRequiredService<ChatwootTypingQueue>());
+
+        services.AddScoped<ChatwootTypingSender>();
+
+        services.AddHostedService<ChatwootTypingWorker>();
 
         return services;
     }

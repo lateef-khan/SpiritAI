@@ -18,7 +18,7 @@ namespace SpiritAI.Tests.RealTime;
 
 /// <summary>
 /// The hub on a test server: a real token check, the real hub and publisher, one fake admission,
-/// and a fake presence store. Clients connect over the test server's own WebSocket, never a port.
+/// a fake presence store, and a listener that records every relayed signal. Clients connect over the test server's own WebSocket, never a port.
 /// </summary>
 internal sealed class SpiritHubWorld : IAsyncDisposable
 {
@@ -28,12 +28,13 @@ internal sealed class SpiritHubWorld : IAsyncDisposable
     private readonly NeonAuthTestKit _kit;
     private readonly List<HubConnection> _connections = [];
 
-    private SpiritHubWorld(IHost host, NeonAuthTestKit kit, FakeAdmission admission, FakePresenceStore presence, TestTimeProvider clock)
+    private SpiritHubWorld(IHost host, NeonAuthTestKit kit, FakeAdmission admission, FakePresenceStore presence, RecordingSignalListener listener, TestTimeProvider clock)
     {
         _host = host;
         _kit = kit;
         Admission = admission;
         Presence = presence;
+        Listener = listener;
         Clock = clock;
         Publisher = host.Services.GetRequiredService<IRealTimePublisher>();
     }
@@ -41,6 +42,8 @@ internal sealed class SpiritHubWorld : IAsyncDisposable
     public FakeAdmission Admission { get; }
 
     public FakePresenceStore Presence { get; }
+
+    public RecordingSignalListener Listener { get; }
 
     public TestTimeProvider Clock { get; }
 
@@ -53,6 +56,7 @@ internal sealed class SpiritHubWorld : IAsyncDisposable
         TestTimeProvider clock = new(Start);
         FakeAdmission admission = new();
         FakePresenceStore presence = new(clock, TimeSpan.FromSeconds(90));
+        RecordingSignalListener listener = new();
 
         var host = await ThreadTestHost.StartAsync(
             kit,
@@ -62,6 +66,7 @@ internal sealed class SpiritHubWorld : IAsyncDisposable
                 services.AddSingleton<TimeProvider>(clock);
                 services.AddSingleton<IRealTimeAdmission>(admission);
                 services.AddSingleton<IPresenceStore>(presence);
+                services.AddSingleton<IRealTimeSignalListener>(listener);
             },
             app =>
             {
@@ -75,7 +80,7 @@ internal sealed class SpiritHubWorld : IAsyncDisposable
                 auth.QueryTokenPathPrefixes = [SpiritHub.Pattern];
             });
 
-        return new SpiritHubWorld(host, kit, admission, presence, clock);
+        return new SpiritHubWorld(host, kit, admission, presence, listener, clock);
     }
 
     /// <summary>A socket the fake admission knows by name.</summary>

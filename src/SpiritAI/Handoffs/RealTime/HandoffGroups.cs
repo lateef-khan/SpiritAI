@@ -27,4 +27,10 @@ public static class HandoffGroups
     /// <returns><see langword="true"/> for any <see cref="ForConversation"/> group.</returns>
     public static bool IsConversation(string group)
         => group.Length > ConversationPrefix.Length && group.StartsWith(ConversationPrefix, StringComparison.Ordinal);
+
+    /// <summary>The chat a <see cref="ForConversation"/> group is for.</summary>
+    /// <param name="group">The group's name.</param>
+    /// <returns>The chat, or <see langword="null"/> when the group is not one chat's.</returns>
+    public static string? ConversationOf(string group)
+        => IsConversation(group) ? group[ConversationPrefix.Length..] : null;
 }

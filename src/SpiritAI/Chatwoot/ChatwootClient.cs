@@ -7,8 +7,7 @@ using Microsoft.Extensions.Options;
 namespace SpiritAI.Chatwoot;
 
 /// <summary>
-/// The Chatwoot calls Spirit makes. Everything goes with the bot token, except the contact: a bot
-/// may not make contacts, so that goes through the inbox's public API.
+/// The Chatwoot calls Spirit makes.
 /// </summary>
 public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> options)
 {
@@ -106,6 +105,28 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     {
         using var response = await SendAsync(
                 HttpMethod.Post, $"{ConversationUrl(conversationId)}/toggle_status", new JsonObject { ["status"] = "open" }, cancellationToken)
+            .ConfigureAwait(false);
+
+        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Tells staff that the visitor is typing, or stopped. It goes through the inbox's public API
+    /// as the contact: the bot token cannot type as the contact. Chatwoot's dashboard drops
+    /// "typing" by itself after 30 seconds.
+    /// </summary>
+    /// <param name="sourceId">The contact's key, from <see cref="CreateContactAsync"/>.</param>
+    /// <param name="conversationId">The conversation's display id.</param>
+    /// <param name="on"><see langword="true"/> for typing, <see langword="false"/> for stopped.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    public async Task ToggleTypingAsync(string sourceId, int conversationId, bool on, CancellationToken cancellationToken)
+    {
+        var url = string.Create(
+            CultureInfo.InvariantCulture,
+            $"{Settings.BaseUrl.TrimEnd('/')}/public/api/v1/inboxes/{Settings.InboxIdentifier}/contacts/{Uri.EscapeDataString(sourceId)}/conversations/{conversationId}/toggle_typing");
+
+        using var response = await http
+            .PostAsJsonAsync(url, new JsonObject { ["typing_status"] = on ? "on" : "off" }, cancellationToken)
             .ConfigureAwait(false);
 
         await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);

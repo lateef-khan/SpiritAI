@@ -16,12 +16,13 @@ namespace SpiritAI.RealTime;
 /// <remarks>
 /// The hub changes no state. Every state change is REST, and the pushes that follow one go out
 /// through <see cref="IRealTimePublisher"/>; the hub only relays: a heartbeat to say the socket is
-/// still here, and a signal from one socket to a group it is allowed to address. The socket is a
-/// hint; REST is the truth.
+/// still here, and a signal from one socket to a group it is allowed to address, which every
+/// <see cref="IRealTimeSignalListener"/> hears too. The socket is a hint; REST is the truth.
 /// </remarks>
 public sealed class SpiritHub(
     IEnumerable<IRealTimeAdmission> admissions,
     IPresenceStore presence,
+    IEnumerable<IRealTimeSignalListener> listeners,
     ILogger<SpiritHub> logger) : Hub
 {
     /// <summary>Where the hub is mapped.</summary>
@@ -100,6 +101,11 @@ public sealed class SpiritHub(
         }
 
         var signal = new RealTimeSignal(new RealTimeSender(caller.Key, caller.Kind), group, name, payload);
+
+        foreach (var listener in listeners)
+        {
+            listener.Heard(caller, signal);
+        }
 
         return Clients.Group(group).SendAsync(RealTimeEvents.Signal, signal, Context.ConnectionAborted);
     }

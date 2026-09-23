@@ -78,6 +78,24 @@ public sealed class SpiritHubTests
     }
 
     [Fact]
+    public async Task ListenersHearAnAllowedSignalOnly()
+    {
+        await using var world = await SpiritHubWorld.StartAsync();
+        var alpha = world.Connect("alpha");
+        Assert.True(await SpiritHubWorld.AdmittedAsync(alpha));
+
+        await alpha.InvokeAsync(nameof(SpiritHub.Signal), FakeAdmission.RoomA, "typing", new { on = true }, Cancel);
+        await alpha.InvokeAsync(nameof(SpiritHub.Signal), FakeAdmission.RoomB, "typing", new { on = true }, Cancel);
+
+        var (caller, signal) = Assert.Single(world.Listener.Heard);
+        Assert.Equal(FakeAdmission.AlphaKey, caller.Key);
+        Assert.Equal([FakeAdmission.RoomA], caller.Groups);
+        Assert.Equal(FakeAdmission.RoomB, signal.Group);
+        Assert.Equal("typing", signal.Name);
+        Assert.True(signal.Payload.GetProperty("on").GetBoolean());
+    }
+
+    [Fact]
     public async Task HeartbeatTouchesPresence()
     {
         await using var world = await SpiritHubWorld.StartAsync();

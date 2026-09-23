@@ -34,14 +34,43 @@ public sealed class ChatwootClientTests
         Assert.Equal("""{"name":"Visitor 7"}""", request.Body);
     }
 
-    /// <summary>Keeps each request and answers every one with the same saved Chatwoot reply.</summary>
-    private sealed class ReplayingHandler(string payload) : HttpMessageHandler
+    [Theory]
+    [InlineData(true, "on")]
+    [InlineData(false, "off")]
+    public async Task TypingGoesAsTheContactThroughThePublicApi(bool on, string status)
+    {
+        var wire = new ReplayingHandler(payload: null);
+        var client = new ChatwootClient(new HttpClient(wire), Options.Create(new ChatwootOptions
+        {
+            BaseUrl = "http://chatwoot.test/",
+            InboxIdentifier = "inbox-key",
+        }));
+
+        await client.ToggleTypingAsync("f33a4e94-b79d-4b64-986f-c3076d1c0109", 42, on, TestContext.Current.CancellationToken);
+
+        var request = Assert.Single(wire.Requests);
+        Assert.Equal(
+            "http://chatwoot.test/public/api/v1/inboxes/inbox-key/contacts/f33a4e94-b79d-4b64-986f-c3076d1c0109/conversations/42/toggle_typing",
+            request.Url);
+        Assert.Equal($$"""{"typing_status":"{{status}}"}""", request.Body);
+    }
+
+    /// <summary>
+    /// Keeps each request and answers every one with the same saved Chatwoot reply, or with an
+    /// empty 200 when there is none.
+    /// </summary>
+    private sealed class ReplayingHandler(string? payload) : HttpMessageHandler
     {
         public List<(string Url, string Body)> Requests { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add((request.RequestUri!.ToString(), await request.Content!.ReadAsStringAsync(cancellationToken)));
+
+            if (payload is null)
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
 
             var reply = await File.ReadAllTextAsync(
                 Path.Combine(AppContext.BaseDirectory, "Chatwoot", "Payloads", payload + ".json"),

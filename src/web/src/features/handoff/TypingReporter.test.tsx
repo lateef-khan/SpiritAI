@@ -8,11 +8,10 @@ import {
 import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TypingReporter, TypingRepeatMs } from "./TypingReporter";
+import { TypingReporter } from "./TypingReporter";
 
 /**
- * The reporter, one test per edge: "typing" when the box fills, again while it stays full,
- * "stopped" when it empties.
+ * The reporter speaks on each edge only: "typing" when the box fills, "stopped" when it empties.
  */
 function Harness({
   sayTyping,
@@ -41,22 +40,18 @@ beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
 describe("TypingReporter", () => {
-  it("says typing when the box fills, repeats while it stays full, and says stopped when it empties", () => {
+  it("says typing once when the box fills and stopped once when it empties", () => {
     const said: boolean[] = [];
     let runtime: AssistantRuntime | undefined;
     render(<Harness sayTyping={(on) => said.push(on)} onRuntime={(r) => (runtime = r)} />);
-    said.length = 0;
+    expect(said).toEqual([]);
 
     act(() => runtime!.thread.composer.setText("hel"));
-    expect(said).toEqual([true]);
-
     act(() => runtime!.thread.composer.setText("hello"));
+    act(() => vi.advanceTimersByTime(60_000));
     expect(said).toEqual([true]);
-
-    act(() => vi.advanceTimersByTime(TypingRepeatMs + 1));
-    expect(said).toEqual([true, true]);
 
     act(() => runtime!.thread.composer.setText(""));
-    expect(said).toEqual([true, true, false]);
+    expect(said).toEqual([true, false]);
   });
 });
