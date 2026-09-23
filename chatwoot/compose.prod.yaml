@@ -1,0 +1,35 @@
+# Production layer on top of compose.yaml. Use it through `just prod-*`, never alone.
+# Differences from local dev: the database and the S3 bucket are required, redis is kept on
+# disk with a memory cap, and there is no local postgres or mailpit.
+
+name: spirit-chatwoot-prod
+
+x-production: &production
+  environment:
+    DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in chatwoot/.env for production}
+    ACTIVE_STORAGE_SERVICE: s3_compatible
+    STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:?STORAGE_ENDPOINT must be set in chatwoot/.env for production}
+    STORAGE_REGION: ${STORAGE_REGION:?STORAGE_REGION must be set in chatwoot/.env for production}
+    STORAGE_BUCKET_NAME: ${STORAGE_BUCKET_NAME:?STORAGE_BUCKET_NAME must be set in chatwoot/.env for production}
+    STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:?STORAGE_ACCESS_KEY_ID must be set in chatwoot/.env for production}
+    STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:?STORAGE_SECRET_ACCESS_KEY must be set in chatwoot/.env for production}
+    AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+    AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+
+services:
+  migrate: *production
+  web: *production
+  worker: *production
+  redis:
+    command: [ "sh", "-c", "redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes --maxmemory 512mb --maxmemory-policy noeviction" ]
+    volumes:
+      - redis:/data
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+  mailpit:
+    profiles: [ never ]
+
+volumes:
+  redis:

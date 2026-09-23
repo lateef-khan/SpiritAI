@@ -29,6 +29,9 @@ local_config := "config/spirit.local.yaml"
 
 set dotenv-load
 
+# Chatwoot recipes: `just chatwoot <recipe>`. See chatwoot/README.md.
+mod chatwoot
+
 # Who the seed makes staff. Must be the email you sign in with; override in .env if needed.
 staff_email := env_var_or_default("SPIRIT_STAFF_EMAIL", `git config user.email`)
 staff_name := env_var_or_default("SPIRIT_STAFF_NAME", `git config user.name`)

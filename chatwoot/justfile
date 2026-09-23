@@ -1,0 +1,83 @@
+# Chatwoot recipes. From the repo root: `just chatwoot <recipe>`. On the server: `just <recipe>`
+# inside this folder. Recipes run here either way.
+#
+# Local dev and production use different compose projects, so `down` can never touch the
+# production volumes.
+
+dev := "docker compose --file compose.yaml"
+prod := "docker compose --file compose.yaml --file compose.prod.yaml"
+
+# List the recipes.
+default:
+    @just --list
+
+# Make .env from .env.example, with a fresh SECRET_KEY_BASE. Never overwrites.
+env:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -f .env ]; then
+        echo "chatwoot/.env already exists; leaving it alone."
+        exit 0
+    fi
+    sed "s|^SECRET_KEY_BASE=.*|SECRET_KEY_BASE=$(openssl rand -hex 64)|" .env.example > .env
+    echo "Wrote chatwoot/.env."
+
+# Local dev: start and wait. With DATABASE_URL empty, a throwaway postgres starts too.
+up: env
+    #!/usr/bin/env bash
+    set -euo pipefail
+    profile=()
+    if ! grep -qE '^DATABASE_URL=.+' .env; then
+        profile=(--profile localdb)
+        echo "DATABASE_URL is empty: starting a throwaway local postgres."
+    fi
+    {{dev}} "${profile[@]}" up --detach --build
+    just _wait
+
+# Local dev: stop and delete everything local (postgres, redis, uploads). A remote database is untouched.
+down:
+    {{dev}} --profile localdb down --volumes
+
+# Local dev: follow the logs.
+logs:
+    {{dev}} --profile localdb logs --follow --tail=100
+
+# Local dev: open a Rails console.
+console:
+    {{dev}} exec web bundle exec rails console
+
+# Production: first start, or start after prod-down. Needs DATABASE_URL in .env.
+prod-up:
+    {{prod}} up --detach --build
+    just _wait
+
+# Production: rebuild, migrate, and restart web and worker only. Redis keeps running.
+prod-update:
+    {{prod}} up --detach --build migrate web worker
+    just _wait
+
+# Production: stop everything. Keeps the redis and upload volumes.
+prod-down:
+    {{prod}} down
+
+# Production: follow the logs.
+prod-logs:
+    {{prod}} logs --follow --tail=100
+
+# Production: open a Rails console.
+prod-console:
+    {{prod}} exec web bundle exec rails console
+
+_wait:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    port="$(grep -oP '^CHATWOOT_PORT=\K.+' .env || echo 53000)"
+    for _ in $(seq 1 180); do
+        if curl --silent --fail "http://localhost:$port/api" >/dev/null 2>&1; then
+            echo "Chatwoot is ready on http://localhost:$port."
+            exit 0
+        fi
+        sleep 1
+    done
+    echo "Chatwoot never answered. Try the logs recipe." >&2
+    exit 1
