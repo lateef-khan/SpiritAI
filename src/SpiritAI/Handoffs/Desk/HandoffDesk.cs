@@ -63,7 +63,7 @@ public sealed class HandoffDesk(
         return new HandoffAsked(row, Created: !wasOpen);
     }
 
-    /// <summary>Records where a reply goes when the visitor is not there to read it.</summary>
+    /// <summary>Records the email the visitor left on the open handoff.</summary>
     /// <param name="conversationId">The chat.</param>
     /// <param name="email">The visitor's address.</param>
     /// <param name="cancellationToken">Cancels the write.</param>

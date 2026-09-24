@@ -37,6 +37,9 @@ spirit_urls := if docker_host_ip == "" { "http://localhost:5299" } else { "http:
 # Chatwoot recipes: `just chatwoot <recipe>`. See chatwoot/README.md.
 mod chatwoot
 
+# Cloudflare Tunnel recipes: `just cloudflared <recipe>`. See cloudflared/README.md.
+mod cloudflared
+
 # List the recipes.
 default:
     @just --list

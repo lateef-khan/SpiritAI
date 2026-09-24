@@ -24,7 +24,7 @@ public sealed class RequestHumanTool(HandoffDesk desk)
     /// <summary>Asks for a person on the chat of the turn under way.</summary>
     /// <param name="conversationId">The chat, as AgentCore names it to the binding.</param>
     /// <param name="reason">Why, in the person's own words.</param>
-    /// <param name="email">Where a reply goes when they are not there to read it, when they gave one.</param>
+    /// <param name="email">The email they gave, for staff to read in Chatwoot, when they gave one.</param>
     /// <param name="cancellationToken">Cancels the ask.</param>
     /// <returns>One sentence for the model to pass on.</returns>
     public async Task<RequestHumanAnswer> AskAsync(string conversationId, string reason, string? email, CancellationToken cancellationToken)

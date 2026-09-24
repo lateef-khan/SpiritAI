@@ -32,7 +32,7 @@ public sealed class ChatwootEventFilterTests
     {
         var e = Read("staff_message");
 
-        Assert.Equal(("conv_1", "Hi, this is staff", "Dana Staff", "visitor@example.com"), (e.SpiritConversationId, e.Content, e.ActorName, e.ContactEmail));
+        Assert.Equal(("conv_1", "Hi, this is staff", "Dana Staff"), (e.SpiritConversationId, e.Content, e.ActorName));
     }
 
     [Fact]

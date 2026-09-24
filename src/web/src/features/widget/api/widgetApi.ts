@@ -37,7 +37,7 @@ export type WidgetApi = {
   history: ReadHistory;
   /** Where the chat stands: the truth after a reload or a reconnect. */
   handoffState(callId: string): Promise<HandoffState>;
-  /** Leaves an email for a reply the visitor is not there to read. */
+  /** Leaves the visitor's email on the waiting handoff. */
   leaveEmail(callId: string, email: string): Promise<void>;
   /** Puts the visitor's words in a chat that is waiting for, or with, a person. */
   say(callId: string, text: string): Promise<WireHandoffMessage>;

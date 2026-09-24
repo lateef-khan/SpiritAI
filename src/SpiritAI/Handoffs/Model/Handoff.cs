@@ -32,7 +32,7 @@ public sealed class Handoff
     /// <summary>When the chat was taken.</summary>
     public DateTimeOffset? ClaimedAt { get; set; }
 
-    /// <summary>Where a reply goes when the visitor is not there to read it.</summary>
+    /// <summary>The email the visitor left, for staff to read in Chatwoot.</summary>
     public string? Email { get; set; }
 
     /// <summary>When the chat was handed back to the bot.</summary>

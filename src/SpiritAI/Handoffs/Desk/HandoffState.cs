@@ -15,8 +15,8 @@ namespace SpiritAI.Handoffs.Desk;
 /// are behind the desk is nothing a stranger's page should be told.
 /// </param>
 /// <param name="Email">
-/// Where a reply goes when the visitor is away, once they left one. A reloaded widget reads it to
-/// know it need not ask again.
+/// The email the visitor left, once they left one. A reloaded widget reads it to know it need not
+/// ask again.
 /// </param>
 public sealed record HandoffState(string Status, string? AssigneeName, bool StaffOnline, string? Email)
 {

@@ -1,7 +1,7 @@
 namespace SpiritAI.Handoffs.Visitors;
 
 /// <summary>
-/// Where a reply goes when the visitor is not there to read it.
+/// An email the visitor leaves on a chat that waits for a person.
 /// </summary>
 /// <param name="Email">The visitor's address. One that is not an address is refused.</param>
 public sealed record VisitorEmailRequest(string Email);

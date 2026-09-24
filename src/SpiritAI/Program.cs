@@ -5,7 +5,6 @@ using SpiritAI.Chatwoot;
 using SpiritAI.Contacts;
 using SpiritAI.Database;
 using SpiritAI.Handoffs;
-using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.RealTime;
 using SpiritAI.Handoffs.Visitors;
 using SpiritAI.Hosting;
@@ -33,8 +32,6 @@ builder.Services.AddRealTime(builder.Configuration);
 builder.Services.AddContacts();
 
 builder.Services.AddHandoffs();
-
-builder.Services.AddHandoffMail(builder.Configuration);
 
 builder.Services.AddHandoffRealTime();
 

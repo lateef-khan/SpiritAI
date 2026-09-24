@@ -14,7 +14,6 @@ using Microsoft.Extensions.Hosting;
 using SpiritAI.Chatwoot;
 using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Desk;
-using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Notifications;
 using SpiritAI.Handoffs.Store;
 using SpiritAI.Handoffs.Visitors;
@@ -182,12 +181,11 @@ public sealed class OpenApiDocumentTests
 
                     // The visitor's handoff routes, present so the route builder reads them as
                     // injected services. Nothing calls them: no route is ever invoked here, so a
-                    // fake stands in for the real store, mailer, notifier, and staff count.
+                    // fake stands in for the real store, notifier, and staff count.
                     services.AddSingleton(TimeProvider.System);
                     services.AddSingleton<IHandoffStore>(new FakeHandoffStore(TimeProvider.System));
                     services.AddSingleton<IHandoffNotifier>(new RecordingHandoffNotifier());
                     services.AddSingleton<IStaffPresence>(new FakeStaffPresence());
-                    services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());
                     services.AddScoped<HandoffDesk>();
                     services.AddOptions();
                     services.AddSingleton<ChatwootCopyQueue>();

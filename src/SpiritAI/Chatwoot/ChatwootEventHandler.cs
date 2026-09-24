@@ -5,14 +5,11 @@ using AgentCore.Application.Ports;
 using Microsoft.Extensions.AI;
 
 using SpiritAI.Handoffs.Contracts;
-using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Notifications;
 using SpiritAI.Handoffs.RealTime;
 using SpiritAI.Handoffs.Store;
 using SpiritAI.Handoffs.Transcript;
 using SpiritAI.RealTime;
-using SpiritAI.RealTime.Presence;
-using SpiritAI.Threads;
 
 namespace SpiritAI.Chatwoot;
 
@@ -26,10 +23,7 @@ public sealed class ChatwootEventHandler(
     IHandoffStore handoffs,
     IHandoffNotifier notifier,
     IRealTimePublisher publisher,
-    IPresenceStore presence,
-    IHandoffMailer mailer,
-    TimeProvider clock,
-    ILogger<ChatwootEventHandler> logger)
+    TimeProvider clock)
 {
     /// <summary>The team a staff reply is signed with, under the name.</summary>
     public const string StaffDetail = "Support";
@@ -98,14 +92,6 @@ public sealed class ChatwootEventHandler(
         await notifier.MessageCreatedAsync(
             new HandoffMessage(conversationId, row.MessageId, StaffRole, text, speaker, at),
             cancellationToken).ConfigureAwait(false);
-
-        var open = await handoffs.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false);
-
-        if ((open?.Email ?? e.ContactEmail) is { } email
-            && !await VisitorIsHereAsync(conversationId, cancellationToken).ConfigureAwait(false))
-        {
-            await MailAsync(new HandoffReplyMail(email, conversationId, name, text), cancellationToken).ConfigureAwait(false);
-        }
     }
 
     private async Task AssignedAsync(string conversationId, string name, CancellationToken cancellationToken)
@@ -133,26 +119,4 @@ public sealed class ChatwootEventHandler(
 
     /// <summary>The caller key a Chatwoot member of staff is filed under. They never sign in to Spirit.</summary>
     private static string StaffKey(string who) => "chatwoot:" + who;
-
-    /// <summary>Whether the chat's owner has a socket open right now. A chat with no owner counts as away.</summary>
-    private async Task<bool> VisitorIsHereAsync(string conversationId, CancellationToken cancellationToken)
-    {
-        var conversation = await conversations.GetAsync(conversationId, cancellationToken).ConfigureAwait(false);
-
-        return ThreadEnvelope.OwnerOf(conversation?.Custom) is { } owner
-            && await presence.IsOnlineAsync(owner, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>Mail is the bridge to a visitor who left; the words are already in the chat, so a miss costs a log line.</summary>
-    private async Task MailAsync(HandoffReplyMail mail, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await mailer.SendReplyAsync(mail, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception failure) when (failure is not OperationCanceledException)
-        {
-            logger.LogError(failure, "The reply on conversation {ConversationId} was not mailed.", mail.ConversationId);
-        }
-    }
 }

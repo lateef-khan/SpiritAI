@@ -12,7 +12,6 @@ namespace SpiritAI.Chatwoot;
 /// <param name="ChatwootConversationId">The Chatwoot conversation's display id, which its API routes use.</param>
 /// <param name="Status">The Chatwoot conversation's status: <c>open</c>, <c>pending</c>, <c>resolved</c>, or <c>snoozed</c>.</param>
 /// <param name="AssigneeName">The person the conversation is assigned to, or <see langword="null"/> when nobody is.</param>
-/// <param name="ContactEmail">The contact's email, or <see langword="null"/> when Chatwoot has none.</param>
 /// <param name="MessageType">A message event's <c>message_type</c>: <c>incoming</c>, <c>outgoing</c>, <c>activity</c>, or <c>template</c>.</param>
 /// <param name="IsPrivate">Whether a message is a private note, or a typing event is in the note box.</param>
 /// <param name="Content">A message event's text.</param>
@@ -25,7 +24,6 @@ public sealed record ChatwootEvent(
     int? ChatwootConversationId,
     string? Status,
     string? AssigneeName,
-    string? ContactEmail,
     string? MessageType,
     bool IsPrivate,
     string? Content,
@@ -65,7 +63,6 @@ public sealed record ChatwootEvent(
             Number(conversation, "id") is { } id ? (int)id : null,
             Text(conversation, "status"),
             assigneeIsBot ? null : Text(assignee, "name"),
-            Text(Child(meta, "sender"), "email"),
             isConversationEvent ? null : Text(body, "message_type"),
             Flag(body, "private") || Flag(body, "is_private"),
             isConversationEvent ? null : Text(body, "content"),

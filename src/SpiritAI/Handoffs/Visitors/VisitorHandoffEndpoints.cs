@@ -159,7 +159,7 @@ public static class VisitorHandoffEndpoints
         => ForOwnedAsync(http, conversations, contacts, contactConversations, conversationId, cancellationToken, async ()
             => TypedResults.Ok(await desk.StateAsync(conversationId, cancellationToken).ConfigureAwait(false)));
 
-    /// <summary>Records where a reply goes when the visitor is not there to read it.</summary>
+    /// <summary>Records the email the visitor left on the open handoff.</summary>
     private static Task<IResult> EmailAsync(
         HttpContext http,
         IConversations conversations,

@@ -1,0 +1,36 @@
+# Cloudflare Tunnel recipes. From the repo root: `just cloudflared <recipe>`. On the server:
+# `just <recipe>` inside this folder. Recipes run here either way.
+
+compose := "docker compose --file compose.yaml"
+
+# List the recipes.
+default:
+    @just --list
+
+# Make .env from .env.example. Never overwrites.
+env:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -f .env ]; then
+        echo "cloudflared/.env already exists; leaving it alone."
+        exit 0
+    fi
+    cp .env.example .env
+    echo "Wrote cloudflared/.env. Paste the tunnel token into it."
+
+# Start the tunnel and wait until Cloudflare has it.
+up: env
+    {{compose}} up --detach --wait --wait-timeout 300
+    @echo "The tunnel is connected."
+
+# Stop the tunnel. The apps keep running; they are only cut off from the internet.
+down:
+    {{compose}} down
+
+# Pull the pinned image again and restart.
+update:
+    {{compose}} up --detach --wait --wait-timeout 300 --pull always
+
+# Follow the logs.
+logs:
+    {{compose}} logs --follow --tail=100

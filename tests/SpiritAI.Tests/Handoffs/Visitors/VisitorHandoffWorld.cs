@@ -13,7 +13,6 @@ using SpiritAI.Auth;
 using SpiritAI.Chatwoot;
 using SpiritAI.Contacts;
 using SpiritAI.Handoffs.Desk;
-using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Notifications;
 using SpiritAI.Handoffs.Store;
 using SpiritAI.Handoffs.Visitors;
@@ -107,7 +106,6 @@ internal sealed class VisitorHandoffWorld : IAsyncDisposable
                 services.AddSingleton<IHandoffStore>(store);
                 services.AddSingleton<IHandoffNotifier>(notifier);
                 services.AddSingleton<IStaffPresence>(staff);
-                services.AddSingleton<IHandoffMailer>(new RecordingHandoffMailer());
                 services.AddScoped<HandoffDesk>();
                 services.AddOptions();
                 services.AddSingleton<ChatwootCopyQueue>();
