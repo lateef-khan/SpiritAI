@@ -8,7 +8,6 @@ using AgentCore.Hosting;
 using Microsoft.Extensions.Caching.Hybrid;
 
 using SpiritAI.Handoffs.Bot;
-using SpiritAI.Handoffs.Model;
 using SpiritAI.Knowledge;
 using SpiritAI.Lookup;
 
@@ -108,22 +107,17 @@ public static class AgentCoreExtensions
                     => SerialNumber.Parse(serial))
             .Bind(
                 RequestHumanBinding,
-                async (
-                    [Description("Why the person needs a human, in one sentence, in the person's own words.")] string reason,
-                    [Description("The person's phone number, exactly as they gave it, so a member of staff can call them back. Omit it only if they declined to give one.")] string? phone,
-                    [Description("The machine, type and model, such as \"XT485 treadmill\", from what the chat already says. Empty if unknown.")] string? product,
-                    [Description("The machine's serial number exactly as the person gave it, as text, leading zeros kept. Empty if unknown.")] string? serial,
-                    [Description("What was already tried in this chat, in one short sentence. Empty if nothing.")] string? tried,
-                    [Description("What the person wants from staff, in one short sentence, such as \"a technician visit\".")] string? wants,
+                (
+                    [Description("The phone number check_contact gave back. Empty if the person gave none.")] string? phone,
+                    [Description("The email check_contact gave back. Empty if the person gave none.")] string? email,
+                    [Description("The id of the team from list_teams whose description fits. Empty if none fits.")] int? teamId,
+                    [Description("The contact fields the chat already answered, by the key list_contact_fields gave. Leave out every field the chat did not answer.")] Dictionary<string, string>? contactFields,
+                    [Description("What staff read before they call, in the format the handoff skill gives.")] string summary,
                     ToolCallScope scope,
-                    CancellationToken cancellationToken) =>
-                {
-                    await using var container = services.GetRequiredService<IServiceScopeFactory>().CreateAsyncScope();
-
-                    return await container.ServiceProvider.GetRequiredService<RequestHumanTool>()
-                        .AskAsync(scope.ConversationId, reason, phone, new HandoffSummary(product, serial, tried, wants), cancellationToken)
-                        .ConfigureAwait(false);
-                })
+                    CancellationToken cancellationToken)
+                    => InScopeAsync<RequestHumanTool, RequestHumanAnswer>(
+                        services,
+                        tool => tool.AskAsync(scope.ConversationId, new HumanRequest(phone, email, teamId, contactFields, summary), cancellationToken)))
             .Bind(
                 BusinessHoursBinding,
                 (CancellationToken cancellationToken)
