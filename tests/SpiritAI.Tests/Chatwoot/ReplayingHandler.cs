@@ -4,19 +4,32 @@ using System.Net.Http.Headers;
 namespace SpiritAI.Tests.Chatwoot;
 
 /// <summary>
-/// Stands in for Chatwoot at the wire. Keeps each request and answers every one with the same
-/// saved Chatwoot reply from <c>Payloads</c>, or with an empty body when there is none.
+/// Stands in for Chatwoot at the wire. Keeps each request and answers it with a saved Chatwoot
+/// reply from <c>Payloads</c>, or with an empty body when there is none.
 /// </summary>
-/// <param name="payload">The saved reply's file name, without <c>.json</c>.</param>
+/// <param name="payloads">
+/// The saved replies' file names, without <c>.json</c>, one per request in order. The last one
+/// answers every request after it.
+/// </param>
 /// <param name="status">The status every answer carries.</param>
-internal sealed class ReplayingHandler(string? payload, HttpStatusCode status = HttpStatusCode.OK) : HttpMessageHandler
+internal sealed class ReplayingHandler(IReadOnlyList<string?> payloads, HttpStatusCode status = HttpStatusCode.OK) : HttpMessageHandler
 {
+    /// <summary>Answers every request with the same saved reply.</summary>
+    /// <param name="payload">The saved reply's file name, without <c>.json</c>.</param>
+    /// <param name="status">The status every answer carries.</param>
+    public ReplayingHandler(string? payload, HttpStatusCode status = HttpStatusCode.OK)
+        : this([payload], status)
+    {
+    }
+
     public List<(string Url, string Body, string? Token)> Requests { get; } = [];
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken);
         var token = request.Headers.TryGetValues("api_access_token", out var tokens) ? tokens.Single() : null;
+
+        var payload = payloads[Math.Min(Requests.Count, payloads.Count - 1)];
 
         Requests.Add((request.RequestUri!.ToString(), body, token));
 
