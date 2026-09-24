@@ -12,7 +12,8 @@ namespace SpiritAI.Tests.Contacts;
 /// <see cref="ContactConversationOwnership"/> against real PostgreSQL and the real
 /// <see cref="ContactResolver"/>: the resolver a refused caller runs into must never write.
 /// </summary>
-public sealed class ContactConversationOwnershipTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
+[Collection(PostgresCollection.Name)]
+public sealed class ContactConversationOwnershipTests(PostgresFixture fixture)
 {
     private static readonly DateTimeOffset Start = new(2000, 1, 1, 0, 0, 0, TimeSpan.Zero);
 

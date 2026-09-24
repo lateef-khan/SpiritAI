@@ -12,7 +12,8 @@ namespace SpiritAI.Tests.Contacts;
 /// <c>spirit.contact_conversation</c> against real PostgreSQL: a widget turn writes the row once,
 /// however many times, or however concurrently, it is asked to.
 /// </summary>
-public sealed class ContactConversationStoreTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
+[Collection(PostgresCollection.Name)]
+public sealed class ContactConversationStoreTests(PostgresFixture fixture)
 {
     private static readonly DateTimeOffset Start = new(2000, 1, 1, 0, 0, 0, TimeSpan.Zero);
 

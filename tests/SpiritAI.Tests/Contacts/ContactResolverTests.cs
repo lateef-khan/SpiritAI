@@ -11,7 +11,8 @@ namespace SpiritAI.Tests.Contacts;
 /// <summary>
 /// The flow of section 6.1 of the contact and identity design, move by move, against real PostgreSQL.
 /// </summary>
-public sealed class ContactResolverTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
+[Collection(PostgresCollection.Name)]
+public sealed class ContactResolverTests(PostgresFixture fixture)
 {
     private static readonly DateTimeOffset Start = new(2000, 1, 1, 0, 0, 0, TimeSpan.Zero);
 

@@ -14,7 +14,8 @@ namespace SpiritAI.Tests.Database.Migrations;
 /// <see cref="PostgresFixture"/>'s own migrate, so a test asks for a widget conversation of its own
 /// and runs the same SQL by hand.
 /// </summary>
-public sealed class BackfillContactConversationsTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
+[Collection(PostgresCollection.Name)]
+public sealed class BackfillContactConversationsTests(PostgresFixture fixture)
 {
     private static readonly DateTimeOffset Start = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 

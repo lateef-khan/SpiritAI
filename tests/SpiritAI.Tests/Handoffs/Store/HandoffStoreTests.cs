@@ -12,7 +12,8 @@ namespace SpiritAI.Tests.Handoffs.Store;
 /// <summary>
 /// The flow of section 5 of the handoff spec, move by move, against real PostgreSQL.
 /// </summary>
-public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
+[Collection(PostgresCollection.Name)]
+public sealed class HandoffStoreTests(PostgresFixture fixture)
 {
     private static readonly DateTimeOffset Start = new(2000, 1, 1, 0, 0, 0, TimeSpan.Zero);
 

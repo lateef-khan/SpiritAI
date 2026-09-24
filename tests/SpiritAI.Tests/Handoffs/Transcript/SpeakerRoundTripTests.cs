@@ -13,7 +13,8 @@ namespace SpiritAI.Tests.Handoffs.Transcript;
 /// turn comes back out of AgentCore's own store with its speaker still on it, in the shape the
 /// browser reads. Section 4.3 of the handoff spec.
 /// </summary>
-public sealed class SpeakerRoundTripTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
+[Collection(PostgresCollection.Name)]
+public sealed class SpeakerRoundTripTests(PostgresFixture fixture)
 {
     [Fact]
     public async Task AStaffReplyComesBackSigned()

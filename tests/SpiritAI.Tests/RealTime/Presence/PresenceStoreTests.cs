@@ -18,7 +18,8 @@ namespace SpiritAI.Tests.RealTime.Presence;
 /// The clock starts in the year 2000, so a sweep at that time can only ever delete rows made by
 /// this class, and a count only ever sees rows made by this class inside its window.
 /// </remarks>
-public sealed class PresenceStoreTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
+[Collection(PostgresCollection.Name)]
+public sealed class PresenceStoreTests(PostgresFixture fixture)
 {
     private static readonly DateTimeOffset Start = new(2000, 1, 1, 0, 0, 0, TimeSpan.Zero);
 

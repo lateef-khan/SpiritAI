@@ -12,7 +12,8 @@ namespace SpiritAI.Tests.Database;
 /// The two facts the <c>spirit.handoff</c> table promises that only PostgreSQL can keep: a claim
 /// is atomic across any number of machines, and a chat has at most one open handoff.
 /// </summary>
-public sealed class HandoffSchemaTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
+[Collection(PostgresCollection.Name)]
+public sealed class HandoffSchemaTests(PostgresFixture fixture)
 {
     [Fact]
     public async Task TwoClaimsOnOneRowOnlyOneWins()
