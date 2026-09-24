@@ -39,10 +39,10 @@ First setup on the server:
 1. Copy this folder to the server. Install Docker and `just`.
 2. `just env`, then edit `.env`: `DATABASE_URL`, `FRONTEND_URL` (the public HTTPS address),
    `REDIS_PASSWORD`, the `STORAGE_*` bucket values, and the `SMTP_*` and `MAILER_SENDER_EMAIL` values.
-   Set `SAFE_FETCH_ALLOW_PRIVATE_NETWORK=false` unless Spirit's webhook URL is a private address.
+   Set `SAFE_FETCH_ALLOW_PRIVATE_NETWORK=false`.
 3. On the database, run `create schema chatwoot;` once. Use Neon's direct host, not `-pooler`.
 4. `just prod-up`.
-5. `just setup` with `CHATWOOT_ADMIN_TOKEN`, `CHATWOOT_ACCOUNT_ID`, and `SPIRIT_WEBHOOK_URL`.
+5. `just setup` with `CHATWOOT_ADMIN_TOKEN` and `CHATWOOT_ACCOUNT_ID`.
    Put the settings it prints in Spirit's environment.
 
 | Recipe | Does |
@@ -70,7 +70,17 @@ Web listens on `127.0.0.1:53000` only. Put the server's HTTPS proxy in front of 
 | Local schema setup | `local-db.sql` |
 | Small code patches | `Dockerfile`, below `FROM`. Last resort |
 | Spirit's API inbox and agent bot | `just setup` (`setup/spirit-inbox.sh`) |
-| Webhook receivers | `src/SpiritAI` (to come) |
+
+## The Spirit inbox
+
+`just setup` keeps these, and each one matters:
+
+- **No webhook.** The inbox's `webhook_url` is empty. The widget hears Chatwoot's own socket,
+  and the AI reads what it missed from Chatwoot on its next turn.
+- **The agent bot stays connected.** A new conversation starts `pending`, which is the AI's,
+  and a resolved one comes back `pending` when the visitor writes again.
+- **The out-of-office message stays empty.** The handoff skill tells a person what happens
+  while the office is closed. Chatwoot would post its own message as well.
 
 ## Tables in their own schema
 
