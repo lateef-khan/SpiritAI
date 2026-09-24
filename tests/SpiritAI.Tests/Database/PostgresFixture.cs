@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 using SpiritAI.Database;
-using SpiritAI.Threads;
 
 using Xunit;
 
@@ -82,36 +81,6 @@ public sealed class PostgresFixture : IAsyncLifetime
             TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Writes a row into AgentCore's <c>agentcore.conversation</c> for a handoff to point at.</summary>
-    /// <param name="conversationId">The call to make. Every other column has a default.</param>
-    public async Task MakeConversationAsync(string conversationId)
-    {
-        await using var insert = Source.CreateCommand("INSERT INTO agentcore.conversation (conversation_id) VALUES ($1)");
-        insert.Parameters.AddWithValue(conversationId);
-        await insert.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>
-    /// Writes a row into <c>agentcore.conversation</c> with the <c>custom</c> column a
-    /// <c>ThreadEnvelope</c> would hold: just an owner, the way <see cref="ThreadEnvelope.Build"/>
-    /// serialises one with no app fields.
-    /// </summary>
-    /// <param name="conversationId">The call to make.</param>
-    /// <param name="ownerKey">The key <c>ThreadEnvelope.Owner</c> would hold, such as <c>visitor:abc123</c>.</param>
-    /// <param name="createdAt">What <c>created_at</c> reads, or <see langword="null"/> for the database's own default.</param>
-    public async Task MakeConversationAsync(string conversationId, string ownerKey, DateTimeOffset? createdAt = null)
-    {
-        await using var insert = Source.CreateCommand(
-            """
-            INSERT INTO agentcore.conversation (conversation_id, custom, created_at)
-            VALUES ($1, jsonb_build_object('owner', $2), coalesce($3, now()))
-            """);
-        insert.Parameters.AddWithValue(conversationId);
-        insert.Parameters.AddWithValue(ownerKey);
-        insert.Parameters.AddWithValue((object?)createdAt ?? DBNull.Value);
-        await insert.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
-    }
-
     /// <summary>Moves a conversation's last change back in time, as if nothing had touched it since.</summary>
     /// <param name="conversationId">The conversation.</param>
     /// <param name="by">How far back.</param>
@@ -123,7 +92,7 @@ public sealed class PostgresFixture : IAsyncLifetime
         await update.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Deletes a conversation, and by the cascade every handoff row that pointed at it.</summary>
+    /// <summary>Deletes a conversation.</summary>
     /// <param name="conversationId">The call to delete.</param>
     public async Task DeleteConversationAsync(string conversationId)
     {
