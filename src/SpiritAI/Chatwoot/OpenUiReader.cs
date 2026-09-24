@@ -2,7 +2,7 @@ using System.Text;
 
 namespace SpiritAI.Chatwoot;
 
-/// <summary>Reads an openui-lang program into its statements, for <see cref="OpenUiText"/>. Throws <see cref="FormatException"/> on what it cannot read.</summary>
+/// <summary>Reads an openui-lang program into its statements, for <see cref="OpenUiMarkdown"/>. Throws <see cref="FormatException"/> on what it cannot read.</summary>
 internal sealed class OpenUiReader(string source)
 {
     private int _at;
@@ -41,23 +41,50 @@ internal sealed class OpenUiReader(string source)
         if (c == '{')
         {
             _at++;
-            return new OpenUiValue.List(ObjectValues());
+            return new OpenUiValue.Object(Entries());
         }
 
-        if (Identifier() is { } id)
+        if (char.IsDigit(c) || (c == '-' && char.IsDigit(PeekAfter())))
         {
+            return new OpenUiValue.Number(Number());
+        }
+
+        if (c == '@')
+        {
+            var start = _at++;
+
+            if (Identifier() is { } step && SkipSpace() && Peek() == '(')
+            {
+                _at++;
+                return new OpenUiValue.Call("@" + step, Items(')'));
+            }
+
+            _at = start;
+        }
+        else if (Identifier() is { } id)
+        {
+            var afterName = _at;
             SkipSpace();
 
             if (Peek() == '(')
             {
                 _at++;
-                return new OpenUiValue.Call(Items(')'));
+                return new OpenUiValue.Call(id, Items(')'));
             }
 
-            return new OpenUiValue.Name(id);
+            _at = afterName;
+            OpenUiValue value = new OpenUiValue.Name(id);
+
+            while (Peek() == '.')
+            {
+                _at++;
+                value = new OpenUiValue.Member(value, Identifier() ?? throw new FormatException("A '.' is followed by a name."));
+            }
+
+            return value;
         }
 
-        // A number, $binding, @step, or anything else: no words in it.
+        // $state, @Run, or anything else: no words the copy can know.
         while (_at < source.Length && !",)]}\n".Contains(source[_at], StringComparison.Ordinal))
         {
             _at++;
@@ -97,40 +124,35 @@ internal sealed class OpenUiReader(string source)
         }
     }
 
-    private List<OpenUiValue> ObjectValues()
+    private List<KeyValuePair<string, OpenUiValue>> Entries()
     {
-        var values = new List<OpenUiValue>();
+        var entries = new List<KeyValuePair<string, OpenUiValue>>();
 
         SkipSpace();
 
         if (Peek() == '}')
         {
             _at++;
-            return values;
+            return entries;
         }
 
         while (true)
         {
             SkipSpace();
 
-            if (Peek() == '"')
-            {
-                Text();
-            }
-            else if (Identifier() is null)
-            {
-                throw new FormatException("An object key is a name or a string.");
-            }
+            var key = Peek() == '"'
+                ? Text()
+                : Identifier() ?? throw new FormatException("An object key is a name or a string.");
 
             Expect(':');
-            values.Add(Parse());
+            entries.Add(new(key, Parse()));
             SkipSpace();
 
             var c = Next();
 
             if (c == '}')
             {
-                return values;
+                return entries;
             }
 
             if (c != ',')
@@ -138,6 +160,18 @@ internal sealed class OpenUiReader(string source)
                 throw new FormatException("Expected ',' or '}'.");
             }
         }
+    }
+
+    private string Number()
+    {
+        var start = _at++;
+
+        while (_at < source.Length && (char.IsDigit(source[_at]) || source[_at] == '.'))
+        {
+            _at++;
+        }
+
+        return source[start.._at];
     }
 
     private string Text()
@@ -210,6 +244,8 @@ internal sealed class OpenUiReader(string source)
     }
 
     private char Peek() => _at < source.Length ? source[_at] : '\0';
+
+    private char PeekAfter() => _at + 1 < source.Length ? source[_at + 1] : '\0';
 
     private char Next() => _at < source.Length ? source[_at++] : throw new FormatException("The program ends early.");
 }

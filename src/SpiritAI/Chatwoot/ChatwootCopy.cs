@@ -112,7 +112,7 @@ public sealed class ChatwootCopy(
 
         if (message.Role == ChatRole.Assistant)
         {
-            return (OpenUiText.ForStaff(message.Text), false);
+            return (OpenUiMarkdown.ForStaff(message.Text), false);
         }
 
         return null;

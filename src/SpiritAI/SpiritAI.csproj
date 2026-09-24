@@ -56,6 +56,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Remove="Chatwoot/openui-params.json" />
+    <EmbeddedResource Include="Chatwoot/openui-params.json" LogicalName="SpiritAI.Chatwoot.openui-params.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ClientAppSource Include="../web/src/**/*" />
     <ClientAppSource Include="../web/index.html" />
     <ClientAppSource Include="../web/package.json" />

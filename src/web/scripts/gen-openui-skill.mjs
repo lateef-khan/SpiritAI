@@ -1,9 +1,7 @@
-// Generates src/SpiritAI/skills/openui/SKILL.md from the component libraries the Renderer
-// draws with: the chat library's presentation rules and examples over the full library's
-// vocabulary, so FollowUpBlock, ListBlock, and SectionBlock are taught and Stack history
-// still parses. The skill file is fully generated: the hand-owned words are the
-// frontmatter below (skill-discovery metadata), this file, and spirit-rules.md beside the
-// output, which carries Spirit's overrides of the library's rules and is appended last.
+// Generates src/SpiritAI/skills/openui/SKILL.md from the component libraries.
+//
+// It also writes src/SpiritAI/Chatwoot/openui-params.json, each component's argument names
+// in position order, so the server can turn a program into Markdown for Chatwoot.
 import { createLibrary } from "@openuidev/lang-core";
 import { openuiLibrary } from "@openuidev/react-ui";
 import { openuiChatLibrary, openuiChatPromptOptions } from "@openuidev/react-ui/genui-lib";
@@ -11,6 +9,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const out = fileURLToPath(new URL("../../../src/SpiritAI/skills/openui/SKILL.md", import.meta.url));
+const paramsOut = fileURLToPath(
+  new URL("../../../src/SpiritAI/Chatwoot/openui-params.json", import.meta.url),
+);
 const rules = fileURLToPath(
   new URL("../../../src/SpiritAI/skills/openui/spirit-rules.md", import.meta.url),
 );
@@ -42,13 +43,30 @@ const content = `${frontmatter}
 ${body}
 ${readFileSync(rules, "utf8")}`;
 
-if (process.argv.includes("--check")) {
-  if (readFileSync(out, "utf8") !== content) {
-    console.error("skills/openui/SKILL.md is stale: run `npm run gen:openui` in src/web.");
-    process.exit(1);
+// The JSON schema lists each component's properties in argument order; the parser maps
+// positional arguments to names the same way.
+const params = Object.fromEntries(
+  Object.entries(spiritChatLibrary.toJSONSchema().$defs).map(([name, def]) => [
+    name,
+    Object.keys(def.properties ?? {}),
+  ]),
+);
+const paramsContent = `${JSON.stringify(params, null, 2)}\n`;
+
+const outputs = [
+  { path: out, content, label: "skills/openui/SKILL.md" },
+  { path: paramsOut, content: paramsContent, label: "Chatwoot/openui-params.json" },
+];
+
+for (const { path, content: text, label } of outputs) {
+  if (process.argv.includes("--check")) {
+    if (readFileSync(path, "utf8") !== text) {
+      console.error(`${label} is stale: run \`npm run gen:openui\` in src/web.`);
+      process.exit(1);
+    }
+    console.log(`${label} is current.`);
+  } else {
+    writeFileSync(path, text);
+    console.log(`wrote ${path} (${text.length} chars)`);
   }
-  console.log("skills/openui/SKILL.md is current.");
-} else {
-  writeFileSync(out, content);
-  console.log(`wrote ${out} (${content.length} chars)`);
 }
