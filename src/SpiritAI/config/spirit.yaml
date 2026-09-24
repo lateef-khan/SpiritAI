@@ -36,9 +36,41 @@ tools:
     kind: binding
     binds: RequestHuman
     description: >-
-      Ask a member of Spirit staff to join this chat. Call it when the person asks for a human,
-      a person, an agent, or a real someone, or when two tries have not helped, after asking
-      for their phone number. It answers one sentence to tell the person.
+      Hand this chat to a person on Spirit's team, who calls the person back. Load the `handoff`
+      skill first; it says what to pass. Call it once. It answers one sentence to tell the person.
+
+  - id: business_hours
+    kind: binding
+    binds: BusinessHours
+    description: >-
+      Whether Spirit's office is open now, today's hours, and when it next opens, in the
+      office's own time zone.
+
+  - id: known_contact
+    kind: binding
+    binds: KnownContact
+    description: >-
+      The phone and email this person gave in an earlier chat. Empty when there are none.
+
+  - id: check_contact
+    kind: binding
+    binds: CheckContact
+    description: >-
+      Check a phone number and an email the person gave for a call back. Answers the phone in
+      E.164 form, the email lower-cased, and which given field is not valid.
+
+  - id: list_teams
+    kind: binding
+    binds: ListTeams
+    description: >-
+      Spirit's support teams, each with its id and the description you pick a team by.
+
+  - id: list_contact_fields
+    kind: binding
+    binds: ListContactFields
+    description: >-
+      The fields a contact record can carry, such as a serial number or an order number, each
+      with its key, type, and description.
 
   - { id: publish, kind: builtin, uses: file.publish }
 
@@ -111,30 +143,14 @@ agents:
         choices, offer those choices and nothing else.
 
         A PERSON
-        When the person asks for a human, a person, an agent, or a real someone, or when two
-        tries have not helped, first ask for their phone number so a member of staff can
-        call them back: one Form with one FormControl("Phone", Input("phone",
-        "(555) 010-2233", "text", { required: true })) and a Buttons([Button("Send", Action([
-        @ToAssistant("Here is my phone number")]), "primary")]). The answer arrives as their
-        next message with the field on it. Then call request_human ONCE with the reason in
-        their own words and that phone number, and tell them what it answered, in its words.
-        Staff read the rest before they call, so fill it FROM WHAT THE CHAT ALREADY SAYS:
-        product is the machine's type and model, serial is its serial number exactly as they
-        gave it, tried is what was already tried here, and wants is what they want from staff.
-        Leave a field empty rather than ask for it. The phone number is the only thing you ask
-        for.
-        Good: product "XT485 treadmill", tried "Lubricated the belt; no change".
-        Bad: "What model is your treadmill?" just to fill product.
-        If they will not give a number, call it anyway without one. Never say how many staff
-        are online, never say their place in line, and never say you cannot reach a person.
-        Call it again only when it said the number is not valid: ask with the same form, then
-        call it with the new number.
+        When the person asks for a human or a call back, or when two tries have not helped,
+        load the `handoff` skill and follow it.
 
         SHOWING DATA
         The `openui` skill below is the whole vocabulary for what you draw, generated from
         the `@openuidev/react-ui` chat library we ship, and its last section is Spirit's
         rules over the library's.
-      skills: [ analytics ]
+      skills: [ analytics, handoff ]
       pinned: [ openui, service ]
       todos: true
       files: { store: workspace, write: true }
@@ -152,6 +168,11 @@ agents:
       tools:
         - publish
         - request_human
+        - business_hours
+        - known_contact
+        - check_contact
+        - list_teams
+        - list_contact_fields
         - parse_serial
         - find_model
         - search_parts
