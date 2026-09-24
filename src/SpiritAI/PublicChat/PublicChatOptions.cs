@@ -35,4 +35,10 @@ public sealed class PublicChatOptions
     /// How many public turns may run at once, across every caller.
     /// </summary>
     public int MaxConcurrentTurns { get; set; } = 20;
+
+    /// <summary>
+    /// How many days the AI's copy of a widget chat is kept after its last change. Chatwoot keeps
+    /// the chat itself.
+    /// </summary>
+    public int TranscriptDays { get; set; } = 30;
 }

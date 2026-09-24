@@ -112,6 +112,17 @@ public sealed class PostgresFixture : IAsyncLifetime
         await insert.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Moves a conversation's last change back in time, as if nothing had touched it since.</summary>
+    /// <param name="conversationId">The conversation.</param>
+    /// <param name="by">How far back.</param>
+    public async Task AgeConversationAsync(string conversationId, TimeSpan by)
+    {
+        await using var update = Source.CreateCommand("UPDATE agentcore.conversation SET updated_at = updated_at - $2 WHERE conversation_id = $1");
+        update.Parameters.AddWithValue(conversationId);
+        update.Parameters.AddWithValue(by);
+        await update.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Deletes a conversation, and by the cascade every handoff row that pointed at it.</summary>
     /// <param name="conversationId">The call to delete.</param>
     public async Task DeleteConversationAsync(string conversationId)
