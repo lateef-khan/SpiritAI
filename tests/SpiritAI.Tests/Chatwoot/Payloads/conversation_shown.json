@@ -1,0 +1,135 @@
+{
+  "meta": {
+    "sender": {
+      "additional_attributes": {},
+      "availability_status": "offline",
+      "email": null,
+      "id": 20,
+      "name": "Probe Visitor",
+      "phone_number": null,
+      "blocked": false,
+      "identifier": null,
+      "thumbnail": "",
+      "custom_attributes": {},
+      "last_activity_at": 1790236599,
+      "created_at": 1790236591
+    },
+    "channel": "Channel::Api",
+    "assignee": {
+      "id": 1,
+      "name": "Spirit AI",
+      "description": "Posts the Spirit AI answers into the Spirit inbox.",
+      "thumbnail": "",
+      "outgoing_url": null,
+      "bot_type": "webhook"
+    },
+    "assignee_type": "AgentBot",
+    "hmac_verified": false
+  },
+  "id": 18,
+  "messages": [
+    {
+      "id": 98,
+      "content": "Hi, this is Matthew from support.",
+      "account_id": 2,
+      "inbox_id": 1,
+      "conversation_id": 18,
+      "message_type": 1,
+      "created_at": 1790236608,
+      "updated_at": "2026-09-24T07:56:48.617Z",
+      "private": false,
+      "status": "sent",
+      "source_id": null,
+      "content_type": "text",
+      "content_attributes": {},
+      "sender_type": "User",
+      "sender_id": 2,
+      "external_source_ids": {},
+      "additional_attributes": {},
+      "processed_message_content": "Hi, this is Matthew from support.",
+      "sentiment": {},
+      "conversation": {
+        "assignee_id": null,
+        "unread_count": 1,
+        "last_activity_at": 1790236608,
+        "contact_inbox": {
+          "source_id": "probe-visitor-key-1"
+        }
+      },
+      "sender": {
+        "id": 2,
+        "name": "Matthew Hsu",
+        "available_name": "Matthew Hsu",
+        "avatar_url": "",
+        "type": "user",
+        "availability_status": "online",
+        "thumbnail": ""
+      }
+    }
+  ],
+  "account_id": 2,
+  "uuid": "e86f9a8c-9b8c-4b84-9c3b-16b72acdbea1",
+  "additional_attributes": {},
+  "agent_last_seen_at": 0,
+  "assignee_last_seen_at": 0,
+  "can_reply": true,
+  "contact_info_request": {
+    "available": false,
+    "reason": null,
+    "delivery_mode": null
+  },
+  "contact_last_seen_at": 0,
+  "custom_attributes": {},
+  "inbox_id": 1,
+  "labels": [],
+  "muted": false,
+  "snoozed_until": null,
+  "status": "pending",
+  "created_at": 1790236592,
+  "updated_at": 1790236610.230913,
+  "timestamp": 1790236608,
+  "first_reply_created_at": 1790236608,
+  "unread_count": 1,
+  "last_non_activity_message": {
+    "id": 98,
+    "content": "Hi, this is Matthew from support.",
+    "account_id": 2,
+    "inbox_id": 1,
+    "conversation_id": 18,
+    "message_type": 1,
+    "created_at": 1790236608,
+    "updated_at": "2026-09-24T07:56:48.617Z",
+    "private": false,
+    "status": "sent",
+    "source_id": null,
+    "content_type": "text",
+    "content_attributes": {},
+    "sender_type": "User",
+    "sender_id": 2,
+    "external_source_ids": {},
+    "additional_attributes": {},
+    "processed_message_content": "Hi, this is Matthew from support.",
+    "sentiment": {},
+    "conversation": {
+      "assignee_id": null,
+      "unread_count": 1,
+      "last_activity_at": 1790236608,
+      "contact_inbox": {
+        "source_id": "probe-visitor-key-1"
+      }
+    },
+    "sender": {
+      "id": 2,
+      "name": "Matthew Hsu",
+      "available_name": "Matthew Hsu",
+      "avatar_url": "",
+      "type": "user",
+      "availability_status": "online",
+      "thumbnail": ""
+    }
+  },
+  "last_activity_at": 1790236608,
+  "priority": null,
+  "waiting_since": 0,
+  "sla_policy_id": null
+}

@@ -1,0 +1,16 @@
+[
+  {
+    "id": 2,
+    "attribute_display_name": "Probe Serial",
+    "attribute_display_type": "text",
+    "attribute_description": "The serial number on the frame",
+    "attribute_key": "probe_serial",
+    "regex_pattern": null,
+    "regex_cue": null,
+    "attribute_values": [],
+    "attribute_model": "contact_attribute",
+    "default_value": null,
+    "created_at": "2026-09-24T07:56:39.829Z",
+    "updated_at": "2026-09-24T07:56:39.829Z"
+  }
+]

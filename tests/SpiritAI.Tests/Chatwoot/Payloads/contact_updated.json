@@ -1,0 +1,31 @@
+{
+  "payload": {
+    "additional_attributes": {},
+    "availability_status": "offline",
+    "email": null,
+    "id": 20,
+    "name": "Probe Visitor",
+    "phone_number": "+13125550100",
+    "blocked": false,
+    "identifier": null,
+    "thumbnail": "",
+    "custom_attributes": {
+      "probe_serial": "SN123"
+    },
+    "last_activity_at": 1790236599,
+    "created_at": 1790236591,
+    "contact_inboxes": [
+      {
+        "source_id": "probe-visitor-key-1",
+        "inbox": {
+          "id": 1,
+          "avatar_url": "",
+          "channel_id": 1,
+          "name": "Spirit",
+          "channel_type": "Channel::Api",
+          "provider": null
+        }
+      }
+    ]
+  }
+}
