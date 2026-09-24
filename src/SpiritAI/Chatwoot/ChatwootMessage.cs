@@ -9,7 +9,9 @@ namespace SpiritAI.Chatwoot;
 /// <param name="SenderType">
 /// <c>contact</c>, <c>user</c> (staff), or <c>agent_bot</c>; <see langword="null"/> for an activity.
 /// </param>
-/// <param name="SenderName">The sender's name, such as the member of staff who wrote.</param>
+/// <param name="SenderName">
+/// The sender's name. A member of staff goes by <see cref="ChatwootStaffName"/>, as the visitor sees them.
+/// </param>
 public sealed record ChatwootMessage(int Id, string? Content, int MessageType, string? SenderType, string? SenderName)
 {
     internal static ChatwootMessage Read(JsonElement message)
@@ -21,6 +23,16 @@ public sealed record ChatwootMessage(int Id, string? Content, int MessageType, s
             message.GetProperty("content").GetString(),
             message.GetProperty("message_type").GetInt32(),
             sender?.GetProperty("type").GetString(),
-            sender?.GetProperty("name").GetString());
+            sender is { } who ? NameOf(who) : null);
+    }
+
+    /// <summary>A member of staff by <see cref="ChatwootStaffName"/>; anyone else by their name.</summary>
+    private static string? NameOf(JsonElement sender)
+    {
+        var name = sender.GetProperty("name").GetString();
+
+        return sender.GetProperty("type").GetString() == "user"
+            ? ChatwootStaffName.Of(name, sender.TryGetProperty("available_name", out var available) ? available.GetString() : null)
+            : name;
     }
 }

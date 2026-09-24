@@ -5,6 +5,7 @@ export {
   type ChatwootClient,
 } from "./client.ts";
 export { loadChatwootSettings, type ChatwootSettings } from "./settings.ts";
+export { staffName, type ChatwootPerson } from "./staffName.ts";
 export { cableUrl, openChatwootSocket, PresenceSeconds, type ChatwootSocket } from "./socket.ts";
 export type {
   ChatwootAgent,

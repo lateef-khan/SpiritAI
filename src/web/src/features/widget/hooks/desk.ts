@@ -1,8 +1,9 @@
-import type {
-  ChatwootAgent,
-  ChatwootConversationEvent,
-  ChatwootPresence,
-  ChatwootStatus,
+import {
+  staffName,
+  type ChatwootAgent,
+  type ChatwootConversationEvent,
+  type ChatwootPresence,
+  type ChatwootStatus,
 } from "@/lib/chatwoot";
 
 /**
@@ -39,7 +40,7 @@ export const NoChat: Desk = {
 
 /** The member of staff an assignee names, or `null` for the agent bot and for no one. */
 export function personOf(assignee: ChatwootAgent | null): string | null {
-  return assignee?.type === "user" ? assignee.name : null;
+  return staffName(assignee);
 }
 
 /** Reads Chatwoot's status the way the visitor is told it. `open` is a person's, or waited for. */

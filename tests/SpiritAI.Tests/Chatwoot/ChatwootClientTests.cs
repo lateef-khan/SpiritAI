@@ -125,7 +125,7 @@ public sealed class ChatwootClientTests
             [
                 new ChatwootMessage(95, "My treadmill belt slips.", 0, "contact", "Probe Visitor"),
                 new ChatwootMessage(96, "Sorry to hear that. **Which model** is it?", 1, "agent_bot", "Spirit AI"),
-                new ChatwootMessage(98, "Hi, this is Matthew from support.", 1, "user", "Matthew Hsu"),
+                new ChatwootMessage(98, "Hi, this is Matthew from support.", 1, "user", "Matthew"),
             ],
             messages);
 

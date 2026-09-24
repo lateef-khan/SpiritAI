@@ -3,9 +3,6 @@ using AgentCore.Application.Ports;
 
 using Microsoft.Extensions.AI;
 
-using SpiritAI.Handoffs.Contracts;
-using SpiritAI.Handoffs.Transcript;
-
 namespace SpiritAI.Chatwoot;
 
 /// <summary>
@@ -18,9 +15,6 @@ public sealed class ChatwootCatchUp(ChatwootClient chatwoot, IConversations conv
 
     /// <summary>How many pages are read back when the copy has no bookmark.</summary>
     public const int PagesWithNoBookmark = 2;
-
-    /// <summary>The team a staff message is signed with, under the name.</summary>
-    public const string StaffDetail = "Support";
 
     /// <summary>
     /// Appends what the copy is missing, oldest first, then files the Chatwoot ids and moves the
@@ -44,14 +38,60 @@ public sealed class ChatwootCatchUp(ChatwootClient chatwoot, IConversations conv
 
         var read = await ReadBackAsync(ids.VisitorKey, ids.ConversationId, through, newestPage, cancellationToken).ConfigureAwait(false);
 
-        foreach (var message in read.Where(m => m.Id > (through ?? 0) && m.Id != turnMessageId).OrderBy(m => m.Id))
+        // The staff part runs from the first staff message to the last; the customer's messages
+        // after the last one wait in `after`, since the next staff message pulls them into it.
+        var phase = new List<ChatwootMessage>();
+        var after = new List<ChatwootMessage>();
+
+        async Task AppendAsync(ChatMessage words)
         {
-            if (Copy(message, rebuilding: through is null) is { } words)
+            var row = await conversations.AppendMessageAsync(copy.ConversationId, words, cancellationToken).ConfigureAwait(false);
+            nextOrdinal = row.Ordinal + 1;
+        }
+
+        async Task EndPhaseAsync()
+        {
+            if (phase.Count > 0)
             {
-                var row = await conversations.AppendMessageAsync(copy.ConversationId, words, cancellationToken).ConfigureAwait(false);
-                nextOrdinal = row.Ordinal + 1;
+                await AppendAsync(StaffPhaseNote.For(phase)).ConfigureAwait(false);
+                phase.Clear();
+            }
+
+            foreach (var message in after)
+            {
+                await AppendAsync(new ChatMessage(ChatRole.User, message.Content)).ConfigureAwait(false);
+            }
+
+            after.Clear();
+        }
+
+        foreach (var message in read.Where(m => m.Id > (through ?? 0) && m.Id != turnMessageId && !string.IsNullOrEmpty(m.Content)).OrderBy(m => m.Id))
+        {
+            switch (message.SenderType)
+            {
+                case "user":
+                    phase.AddRange(after);
+                    after.Clear();
+                    phase.Add(message);
+                    break;
+
+                case "contact" when phase.Count > 0:
+                    after.Add(message);
+                    break;
+
+                case "contact":
+                    await AppendAsync(new ChatMessage(ChatRole.User, message.Content)).ConfigureAwait(false);
+                    break;
+
+                // Spirit's own answers are in the copy already, unless a sweep dropped it.
+                case "agent_bot" when through is null:
+                    await EndPhaseAsync().ConfigureAwait(false);
+                    await AppendAsync(new ChatMessage(ChatRole.Assistant, message.Content)).ConfigureAwait(false);
+                    break;
             }
         }
+
+        await EndPhaseAsync().ConfigureAwait(false);
 
         var newest = read.Count == 0 ? through : read.Max(m => m.Id);
 
@@ -93,34 +133,5 @@ public sealed class ChatwootCatchUp(ChatwootClient chatwoot, IConversations conv
         }
 
         return read;
-    }
-
-    /// <summary>
-    /// The message as the copy keeps it. Spirit's own bot answers are in the copy already, so they
-    /// are copied only when <paramref name="rebuilding"/> the copy after a sweep.
-    /// </summary>
-    private static ChatMessage? Copy(ChatwootMessage message, bool rebuilding)
-    {
-        if (string.IsNullOrEmpty(message.Content))
-        {
-            return null;
-        }
-
-        switch (message.SenderType)
-        {
-            case "contact":
-                return new ChatMessage(ChatRole.User, message.Content);
-
-            case "user":
-                var staff = new ChatMessage(ChatRole.Assistant, message.Content);
-                SpeakerProperty.Attach(staff, HandoffSpeaker.Human(message.SenderName ?? StaffDetail, StaffDetail));
-                return staff;
-
-            case "agent_bot" when rebuilding:
-                return new ChatMessage(ChatRole.Assistant, message.Content);
-
-            default:
-                return null;
-        }
     }
 }

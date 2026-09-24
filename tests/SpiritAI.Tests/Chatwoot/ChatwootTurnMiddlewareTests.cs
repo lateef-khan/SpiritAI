@@ -97,7 +97,16 @@ public sealed class ChatwootTurnMiddlewareTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var turn = Assert.Single(world.Turns);
-        Assert.Equal(["Sorry to hear that. **Which model** is it?", "Hi, this is Matthew from support."], turn.CopyBeforeTheTurn);
+        Assert.Equal(
+            [
+                "Sorry to hear that. **Which model** is it?",
+                """
+                While you were away, a person from our support team had this chat with the customer. You did not write these lines.
+                Matthew (support team): Hi, this is Matthew from support.
+                What the support team said or promised, the company said and promised. Do not deny it or change it.
+                """,
+            ],
+            turn.CopyBeforeTheTurn);
 
         var copy = await world.Conversations.GetAsync(Pending, Cancel);
         Assert.Equal(98, ChatwootBookmark.Read(copy!.Custom));

@@ -10,11 +10,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flatten, sourceContent, toolContent } from "@/features/threads/AgentCoreRuntime";
 import { runTurn, TurnRefusedError, type TurnState } from "@/features/threads/transport";
 import type { FetchLike } from "@/lib/apiClient";
-import type {
-  ChatwootConversation,
-  ChatwootConversationEvent,
-  ChatwootMessage,
-  ChatwootPresence,
+import {
+  staffName,
+  type ChatwootConversation,
+  type ChatwootConversationEvent,
+  type ChatwootMessage,
+  type ChatwootPresence,
 } from "@/lib/chatwoot";
 import type { OlderMessagesSource } from "@/lib/history";
 import { heldFromChatwoot, pageFromChatwoot, systemNote } from "../api/chatwootRows";
@@ -167,8 +168,7 @@ export function useWidgetRuntime(
     // The Client API names no assignee. The last member of staff who wrote stands in for one.
     const person =
       deskRef.current.assigneeName ??
-      [...page].reverse().find((message) => message.sender?.type === "user")?.sender?.name ??
-      null;
+      staffName([...page].reverse().find((message) => message.sender?.type === "user")?.sender);
 
     adopt(newest);
     setDesk({

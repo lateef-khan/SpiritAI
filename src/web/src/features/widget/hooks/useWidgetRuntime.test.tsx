@@ -219,12 +219,12 @@ describe("useWidgetRuntime", () => {
       "Thanks, Matthew.",
     ]);
     expect(texts(view.result.current).slice(2)).toEqual([
-      "Matthew Hsu joined the chat.",
+      "Matthew joined the chat.",
       "Thanks, Matthew.",
     ]);
     expect(view.result.current.desk).toMatchObject({
       status: "human",
-      assigneeName: "Matthew Hsu",
+      assigneeName: "Matthew",
     });
   });
 

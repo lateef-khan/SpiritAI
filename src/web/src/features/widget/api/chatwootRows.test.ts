@@ -56,7 +56,7 @@ describe("pageFromChatwoot", () => {
         id: "cw-184",
         role: "assistant",
         text: "Hi, this is Matthew. I can help.",
-        speaker: "Matthew Hsu",
+        speaker: "Matthew",
         hostMessageId: "184",
       },
       {

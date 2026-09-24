@@ -1,7 +1,7 @@
 import type { ExportedMessageRepository } from "@assistant-ui/react";
 
 import type { HistoryPage } from "@/lib/history";
-import { ChatwootPageSize, type ChatwootMessage } from "@/lib/chatwoot";
+import { ChatwootPageSize, staffName, type ChatwootMessage } from "@/lib/chatwoot";
 import type { Held } from "../hooks/held";
 
 /**
@@ -26,7 +26,7 @@ export function heldFromChatwoot(message: ChatwootMessage): Held | null {
   const kind = message.message_type;
   if (text.length === 0 || (kind !== Incoming && kind !== Outgoing)) return null;
 
-  const staff = message.sender?.type === "user" ? message.sender.name : null;
+  const staff = staffName(message.sender);
 
   return {
     id: `cw-${message.id}`,

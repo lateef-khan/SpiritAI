@@ -51,6 +51,7 @@ export type ChatwootMessage = {
   readonly sender?: {
     readonly id: number;
     readonly name: string;
+    readonly available_name?: string;
     readonly type: ChatwootSenderType;
   };
 };

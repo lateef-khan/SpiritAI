@@ -5,7 +5,6 @@ using AgentCore.Application.Transcript;
 using Microsoft.Extensions.Options;
 
 using SpiritAI.Chatwoot;
-using SpiritAI.Handoffs.Transcript;
 using SpiritAI.Tests.Database;
 
 using Xunit;
@@ -25,25 +24,26 @@ public sealed class ChatwootCatchUpTests(PostgresFixture fixture)
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
+    /// <summary>What the AI reads for "Staff 41", "Visitor 42", and "Staff 43".</summary>
+    private const string StaffPhase =
+        """
+        While you were away, a person from our support team had this chat with the customer. You did not write these lines.
+        Matthew (support team): Staff 41
+        Customer: Visitor 42
+        Matthew (support team): Staff 43
+        What the support team said or promised, the company said and promised. Do not deny it or change it.
+        """;
+
     [Fact]
-    public async Task FromABookmarkOnTheNewestPageStaffAndTheVisitorAreCopiedButNotTheBotOrTheTurn()
+    public async Task FromABookmarkOnTheNewestPageTheStaffPartIsOneNoteAndTheVisitorAfterItStaysTheirs()
     {
         await using var world = await World.OpenAsync(fixture, ["catchup_page1"], through: 140);
 
         var nextOrdinal = await world.CatchUpAsync();
 
-        Assert.Equal(
-            [("assistant", "Staff 41"), ("user", "Visitor 42"), ("assistant", "Staff 43"), ("user", "Visitor 44")],
-            await world.WordsAsync());
+        Assert.Equal([("system", StaffPhase), ("user", "Visitor 44")], await world.WordsAsync());
 
-        var staff = (await world.RowsAsync())[0].Content;
-        var speaker = SpeakerProperty.Read(staff);
-        Assert.NotNull(speaker);
-        Assert.Equal("human", speaker.Value.GetProperty("kind").GetString());
-        Assert.Equal("Matthew Hsu", speaker.Value.GetProperty("name").GetString());
-        Assert.Equal("Support", speaker.Value.GetProperty("detail").GetString());
-
-        Assert.Equal(4, nextOrdinal);
+        Assert.Equal(2, nextOrdinal);
         Assert.Equal(TurnMessageId, await world.BookmarkAsync());
         Assert.Single(world.Wire.Requests);
     }
@@ -71,7 +71,7 @@ public sealed class ChatwootCatchUpTests(PostgresFixture fixture)
         Assert.Equal(
             [
                 .. Enumerable.Range(21, 20).Where(i => i % 2 == 1).Select(i => ("user", $"Visitor {i}")),
-                ("assistant", "Staff 41"), ("user", "Visitor 42"), ("assistant", "Staff 43"), ("user", "Visitor 44"),
+                ("system", StaffPhase), ("user", "Visitor 44"),
             ],
             await world.WordsAsync());
 
@@ -90,11 +90,10 @@ public sealed class ChatwootCatchUpTests(PostgresFixture fixture)
         Assert.Equal(
             [
                 .. Enumerable.Range(6, 35).Select(i => i % 2 == 0 ? ("assistant", $"Bot {i}") : ("user", $"Visitor {i}")),
-                ("assistant", "Staff 41"), ("user", "Visitor 42"), ("assistant", "Staff 43"), ("user", "Visitor 44"),
+                ("system", StaffPhase), ("user", "Visitor 44"),
             ],
             await world.WordsAsync());
 
-        Assert.Null(SpeakerProperty.Read((await world.RowsAsync())[0].Content));
         Assert.Equal(2, world.Wire.Requests.Count);
         Assert.Equal(TurnMessageId, await world.BookmarkAsync());
     }

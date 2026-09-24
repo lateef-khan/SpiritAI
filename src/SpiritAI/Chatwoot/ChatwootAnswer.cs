@@ -3,8 +3,6 @@ using AgentCore.Application.Transcript;
 
 using Microsoft.Extensions.AI;
 
-using SpiritAI.Handoffs.Transcript;
-
 namespace SpiritAI.Chatwoot;
 
 /// <summary>
@@ -56,9 +54,7 @@ public sealed class ChatwootAnswer(IConversations conversations, ChatwootClient 
 
         foreach (var row in stored.Messages.Where(m => m.Ordinal >= fromOrdinal).OrderBy(m => m.Ordinal))
         {
-            if (row.Content.Role != ChatRole.Assistant
-                || SpeakerProperty.Read(row.Content) is not null
-                || string.IsNullOrWhiteSpace(row.Content.Text))
+            if (row.Content.Role != ChatRole.Assistant || string.IsNullOrWhiteSpace(row.Content.Text))
             {
                 continue;
             }

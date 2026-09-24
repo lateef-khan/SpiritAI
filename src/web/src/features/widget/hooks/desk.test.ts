@@ -36,7 +36,7 @@ describe("moved", () => {
       if (next.note !== null) notes.push(next.note);
     }
 
-    expect(notes).toEqual(["Matthew Hsu joined the chat.", "The chat was closed."]);
+    expect(notes).toEqual(["Matthew joined the chat.", "The chat was closed."]);
     expect(desk.status).toBe("bot");
     expect(desk.chatwoot).toBe("pending");
   });
@@ -55,7 +55,7 @@ describe("moved", () => {
 
     const { desk } = moved({ ...NoChat, chatwoot: "pending" }, open);
 
-    expect(desk).toMatchObject({ status: "human", assigneeName: "Matthew Hsu" });
+    expect(desk).toMatchObject({ status: "human", assigneeName: "Matthew" });
   });
 });
 
