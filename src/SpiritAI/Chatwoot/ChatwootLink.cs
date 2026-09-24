@@ -17,8 +17,8 @@ public sealed class ChatwootLink
     /// <summary>The handoff Chatwoot was last told about, or <see langword="null"/> before the first.</summary>
     public long? AnnouncedHandoffId { get; set; }
 
-    /// <summary>The visitor email last put in a private note, so a new one is noted once.</summary>
-    public string? NotedEmail { get; set; }
+    /// <summary>The visitor phone number last put in a private note, so a new one is noted once.</summary>
+    public string? NotedPhone { get; set; }
 
     /// <summary>When the row last changed. The database fills it in when left unset.</summary>
     public DateTimeOffset UpdatedAt { get; set; }

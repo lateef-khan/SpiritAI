@@ -2,6 +2,8 @@ using AgentCore.Application.Conversation;
 using AgentCore.Application.Conversation.Memory;
 using AgentCore.Application.Ports;
 
+using Microsoft.Extensions.Options;
+
 using SpiritAI.Handoffs.Bot;
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Model;
@@ -12,7 +14,8 @@ using Xunit;
 namespace SpiritAI.Tests.Handoffs.Bot;
 
 /// <summary>
-/// The bot's way to ask for a person, section 9.4 of the handoff spec.
+/// The bot's way to ask for a person, section 9.4 of the handoff spec, and the call back promise of
+/// the phone callback spec, section 3.
 /// </summary>
 public sealed class RequestHumanToolTests
 {
@@ -22,7 +25,7 @@ public sealed class RequestHumanToolTests
     private readonly FakeHandoffStore _store;
     private readonly IConversations _conversations;
     private readonly RecordingHandoffNotifier _notifier = new();
-    private readonly FakeStaffPresence _staff = new();
+    private readonly CallbackOptions _callback = new();
     private readonly RequestHumanTool _tool;
 
     public RequestHumanToolTests()
@@ -34,20 +37,19 @@ public sealed class RequestHumanToolTests
                 _store,
                 _conversations,
                 _notifier,
-                _staff,
-                _clock));
+                new FakeStaffPresence(),
+                _clock),
+            Options.Create(_callback));
     }
 
     [Fact]
     public async Task InsideAChatTheToolAsksForAPerson()
     {
-        var conversationId = Guid.NewGuid().ToString("N");
-        await _conversations.CreateAsync(conversationId, Cancel);
-        _staff.Online = 1;
+        var conversationId = await NewChatAsync();
 
-        var answer = await _tool.AskAsync(conversationId, "they want a real person", email: null, Cancel);
+        var answer = await _tool.AskAsync(conversationId, "they want a real person", phone: null, Cancel);
 
-        Assert.Equal(RequestHumanTool.AskedNote, answer.Note);
+        Assert.Equal(RequestHumanTool.NoPhoneNote, answer.Note);
 
         var row = Assert.Single(_store.Rows);
         Assert.Equal(conversationId, row.ConversationId);
@@ -58,37 +60,45 @@ public sealed class RequestHumanToolTests
     }
 
     [Fact]
-    public async Task WithNobodyOnlineTheToolSaysToOfferAnEmail()
+    public async Task APhoneGivenWithTheAskLandsOnTheRowAndInTheAnswer()
     {
-        var conversationId = Guid.NewGuid().ToString("N");
-        await _conversations.CreateAsync(conversationId, Cancel);
+        var conversationId = await NewChatAsync();
 
-        var answer = await _tool.AskAsync(conversationId, "they want a real person", email: null, Cancel);
+        var answer = await _tool.AskAsync(conversationId, "they want a real person", "(201) 555-0123", Cancel);
 
-        Assert.Equal(RequestHumanTool.NobodyFreeNote, answer.Note);
+        var row = Assert.Single(_store.Rows);
+        Assert.Equal("+12015550123", row.Phone);
+        Assert.Equal(
+            $"We will call you at +1 201-555-0123. Your code is {row.Id}. If you call us first, give that code.",
+            answer.Note);
     }
 
     [Fact]
-    public async Task AnEmailGivenWithTheAskLandsOnTheRow()
+    public async Task ThePromiseSaysWhenStaffCallBack()
     {
-        var conversationId = Guid.NewGuid().ToString("N");
-        await _conversations.CreateAsync(conversationId, Cancel);
+        _callback.Promise = "within 2 hours, Mon-Fri 9-5";
+        var conversationId = await NewChatAsync();
 
-        var answer = await _tool.AskAsync(conversationId, "they want a real person", " Pat@Example.com ", Cancel);
+        var answer = await _tool.AskAsync(conversationId, "they want a real person", "(201) 555-0123", Cancel);
 
-        Assert.Equal(RequestHumanTool.NobodyFreeNote, answer.Note);
-        Assert.Equal("Pat@Example.com", Assert.Single(_store.Rows).Email);
+        Assert.StartsWith("We will call you at +1 201-555-0123 within 2 hours, Mon-Fri 9-5. Your code is ", answer.Note);
     }
 
     [Fact]
-    public async Task AnEmailThatIsNotAnAddressIsLeftOffAndSaidSo()
+    public async Task ANumberThatCannotBeReadIsLeftOffAndSaidSo()
+    {
+        var conversationId = await NewChatAsync();
+
+        var answer = await _tool.AskAsync(conversationId, "they want a real person", "12", Cancel);
+
+        Assert.Null(Assert.Single(_store.Rows).Phone);
+        Assert.Equal(RequestHumanTool.NoPhoneNote + RequestHumanTool.BadPhoneNote, answer.Note);
+    }
+
+    private async Task<string> NewChatAsync()
     {
         var conversationId = Guid.NewGuid().ToString("N");
         await _conversations.CreateAsync(conversationId, Cancel);
-
-        var answer = await _tool.AskAsync(conversationId, "they want a real person", "not an address", Cancel);
-
-        Assert.Null(Assert.Single(_store.Rows).Email);
-        Assert.EndsWith(RequestHumanTool.BadEmailNote, answer.Note);
+        return conversationId;
     }
 }

@@ -93,14 +93,14 @@ public static class AgentCoreExtensions
                 RequestHumanBinding,
                 async (
                     [Description("Why the person needs a human, in one sentence, in the person's own words.")] string reason,
-                    [Description("The person's email address, exactly as they gave it, so a reply reaches them if they step away. Omit it only if they declined to give one.")] string? email,
+                    [Description("The person's phone number, exactly as they gave it, so a member of staff can call them back. Omit it only if they declined to give one.")] string? phone,
                     ToolCallScope scope,
                     CancellationToken cancellationToken) =>
                 {
                     await using var container = services.GetRequiredService<IServiceScopeFactory>().CreateAsyncScope();
 
                     return await container.ServiceProvider.GetRequiredService<RequestHumanTool>()
-                        .AskAsync(scope.ConversationId, reason, email, cancellationToken)
+                        .AskAsync(scope.ConversationId, reason, phone, cancellationToken)
                         .ConfigureAwait(false);
                 });
     }

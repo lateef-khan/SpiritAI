@@ -4,7 +4,7 @@ namespace SpiritAI.Chatwoot;
 
 /// <summary>
 /// Tells Chatwoot that a chat wants a person: a private note with why and where to reach the
-/// visitor, then the conversation handed to staff. Each handoff is told once; an email the
+/// visitor, then the conversation handed to staff. Each handoff is told once; a phone number the
 /// visitor gives later gets a note of its own.
 /// </summary>
 public sealed class ChatwootHandoffNotice(ChatwootClient chatwoot)
@@ -24,19 +24,19 @@ public sealed class ChatwootHandoffNotice(ChatwootClient chatwoot)
             await chatwoot.HandToStaffAsync(link.ChatwootConversationId, cancellationToken).ConfigureAwait(false);
 
             link.AnnouncedHandoffId = open.Id;
-            link.NotedEmail = open.Email;
+            link.NotedPhone = open.Phone;
             return;
         }
 
-        if (open.Email is { } email && email != link.NotedEmail)
+        if (open.Phone is { } phone && phone != link.NotedPhone)
         {
-            await chatwoot.PostNoteAsync(link.ChatwootConversationId, "The customer's email: " + email, cancellationToken).ConfigureAwait(false);
+            await chatwoot.PostNoteAsync(link.ChatwootConversationId, PhoneLine(phone, open.Id), cancellationToken).ConfigureAwait(false);
 
-            link.NotedEmail = email;
+            link.NotedPhone = phone;
         }
     }
 
-    /// <summary>The note staff read first: who asked, why, and the email when there is one.</summary>
+    /// <summary>The note staff read first: who asked, why, and the phone number when there is one.</summary>
     public static string AskedNote(Handoff open)
     {
         ArgumentNullException.ThrowIfNull(open);
@@ -53,11 +53,14 @@ public sealed class ChatwootHandoffNotice(ChatwootClient chatwoot)
             lines.Add("Reason: " + open.Reason.Trim());
         }
 
-        if (open.Email is { } email)
+        if (open.Phone is { } phone)
         {
-            lines.Add("The customer's email: " + email);
+            lines.Add(PhoneLine(phone, open.Id));
         }
 
         return string.Join("\n", lines);
     }
+
+    private static string PhoneLine(string phone, long code)
+        => $"The customer's phone: {VisitorPhone.Display(phone)} — code {code}";
 }

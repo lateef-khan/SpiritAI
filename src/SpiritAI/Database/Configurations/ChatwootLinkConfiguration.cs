@@ -21,7 +21,7 @@ internal sealed class ChatwootLinkConfiguration : IEntityTypeConfiguration<Chatw
         builder.Property(l => l.ChatwootConversationId).HasColumnName("chatwoot_conversation_id");
         builder.Property(l => l.CopiedThrough).HasColumnName("copied_through");
         builder.Property(l => l.AnnouncedHandoffId).HasColumnName("announced_handoff_id");
-        builder.Property(l => l.NotedEmail).HasColumnName("noted_email");
+        builder.Property(l => l.NotedPhone).HasColumnName("noted_phone");
         builder.Property(l => l.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("now()");
 
         // The cascade means AgentCore's retention sweep of agentcore.conversation cleans up after us.

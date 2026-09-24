@@ -12,7 +12,7 @@ vi.mock("@/api/sdk.gen", () => ({
   getLatestPublicThread: vi.fn(),
   getPublicThreadMessages: vi.fn(),
   getHandoffState: vi.fn(),
-  leaveEmail: vi.fn(),
+  leavePhone: vi.fn(),
   sendVisitorMessage: vi.fn(),
 }));
 

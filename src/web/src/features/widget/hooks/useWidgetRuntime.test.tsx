@@ -124,7 +124,7 @@ function fakeApi(
       latestThread: async () => newest,
       history: async (callId) => ({ repository: await history(callId), ...page }),
       handoffState: async () => WithBot,
-      leaveEmail: async () => {},
+      leavePhone: async () => {},
       say: async (callId, text) => {
         said.push({ callId, text });
         const { messageId } = await say(callId, text);
@@ -151,7 +151,7 @@ function fakeDesk(
       desk.state = next;
       return next;
     },
-    leaveEmail: async () => {},
+    leavePhone: async () => {},
     apply: (change: Partial<HandoffState>) => {
       desk.state = { ...desk.state, ...change };
     },
@@ -163,7 +163,8 @@ const waiting: HandoffState = {
   status: "waiting",
   assigneeName: null,
   staffOnline: true,
-  email: null,
+  phone: null,
+  code: null,
 };
 
 const stored: ExportedMessageRepository = {

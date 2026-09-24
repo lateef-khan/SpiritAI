@@ -3,7 +3,7 @@ import {
   getHandoffState,
   getLatestPublicThread,
   getPublicThreadMessages,
-  leaveEmail,
+  leavePhone,
   sendVisitorMessage,
 } from "@/api/sdk.gen";
 import type { HandoffMessage, HandoffState as WireHandoffState } from "@/api/types.gen";
@@ -37,8 +37,8 @@ export type WidgetApi = {
   history: ReadHistory;
   /** Where the chat stands: the truth after a reload or a reconnect. */
   handoffState(callId: string): Promise<HandoffState>;
-  /** Leaves the visitor's email on the waiting handoff. */
-  leaveEmail(callId: string, email: string): Promise<void>;
+  /** Leaves the visitor's phone number on the waiting handoff. A number the host cannot read is refused with 400. */
+  leavePhone(callId: string, phone: string): Promise<void>;
   /** Puts the visitor's words in a chat that is waiting for, or with, a person. */
   say(callId: string, text: string): Promise<WireHandoffMessage>;
 };
@@ -94,12 +94,12 @@ export function createWidgetApi(send: FetchLike): WidgetApi {
       return { ...data, status: statusOf(data.status) };
     },
 
-    leaveEmail: async (callId, email) => {
-      await leaveEmail({
+    leavePhone: async (callId, phone) => {
+      await leavePhone({
         client,
         throwOnError: true,
         path: { conversationId: callId },
-        body: { email },
+        body: { phone },
       });
     },
 

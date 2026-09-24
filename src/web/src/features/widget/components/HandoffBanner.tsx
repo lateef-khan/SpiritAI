@@ -1,20 +1,21 @@
-import { HeadsetIcon, HourglassIcon, MailCheckIcon } from "lucide-react";
+import { HeadsetIcon, HourglassIcon, PhoneIcon } from "lucide-react";
 import { useState, type FormEvent } from "react";
 
 import { TypingDots } from "@/components/assistant-ui/elements/typing-indicator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { HostRefusedError } from "@/lib/apiClient";
 import type { HandoffState } from "../api/widgetApi";
 
 /**
  * The strip above the chat while a person is asked for, or has the chat.
  */
 
-/** Where the chat stands, and how to leave an email. */
+/** Where the chat stands, and how to leave a phone number. */
 export type HandoffBannerProps = {
   state: HandoffState;
   typing?: boolean;
-  onLeaveEmail: (email: string) => Promise<void>;
+  onLeavePhone: (phone: string) => Promise<void>;
 };
 
 /** The one line that says where the chat stands. */
@@ -61,22 +62,29 @@ function Presence({ online }: { online: boolean }) {
   );
 }
 
-/** The email box, shown while a person is waited for and no email has been left. */
-function EmailBox({ onLeaveEmail }: { onLeaveEmail: (email: string) => Promise<void> }) {
-  const [email, setEmail] = useState("");
+/** What to show when the number did not go through: the host's own words for a refused number. */
+function failureOf(error: unknown): string {
+  return error instanceof HostRefusedError && error.status === 400 && error.title
+    ? error.title
+    : "That did not go through. Try again.";
+}
+
+/** The phone box, shown while a person is waited for and no number has been left. */
+function PhoneBox({ onLeavePhone }: { onLeavePhone: (phone: string) => Promise<void> }) {
+  const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (busy || email.trim().length === 0) return;
+    if (busy || phone.trim().length === 0) return;
 
     setBusy(true);
-    setFailed(false);
+    setFailure(null);
     try {
-      await onLeaveEmail(email.trim());
-    } catch {
-      setFailed(true);
+      await onLeavePhone(phone.trim());
+    } catch (error) {
+      setFailure(failureOf(error));
     } finally {
       setBusy(false);
     }
@@ -84,35 +92,34 @@ function EmailBox({ onLeaveEmail }: { onLeaveEmail: (email: string) => Promise<v
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-2">
-      <p className="text-muted-foreground">
-        Leave your email, and we will reply there if you step away.
-      </p>
+      <p className="text-muted-foreground">Leave your phone number, and a team member will reach out.</p>
       <div className="flex gap-2">
         <Input
-          type="email"
+          type="tel"
+          autoComplete="tel"
           required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@example.com"
-          aria-label="Your email"
-          aria-invalid={failed || undefined}
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
+          placeholder="(555) 010-2233"
+          aria-label="Your phone number"
+          aria-invalid={failure !== null || undefined}
           className="h-8"
         />
-        <Button type="submit" size="sm" disabled={busy || email.trim().length === 0}>
+        <Button type="submit" size="sm" disabled={busy || phone.trim().length === 0}>
           Send
         </Button>
       </div>
-      {failed && <p className="text-destructive">That did not go through. Try again.</p>}
+      {failure && <p className="text-destructive">{failure}</p>}
     </form>
   );
 }
 
-export function HandoffBanner({ state, typing = false, onLeaveEmail }: HandoffBannerProps) {
+export function HandoffBanner({ state, typing = false, onLeavePhone }: HandoffBannerProps) {
   if (state.status !== "waiting" && state.status !== "human") return null;
 
-  // Asked whenever a person was requested and no address is on file, online or not: a visitor
-  // who closes the tab before someone is free would otherwise never hear back.
-  const asksForEmail = state.status === "waiting";
+  // Asked whenever a person was requested and no number is on file, online or not: staff call
+  // back, so a visitor with no number on file never hears back.
+  const asksForPhone = state.status === "waiting";
 
   return (
     <div
@@ -121,17 +128,22 @@ export function HandoffBanner({ state, typing = false, onLeaveEmail }: HandoffBa
     >
       <Line state={state} typing={typing} />
       {state.status === "waiting" && <Presence online={state.staffOnline} />}
-      {asksForEmail &&
-        (state.email ? (
+      {asksForPhone &&
+        (state.phone ? (
           <p className="text-muted-foreground flex items-center gap-2">
-            <MailCheckIcon className="size-4 shrink-0" aria-hidden />
+            <PhoneIcon className="size-4 shrink-0" aria-hidden />
             <span>
-              We will email <span className="font-medium">{state.email}</span> when a person
-              replies.
+              We will call you at <span className="font-medium">{state.phone}</span>.
+              {state.code !== null && (
+                <>
+                  {" "}
+                  Your code is <span className="font-medium">{state.code}</span>.
+                </>
+              )}
             </span>
           </p>
         ) : (
-          <EmailBox onLeaveEmail={onLeaveEmail} />
+          <PhoneBox onLeavePhone={onLeavePhone} />
         ))}
     </div>
   );

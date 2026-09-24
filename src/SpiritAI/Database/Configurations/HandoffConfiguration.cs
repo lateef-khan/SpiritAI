@@ -46,7 +46,7 @@ internal sealed class HandoffConfiguration : IEntityTypeConfiguration<Handoff>
         builder.Property(h => h.AssigneeKey).HasColumnName("assignee_key");
         builder.Property(h => h.AssigneeName).HasColumnName("assignee_name");
         builder.Property(h => h.ClaimedAt).HasColumnName("claimed_at");
-        builder.Property(h => h.Email).HasColumnName("email");
+        builder.Property(h => h.Phone).HasColumnName("phone");
         builder.Property(h => h.DoneAt).HasColumnName("done_at");
 
         // One open handoff per chat. Closed ones stay: they are the wait-time report.

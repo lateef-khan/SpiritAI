@@ -106,41 +106,43 @@ public sealed class VisitorHandoffEndpointTests
     }
 
     [Fact]
-    public async Task AnEmailIsKeptOnTheOpenRow()
+    public async Task APhoneIsKeptOnTheOpenRow()
     {
         await using var world = await VisitorHandoffWorld.StartAsync();
         var conversationId = await world.MakeChatAsync(world.Visitor);
         await world.Visitor.PostAsync(Handoff, new { callId = conversationId });
 
-        var response = await world.Visitor.PatchAsync($"{Handoff}/{conversationId}/email", new { email = "pat@example.com" });
+        var response = await world.Visitor.PatchAsync($"{Handoff}/{conversationId}/phone", new { phone = "(201) 555-0123" });
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-        Assert.Equal("pat@example.com", Assert.Single(world.Store.Rows).Email);
+        var row = Assert.Single(world.Store.Rows);
+        Assert.Equal("+12015550123", row.Phone);
 
         var state = await world.Visitor.ReadAsync<HandoffState>($"{Handoff}/{conversationId}");
-        Assert.Equal("pat@example.com", state.Email);
+        Assert.Equal("+1 201-555-0123", state.Phone);
+        Assert.Equal(row.Id, state.Code);
     }
 
     [Fact]
-    public async Task SomethingThatIsNotAnAddressIsRefused()
+    public async Task SomethingThatIsNotAPhoneNumberIsRefused()
     {
         await using var world = await VisitorHandoffWorld.StartAsync();
         var conversationId = await world.MakeChatAsync(world.Visitor);
         await world.Visitor.PostAsync(Handoff, new { callId = conversationId });
 
-        var response = await world.Visitor.PatchAsync($"{Handoff}/{conversationId}/email", new { email = "not-an-email" });
+        var response = await world.Visitor.PatchAsync($"{Handoff}/{conversationId}/phone", new { phone = "12" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Null(Assert.Single(world.Store.Rows).Email);
+        Assert.Null(Assert.Single(world.Store.Rows).Phone);
     }
 
     [Fact]
-    public async Task AnEmailWithNothingWaitingHasNowhereToGo()
+    public async Task APhoneWithNothingWaitingHasNowhereToGo()
     {
         await using var world = await VisitorHandoffWorld.StartAsync();
         var conversationId = await world.MakeChatAsync(world.Visitor);
 
-        var response = await world.Visitor.PatchAsync($"{Handoff}/{conversationId}/email", new { email = "pat@example.com" });
+        var response = await world.Visitor.PatchAsync($"{Handoff}/{conversationId}/phone", new { phone = "(201) 555-0123" });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }

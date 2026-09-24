@@ -12,7 +12,8 @@ export const WithBot: HandoffState = {
   status: "bot",
   assigneeName: null,
   staffOnline: false,
-  email: null,
+  phone: null,
+  code: null,
 };
 
 /** The desk the runtime and the banner both read. */
@@ -21,8 +22,8 @@ export type HandoffDesk = {
   readonly state: HandoffState;
   /** Reads the state again for one call, and answers what it read. */
   refresh(callId: string): Promise<HandoffState>;
-  /** Leaves an email on the waiting row of one call. */
-  leaveEmail(callId: string, email: string): Promise<void>;
+  /** Leaves a phone number on the waiting row of one call, then reads the state again. */
+  leavePhone(callId: string, phone: string): Promise<void>;
   /** Moves the state the way a push said it moved, without a read. The next open reads the truth. */
   apply(change: Partial<HandoffState>): void;
 };
@@ -55,17 +56,18 @@ export function useHandoffDesk(api: WidgetApi): HandoffDesk {
     [api],
   );
 
-  const leaveEmail = useCallback(
-    async (callId: string, email: string) => {
-      await api.leaveEmail(callId, email);
-      setState((held) => ({ ...held, email }));
+  // The host answers the number in its own display form, so the state is read back, not guessed.
+  const leavePhone = useCallback(
+    async (callId: string, phone: string) => {
+      await api.leavePhone(callId, phone);
+      await refresh(callId);
     },
-    [api],
+    [api, refresh],
   );
 
   const apply = useCallback((change: Partial<HandoffState>) => {
     setState((held) => ({ ...held, ...change }));
   }, []);
 
-  return { state, refresh, leaveEmail, apply };
+  return { state, refresh, leavePhone, apply };
 }

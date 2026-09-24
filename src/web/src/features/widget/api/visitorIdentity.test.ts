@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  readVisitorKey,
-  shareVisitorKey,
-  VisitorHeader,
-  visitorFetch,
-} from "./visitorIdentity";
+import { readVisitorKey, shareVisitorKey, VisitorHeader, visitorFetch } from "./visitorIdentity";
 
 /**
  * The visitor's identity, one test per promise the host relies on.
@@ -92,7 +87,7 @@ describe("visitorFetch", () => {
     // The generated client sends a `Request` and no init. Its content type must survive.
     const send = vi.fn(async () => new Response());
     const key = () => "abc123";
-    const request = new Request("http://host/v1/public/handoff/c1/email", {
+    const request = new Request("http://host/v1/public/handoff/c1/phone", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: "{}",

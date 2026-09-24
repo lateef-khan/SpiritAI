@@ -63,17 +63,17 @@ public sealed class HandoffDesk(
         return new HandoffAsked(row, Created: !wasOpen);
     }
 
-    /// <summary>Records the email the visitor left on the open handoff.</summary>
+    /// <summary>Records the phone number the visitor left on the open handoff.</summary>
     /// <param name="conversationId">The chat.</param>
-    /// <param name="email">The visitor's address.</param>
+    /// <param name="phone">The visitor's number, in E.164 form.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>Whether the chat had an open handoff to put it on.</returns>
-    public Task<bool> SetEmailAsync(string conversationId, string email, CancellationToken cancellationToken)
+    public Task<bool> SetPhoneAsync(string conversationId, string phone, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(conversationId);
-        ArgumentException.ThrowIfNullOrEmpty(email);
+        ArgumentException.ThrowIfNullOrEmpty(phone);
 
-        return handoffs.SetEmailAsync(conversationId, email, cancellationToken);
+        return handoffs.SetPhoneAsync(conversationId, phone, cancellationToken);
     }
 
     /// <summary>Puts the visitor's words in a chat that is waiting or with a person.</summary>

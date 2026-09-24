@@ -114,13 +114,13 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
     }
 
     /// <inheritdoc />
-    public async Task<bool> SetEmailAsync(string conversationId, string email, CancellationToken cancellationToken)
+    public async Task<bool> SetPhoneAsync(string conversationId, string phone, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(conversationId);
-        ArgumentException.ThrowIfNullOrEmpty(email);
+        ArgumentException.ThrowIfNullOrEmpty(phone);
 
         return await _queries.Open(conversationId)
-            .ExecuteUpdateAsync(s => s.SetProperty(h => h.Email, email), cancellationToken)
+            .ExecuteUpdateAsync(s => s.SetProperty(h => h.Phone, phone), cancellationToken)
             .ConfigureAwait(false) == 1;
     }
 

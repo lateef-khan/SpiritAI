@@ -1,4 +1,4 @@
-using System.Net.Mail;
+using Microsoft.Extensions.Options;
 
 using SpiritAI.Handoffs.Desk;
 using SpiritAI.Handoffs.Model;
@@ -9,46 +9,49 @@ namespace SpiritAI.Handoffs.Bot;
 /// The bot's door into the queue, section 9.4 of the handoff spec: what the <c>RequestHuman</c>
 /// binding in <c>spirit.yaml</c> runs.
 /// </summary>
-public sealed class RequestHumanTool(HandoffDesk desk)
+public sealed class RequestHumanTool(HandoffDesk desk, IOptions<CallbackOptions> callback)
 {
-    /// <summary>What the model is told once a person has been asked and somebody is here to see it.</summary>
-    public const string AskedNote = "A person has been asked to join, and someone is online.";
+    /// <summary>What the model is told when the chat has no phone number to call.</summary>
+    public const string NoPhoneNote = "A person will call you back once you leave a phone number.";
 
-    /// <summary>What the model is told once a person has been asked and nobody is here to see it.</summary>
-    public const string NobodyFreeNote =
-        "A person has been asked to join. Nobody is online right now; a reply will reach them by email.";
-
-    /// <summary>What the model is told when the email it passed cannot be delivered to.</summary>
-    public const string BadEmailNote = " The email given does not look like an address; ask for it again.";
+    /// <summary>What the model is told when the number it passed cannot be read.</summary>
+    public const string BadPhoneNote = " The phone number given is not a valid number; ask for it again.";
 
     /// <summary>Asks for a person on the chat of the turn under way.</summary>
     /// <param name="conversationId">The chat, as AgentCore names it to the binding.</param>
     /// <param name="reason">Why, in the person's own words.</param>
-    /// <param name="email">The email they gave, for staff to read in Chatwoot, when they gave one.</param>
+    /// <param name="phone">The phone number they gave, as they typed it, when they gave one.</param>
     /// <param name="cancellationToken">Cancels the ask.</param>
     /// <returns>One sentence for the model to pass on.</returns>
-    public async Task<RequestHumanAnswer> AskAsync(string conversationId, string reason, string? email, CancellationToken cancellationToken)
+    public async Task<RequestHumanAnswer> AskAsync(string conversationId, string reason, string? phone, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(conversationId);
 
-        var staffOnline = await desk.StaffOnlineAsync(cancellationToken).ConfigureAwait(false);
+        var asked = await desk.AskAsync(conversationId, HandoffAskedBy.Bot, reason, cancellationToken).ConfigureAwait(false);
 
-        await desk.AskAsync(conversationId, HandoffAskedBy.Bot, reason, cancellationToken).ConfigureAwait(false);
-
-        var note = staffOnline > 0 ? AskedNote : NobodyFreeNote;
-
-        if (!string.IsNullOrWhiteSpace(email))
+        if (VisitorPhone.TryRead(phone, out var e164))
         {
-            if (MailAddress.TryCreate(email.Trim(), out var address))
-            {
-                await desk.SetEmailAsync(conversationId, address.Address, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                note += BadEmailNote;
-            }
+            await desk.SetPhoneAsync(conversationId, e164, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            e164 = asked.Row.Phone;
         }
 
-        return new RequestHumanAnswer(note);
+        if (e164 is null)
+        {
+            return new RequestHumanAnswer(string.IsNullOrWhiteSpace(phone) ? NoPhoneNote : NoPhoneNote + BadPhoneNote);
+        }
+
+        return new RequestHumanAnswer(Promise(VisitorPhone.Display(e164), asked.Row.Id));
+    }
+
+    private string Promise(string phone, long code)
+    {
+        var when = callback.Value.Promise is { } text && !string.IsNullOrWhiteSpace(text)
+            ? " " + text.Trim().TrimEnd('.')
+            : string.Empty;
+
+        return $"We will call you at {phone}{when}. Your code is {code}. If you call us first, give that code.";
     }
 }

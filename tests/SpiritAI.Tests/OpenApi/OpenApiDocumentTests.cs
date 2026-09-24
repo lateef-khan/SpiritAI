@@ -66,7 +66,7 @@ public sealed class OpenApiDocumentTests
         "getPublicThreadMessages",
         "askForHuman",
         "getHandoffState",
-        "leaveEmail",
+        "leavePhone",
         "sendVisitorMessage",
     ];
 

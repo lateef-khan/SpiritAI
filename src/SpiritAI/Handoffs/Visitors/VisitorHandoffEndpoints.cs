@@ -1,5 +1,3 @@
-using System.Net.Mail;
-
 using AgentCore.Application.Ports;
 
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -14,7 +12,7 @@ using SpiritAI.PublicChat;
 namespace SpiritAI.Handoffs.Visitors;
 
 /// <summary>
-/// The visitor's side of a handoff, as REST: the ask, the state, the email, and the words said
+/// The visitor's side of a handoff, as REST: the ask, the state, the phone number, and the words said
 /// while waiting. Section 9.2 of the spec. Every route reads the visitor's key from
 /// <see cref="VisitorPrincipal.Header"/> and proves the chat is theirs before it does anything.
 /// </summary>
@@ -43,8 +41,8 @@ public static class VisitorHandoffEndpoints
             .Produces<HandoffState>()
             .Produces(StatusCodes.Status404NotFound);
 
-        endpoints.MapPatch($"{One}/email", EmailAsync)
-            .Describe("leaveEmail")
+        endpoints.MapPatch($"{One}/phone", PhoneAsync)
+            .Describe("leavePhone")
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
@@ -159,8 +157,8 @@ public static class VisitorHandoffEndpoints
         => ForOwnedAsync(http, conversations, contacts, contactConversations, conversationId, cancellationToken, async ()
             => TypedResults.Ok(await desk.StateAsync(conversationId, cancellationToken).ConfigureAwait(false)));
 
-    /// <summary>Records the email the visitor left on the open handoff.</summary>
-    private static Task<IResult> EmailAsync(
+    /// <summary>Records the phone number the visitor left on the open handoff.</summary>
+    private static Task<IResult> PhoneAsync(
         HttpContext http,
         IConversations conversations,
         IContactResolver contacts,
@@ -168,16 +166,16 @@ public static class VisitorHandoffEndpoints
         HandoffDesk desk,
         ChatwootCopyQueue copies,
         string conversationId,
-        VisitorEmailRequest? body,
+        VisitorPhoneRequest? body,
         CancellationToken cancellationToken)
         => ForOwnedAsync(http, conversations, contacts, contactConversations, conversationId, cancellationToken, async () =>
         {
-            if (body is not { Email: { } email } || !MailAddress.TryCreate(email, out _))
+            if (!VisitorPhone.TryRead(body?.Phone, out var phone))
             {
-                return Problem(StatusCodes.Status400BadRequest, "The request cannot be read.", "email must be an email address.");
+                return Problem(StatusCodes.Status400BadRequest, "That phone number is not valid.", "Check the number and try again.");
             }
 
-            if (!await desk.SetEmailAsync(conversationId, email, cancellationToken).ConfigureAwait(false))
+            if (!await desk.SetPhoneAsync(conversationId, phone, cancellationToken).ConfigureAwait(false))
             {
                 return Problem(StatusCodes.Status409Conflict, "Nothing is waiting.", "Ask for a person first.");
             }

@@ -15,23 +15,24 @@ const waiting: HandoffState = {
   status: "waiting",
   assigneeName: null,
   staffOnline: false,
-  email: null,
+  phone: null,
+  code: null,
 };
 
 function fakeApi(handoffState: (callId: string) => Promise<HandoffState>): {
   api: WidgetApi;
-  emails: { callId: string; email: string }[];
+  phones: { callId: string; phone: string }[];
 } {
-  const emails: { callId: string; email: string }[] = [];
+  const phones: { callId: string; phone: string }[] = [];
   return {
-    emails,
+    phones,
     api: {
       createThread: async () => "call-1",
       latestThread: async () => null,
       history: async () => ({ repository: { messages: [] }, nextCursor: null }),
       handoffState,
-      leaveEmail: async (callId, email) => {
-        emails.push({ callId, email });
+      leavePhone: async (callId, phone) => {
+        phones.push({ callId, phone });
       },
       say: async () => {
         throw new Error("not here");
@@ -73,8 +74,10 @@ describe("useHandoffDesk", () => {
     expect(view.result.current.state).toEqual(WithBot);
   });
 
-  it("leaves the email on the call it is given and keeps it on the state", async () => {
-    const { api, emails } = fakeApi(async () => waiting);
+  it("leaves the phone on the call it is given and reads the host's display form back", async () => {
+    const { api, phones } = fakeApi(async () =>
+      phones.length === 0 ? waiting : { ...waiting, phone: "+1 201-555-0123", code: 7 },
+    );
 
     const view = renderHook(() => useHandoffDesk(api));
     await act(async () => {
@@ -82,11 +85,12 @@ describe("useHandoffDesk", () => {
     });
 
     await act(async () => {
-      await view.result.current.leaveEmail("call-kept", "pat@example.com");
+      await view.result.current.leavePhone("call-kept", "(201) 555-0123");
     });
 
-    expect(emails).toEqual([{ callId: "call-kept", email: "pat@example.com" }]);
-    expect(view.result.current.state.email).toBe("pat@example.com");
+    expect(phones).toEqual([{ callId: "call-kept", phone: "(201) 555-0123" }]);
+    expect(view.result.current.state.phone).toBe("+1 201-555-0123");
+    expect(view.result.current.state.code).toBe(7);
   });
 
   it("applies what a push said, over what it holds", async () => {

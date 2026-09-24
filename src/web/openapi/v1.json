@@ -548,12 +548,12 @@
         }
       }
     },
-    "/v1/public/handoff/{conversationId}/email": {
+    "/v1/public/handoff/{conversationId}/phone": {
       "patch": {
         "tags": [
           "PublicHandoff"
         ],
-        "operationId": "leaveEmail",
+        "operationId": "leavePhone",
         "parameters": [
           {
             "name": "conversationId",
@@ -573,7 +573,7 @@
                     "type": "null"
                   },
                   {
-                    "$ref": "#/components/schemas/VisitorEmailRequest"
+                    "$ref": "#/components/schemas/VisitorPhoneRequest"
                   }
                 ]
               }
@@ -748,7 +748,8 @@
           "status",
           "assigneeName",
           "staffOnline",
-          "email"
+          "phone",
+          "code"
         ],
         "type": "object",
         "properties": {
@@ -764,11 +765,18 @@
           "staffOnline": {
             "type": "boolean"
           },
-          "email": {
+          "phone": {
             "type": [
               "null",
               "string"
             ]
+          },
+          "code": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -1705,17 +1713,6 @@
           }
         }
       },
-      "VisitorEmailRequest": {
-        "required": [
-          "email"
-        ],
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string"
-          }
-        }
-      },
       "VisitorMessageRequest": {
         "required": [
           "text"
@@ -1723,6 +1720,17 @@
         "type": "object",
         "properties": {
           "text": {
+            "type": "string"
+          }
+        }
+      },
+      "VisitorPhoneRequest": {
+        "required": [
+          "phone"
+        ],
+        "type": "object",
+        "properties": {
+          "phone": {
             "type": "string"
           }
         }

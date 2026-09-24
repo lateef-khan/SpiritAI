@@ -17,7 +17,8 @@ const waiting: HandoffState = {
   status: "waiting",
   assigneeName: null,
   staffOnline: true,
-  email: null,
+  phone: null,
+  code: null,
 };
 
 /** A desk that records what was applied and read. */
@@ -30,7 +31,7 @@ function fakeDesk(state: HandoffState) {
       desk.refreshed += 1;
       return desk.state;
     },
-    leaveEmail: async () => {},
+    leavePhone: async () => {},
     apply: (change: Partial<HandoffState>) => {
       desk.applied.push(change);
       desk.state = { ...desk.state, ...change };

@@ -63,10 +63,10 @@ public interface IHandoffStore
     /// <returns>Whether there was an open handoff to close.</returns>
     Task<bool> DoneAsync(string conversationId, CancellationToken cancellationToken);
 
-    /// <summary>Records the email the visitor left on the open handoff.</summary>
+    /// <summary>Records the phone number the visitor left on the open handoff.</summary>
     /// <param name="conversationId">The chat.</param>
-    /// <param name="email">The visitor's address.</param>
+    /// <param name="phone">The visitor's number, in E.164 form.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>Whether the chat had an open handoff to put it on.</returns>
-    Task<bool> SetEmailAsync(string conversationId, string email, CancellationToken cancellationToken);
+    Task<bool> SetPhoneAsync(string conversationId, string phone, CancellationToken cancellationToken);
 }

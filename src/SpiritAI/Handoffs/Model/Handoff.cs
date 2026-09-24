@@ -32,8 +32,8 @@ public sealed class Handoff
     /// <summary>When the chat was taken.</summary>
     public DateTimeOffset? ClaimedAt { get; set; }
 
-    /// <summary>The email the visitor left, for staff to read in Chatwoot.</summary>
-    public string? Email { get; set; }
+    /// <summary>The phone number the visitor left for staff to call back, in E.164 form.</summary>
+    public string? Phone { get; set; }
 
     /// <summary>When the chat was handed back to the bot.</summary>
     public DateTimeOffset? DoneAt { get; set; }

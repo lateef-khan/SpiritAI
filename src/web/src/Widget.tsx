@@ -103,9 +103,9 @@ export function Widget() {
 
   useFrameSize(phase);
 
-  // An email box only shows on a chat waiting for a person, which always has a call.
-  const leaveEmail = async (email: string) => {
-    if (widget.callId !== null) await desk.leaveEmail(widget.callId, email);
+  // A phone box only shows on a chat waiting for a person, which always has a call.
+  const leavePhone = async (phone: string) => {
+    if (widget.callId !== null) await desk.leavePhone(widget.callId, phone);
   };
 
   const onOpenChange = (next: boolean) => {
@@ -136,7 +136,7 @@ export function Widget() {
                 >
                   <XIcon className="size-4" />
                 </PopoverClose>
-                <HandoffBanner state={desk.state} typing={typing} onLeaveEmail={leaveEmail} />
+                <HandoffBanner state={desk.state} typing={typing} onLeavePhone={leavePhone} />
                 <div className="min-h-0 flex-1">
                   <Thread components={WIDGET_COMPONENTS} olderMessages={widget.older} />
                 </div>

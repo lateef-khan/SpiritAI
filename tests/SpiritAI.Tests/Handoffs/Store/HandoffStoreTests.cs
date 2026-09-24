@@ -198,7 +198,7 @@ public sealed class HandoffStoreTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task EmailLandsOnTheOpenRow()
+    public async Task PhoneLandsOnTheOpenRow()
     {
         var conversationId = NewConversationId();
         await fixture.MakeConversationAsync(conversationId);
@@ -210,14 +210,14 @@ public sealed class HandoffStoreTests(PostgresFixture fixture)
 
             await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
 
-            Assert.True(await store.SetEmailAsync(conversationId, "visitor@example.com", Cancel));
+            Assert.True(await store.SetPhoneAsync(conversationId, "+12015550123", Cancel));
 
             var row = await store.OpenAsync(conversationId, Cancel);
 
             Assert.NotNull(row);
-            Assert.Equal("visitor@example.com", row.Email);
+            Assert.Equal("+12015550123", row.Phone);
 
-            Assert.False(await store.SetEmailAsync(NewConversationId(), "visitor@example.com", Cancel));
+            Assert.False(await store.SetPhoneAsync(NewConversationId(), "+12015550123", Cancel));
         }
         finally
         {
