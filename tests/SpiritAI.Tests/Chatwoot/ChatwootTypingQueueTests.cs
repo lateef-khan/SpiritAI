@@ -31,7 +31,7 @@ public sealed class ChatwootTypingQueueTests
     [Fact]
     public async Task TheVisitorsTypingIsKeptForTheChatTheyWereAdmittedTo()
     {
-        var queue = new ChatwootTypingQueue(Options.Create(Configured));
+        using var queue = new ChatwootTypingQueue(Options.Create(Configured));
         var visitor = Visitor("chat-1");
 
         queue.Heard(visitor, Typing(visitor, HandoffGroups.Staff, new { callId = "someone-else", on = true }));
@@ -43,7 +43,7 @@ public sealed class ChatwootTypingQueueTests
     [Fact]
     public async Task AnythingElseIsNotKept()
     {
-        var queue = new ChatwootTypingQueue(Options.Create(Configured));
+        using var queue = new ChatwootTypingQueue(Options.Create(Configured));
         var visitor = Visitor("chat-1");
         var staff = visitor with { Kind = HandoffAdmission.StaffKind };
 
@@ -61,12 +61,31 @@ public sealed class ChatwootTypingQueueTests
     [Fact]
     public async Task NothingIsKeptWhileTheCopyIsNotConfigured()
     {
-        var queue = new ChatwootTypingQueue(Options.Create(new ChatwootOptions()));
+        using var queue = new ChatwootTypingQueue(Options.Create(new ChatwootOptions()));
         var visitor = Visitor("chat-1");
 
         queue.Heard(visitor, Typing(visitor, HandoffGroups.Staff, new { on = true }));
 
         Assert.Empty(await ReadAsync(queue, 1));
+    }
+
+    [Fact]
+    public async Task AFloodFromOneChatIsCutDownAndOtherChatsAreNot()
+    {
+        using var queue = new ChatwootTypingQueue(Options.Create(Configured));
+        var flooder = Visitor("chat-1");
+        var neighbour = Visitor("chat-2");
+
+        for (var i = 0; i < 20; i++)
+        {
+            queue.Heard(flooder, Typing(flooder, HandoffGroups.Staff, new { on = i % 2 == 0 }));
+        }
+
+        queue.Heard(neighbour, Typing(neighbour, HandoffGroups.Staff, new { on = true }));
+
+        var read = await ReadAsync(queue, 21);
+        Assert.Equal(ChatwootTypingQueue.Burst, read.Count(t => t.ConversationId == "chat-1"));
+        Assert.Equal(new VisitorTyping("chat-2", true), read[^1]);
     }
 
     /// <summary>Reads up to <paramref name="count"/> signals, or what is there after a short wait.</summary>

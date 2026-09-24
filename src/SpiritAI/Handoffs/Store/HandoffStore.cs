@@ -80,6 +80,24 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
     }
 
     /// <inheritdoc />
+    public async Task<bool> HandOverAsync(
+        string conversationId, string staffKey, string staffName, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(conversationId);
+        ArgumentException.ThrowIfNullOrEmpty(staffKey);
+        ArgumentException.ThrowIfNullOrEmpty(staffName);
+
+        return await database.Handoffs
+            .Where(h => h.ConversationId == conversationId && h.Status == HandoffStatus.Human && h.AssigneeKey != staffKey)
+            .ExecuteUpdateAsync(
+                s => s
+                    .SetProperty(h => h.AssigneeKey, staffKey)
+                    .SetProperty(h => h.AssigneeName, staffName),
+                cancellationToken)
+            .ConfigureAwait(false) == 1;
+    }
+
+    /// <inheritdoc />
     public async Task<bool> DoneAsync(string conversationId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(conversationId);

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Threading.Channels;
+using System.Threading.RateLimiting;
 
 using Microsoft.Extensions.Options;
 
@@ -9,14 +10,25 @@ using SpiritAI.RealTime;
 namespace SpiritAI.Chatwoot;
 
 /// <summary>
-/// Hears the visitor's typing signal on the socket and keeps it for Chatwoot. The chat is the one
-/// the visitor was admitted to, never the one the payload names. Nothing is kept while the copy is
-/// not configured, and a full line drops the oldest: typing is a hint.
+/// Hears the visitor's typing signal on the socket and keeps it for Chatwoot.
 /// </summary>
-public sealed class ChatwootTypingQueue(IOptions<ChatwootOptions> options) : IRealTimeSignalListener
+public sealed class ChatwootTypingQueue(IOptions<ChatwootOptions> options) : IRealTimeSignalListener, IDisposable
 {
     /// <summary>How many signals may wait. Past it the oldest is dropped.</summary>
     public const int Capacity = 1000;
+
+    /// <summary>How many signals one chat may send at once, before the one-a-second limit starts.</summary>
+    public const int Burst = 4;
+
+    private readonly PartitionedRateLimiter<string> _perChat = PartitionedRateLimiter.Create<string, string>(
+        conversationId => RateLimitPartition.GetTokenBucketLimiter(conversationId, _ => new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = Burst,
+            TokensPerPeriod = 1,
+            ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+            QueueLimit = 0,
+            AutoReplenishment = true,
+        }));
 
     private readonly Channel<VisitorTyping> _typing = Channel.CreateBounded<VisitorTyping>(
         new BoundedChannelOptions(Capacity) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
@@ -37,7 +49,12 @@ public sealed class ChatwootTypingQueue(IOptions<ChatwootOptions> options) : IRe
             return;
         }
 
-        _typing.Writer.TryWrite(new VisitorTyping(conversationId, on));
+        using var lease = _perChat.AttemptAcquire(conversationId);
+
+        if (lease.IsAcquired)
+        {
+            _typing.Writer.TryWrite(new VisitorTyping(conversationId, on));
+        }
     }
 
     /// <summary>Reads the signals in the order they were heard, until the host stops.</summary>
@@ -45,6 +62,9 @@ public sealed class ChatwootTypingQueue(IOptions<ChatwootOptions> options) : IRe
     /// <returns>The signals.</returns>
     public IAsyncEnumerable<VisitorTyping> ReadAllAsync(CancellationToken cancellationToken)
         => _typing.Reader.ReadAllAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public void Dispose() => _perChat.Dispose();
 
     private static bool? OnOf(JsonElement payload)
         => payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("on", out var on)

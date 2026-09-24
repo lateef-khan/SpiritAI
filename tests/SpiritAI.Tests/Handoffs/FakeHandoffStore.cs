@@ -68,6 +68,20 @@ internal sealed class FakeHandoffStore(TimeProvider clock) : IHandoffStore
         return Task.FromResult(HandoffClaim.Won(row));
     }
 
+    public Task<bool> HandOverAsync(
+        string conversationId, string staffKey, string staffName, CancellationToken cancellationToken)
+    {
+        if (Open(conversationId) is not { Status: HandoffStatus.Human } row || row.AssigneeKey == staffKey)
+        {
+            return Task.FromResult(false);
+        }
+
+        row.AssigneeKey = staffKey;
+        row.AssigneeName = staffName;
+
+        return Task.FromResult(true);
+    }
+
     public Task<bool> DoneAsync(string conversationId, CancellationToken cancellationToken)
         => Task.FromResult(OnOpen(conversationId, row =>
         {

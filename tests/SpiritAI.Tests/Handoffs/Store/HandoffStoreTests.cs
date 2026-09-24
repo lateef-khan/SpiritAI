@@ -118,6 +118,41 @@ public sealed class HandoffStoreTests(PostgresFixture fixture) : IClassFixture<P
     }
 
     [Fact]
+    public async Task OnlyAHeldChatIsHandedOver()
+    {
+        var conversationId = NewConversationId();
+        await fixture.MakeConversationAsync(conversationId);
+
+        try
+        {
+            await using var database = fixture.Open();
+            var store = new HandoffStore(database, new TestTimeProvider(Start));
+
+            await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
+
+            Assert.False(await store.HandOverAsync(conversationId, "staff:sam", "Sam", Cancel));
+
+            await store.ClaimAsync(conversationId, "staff:dana", "Dana R.", Cancel);
+
+            Assert.False(await store.HandOverAsync(conversationId, "staff:dana", "Dana R.", Cancel));
+            Assert.True(await store.HandOverAsync(conversationId, "staff:sam", "Sam", Cancel));
+
+            var open = await store.OpenAsync(conversationId, Cancel);
+            Assert.NotNull(open);
+            Assert.Equal(HandoffStatus.Human, open.Status);
+            Assert.Equal(("staff:sam", "Sam"), (open.AssigneeKey, open.AssigneeName));
+
+            await store.DoneAsync(conversationId, Cancel);
+
+            Assert.False(await store.HandOverAsync(conversationId, "staff:dana", "Dana R.", Cancel));
+        }
+        finally
+        {
+            await fixture.DeleteConversationAsync(conversationId);
+        }
+    }
+
+    [Fact]
     public async Task DoneClosesAndAskAgainOpensANewRow()
     {
         var conversationId = NewConversationId();

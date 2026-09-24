@@ -114,7 +114,9 @@ public sealed class ChatwootEventHandler(
 
         var claim = await handoffs.ClaimAsync(conversationId, key, name, cancellationToken).ConfigureAwait(false);
 
-        if (claim.Result == HandoffClaimResult.Won)
+        if (claim.Result == HandoffClaimResult.Won
+            || (claim.Result == HandoffClaimResult.AlreadyTaken
+                && await handoffs.HandOverAsync(conversationId, key, name, cancellationToken).ConfigureAwait(false)))
         {
             await notifier.ClaimedAsync(conversationId, new HandoffAssignee(key, name), cancellationToken).ConfigureAwait(false);
         }

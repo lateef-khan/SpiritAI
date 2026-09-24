@@ -6,6 +6,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using SpiritAI.Chatwoot;
+using SpiritAI.Handoffs.Contracts;
 using SpiritAI.Handoffs.Mail;
 using SpiritAI.Handoffs.Model;
 using SpiritAI.Handoffs.RealTime;
@@ -22,7 +23,8 @@ namespace SpiritAI.Tests.Chatwoot;
 
 /// <summary>
 /// A staff reply from Chatwoot reaching the visitor: stored in the chat, signed, pushed, and mailed
-/// when the visitor is away and left an email.
+/// when the visitor is away and left an email. And the name on the visitor's banner following
+/// whoever holds the chat.
 /// </summary>
 public sealed class ChatwootEventHandlerTests
 {
@@ -90,6 +92,29 @@ public sealed class ChatwootEventHandlerTests
         await AssertStoredAndPushedAsync(conversationId);
     }
 
+    [Fact]
+    public async Task AChatHandedToAnotherAgentShowsTheirName()
+    {
+        var conversationId = await TakenChatAsync(email: null);
+
+        await Handler(_mailer).HandleAsync(AssignedTo(conversationId, "Sam K."), Cancel);
+
+        var (name, payload) = Assert.Single(_notifier.Pushed);
+        Assert.Equal("handoff.claimed", name);
+        Assert.Equal("Sam K.", (((string, HandoffAssignee))payload).Item2.Name);
+        Assert.Equal("Sam K.", (await _store.OpenAsync(conversationId, Cancel))?.AssigneeName);
+    }
+
+    [Fact]
+    public async Task TheSameAgentAgainPushesNothing()
+    {
+        var conversationId = await TakenChatAsync(email: null);
+
+        await Handler(_mailer).HandleAsync(AssignedTo(conversationId, "Dana R."), Cancel);
+
+        Assert.Empty(_notifier.Pushed);
+    }
+
     /// <summary>The reply is in the chat, signed with the staff name, and was pushed to the visitor.</summary>
     private async Task AssertStoredAndPushedAsync(string conversationId)
     {
@@ -126,6 +151,21 @@ public sealed class ChatwootEventHandlerTests
             ActorType: ChatwootEvent.StaffActor,
             ActorId: 7,
             ActorName: "Dana R.");
+
+    private static ChatwootEvent AssignedTo(string conversationId, string agent)
+        => new(
+            "conversation_updated",
+            conversationId,
+            ChatwootConversationId: 1,
+            Status: "open",
+            AssigneeName: agent,
+            ContactEmail: null,
+            MessageType: null,
+            IsPrivate: false,
+            Content: null,
+            ActorType: null,
+            ActorId: null,
+            ActorName: null);
 
     /// <summary>A visitor's chat that asked for a person, was taken by Dana, and may have an email on it.</summary>
     private async Task<string> TakenChatAsync(string? email)

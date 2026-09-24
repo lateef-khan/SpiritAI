@@ -43,6 +43,20 @@ public interface IHandoffStore
     Task<HandoffClaim> ClaimAsync(
         string conversationId, string staffKey, string staffName, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Moves a chat that a person already holds to another member of staff.
+    /// </summary>
+    /// <param name="conversationId">The chat.</param>
+    /// <param name="staffKey">The new holder's caller key.</param>
+    /// <param name="staffName">The name the visitor will see.</param>
+    /// <param name="cancellationToken">Cancels the move.</param>
+    /// <returns>
+    /// Whether the chat moved. A chat that is waiting, closed, or held by this member of staff
+    /// already does not.
+    /// </returns>
+    Task<bool> HandOverAsync(
+        string conversationId, string staffKey, string staffName, CancellationToken cancellationToken);
+
     /// <summary>Closes the chat's open handoff, from waiting or from human. The row stays.</summary>
     /// <param name="conversationId">The chat.</param>
     /// <param name="cancellationToken">Cancels the close.</param>
