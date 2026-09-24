@@ -67,9 +67,7 @@ app.UseNeonAuthOnApi();
 
 app.UseThreadSessions();
 
-app.UseVisitorChat(AgentCoreExtensions.RouteOf(publicChat.Pattern));
-
-app.UseChatwootCopy(AgentCoreExtensions.RouteOf(publicChat.Pattern));
+app.UseChatwootTurn(AgentCoreExtensions.RouteOf(publicChat.Pattern));
 
 if (app.Environment.IsDevelopment())
 {

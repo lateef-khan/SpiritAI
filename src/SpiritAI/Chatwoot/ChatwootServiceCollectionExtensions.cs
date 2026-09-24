@@ -13,7 +13,7 @@ public static class ChatwootServiceCollectionExtensions
 {
     /// <summary>
     /// Adds the <see cref="ChatwootOptions"/>, the webhook's event queue, worker, and handler, and
-    /// the copy's client, queue, and worker, the catch-up of the AI's copy, the typing's queue, which hears the socket, and its
+    /// the copy's client, queue, and worker, the turn's Chatwoot ids, the catch-up of the AI's copy, the posting of its answers, the typing's queue, which hears the socket, and its
     /// worker, and the <see cref="IStaffPresence"/> read from Chatwoot's agents.
     /// </summary>
     /// <param name="services">The host's services.</param>
@@ -37,6 +37,10 @@ public static class ChatwootServiceCollectionExtensions
         services.AddHttpClient<ChatwootClient>();
 
         services.AddScoped<ChatwootCatchUp>();
+
+        services.AddScoped<ChatwootTurn>();
+
+        services.AddScoped<ChatwootAnswer>();
 
         services.AddSingleton<ChatwootCopyQueue>();
 

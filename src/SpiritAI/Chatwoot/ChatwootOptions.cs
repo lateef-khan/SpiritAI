@@ -44,6 +44,9 @@ public sealed class ChatwootOptions
     /// <summary>Whether who is online is read from Chatwoot: every setting the read needs is set.</summary>
     public bool PresenceEnabled => BaseUrl.Length > 0 && AccountId > 0 && ServiceToken.Length > 0;
 
+    /// <summary>Whether the AI can answer widget chats Chatwoot holds: every setting a turn needs is set.</summary>
+    public bool TurnEnabled => BaseUrl.Length > 0 && AccountId > 0 && InboxIdentifier.Length > 0 && BotToken.Length > 0;
+
     /// <summary>Whether widget chats are copied into Chatwoot: every setting the copy needs is set.</summary>
     public bool CopyEnabled => BaseUrl.Length > 0 && AccountId > 0 && InboxId > 0 && InboxIdentifier.Length > 0 && BotToken.Length > 0;
 }
