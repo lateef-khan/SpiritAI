@@ -2,6 +2,7 @@ import {
   useExternalStoreRuntime,
   type AppendMessage,
   type AssistantRuntime,
+  type ThreadAssistantMessagePart,
   type ThreadMessage,
 } from "@assistant-ui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -40,12 +41,17 @@ export function spiritConversationId(conversation: ChatwootConversation): string
 
 /** Maps one streamed state onto the reply, the way the app's adapter does. */
 function replyFrom(reply: Held, state: TurnState): Held {
+  const toolsById = new Map(state.tools.map((tool) => [tool.callId, tool]));
   return {
     ...reply,
+    // One part per run of words, so a program after a sentence starts its own part and draws.
     content: [
-      ...state.tools.map(toolContent),
+      ...state.items.flatMap((item): ThreadAssistantMessagePart[] => {
+        if (item.type === "text") return [{ type: "text", text: item.text }];
+        const tool = item.type === "tool" ? toolsById.get(item.callId) : undefined;
+        return tool ? [toolContent(tool)] : [];
+      }),
       ...state.sources.map(sourceContent),
-      ...(state.text.length > 0 ? [{ type: "text" as const, text: state.text }] : []),
     ],
     metadata: { custom: { stage: state.stage, isTerminal: state.isTerminal } },
   };

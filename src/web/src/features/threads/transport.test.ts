@@ -627,6 +627,24 @@ test("runTurn keeps words and tools in the order they arrived", async () => {
   assert.equal(last.text, "Checking the orders.root = Card([])");
 });
 
+test("runTurn keeps two output messages apart when no tool frame sits between them", async () => {
+  // Recorded from the public widget route: a turn that hides its tool frames still names each
+  // output message by `item_id`, so the sentence and the program arrive as two items.
+  const collected = await states([
+    created("conv_1"),
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","item_id":"msg_Kt5Rw0R2WNnH8NfWsvwoj2GB6fBZwqXF","output_index":1,"content_index":0,"delta":"Lubrication schedule "}\n\n',
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","item_id":"msg_Kt5Rw0R2WNnH8NfWsvwoj2GB6fBZwqXF","output_index":1,"content_index":0,"delta":"coming up."}\n\n',
+    'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","item_id":"msg_R8vX2qLm0TzH4c9WfJpN1yBd6KsA3eGu","output_index":5,"content_index":0,"delta":"root = Card([])"}\n\n',
+    completed(),
+  ]);
+
+  const last = collected[collected.length - 1]!;
+  assert.deepEqual(
+    last.items.map((item) => (item.type === "text" ? item.text : item.type)),
+    ["Lubrication schedule coming up.", "root = Card([])"],
+  );
+});
+
 test("a tool survives a later text-only yield", async () => {
   const collected = await states([
     created("conv_1"),

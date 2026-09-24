@@ -30,7 +30,7 @@ public sealed class ChatwootCatchUpTests(PostgresFixture fixture)
     {
         await using var world = await World.OpenAsync(fixture, ["catchup_page1"], through: 140);
 
-        await world.CatchUpAsync();
+        var nextOrdinal = await world.CatchUpAsync();
 
         Assert.Equal(
             [("assistant", "Staff 41"), ("user", "Visitor 42"), ("assistant", "Staff 43"), ("user", "Visitor 44")],
@@ -43,6 +43,7 @@ public sealed class ChatwootCatchUpTests(PostgresFixture fixture)
         Assert.Equal("Matthew Hsu", speaker.Value.GetProperty("name").GetString());
         Assert.Equal("Support", speaker.Value.GetProperty("detail").GetString());
 
+        Assert.Equal(4, nextOrdinal);
         Assert.Equal(TurnMessageId, await world.BookmarkAsync());
         Assert.Single(world.Wire.Requests);
     }
@@ -52,9 +53,10 @@ public sealed class ChatwootCatchUpTests(PostgresFixture fixture)
     {
         await using var world = await World.OpenAsync(fixture, ["catchup_page1"], through: 146);
 
-        await world.CatchUpAsync();
+        var nextOrdinal = await world.CatchUpAsync();
 
         Assert.Empty(await world.WordsAsync());
+        Assert.Equal(0, nextOrdinal);
         Assert.Equal(TurnMessageId, await world.BookmarkAsync());
         Assert.Single(world.Wire.Requests);
     }
@@ -128,7 +130,7 @@ public sealed class ChatwootCatchUpTests(PostgresFixture fixture)
             return world;
         }
 
-        public async Task CatchUpAsync()
+        public async Task<int> CatchUpAsync()
         {
             var chatwoot = new ChatwootClient(new HttpClient(Wire), Options.Create(new ChatwootOptions
             {
@@ -138,8 +140,10 @@ public sealed class ChatwootCatchUpTests(PostgresFixture fixture)
 
             var newest = await chatwoot.ListMessagesAsync("probe-catchup-key", 19, before: null, Cancel);
 
-            await new ChatwootCatchUp(chatwoot, _conversations)
-                .CatchUpAsync(_conversationId, "probe-catchup-key", 19, TurnMessageId, newest!, Cancel);
+            var copy = await _conversations.GetAsync(_conversationId, Cancel);
+
+            return await new ChatwootCatchUp(chatwoot, _conversations)
+                .CatchUpAsync(copy!, new ChatwootIds(19, "probe-catchup-key"), TurnMessageId, newest!, Cancel);
         }
 
         public Task<IReadOnlyList<ConversationMessage>> RowsAsync()

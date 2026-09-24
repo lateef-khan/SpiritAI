@@ -96,16 +96,9 @@ internal sealed class ChatwootTurnMiddleware(RequestDelegate next, string patter
         var copy = await conversations.GetAsync(namedChat, cancellationToken).ConfigureAwait(false)
             ?? await conversations.CreateAsync(namedChat, cancellationToken).ConfigureAwait(false);
 
-        var ids = new ChatwootIds(displayId, key);
-
-        if (ChatwootIds.Read(copy.Custom) != ids)
-        {
-            await conversations.SetCustomAsync(namedChat, ids.Write(copy.Custom), cancellationToken).ConfigureAwait(false);
-        }
-
-        await catchUp.CatchUpAsync(namedChat, key, displayId, messageId, newestPage, cancellationToken).ConfigureAwait(false);
-
-        var answerFrom = (await conversations.GetAsync(namedChat, cancellationToken).ConfigureAwait(false))!.NextOrdinal;
+        var answerFrom = await catchUp
+            .CatchUpAsync(copy, new ChatwootIds(displayId, key), messageId, newestPage, cancellationToken)
+            .ConfigureAwait(false);
 
         context.Response.OnCompleted(() => ChatwootAnswer.PostInNewScopeAsync(context, namedChat, displayId, answerFrom));
 

@@ -149,6 +149,38 @@ describe("useWidgetRuntime", () => {
     ]);
   });
 
+  it("keeps a sentence and the program after it as two parts, so the program draws", async () => {
+    // Item ids recorded from the public route, which hides the tool call between the two.
+    const event = (payload: unknown) =>
+      `event: response.output_text.delta\ndata: ${JSON.stringify(payload)}\n\n`;
+    const answer = new Response(
+      event({
+        type: "response.output_text.delta",
+        item_id: "msg_Kt5Rw0R2WNnH8NfWsvwoj2GB6fBZwqXF",
+        delta: "Lubrication schedule — I'll pull the guide for your treadmill.",
+      }) +
+        event({
+          type: "response.output_text.delta",
+          item_id: "msg_DSfa6o9FGmHYgB1T7FsHTCT7EcR2fIwX",
+          delta: 'root = Card([header])\nheader = CardHeader("Treadmill belt lubrication")',
+        }) +
+        `event: response.completed\ndata: ${JSON.stringify({ type: "response.completed", response: { id: "resp_1" } })}\n\n`,
+      { status: 200, headers: { "Content-Type": "text/event-stream" } },
+    );
+    const cw = chatwoot([]);
+    const { send } = spirit([answer]);
+    const view = renderHook(() => useWidgetRuntime("/v1/public/main/responses", cw.start, send));
+    await waitFor(() => expect(view.result.current.chat).not.toBeNull());
+
+    await say(view.result.current, "How often should I lubricate my treadmill belt?");
+
+    const reply = view.result.current.runtime.thread.getState().messages.at(-1)!;
+    expect(reply.content.map((part) => (part.type === "text" ? part.text : part.type))).toEqual([
+      "Lubrication schedule — I'll pull the guide for your treadmill.",
+      'root = Card([header])\nheader = CardHeader("Treadmill belt lubrication")',
+    ]);
+  });
+
   it("drops Chatwoot's copy of an answer the page streamed, and shows a staff reply", async () => {
     const cw = chatwoot([]);
     const { send } = spirit([reply("Yes, it is in stock.")]);

@@ -1,3 +1,4 @@
+using AgentCore.Application.Conversation;
 using AgentCore.Application.Ports;
 
 using Microsoft.Extensions.AI;
@@ -8,8 +9,7 @@ using SpiritAI.Handoffs.Transcript;
 namespace SpiritAI.Chatwoot;
 
 /// <summary>
-/// Before an AI turn, copies into the AgentCore copy the Chatwoot messages it missed: staff
-/// replies, what the visitor wrote while a person was in charge, or everything after a sweep.
+/// Before an AI turn, copies into the AgentCore copy the Chatwoot messages it missed.
 /// </summary>
 public sealed class ChatwootCatchUp(ChatwootClient chatwoot, IConversations conversations)
 {
@@ -22,48 +22,52 @@ public sealed class ChatwootCatchUp(ChatwootClient chatwoot, IConversations conv
     /// <summary>The team a staff message is signed with, under the name.</summary>
     public const string StaffDetail = "Support";
 
-    /// <summary>Appends what the copy is missing, oldest first, then moves the bookmark.</summary>
-    /// <param name="conversationId">The AgentCore conversation, which must exist.</param>
-    /// <param name="sourceId">The visitor's key.</param>
-    /// <param name="chatwootConversationId">The Chatwoot conversation's display id.</param>
+    /// <summary>
+    /// Appends what the copy is missing, oldest first, then files the Chatwoot ids and moves the
+    /// bookmark in one write.
+    /// </summary>
+    /// <param name="copy">The AgentCore conversation, as read just before the turn.</param>
+    /// <param name="ids">The Chatwoot conversation and the visitor's key.</param>
     /// <param name="turnMessageId">The message the visitor just sent. The turn itself carries it.</param>
     /// <param name="newestPage">The newest page of messages, already read to prove the visitor owns the conversation.</param>
     /// <param name="cancellationToken">Cancels the work.</param>
-    public async Task CatchUpAsync(
-        string conversationId,
-        string sourceId,
-        int chatwootConversationId,
+    /// <returns>The ordinal the turn's first row takes.</returns>
+    public async Task<int> CatchUpAsync(
+        ConversationRecord copy,
+        ChatwootIds ids,
         int turnMessageId,
         IReadOnlyList<ChatwootMessage> newestPage,
         CancellationToken cancellationToken)
     {
-        var record = await conversations.GetAsync(conversationId, cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException($"There is no conversation {conversationId} to catch up.");
+        var through = ChatwootBookmark.Read(copy.Custom);
+        var nextOrdinal = copy.NextOrdinal;
 
-        var through = ChatwootBookmark.Read(record.Custom);
-
-        var read = await ReadBackAsync(sourceId, chatwootConversationId, through, newestPage, cancellationToken).ConfigureAwait(false);
-
-        if (read.Count == 0)
-        {
-            return;
-        }
+        var read = await ReadBackAsync(ids.VisitorKey, ids.ConversationId, through, newestPage, cancellationToken).ConfigureAwait(false);
 
         foreach (var message in read.Where(m => m.Id > (through ?? 0) && m.Id != turnMessageId).OrderBy(m => m.Id))
         {
-            if (Copy(message, rebuilding: through is null) is { } copy)
+            if (Copy(message, rebuilding: through is null) is { } words)
             {
-                await conversations.AppendMessageAsync(conversationId, copy, cancellationToken).ConfigureAwait(false);
+                var row = await conversations.AppendMessageAsync(copy.ConversationId, words, cancellationToken).ConfigureAwait(false);
+                nextOrdinal = row.Ordinal + 1;
             }
         }
 
-        var newest = read.Max(m => m.Id);
+        var newest = read.Count == 0 ? through : read.Max(m => m.Id);
 
-        if (newest != through)
+        if (ChatwootIds.Read(copy.Custom) != ids || newest != through)
         {
-            await conversations.SetCustomAsync(conversationId, ChatwootBookmark.Write(record.Custom, newest), cancellationToken)
-                .ConfigureAwait(false);
+            var custom = ids.Write(copy.Custom);
+
+            if (newest is { } bookmark)
+            {
+                custom = ChatwootBookmark.Write(custom, bookmark);
+            }
+
+            await conversations.SetCustomAsync(copy.ConversationId, custom, cancellationToken).ConfigureAwait(false);
         }
+
+        return nextOrdinal;
     }
 
     /// <summary>
