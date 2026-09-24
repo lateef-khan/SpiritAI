@@ -32,3 +32,19 @@ The repository secrets it needs: `FLY_API_TOKEN`, `OPENAI_API_KEY`, `OPENCODE_GO
 
 `./tailscale-setup.sh` walks you through the Tailscale side and proves it works before you
 merge. One Fly app serves both the UI and the API — see the Fly.io section of `CLAUDE.md`.
+
+## Company server apps
+
+Chatwoot, Twenty, and the Cloudflare tunnel run on the company server. Each app is a folder
+with its own `compose.yaml`, `.env`, `justfile`, and `README.md`. An app's settings are in
+its own `.env`, and nowhere else.
+
+```bash
+just stack-up       # start every app
+just stack-status   # show every app's containers
+just stack-down     # stop every app (keeps the volumes)
+```
+
+An app that fails does not stop the others; the recipe names it at the end. The list of
+apps is `stack_apps` in the root `justfile`. The apps share one Docker network,
+`spirit-edge`, and have no port on the host; see `cloudflared/README.md`.

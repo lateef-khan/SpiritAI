@@ -3,6 +3,11 @@
 
 compose := "docker compose --file compose.yaml"
 
+# The names the root `just stack-*` recipes call on every app.
+alias prod-up := up
+alias prod-down := down
+alias prod-status := status
+
 # List the recipes.
 default:
     @just --list
@@ -19,7 +24,7 @@ env:
     echo "Wrote cloudflared/.env. Paste the tunnel token into it."
 
 # Start the tunnel and wait until Cloudflare has it.
-up: env
+up: env _edge
     {{compose}} up --detach --wait --wait-timeout 300
     @echo "The tunnel is connected."
 
@@ -27,10 +32,18 @@ up: env
 down:
     {{compose}} down
 
+# Show the container.
+status:
+    {{compose}} ps
+
 # Pull the pinned image again and restart.
-update:
+update: _edge
     {{compose}} up --detach --wait --wait-timeout 300 --pull always
 
 # Follow the logs.
 logs:
     {{compose}} logs --follow --tail=100
+
+# The network the tunnel shares with every app.
+_edge:
+    @docker network inspect spirit-edge >/dev/null 2>&1 || docker network create spirit-edge

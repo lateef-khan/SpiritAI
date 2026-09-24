@@ -15,9 +15,10 @@ services:
     # Apps that run on the host, outside Docker, are http://host.docker.internal:<port>.
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Apps in Docker join this network under their own name, such as http://chatwoot:3000.
+    # No app has to run for the tunnel to start.
     networks:
-      - default
-      - chatwoot
+      - edge
     logging:
       driver: json-file
       options:
@@ -26,6 +27,6 @@ services:
     restart: unless-stopped
 
 networks:
-  chatwoot:
+  edge:
     external: true
-    name: ${CHATWOOT_NETWORK:-spirit-chatwoot-prod_default}
+    name: spirit-edge

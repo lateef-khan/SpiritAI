@@ -23,7 +23,7 @@ env:
     echo "Wrote chatwoot/.env."
 
 # Local dev: start and wait. With DATABASE_URL empty, a throwaway postgres starts too.
-up: env
+up: env _edge
     #!/usr/bin/env bash
     set -euo pipefail
     profile=()
@@ -32,7 +32,8 @@ up: env
         echo "DATABASE_URL is empty: starting a throwaway local postgres."
     fi
     {{dev}} "${profile[@]}" up --detach --build
-    just _wait
+    just _wait "{{dev}}"
+    echo "Chatwoot is ready on http://localhost:$(grep -oP '^CHATWOOT_PORT=\K.+' .env || echo 53000)."
 
 # Local dev: stop and delete everything local (postgres, redis, uploads). A remote database is untouched.
 down:
@@ -71,18 +72,22 @@ check-contact-guard inbox_identifier url="http://localhost:53000":
     echo "OK: the public contact routes dropped email and phone."
 
 # Production: first start, or start after prod-down. Needs DATABASE_URL in .env.
-prod-up:
+prod-up: _edge
     {{prod}} up --detach --build
-    just _wait
+    just _wait "{{prod}}"
 
 # Production: rebuild, migrate, and restart web and worker only. Redis keeps running.
-prod-update:
+prod-update: _edge
     {{prod}} up --detach --build migrate web worker
-    just _wait
+    just _wait "{{prod}}"
 
 # Production: stop everything. Keeps the redis and upload volumes.
 prod-down:
     {{prod}} down
+
+# Production: show the containers.
+prod-status:
+    {{prod}} ps
 
 # Production: follow the logs.
 prod-logs:
@@ -92,13 +97,17 @@ prod-logs:
 prod-console:
     {{prod}} exec web bundle exec rails console
 
-_wait:
+# The network the tunnel shares with every app.
+_edge:
+    @docker network inspect spirit-edge >/dev/null 2>&1 || docker network create spirit-edge
+
+# Asks web from inside its container, because production has no port on the host.
+_wait compose:
     #!/usr/bin/env bash
     set -euo pipefail
-    port="$(grep -oP '^CHATWOOT_PORT=\K.+' .env || echo 53000)"
     for _ in $(seq 1 180); do
-        if curl --silent --fail "http://localhost:$port/api" >/dev/null 2>&1; then
-            echo "Chatwoot is ready on http://localhost:$port."
+        if {{compose}} exec -T web wget -q -O /dev/null http://127.0.0.1:3000/api >/dev/null 2>&1; then
+            echo "Chatwoot is ready."
             exit 0
         fi
         sleep 1

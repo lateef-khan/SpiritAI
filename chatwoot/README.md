@@ -33,6 +33,7 @@ Other recipes: `logs`, `console`.
 | Redis | Memory only | Append-only file on the `redis` volume, 512 MB cap, `noeviction` |
 | Uploads | Deleted by `down` | S3-compatible bucket (Backblaze B2), `STORAGE_*`, required |
 | Email | Mailpit | `SMTP_*` in `.env` (Resend example in `.env.example`) |
+| Host port | `127.0.0.1:53000` | None. Only the tunnel reaches web, as `http://chatwoot:3000` |
 
 First setup on the server:
 
@@ -42,7 +43,8 @@ First setup on the server:
    Set `SAFE_FETCH_ALLOW_PRIVATE_NETWORK=false`.
 3. On the database, run `create schema chatwoot;` once. Use Neon's direct host, not `-pooler`.
 4. `just prod-up`.
-5. `just setup` with `CHATWOOT_ADMIN_TOKEN` and `CHATWOOT_ACCOUNT_ID`.
+5. `just setup` with `CHATWOOT_ADMIN_TOKEN`, `CHATWOOT_ACCOUNT_ID`, and
+   `CHATWOOT_URL=https://desk.<domain>` (production has no port on the host).
    Put the settings it prints in Spirit's environment.
 
 | Recipe | Does |
@@ -50,9 +52,11 @@ First setup on the server:
 | `prod-up` | Start everything |
 | `prod-update` | Rebuild, migrate, restart web and worker. Redis keeps running |
 | `prod-down` | Stop everything. Keeps the volumes |
+| `prod-status` | Show the containers |
 | `prod-logs`, `prod-console` | Logs, Rails console |
 
-Web listens on `127.0.0.1:53000` only. Put the server's HTTPS proxy in front of it.
+Web joins the shared network `spirit-edge` as `chatwoot`. The Cloudflare tunnel is its public
+door; see `cloudflared/README.md`.
 
 ## Update Chatwoot
 

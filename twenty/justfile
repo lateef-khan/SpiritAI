@@ -1,0 +1,71 @@
+# Twenty CRM recipes. From the repo root: `just twenty <recipe>`. On the server: `just <recipe>`
+# inside this folder. Recipes run here either way.
+#
+# Local dev and production use different compose projects, so `down` can never touch the
+# production volumes.
+
+dev := "docker compose --file compose.yaml"
+prod := "docker compose --file compose.yaml --file compose.prod.yaml"
+
+# List the recipes.
+default:
+    @just --list
+
+# Make .env from .env.example, with a fresh ENCRYPTION_KEY and REDIS_PASSWORD. Never overwrites.
+env:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -f .env ]; then
+        echo "twenty/.env already exists; leaving it alone."
+        exit 0
+    fi
+    sed -e "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=$(openssl rand -base64 32)|" \
+        -e "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=$(openssl rand -hex 24)|" \
+        .env.example > .env
+    echo "Wrote twenty/.env."
+
+# Local dev: start and wait. With PG_DATABASE_URL empty, a throwaway postgres starts too.
+up: env _edge
+    #!/usr/bin/env bash
+    set -euo pipefail
+    profile=()
+    if ! grep -qE '^PG_DATABASE_URL=.+' .env; then
+        profile=(--profile localdb)
+        echo "PG_DATABASE_URL is empty: starting a throwaway local postgres."
+    fi
+    {{dev}} "${profile[@]}" up --detach --wait --wait-timeout 2400
+    echo "Twenty is ready on http://localhost:$(grep -oP '^TWENTY_PORT=\K.+' .env || echo 53001)."
+
+# Local dev: stop and delete everything local (postgres, redis, uploads). A remote database is untouched.
+down:
+    {{dev}} --profile localdb down --volumes
+
+# Local dev: follow the logs.
+logs:
+    {{dev}} --profile localdb logs --follow --tail=100
+
+# Production: first start, or start after prod-down. Needs PG_DATABASE_URL and the bucket in .env.
+prod-up: _edge
+    {{prod}} up --detach --wait --wait-timeout 2400
+    @echo "Twenty is ready."
+
+# Production: pull the pinned image, upgrade the schema, and restart server and worker. Redis keeps running.
+prod-update: _edge
+    {{prod}} up --detach --wait --wait-timeout 2400 server worker
+    @echo "Twenty is ready."
+
+# Production: stop everything. Keeps the redis volume.
+prod-down:
+    {{prod}} down
+
+# Production: show the containers.
+prod-status:
+    {{prod}} ps
+
+# Production: follow the logs.
+prod-logs:
+    {{prod}} logs --follow --tail=100
+
+# The network the tunnel shares with every app.
+_edge:
+    @docker network inspect spirit-edge >/dev/null 2>&1 || docker network create spirit-edge

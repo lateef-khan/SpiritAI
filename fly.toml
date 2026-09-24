@@ -49,7 +49,7 @@ ProxyHeaders__Enabled = "true"
 # a frame-ancestors CSP header). Add __1, __2 for more.
 Widget__AllowedOrigins__0 = "https://www.spiritfitness.com"
 
-# The SignalR backplane's Redis URL is a secret, not an env entry:
+# The cache's Redis URL is a secret, not an env entry:
 #   fly secrets set RealTime__Redis=<Upstash connection string>
 
 [http_service]

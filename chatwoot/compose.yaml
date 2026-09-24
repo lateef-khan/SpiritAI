@@ -40,6 +40,11 @@ services:
     command: ["bundle", "exec", "rails", "s", "-p", "3000", "-b", "0.0.0.0"]
     ports:
       - "127.0.0.1:${CHATWOOT_PORT:-53000}:3000"
+    # The tunnel reaches web on the shared network as http://chatwoot:3000.
+    networks:
+      default:
+      edge:
+        aliases: [chatwoot]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -92,3 +97,9 @@ services:
 # Shared by web and worker, so it must be a volume. `just down` deletes it.
 volumes:
   storage:
+
+# Shared by every app and the tunnel. The justfile creates it; no `down` deletes it.
+networks:
+  edge:
+    external: true
+    name: spirit-edge
