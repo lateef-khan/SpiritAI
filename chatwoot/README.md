@@ -59,6 +59,8 @@ Web listens on `127.0.0.1:53000` only. Put the server's HTTPS proxy in front of 
 1. Read the release notes between the old and new tag.
 2. Change the tag in `Dockerfile`.
 3. Local: `just chatwoot down && just chatwoot up`. Production: `just prod-update`.
+4. `just check-contact-guard <inbox identifier>` (add the public URL on production). It must say OK.
+   If Chatwoot will not start and names `spirit_public_contact_guard.rb`, the guard needs a fix.
 
 ## Where things go
 
@@ -68,7 +70,7 @@ Web listens on `127.0.0.1:53000` only. Put the server's HTTPS proxy in front of 
 | Settings | `.env` (git-ignored), `.env.example` (documented defaults) |
 | Production differences | `compose.prod.yaml` |
 | Local schema setup | `local-db.sql` |
-| Small code patches | `Dockerfile`, below `FROM`. Last resort |
+| Small code patches | `initializers/`, copied in by `Dockerfile`. Last resort |
 | Spirit's API inbox and agent bot | `just setup` (`setup/spirit-inbox.sh`) |
 
 ## The Spirit inbox
@@ -87,3 +89,15 @@ Web listens on `127.0.0.1:53000` only. Put the server's HTTPS proxy in front of 
 `DATABASE_URL` carries `schema_search_path=chatwoot,public`, so Chatwoot's tables go in the
 `chatwoot` schema and it can share a database with SpiritAI. Upstream does not document this
 setup. Test each version update against a Neon branch before production.
+
+## The public contact guard
+
+`initializers/spirit_public_contact_guard.rb` changes one Chatwoot rule. The public contact routes
+(`/public/api/v1/inboxes/{inbox}/contacts`) keep the name and drop the email, phone number, and
+identifier.
+
+Without it, anyone with the inbox identifier (it is public) can send a stranger's email or phone
+and get back the stranger's contact: name, email, and phone. Our widget sends only a `source_id`,
+and Spirit sets phone and email with the staff API, so the guard takes nothing from us.
+
+The `/api/v1/widget` routes have the same gap, but they need a Website inbox. We have none.

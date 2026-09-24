@@ -1,8 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 
-using SpiritAI.RealTime;
-
 using ZiggyCreatures.Caching.Fusion;
 
 namespace SpiritAI.Caching;
@@ -17,6 +15,12 @@ public static class CacheExtensions
     /// </summary>
     private const int MemoryEntryLimit = 10_000;
 
+    /// <summary>
+    /// The Redis connection string of the second level. The name is older than the cache: the
+    /// deployed secret is set under it (<c>fly secrets set RealTime__Redis=…</c>).
+    /// </summary>
+    private const string RedisSetting = "RealTime:Redis";
+
     public static IServiceCollection AddSpiritCache(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -28,9 +32,7 @@ public static class CacheExtensions
             .WithMemoryCache(memoryCache)
             .WithDefaultEntryOptions(options => options.SetSize(1));
 
-        var section = configuration.GetSection(RealTimeOptions.SectionName);
-        
-        if (section[nameof(RealTimeOptions.Redis)] is { Length: > 0 } redis)
+        if (configuration[RedisSetting] is { Length: > 0 } redis)
         {
             fusionCache.WithDistributedCache(new RedisCache(new RedisCacheOptions { Configuration = redis }));
         }

@@ -2,15 +2,11 @@ using AgentCore.Hosting;
 using SpiritAI.Auth;
 using SpiritAI.Caching;
 using SpiritAI.Chatwoot;
-using SpiritAI.Contacts;
 using SpiritAI.Database;
 using SpiritAI.Handoffs;
-using SpiritAI.Handoffs.RealTime;
-using SpiritAI.Handoffs.Visitors;
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
 using SpiritAI.PublicChat;
-using SpiritAI.RealTime;
 using SpiritAI.Threads;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,17 +23,11 @@ builder.Services.AddThreadSessions();
 
 builder.Services.AddSpiritDatabase(builder.Configuration);
 
-builder.Services.AddRealTime(builder.Configuration);
-
-builder.Services.AddContacts();
+builder.Services.AddChatwoot(builder.Configuration);
 
 builder.Services.AddHandoffs();
 
-builder.Services.AddHandoffRealTime();
-
 builder.Services.AddUnitLookup();
-
-builder.Services.AddChatwoot(builder.Configuration);
 
 builder.Services.AddSpiritOpenApi();
 
@@ -49,12 +39,8 @@ builder.Services.AddNeonAuth(
     builder.Configuration,
     options =>
     {
-        // Every public route sits under one prefix and checks the visitor's key itself. The hub
-        // admits visitors with no token, so it does its own check too; see SpiritHub.
-        options.OpenPathPrefixes = publicChat.Enabled
-            ? [publicChat.PublicPrefix, SpiritHub.Pattern]
-            : [SpiritHub.Pattern];
-        options.QueryTokenPathPrefixes = [SpiritHub.Pattern];
+        // Every public route sits under one prefix and checks the visitor's key itself.
+        options.OpenPathPrefixes = publicChat.Enabled ? [publicChat.PublicPrefix] : [];
     });
 
 var app = builder.Build();
@@ -78,17 +64,9 @@ app.MapAgentCoreHost();
 
 app.MapPublicChat();
 
-app.MapPublicThreads();
-
-app.MapVisitorHandoffs();
-
 app.MapThreads();
 
-app.MapRealTime();
-
 app.MapLookup();
-
-app.MapChatwootWebhook();
 
 app.UseWidgetFrameAncestors(builder.Configuration);
 

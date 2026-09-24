@@ -97,7 +97,6 @@ public sealed class ChatwootTurnMiddlewareTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var turn = Assert.Single(world.Turns);
-        Assert.Equal((VisitorKey, 18, 95), (turn.VisitorKey, turn.ConversationId, turn.MessageId));
         Assert.Equal(["Sorry to hear that. **Which model** is it?", "Hi, this is Matthew from support."], turn.CopyBeforeTheTurn);
 
         var copy = await world.Conversations.GetAsync(Pending, Cancel);
@@ -120,7 +119,7 @@ public sealed class ChatwootTurnMiddlewareTests
     }
 
     /// <summary>What the stub turn saw: the scoped ids, and the words the copy held before it ran.</summary>
-    private sealed record SeenTurn(string VisitorKey, int ConversationId, int MessageId, IReadOnlyList<string> CopyBeforeTheTurn);
+    private sealed record SeenTurn(IReadOnlyList<string> CopyBeforeTheTurn);
 
     private sealed class World(IHost host, ReplayingHandler wire, IConversations conversations, List<SeenTurn> turns) : IAsyncDisposable
     {
@@ -154,19 +153,18 @@ public sealed class ChatwootTurnMiddlewareTests
                         services.AddSingleton(conversations);
                         services.AddSingleton(new ChatwootClient(new HttpClient(wire), options));
                         services.AddScoped<ChatwootCatchUp>();
-                        services.AddScoped<ChatwootTurn>();
                         services.AddScoped<ChatwootAnswer>();
                     })
                     .Configure(app =>
                     {
                         app.UseChatwootTurn(Route);
                         app.UseRouting();
-                        app.UseEndpoints(endpoints => endpoints.MapPost(Route, async (HttpContext http, ChatwootTurn turn) =>
+                        app.UseEndpoints(endpoints => endpoints.MapPost(Route, async (HttpContext http) =>
                         {
                             var conversationId = await TurnConversation.ReadAsync(http.Request);
                             var before = await conversations.AllAsync(conversationId, Cancel);
 
-                            turns.Add(new SeenTurn(turn.VisitorKey, turn.ConversationId, turn.MessageId, [.. before.Select(m => m.Content.Text)]));
+                            turns.Add(new SeenTurn([.. before.Select(m => m.Content.Text)]));
 
                             await conversations.AppendMessageAsync(conversationId, new ChatMessage(ChatRole.User, "My treadmill belt slips."), Cancel);
                             await conversations.AppendMessageAsync(conversationId, new ChatMessage(ChatRole.Assistant, Answer), Cancel);

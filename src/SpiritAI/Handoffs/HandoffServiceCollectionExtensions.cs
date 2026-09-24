@@ -1,21 +1,15 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using SpiritAI.Handoffs.Bot;
-using SpiritAI.Handoffs.Desk;
-using SpiritAI.Handoffs.Notifications;
-using SpiritAI.Handoffs.Store;
 
 namespace SpiritAI.Handoffs;
 
-/// <summary>Registers the handoff store, the desk over it, and the ports around them.</summary>
+/// <summary>Registers the handoff's tools.</summary>
 public static class HandoffServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds <see cref="IHandoffStore"/> over the <c>spirit</c> schema, the <see cref="HandoffDesk"/>
-    /// and the bot's <see cref="RequestHumanTool"/> over it with its <see cref="CallbackOptions"/>, the
-    /// handoff's Chatwoot tools, and an <see cref="IHandoffNotifier"/>
-    /// that pushes to nobody until there is a hub. Add it after <c>AddSpiritDatabase</c> and
-    /// <c>AddRealTime</c>.
+    /// Adds the bot's <see cref="RequestHumanTool"/> with its <see cref="CallbackOptions"/>, and the
+    /// handoff's Chatwoot tools. Add it after <c>AddChatwoot</c>.
     /// </summary>
     /// <param name="services">The host's services.</param>
     /// <returns>The same collection.</returns>
@@ -24,10 +18,6 @@ public static class HandoffServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.TryAddSingleton(TimeProvider.System);
-
-        services.AddScoped<IHandoffStore, HandoffStore>();
-
-        services.AddScoped<HandoffDesk>();
 
         services.AddOptions<CallbackOptions>().BindConfiguration(CallbackOptions.SectionName);
 
@@ -40,8 +30,6 @@ public static class HandoffServiceCollectionExtensions
         services.AddScoped<ListTeamsTool>();
 
         services.AddScoped<ListContactFieldsTool>();
-
-        services.TryAddSingleton<IHandoffNotifier, SilentHandoffNotifier>();
 
         return services;
     }

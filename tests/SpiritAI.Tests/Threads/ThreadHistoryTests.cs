@@ -133,29 +133,6 @@ public sealed class ThreadHistoryTests
     }
 
     [Fact]
-    public void ANewSpeakerStartsANewMessage()
-    {
-        var joined = new ChatMessage(ChatRole.Assistant, "Dana joined");
-        SpeakerProperty.Attach(joined, HandoffSpeaker.System());
-        var reply = new ChatMessage(ChatRole.Assistant, "Try the tension bolt.");
-        SpeakerProperty.Attach(reply, HandoffSpeaker.Human("Dana", "Support"));
-        var left = new ChatMessage(ChatRole.Assistant, "Dana left");
-        SpeakerProperty.Attach(left, HandoffSpeaker.System());
-
-        // The host's lines and the staff reply are consecutive assistant rows of one turn. Drawn
-        // as one message they read as "Dana joinedTry the tension bolt.Dana left" under one name.
-        var history = ThreadHistory.Of(Conversation, [Row(0, 7, joined), Row(1, 7, reply), Row(2, 7, left)]);
-
-        Assert.Equal(3, history.Messages.Count);
-        Assert.Equal("Dana joined", TextOf(history.Messages[0]));
-        Assert.Equal("Try the tension bolt.", TextOf(history.Messages[1]));
-        Assert.Equal("Dana left", TextOf(history.Messages[2]));
-        Assert.Equal("system", SpeakerKindOf(history.Messages[0]));
-        Assert.Equal("human", SpeakerKindOf(history.Messages[1]));
-        Assert.Equal("system", SpeakerKindOf(history.Messages[2]));
-    }
-
-    [Fact]
     public void ConsecutiveRowsOfOneSpeakerJoinWithABreak()
     {
         var history = ThreadHistory.Of(Conversation, [
@@ -317,11 +294,6 @@ public sealed class ThreadHistoryTests
 
     private static string TextOf(ThreadHistoryItem item)
         => Assert.IsType<ThreadTextPart>(item.Message.Content[^1]).Text;
-
-    private static string? SpeakerKindOf(ThreadHistoryItem item)
-        => item.Message.Metadata.Custom.TryGetValue("speaker", out var speaker)
-            ? speaker.GetProperty("kind").GetString()
-            : null;
 
     private static ConversationMessage Row(int ordinal, int turnIndex, ChatMessage message)
         => new("conversation-1", ordinal, turnIndex, message, $"m{ordinal}");

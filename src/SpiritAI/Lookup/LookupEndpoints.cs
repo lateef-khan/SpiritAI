@@ -53,8 +53,6 @@ public static class LookupEndpointRouteBuilderExtensions
         services.AddSingleton(provider => new CachedUnitLookup(
             provider.GetRequiredService<UnitLookup>(),
             provider.GetRequiredService<HybridCache>()));
-        
-        services.AddSingleton(provider => new CustomerLookup(provider.GetRequiredService<ToolInvoker>()));
 
         return services;
     }

@@ -18,52 +18,6 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
 
     private string Account => $"{Settings.BaseUrl.TrimEnd('/')}/api/v1/accounts/{Settings.AccountId}";
 
-    /// <summary>
-    /// Makes a contact in the Spirit inbox. Chatwoot makes its key: each call makes a new contact,
-    /// so the caller keeps the answer and calls once per person.
-    /// </summary>
-    /// <param name="name">What staff see.</param>
-    /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The contact's id and its key in the inbox.</returns>
-    public async Task<ChatwootContact> CreateContactAsync(string name, CancellationToken cancellationToken)
-    {
-        var url = $"{Settings.BaseUrl.TrimEnd('/')}/public/api/v1/inboxes/{Settings.InboxIdentifier}/contacts";
-
-        using var response = await http
-            .PostAsJsonAsync(url, new JsonObject { ["name"] = name }, cancellationToken)
-            .ConfigureAwait(false);
-
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
-
-        var made = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
-
-        return new ChatwootContact(made.GetProperty("id").GetInt32(), made.GetProperty("source_id").GetString()!);
-    }
-
-    /// <summary>Opens a conversation for a Spirit chat, waiting on the bot.</summary>
-    /// <param name="sourceId">The contact's key, from <see cref="CreateContactAsync"/>.</param>
-    /// <param name="spiritConversationId">The chat, kept on the conversation for the webhook to read.</param>
-    /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The conversation's display id.</returns>
-    public async Task<int> CreateConversationAsync(string sourceId, string spiritConversationId, CancellationToken cancellationToken)
-    {
-        var body = new JsonObject
-        {
-            ["source_id"] = sourceId,
-            ["inbox_id"] = Settings.InboxId,
-            ["status"] = "pending",
-            ["custom_attributes"] = new JsonObject { [ChatwootEvent.SpiritConversationAttribute] = spiritConversationId },
-        };
-
-        using var response = await SendAsync(HttpMethod.Post, $"{Account}/conversations", body, cancellationToken).ConfigureAwait(false);
-
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
-
-        var created = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
-
-        return created.GetProperty("id").GetInt32();
-    }
-
     /// <summary>Posts one message into a conversation.</summary>
     /// <param name="conversationId">The conversation's display id.</param>
     /// <param name="content">The words.</param>
@@ -109,45 +63,6 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
             .ConfigureAwait(false);
 
         await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Tells staff that the visitor is typing, or stopped. It goes through the inbox's public API
-    /// as the contact: the bot token cannot type as the contact. Chatwoot's dashboard drops
-    /// "typing" by itself after 30 seconds.
-    /// </summary>
-    /// <param name="sourceId">The contact's key, from <see cref="CreateContactAsync"/>.</param>
-    /// <param name="conversationId">The conversation's display id.</param>
-    /// <param name="on"><see langword="true"/> for typing, <see langword="false"/> for stopped.</param>
-    /// <param name="cancellationToken">Cancels the call.</param>
-    public async Task ToggleTypingAsync(string sourceId, int conversationId, bool on, CancellationToken cancellationToken)
-    {
-        var url = string.Create(CultureInfo.InvariantCulture, $"{ContactUrl(sourceId)}/conversations/{conversationId}/toggle_typing");
-
-        using var response = await http
-            .PostAsJsonAsync(url, new JsonObject { ["typing_status"] = on ? "on" : "off" }, cancellationToken)
-            .ConfigureAwait(false);
-
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Every agent in the account, with the status Chatwoot shows for them.
-    /// </summary>
-    /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>Each agent's id and status: <c>online</c>, <c>busy</c>, or <c>offline</c>.</returns>
-    public async Task<IReadOnlyList<ChatwootAgent>> ListAgentsAsync(CancellationToken cancellationToken)
-    {
-        using var response = await SendAsync(HttpMethod.Get, $"{Account}/agents", body: null, cancellationToken, Settings.ServiceToken)
-            .ConfigureAwait(false);
-
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
-
-        var agents = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
-
-        return [.. agents.EnumerateArray().Select(a => new ChatwootAgent(
-            a.GetProperty("id").GetInt32(),
-            a.GetProperty("availability_status").GetString() ?? string.Empty))];
     }
 
     /// <summary>Reads one conversation as the bot.</summary>

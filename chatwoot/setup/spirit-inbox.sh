@@ -4,10 +4,11 @@
 #   CHATWOOT_ACCOUNT_ID   the account id from the dashboard URL (/app/accounts/<id>/...)
 # Optional:
 #   CHATWOOT_URL          defaults to http://localhost:$CHATWOOT_PORT
-#   CHATWOOT_SERVICE_TOKEN  the access token of a plain agent that Spirit reads who is online as.
+#   CHATWOOT_SERVICE_TOKEN  the access token of a plain agent. Spirit lists teams and contact
+#                         fields as it, and saves a visitor's phone and email with it.
 #                         Make it once per server in the Super Admin console (/super_admin):
 #                         Users > New user, confirmed, then Add account user as an agent. Its page
-#                         shows the token. Without it, Spirit counts nobody online.
+#                         shows the token. Without it, Spirit cannot list teams or save the phone.
 set -euo pipefail
 
 inbox_name="Spirit"
@@ -78,7 +79,6 @@ cat <<EOF
 Spirit settings:
 Chatwoot__BaseUrl=$base
 Chatwoot__AccountId=$CHATWOOT_ACCOUNT_ID
-Chatwoot__InboxId=$inbox_id
 Chatwoot__InboxIdentifier=$(jq -r '.inbox_identifier' <<<"$inbox")
 Chatwoot__BotToken=$(jq -r '.access_token' <<<"$bot")
 EOF
@@ -86,5 +86,5 @@ EOF
 if [ -n "${CHATWOOT_SERVICE_TOKEN:-}" ]; then
     echo "Chatwoot__ServiceToken=$CHATWOOT_SERVICE_TOKEN"
 else
-    echo "CHATWOOT_SERVICE_TOKEN is not set: Spirit will count nobody online. See the top of this script." >&2
+    echo "CHATWOOT_SERVICE_TOKEN is not set: Spirit cannot list teams or save the phone. See the top of this script." >&2
 fi

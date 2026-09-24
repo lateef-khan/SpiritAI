@@ -174,8 +174,6 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
 
         var openTurn = -1;
 
-        string? openSpeaker = null;
-
         var openHuman = false;
         
         foreach (var row in rows.OrderBy(row => row.Ordinal))
@@ -186,7 +184,7 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
                 && JsonDocument.Parse(key).RootElement.TryGetProperty("kind", out var kind)
                 && kind.GetString() == "human";
 
-            if (agentSide && open is not null && !human && !openHuman && openTurn == row.TurnIndex && openSpeaker == SpeakerKey(row))
+            if (agentSide && open is not null && !human && !openHuman && openTurn == row.TurnIndex)
             {
                 open.Add(row);
                 continue;
@@ -203,7 +201,6 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
             {
                 open = [row];
                 openTurn = row.TurnIndex;
-                openSpeaker = SpeakerKey(row);
                 openHuman = human;
             }
             else

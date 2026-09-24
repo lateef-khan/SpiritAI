@@ -11,17 +11,8 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-using SpiritAI.Chatwoot;
-using SpiritAI.Contacts;
-using SpiritAI.Handoffs.Desk;
-using SpiritAI.Handoffs.Notifications;
-using SpiritAI.Handoffs.Store;
-using SpiritAI.Handoffs.Visitors;
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
-using SpiritAI.PublicChat;
-using SpiritAI.Tests.Contacts;
-using SpiritAI.Tests.Handoffs;
 using SpiritAI.Threads;
 
 using Xunit;
@@ -61,13 +52,6 @@ public sealed class OpenApiDocumentTests
         "deleteThread",
         "getUnit",
         "getOrder",
-        "createPublicThread",
-        "getLatestPublicThread",
-        "getPublicThreadMessages",
-        "askForHuman",
-        "getHandoffState",
-        "leavePhone",
-        "sendVisitorMessage",
     ];
 
     /// <summary>
@@ -178,19 +162,6 @@ public sealed class OpenApiDocumentTests
                     services.AddSingleton(new CachedUnitLookup(
                         new UnitLookup((_, _, _) => ValueTask.FromResult(default(System.Text.Json.JsonElement))),
                         PassThroughHybridCache.Instance));
-
-                    // The visitor's handoff routes, present so the route builder reads them as
-                    // injected services. Nothing calls them: no route is ever invoked here, so a
-                    // fake stands in for the real store, notifier, and staff count.
-                    services.AddSingleton(TimeProvider.System);
-                    services.AddSingleton<IHandoffStore>(new FakeHandoffStore(TimeProvider.System));
-                    services.AddSingleton<IHandoffNotifier>(new RecordingHandoffNotifier());
-                    services.AddSingleton<IStaffPresence>(new FakeStaffPresence());
-                    services.AddScoped<HandoffDesk>();
-                    services.AddOptions();
-                    services.AddSingleton<ChatwootCopyQueue>();
-                    services.AddSingleton<IContactResolver>(new FakeContactResolver());
-                    services.AddSingleton<IContactConversationStore>(new FakeContactConversationStore());
                 })
                 .Configure(app =>
                 {
@@ -199,8 +170,6 @@ public sealed class OpenApiDocumentTests
                     {
                         endpoints.MapThreads();
                         endpoints.MapLookup();
-                        endpoints.MapPublicThreads();
-                        endpoints.MapVisitorHandoffs();
                         endpoints.MapOpenApi();
                     });
                 }))

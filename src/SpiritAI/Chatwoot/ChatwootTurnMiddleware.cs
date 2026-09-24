@@ -22,8 +22,7 @@ internal sealed class ChatwootTurnMiddleware(RequestDelegate next, string patter
         IOptions<ChatwootOptions> options,
         ChatwootClient chatwoot,
         IConversations conversations,
-        ChatwootCatchUp catchUp,
-        ChatwootTurn turn)
+        ChatwootCatchUp catchUp)
     {
         if (!HttpMethods.IsPost(context.Request.Method)
             || !context.Request.Path.StartsWithSegments(pattern, StringComparison.OrdinalIgnoreCase))
@@ -93,8 +92,6 @@ internal sealed class ChatwootTurnMiddleware(RequestDelegate next, string patter
                 .ConfigureAwait(false);
             return;
         }
-
-        turn.Set(key, displayId, messageId);
 
         var copy = await conversations.GetAsync(namedChat, cancellationToken).ConfigureAwait(false)
             ?? await conversations.CreateAsync(namedChat, cancellationToken).ConfigureAwait(false);
