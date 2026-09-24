@@ -227,6 +227,23 @@ public sealed class ChatwootClientTests
         Assert.Null(request.Token);
     }
 
+    [Fact]
+    public async Task TheInboxsHoursAreReadThroughItsPublicRoute()
+    {
+        var wire = new ReplayingHandler("inbox_hours");
+
+        var inbox = await Client(wire).GetInboxAsync(Cancel);
+
+        Assert.Equal("America/Chicago", inbox.TimeZone);
+        Assert.True(inbox.WorkingHoursEnabled);
+        Assert.Equal(new ChatwootWorkingDay(DayOfWeek.Sunday, true, false, null, null), inbox.WorkingHours[0]);
+        Assert.Equal(new ChatwootWorkingDay(DayOfWeek.Monday, false, false, new TimeOnly(9, 0), new TimeOnly(17, 0)), inbox.WorkingHours[1]);
+
+        var request = Assert.Single(wire.Requests);
+        Assert.Equal("http://chatwoot.test/public/api/v1/inboxes/inbox-key", request.Url);
+        Assert.Null(request.Token);
+    }
+
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     private static ChatwootClient Client(ReplayingHandler wire) => new(new HttpClient(wire), Options.Create(new ChatwootOptions

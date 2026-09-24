@@ -88,7 +88,7 @@ public sealed class ChatwootTurnMiddlewareTests
     }
 
     [Fact]
-    public async Task AFirstTurnMakesTheCopyAndCatchesItUpBeforeTheTurnRuns()
+    public async Task AFirstTurnMakesTheCopyFilesItsIdsAndCatchesItUpBeforeTheTurnRuns()
     {
         await using var world = await World.StartAsync(new ReplayingHandler(["visitor_messages", "conversation_shown", null]));
 
@@ -102,6 +102,7 @@ public sealed class ChatwootTurnMiddlewareTests
 
         var copy = await world.Conversations.GetAsync(Pending, Cancel);
         Assert.Equal(98, ChatwootBookmark.Read(copy!.Custom));
+        Assert.Equal(new ChatwootIds(18, VisitorKey), ChatwootIds.Read(copy.Custom));
     }
 
     [Fact]

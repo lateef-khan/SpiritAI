@@ -12,8 +12,8 @@ namespace SpiritAI.Chatwoot;
 
 /// <summary>
 /// The door in front of the public turn route. It lets a turn run only on the visitor's own
-/// Chatwoot conversation while the AI has it, makes and catches up the AI's copy first, and posts
-/// the AI answer into Chatwoot once the visitor has it.
+/// Chatwoot conversation while the AI has it, makes the AI's copy, files the Chatwoot ids on it for
+/// the tools, and catches it up first, and posts the AI answer into Chatwoot once the visitor has it.
 /// </summary>
 internal sealed class ChatwootTurnMiddleware(RequestDelegate next, string pattern)
 {
@@ -96,9 +96,14 @@ internal sealed class ChatwootTurnMiddleware(RequestDelegate next, string patter
 
         turn.Set(key, displayId, messageId);
 
-        if (await conversations.GetAsync(namedChat, cancellationToken).ConfigureAwait(false) is null)
+        var copy = await conversations.GetAsync(namedChat, cancellationToken).ConfigureAwait(false)
+            ?? await conversations.CreateAsync(namedChat, cancellationToken).ConfigureAwait(false);
+
+        var ids = new ChatwootIds(displayId, key);
+
+        if (ChatwootIds.Read(copy.Custom) != ids)
         {
-            await conversations.CreateAsync(namedChat, cancellationToken).ConfigureAwait(false);
+            await conversations.SetCustomAsync(namedChat, ids.Write(copy.Custom), cancellationToken).ConfigureAwait(false);
         }
 
         await catchUp.CatchUpAsync(namedChat, key, displayId, messageId, newestPage, cancellationToken).ConfigureAwait(false);

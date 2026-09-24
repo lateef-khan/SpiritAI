@@ -12,7 +12,8 @@ public static class HandoffServiceCollectionExtensions
 {
     /// <summary>
     /// Adds <see cref="IHandoffStore"/> over the <c>spirit</c> schema, the <see cref="HandoffDesk"/>
-    /// and the bot's <see cref="RequestHumanTool"/> over it with its <see cref="CallbackOptions"/>, and an <see cref="IHandoffNotifier"/>
+    /// and the bot's <see cref="RequestHumanTool"/> over it with its <see cref="CallbackOptions"/>, the
+    /// handoff's Chatwoot tools, and an <see cref="IHandoffNotifier"/>
     /// that pushes to nobody until there is a hub. Add it after <c>AddSpiritDatabase</c> and
     /// <c>AddRealTime</c>.
     /// </summary>
@@ -31,6 +32,14 @@ public static class HandoffServiceCollectionExtensions
         services.AddOptions<CallbackOptions>().BindConfiguration(CallbackOptions.SectionName);
 
         services.AddScoped<RequestHumanTool>();
+
+        services.AddScoped<BusinessHoursTool>();
+
+        services.AddScoped<KnownContactTool>();
+
+        services.AddScoped<ListTeamsTool>();
+
+        services.AddScoped<ListContactFieldsTool>();
 
         services.TryAddSingleton<IHandoffNotifier, SilentHandoffNotifier>();
 

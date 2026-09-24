@@ -296,6 +296,25 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
             contact.GetProperty("phone_number").GetString());
     }
 
+    /// <summary>Reads the Spirit inbox's working hours through its public route.</summary>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The time zone and the hours of each day.</returns>
+    public async Task<ChatwootInbox> GetInboxAsync(CancellationToken cancellationToken)
+    {
+        using var response = await http
+            .GetAsync($"{Settings.BaseUrl.TrimEnd('/')}/public/api/v1/inboxes/{Settings.InboxIdentifier}", cancellationToken)
+            .ConfigureAwait(false);
+
+        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+
+        var inbox = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
+
+        return new ChatwootInbox(
+            inbox.GetProperty("timezone").GetString() ?? "UTC",
+            inbox.GetProperty("working_hours_enabled").GetBoolean(),
+            [.. inbox.GetProperty("working_hours").EnumerateArray().Select(ChatwootWorkingDay.Read)]);
+    }
+
     private string ConversationUrl(int conversationId)
         => $"{Account}/conversations/{conversationId.ToString(CultureInfo.InvariantCulture)}";
 

@@ -1,0 +1,74 @@
+{
+  "identifier": "Rg7gynURvsdzcuMyBJHU5pwu",
+  "identity_validation_enabled": false,
+  "name": "Spirit",
+  "timezone": "UTC",
+  "working_hours": [
+    {
+      "day_of_week": 0,
+      "closed_all_day": true,
+      "open_hour": null,
+      "open_minutes": null,
+      "close_hour": null,
+      "close_minutes": null,
+      "open_all_day": false
+    },
+    {
+      "day_of_week": 1,
+      "closed_all_day": false,
+      "open_hour": 9,
+      "open_minutes": 0,
+      "close_hour": 17,
+      "close_minutes": 0,
+      "open_all_day": false
+    },
+    {
+      "day_of_week": 2,
+      "closed_all_day": false,
+      "open_hour": 9,
+      "open_minutes": 0,
+      "close_hour": 17,
+      "close_minutes": 0,
+      "open_all_day": false
+    },
+    {
+      "day_of_week": 3,
+      "closed_all_day": false,
+      "open_hour": 9,
+      "open_minutes": 0,
+      "close_hour": 17,
+      "close_minutes": 0,
+      "open_all_day": false
+    },
+    {
+      "day_of_week": 4,
+      "closed_all_day": false,
+      "open_hour": 9,
+      "open_minutes": 0,
+      "close_hour": 17,
+      "close_minutes": 0,
+      "open_all_day": false
+    },
+    {
+      "day_of_week": 5,
+      "closed_all_day": false,
+      "open_hour": 9,
+      "open_minutes": 0,
+      "close_hour": 17,
+      "close_minutes": 0,
+      "open_all_day": false
+    },
+    {
+      "day_of_week": 6,
+      "closed_all_day": true,
+      "open_hour": null,
+      "open_minutes": null,
+      "close_hour": null,
+      "close_minutes": null,
+      "open_all_day": false
+    }
+  ],
+  "working_hours_enabled": false,
+  "csat_survey_enabled": false,
+  "greeting_enabled": false
+}

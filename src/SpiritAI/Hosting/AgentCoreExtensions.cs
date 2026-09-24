@@ -25,6 +25,21 @@ public static class AgentCoreExtensions
     /// <summary>The <c>binds:</c> name <c>spirit.yaml</c> gives the bot's door into the handoff queue.</summary>
     public const string RequestHumanBinding = "RequestHuman";
 
+    /// <summary>The <c>binds:</c> name of the handoff's check of the office hours.</summary>
+    public const string BusinessHoursBinding = "BusinessHours";
+
+    /// <summary>The <c>binds:</c> name of the handoff's read of the phone and email the visitor gave before.</summary>
+    public const string KnownContactBinding = "KnownContact";
+
+    /// <summary>The <c>binds:</c> name of the handoff's check of a phone and email.</summary>
+    public const string CheckContactBinding = "CheckContact";
+
+    /// <summary>The <c>binds:</c> name of the handoff's list of teams.</summary>
+    public const string ListTeamsBinding = "ListTeams";
+
+    /// <summary>The <c>binds:</c> name of the handoff's list of contact fields.</summary>
+    public const string ListContactFieldsBinding = "ListContactFields";
+
     /// <summary>The <c>entries:</c> key every route and store reads. Staff and visitors share it.</summary>
     public const string Entry = "main";
 
@@ -74,8 +89,9 @@ public static class AgentCoreExtensions
     /// <param name="options">The options the host is filling.</param>
     /// <param name="services">
     /// The container. A binding reads its tool out of this when the model calls it, which is long
-    /// after everything is built. <see cref="RequestHumanTool"/> is scoped, since the desk under it
-    /// holds the database context, so its binding opens a scope for the one call.
+    /// after everything is built. <see cref="RequestHumanTool"/> and the handoff tools are scoped,
+    /// since what is under them holds the database context, so each binding opens a scope for the
+    /// one call.
     /// </param>
     /// <param name="environment">Locates the skills folder relative to the host, not the working directory.</param>
     private static void Configure(AgentCoreOptions options, IServiceProvider services, IHostEnvironment environment)
@@ -107,6 +123,36 @@ public static class AgentCoreExtensions
                     return await container.ServiceProvider.GetRequiredService<RequestHumanTool>()
                         .AskAsync(scope.ConversationId, reason, phone, new HandoffSummary(product, serial, tried, wants), cancellationToken)
                         .ConfigureAwait(false);
-                });
+                })
+            .Bind(
+                BusinessHoursBinding,
+                (CancellationToken cancellationToken)
+                    => InScopeAsync<BusinessHoursTool, BusinessHoursAnswer>(services, tool => tool.ReadAsync(cancellationToken)))
+            .Bind(
+                KnownContactBinding,
+                (ToolCallScope scope, CancellationToken cancellationToken)
+                    => InScopeAsync<KnownContactTool, KnownContactAnswer>(services, tool => tool.ReadAsync(scope.ConversationId, cancellationToken)))
+            .Bind(
+                CheckContactBinding,
+                ([Description("The phone number exactly as the person gave it. Empty if they gave none.")] string? phone,
+                 [Description("The email exactly as the person gave it. Empty if they gave none.")] string? email)
+                    => CheckContactTool.Check(phone, email))
+            .Bind(
+                ListTeamsBinding,
+                (CancellationToken cancellationToken)
+                    => InScopeAsync<ListTeamsTool, ListTeamsAnswer>(services, tool => tool.ListAsync(cancellationToken)))
+            .Bind(
+                ListContactFieldsBinding,
+                (CancellationToken cancellationToken)
+                    => InScopeAsync<ListContactFieldsTool, ListContactFieldsAnswer>(services, tool => tool.ListAsync(cancellationToken)));
+    }
+
+    /// <summary>Runs one call of a scoped tool in a scope of its own.</summary>
+    private static async Task<TAnswer> InScopeAsync<TTool, TAnswer>(IServiceProvider services, Func<TTool, Task<TAnswer>> call)
+        where TTool : notnull
+    {
+        await using var container = services.GetRequiredService<IServiceScopeFactory>().CreateAsyncScope();
+
+        return await call(container.ServiceProvider.GetRequiredService<TTool>()).ConfigureAwait(false);
     }
 }
