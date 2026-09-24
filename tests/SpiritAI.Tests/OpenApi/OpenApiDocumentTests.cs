@@ -13,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
+using SpiritAI.PublicChat;
 using SpiritAI.Threads;
 
 using Xunit;
@@ -52,6 +53,7 @@ public sealed class OpenApiDocumentTests
         "deleteThread",
         "getUnit",
         "getOrder",
+        "getWidgetSettings",
     ];
 
     /// <summary>
@@ -170,6 +172,7 @@ public sealed class OpenApiDocumentTests
                     {
                         endpoints.MapThreads();
                         endpoints.MapLookup();
+                        endpoints.MapWidgetSettings();
                         endpoints.MapOpenApi();
                     });
                 }))

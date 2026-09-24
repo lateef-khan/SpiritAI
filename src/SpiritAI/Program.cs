@@ -64,6 +64,8 @@ app.MapAgentCoreHost();
 
 app.MapPublicChat();
 
+app.MapWidgetSettings();
+
 app.MapThreads();
 
 app.MapLookup();

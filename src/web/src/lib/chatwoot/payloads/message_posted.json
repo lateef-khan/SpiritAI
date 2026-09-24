@@ -1,0 +1,21 @@
+{
+  "id": 180,
+  "content": "Do you have the XT485 in stock?",
+  "message_type": 0,
+  "content_type": "text",
+  "content_attributes": {},
+  "created_at": 1790274508,
+  "conversation_id": 27,
+  "sender": {
+    "additional_attributes": {},
+    "custom_attributes": {},
+    "email": null,
+    "id": 46,
+    "identifier": null,
+    "name": "red-grass-677",
+    "phone_number": null,
+    "thumbnail": "",
+    "blocked": false,
+    "type": "contact"
+  }
+}

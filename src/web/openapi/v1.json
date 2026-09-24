@@ -324,6 +324,26 @@
           }
         }
       }
+    },
+    "/v1/public/widget/settings": {
+      "get": {
+        "tags": [
+          "Widget"
+        ],
+        "operationId": "getWidgetSettings",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetSettings"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1262,6 +1282,21 @@
             ]
           }
         }
+      },
+      "WidgetSettings": {
+        "required": [
+          "chatwootBaseUrl",
+          "chatwootInboxIdentifier"
+        ],
+        "type": "object",
+        "properties": {
+          "chatwootBaseUrl": {
+            "type": "string"
+          },
+          "chatwootInboxIdentifier": {
+            "type": "string"
+          }
+        }
       }
     }
   },
@@ -1271,6 +1306,9 @@
     },
     {
       "name": "Lookup"
+    },
+    {
+      "name": "Widget"
     }
   ]
 }

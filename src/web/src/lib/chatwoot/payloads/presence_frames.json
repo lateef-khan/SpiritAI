@@ -1,0 +1,33 @@
+[
+  {
+    "type": "welcome"
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "type": "confirm_subscription"
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "presence.update",
+      "data": {
+        "account_id": 2,
+        "users": {
+          "2": "online"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "presence.update",
+      "data": {
+        "account_id": 2,
+        "users": {
+          "2": "online"
+        }
+      }
+    }
+  }
+]

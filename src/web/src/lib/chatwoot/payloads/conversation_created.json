@@ -1,0 +1,30 @@
+{
+  "id": 27,
+  "uuid": "f1d95917-bc28-4e1c-b4ef-2587df3a0113",
+  "inbox_id": 1,
+  "contact_last_seen_at": 0,
+  "status": "pending",
+  "agent_last_seen_at": 0,
+  "messages": [],
+  "contact": {
+    "id": 46,
+    "name": "red-grass-677",
+    "email": null,
+    "phone_number": null,
+    "account_id": 2,
+    "created_at": "2026-09-24T18:28:25.700Z",
+    "updated_at": "2026-09-24T18:28:25.700Z",
+    "additional_attributes": {},
+    "identifier": null,
+    "custom_attributes": {},
+    "last_activity_at": null,
+    "contact_type": "visitor",
+    "middle_name": "",
+    "last_name": "",
+    "location": null,
+    "country_code": null,
+    "blocked": false,
+    "company_id": null,
+    "label_list": []
+  }
+}
