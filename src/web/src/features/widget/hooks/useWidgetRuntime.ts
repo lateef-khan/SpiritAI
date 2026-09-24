@@ -8,18 +8,35 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { flatten, sourceContent, toolContent } from "@/features/threads/AgentCoreRuntime";
 import { runTurn, TurnRefusedError, type TurnState } from "@/features/threads/transport";
+import type { FetchLike } from "@/lib/apiClient";
+import type {
+  ChatwootConversation,
+  ChatwootConversationEvent,
+  ChatwootMessage,
+  ChatwootPresence,
+} from "@/lib/chatwoot";
 import type { OlderMessagesSource } from "@/lib/history";
-import { HostRefusedError, type FetchLike } from "@/lib/apiClient";
-import type { WidgetApi, WireHandoffMessage } from "../api/widgetApi";
-import { heldFromPage, holds, hostMessageId, prependOlder, reloadPage, type Held } from "./held";
-import type { HandoffDesk } from "./useHandoffDesk";
+import { heldFromChatwoot, pageFromChatwoot, systemNote } from "../api/chatwootRows";
+import type { WidgetChat } from "../api/widgetChat";
+import { handoffStatus, moved, NoChat, staffOnline, type Desk, type HandoffState } from "./desk";
+import { heldFromPage, holds, prependOlder, reloadPage, type Held } from "./held";
 
 /**
- * The widget's runtime: a store the widget owns, bound to the host's public routes.
+ * The widget's runtime: a store the widget owns, over the visitor's newest Chatwoot conversation.
+ *
+ * Chatwoot holds the chat. Every send goes to Chatwoot first. While the AI has the chat
+ * (`pending`), Spirit is asked for the answer, which streams onto the page; Spirit posts it to
+ * Chatwoot after. While a person has it (`open`), Chatwoot is all there is (spec 6.2, 6.3).
  */
 
-/** The tool the bot calls to ask for a person, as `spirit.yaml` names it. */
-const RequestHumanTool = "request_human";
+/** The headers that name the Chatwoot conversation and message a turn answers (spec 6.2). */
+export const ChatwootConversationHeader = "X-Chatwoot-Conversation";
+export const ChatwootMessageHeader = "X-Chatwoot-Message";
+
+/** Spirit's name for a Chatwoot conversation (spec 5). */
+export function spiritConversationId(conversation: ChatwootConversation): string {
+  return `cw_${conversation.uuid}`;
+}
 
 /** Maps one streamed state onto the reply, the way the app's adapter does. */
 function replyFrom(reply: Held, state: TurnState): Held {
@@ -30,40 +47,8 @@ function replyFrom(reply: Held, state: TurnState): Held {
       ...state.sources.map(sourceContent),
       ...(state.text.length > 0 ? [{ type: "text" as const, text: state.text }] : []),
     ],
-    metadata: {
-      custom: {
-        stage: state.stage,
-        isTerminal: state.isTerminal,
-        speaker: state.speaker,
-        hostMessageId: state.replyMessageId,
-      },
-    },
+    metadata: { custom: { stage: state.stage, isTerminal: state.isTerminal } },
   };
-}
-
-/**
- * Whether a refusal says the host has forgotten the call, rather than anything else.
- *
- * A 404 on any public route named with this call means that. The door in front of the chat
- * answers a problem body with no code ("No such thread.") once the row is gone, and AgentCore
- * itself answers `continuation_not_found`; both are the same fact, so the code is not consulted.
- */
-function callIsGone(error: unknown): boolean {
-  return (
-    (error instanceof HostRefusedError || error instanceof TurnRefusedError) && error.status === 404
-  );
-}
-
-/**
- * Whether a refusal says the chat changed hands since the state was last read.
- *
- * Both doors answer 409 for exactly that: the chat door with `handoff_open` while a person has
- * the chat, the handoff door with "The assistant has this chat." once nobody does.
- */
-function wrongDoor(error: unknown): boolean {
-  return (
-    (error instanceof HostRefusedError || error instanceof TurnRefusedError) && error.status === 409
-  );
 }
 
 /** An empty reply, drawn as running until the turn fills it. */
@@ -77,50 +62,36 @@ function pendingReply(): Held {
   };
 }
 
-/** Whether the desk's state sends words to a person rather than the bot. */
-function withPerson(status: string): boolean {
-  return status === "waiting" || status === "human";
-}
-
-/**
- * One message of the human phase as the widget holds it: a staff reply, or the host saying who
- * joined or left. Drawn under the speaker's name, the way `speaker.tsx` reads it.
- */
-function heldFrom(message: WireHandoffMessage): Held {
+/** Names a held row by the id Chatwoot gave it. */
+function tagged(row: Held, chatwootId: number): Held {
   return {
-    id: message.messageId,
-    role: "assistant",
-    content: [{ type: "text", text: message.text }],
-    createdAt: new Date(message.at),
-    status: { type: "complete", reason: "stop" },
-    metadata: {
-      custom: {
-        ...(message.speaker ? { speaker: message.speaker } : {}),
-        hostMessageId: message.messageId,
-      },
-    },
+    ...row,
+    metadata: { custom: { ...row.metadata?.custom, hostMessageId: String(chatwootId) } },
   };
 }
 
-/** What the widget hands `AssistantRuntimeProvider`, and the ways the outside reaches in. */
+/** What the widget hands `AssistantRuntimeProvider`, and the ways the socket reaches in. */
 export type WidgetRuntime = {
   readonly runtime: AssistantRuntime;
-  /** The call the widget talks in, or `null` until the first send makes one. */
-  readonly callId: string | null;
-  /** Takes one pushed message of the human phase. The visitor's own are already on screen. */
-  receive(message: WireHandoffMessage): void;
-  /** Reads the newest page again from the host. What it covers is replaced, not doubled. */
-  reload(): Promise<void>;
-  /** Where the pages before what is held come from, or `undefined` until there is a call. */
+  /** Where the chat stands. */
+  readonly desk: HandoffState;
+  /** The visitor's Chatwoot side, once started. The socket opens on it. */
+  readonly chat: WidgetChat | null;
+  /** Takes one pushed message. Answers whether it is a staff reply the visitor has not seen. */
+  receive(message: ChatwootMessage): boolean;
+  /** Takes one pushed change of the conversation's status or assignee. */
+  move(event: ChatwootConversationEvent): void;
+  /** Takes one pushed presence. */
+  presence(push: ChatwootPresence): void;
+  /** Reads the newest conversation and its newest page again. */
+  sync(): Promise<void>;
+  /** Tells a person on the chat whether the visitor is typing. */
+  sayTyping(on: boolean): void;
+  /** Where the pages before what is held come from, or `undefined` until there is a conversation. */
   readonly older: OlderMessagesSource | undefined;
 };
 
-/**
- * What the widget holds, and where the page before it starts.
- *
- * One state rather than two: a reload decides both from the same look at the rows it lands on,
- * and two setters would let a push slip in between them.
- */
+/** What the widget holds, and where the page before it starts. One state, so a reload sets both. */
 type Store = {
   readonly messages: readonly Held[];
   /** As {@link OlderMessagesSource.initialCursor}: `undefined` until a page has been read. */
@@ -128,26 +99,30 @@ type Store = {
 };
 
 /**
- * Binds assistant-ui to the widget's own thread on the host.
+ * Binds assistant-ui to the visitor's Chatwoot conversation.
  *
  * @param endpoint The public Responses route.
- * @param api The widget's thread routes.
- * @param send How a turn reaches the host. Must carry the visitor's key.
- * @param desk Where the chat stands, and how to read it again.
+ * @param start Starts the visitor's Chatwoot side, once.
+ * @param send How a turn reaches Spirit. Must carry the visitor's key.
  * @returns The runtime to hand to `AssistantRuntimeProvider`.
  */
 export function useWidgetRuntime(
   endpoint: string,
-  api: WidgetApi,
+  start: () => Promise<WidgetChat>,
   send: FetchLike,
-  desk: HandoffDesk,
 ): WidgetRuntime {
   const [store, setStore] = useState<Store>({ messages: [], olderCursor: undefined });
-  const { messages, olderCursor } = store;
   const [isRunning, setRunning] = useState(false);
-  const [callId, setCallId] = useState<string | null>(null);
-  // The same call, for the async paths below: they must see a call made after their render.
-  const callRef = useRef<string | null>(null);
+  const [chat, setChat] = useState<WidgetChat | null>(null);
+  const [conversation, setConversation] = useState<ChatwootConversation | null>(null);
+  const [desk, setDeskState] = useState<Desk>(NoChat);
+  // The same conversation and desk, for the async paths below: they must see a change made
+  // after their render.
+  const conversationRef = useRef<ChatwootConversation | null>(null);
+  const deskRef = useRef<Desk>(NoChat);
+  // The reply this page streamed last, until Chatwoot's copy of it names its id.
+  const awaitingCopy = useRef<string | null>(null);
+  const streamedHere = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const setMessages = useCallback(
@@ -156,229 +131,221 @@ export function useWidgetRuntime(
     [],
   );
 
-  // A call just made has nothing older than what is on screen; no call has no pages at all.
-  const remember = useCallback((id: string | null) => {
-    callRef.current = id;
-    setCallId(id);
-    setStore((s) => ({ ...s, olderCursor: id === null ? undefined : null }));
+  const setDesk = useCallback((next: Desk) => {
+    deskRef.current = next;
+    setDeskState(next);
   }, []);
 
-  /**
-   * Reads the newest page from the host. A 404 means the host has forgotten the call — a
-   * retention sweep, a database reset — and the widget forgets it too. Any other refusal keeps
-   * the id and what is on screen; the next send finds out.
-   */
-  const reload = useCallback((): Promise<void> => {
-    const id = callRef.current;
-    if (id === null) return Promise.resolve();
+  const replace = useCallback(
+    (id: string, next: (held: Held) => Held) =>
+      setMessages((held) => held.map((message) => (message.id === id ? next(message) : message))),
+    [setMessages],
+  );
 
-    return api.history(id).then(
-      (page) => {
-        setStore((s) => {
-          const { messages, kept } = reloadPage(s.messages, heldFromPage(page.repository));
-          // Older rows kept above the page were paged in from the cursor already held; the
-          // page's own cursor names where they start, which is the wrong place to page from.
-          // Rows kept with no cursor held yet were typed here, and the page's cursor stands.
-          return {
-            messages,
-            olderCursor: kept ? (s.olderCursor ?? page.nextCursor) : page.nextCursor,
-          };
-        });
-      },
-      (error: unknown) => {
-        if (callIsGone(error)) remember(null);
-      },
+  const adopt = useCallback((next: ChatwootConversation) => {
+    conversationRef.current = next;
+    setConversation(next);
+  }, []);
+
+  const sync = useCallback(async () => {
+    const { client } = await start();
+    const newest = (await client.conversations()).reduce<ChatwootConversation | null>(
+      (a, b) => (a === null || b.id > a.id ? b : a),
+      null,
     );
-  }, [api, remember]);
+    const held = conversationRef.current;
+    if (newest === null || (held !== null && newest.id < held.id)) return;
 
-  // Held in a ref: the restore below runs once per mount, whatever desk object a render brings.
-  const refreshDesk = useRef(desk.refresh);
-  useEffect(() => {
-    refreshDesk.current = desk.refresh;
-  }, [desk.refresh]);
+    const page = await client.messages(newest.id);
+    const fresh = pageFromChatwoot(page);
+    // The Client API names no assignee. The last member of staff who wrote stands in for one.
+    const person =
+      deskRef.current.assigneeName ??
+      [...page].reverse().find((message) => message.sender?.type === "user")?.sender?.name ??
+      null;
 
-  // On mount the widget opens the visitor's newest chat, as a new visit does: unless a send made
-  // a call while the host was being asked.
+    adopt(newest);
+    setDesk({
+      ...deskRef.current,
+      chatwoot: newest.status,
+      assigneeName: person,
+      status: handoffStatus(newest.status, person),
+    });
+    setStore((s) => {
+      const { messages, kept } = reloadPage(s.messages, heldFromPage(fresh.repository));
+      // Rows kept above the page were paged in already, from the cursor held.
+      return {
+        messages,
+        olderCursor: kept ? (s.olderCursor ?? fresh.nextCursor) : fresh.nextCursor,
+      };
+    });
+  }, [adopt, setDesk, start]);
+
   useEffect(() => {
     let cancelled = false;
-
-    const restore = async () => {
-      const latest = await api.latestThread().catch(() => null);
-      if (cancelled || latest === null || callRef.current !== null) return;
-
-      callRef.current = latest;
-      setCallId(latest);
-      void refreshDesk.current(latest).catch(() => {});
-
-      await reload();
-    };
-
-    void restore();
-
+    start().then(
+      (started) => {
+        if (cancelled) return;
+        setChat(started);
+        void sync().catch(() => {});
+      },
+      () => {},
+    );
     return () => {
       cancelled = true;
     };
-  }, [api, reload]);
+  }, [start, sync]);
 
   const receive = useCallback(
-    (message: WireHandoffMessage) => {
-      // The visitor's own words are on screen from the moment they were typed; the push is the
-      // host telling staff. A row the reload already brought is not doubled either.
-      if (message.role === "user") return;
-      setMessages((held) => (holds(held, message.messageId) ? held : [...held, heldFrom(message)]));
+    (message: ChatwootMessage) => {
+      if (message.conversation_id !== conversationRef.current?.id) return false;
+      // The visitor's own words are on screen from the moment they were typed.
+      if (message.sender?.type === "contact") return false;
+
+      if (message.sender?.type === "agent_bot" && streamedHere.current) {
+        const reply = awaitingCopy.current;
+        awaitingCopy.current = null;
+        if (reply !== null) replace(reply, (held) => tagged(held, message.id));
+        return false;
+      }
+
+      const row = heldFromChatwoot(message);
+      if (row === null) return false;
+      setMessages((held) => (holds(held, String(message.id)) ? held : [...held, row]));
+      return message.sender?.type === "user";
     },
-    [setMessages],
+    [replace, setMessages],
   );
 
-  const replace = useCallback(
-    (id: string, next: (held: Held) => Held) => {
-      setMessages((held) => held.map((message) => (message.id === id ? next(message) : message)));
+  const move = useCallback(
+    (event: ChatwootConversationEvent) => {
+      if (event.id !== conversationRef.current?.id) return;
+      const { desk: next, note } = moved(deskRef.current, event);
+      setDesk(next);
+      if (note !== null) setMessages((held) => [...held, systemNote(note)]);
     },
-    [setMessages],
+    [setDesk, setMessages],
   );
 
-  /** Runs one bot turn under `callId`, filling `replyId` as it streams. */
+  const presence = useCallback(
+    (push: ChatwootPresence) => setDesk({ ...deskRef.current, staffOnline: staffOnline(push) }),
+    [setDesk],
+  );
+
+  const sayTyping = useCallback(
+    (on: boolean) => {
+      const held = conversationRef.current;
+      if (chat === null || held === null || deskRef.current.chatwoot !== "open") return;
+      void chat.client.typing(held.id, on).catch(() => {});
+    },
+    [chat],
+  );
+
+  /** Runs one AI turn on the conversation, filling `replyId` as it streams. */
   const runBot = useCallback(
     async (
-      callId: string,
+      conversation: ChatwootConversation,
+      messageId: number,
       replyId: string,
       input: string,
-      origin: { message_id: string; parent_id: string | null },
       signal: AbortSignal,
     ) => {
-      let askedForHuman = false;
+      const named: FetchLike = (url, init) => {
+        const headers = new Headers(init?.headers);
+        headers.set(ChatwootConversationHeader, String(conversation.id));
+        headers.set(ChatwootMessageHeader, String(messageId));
+        return send(url, { ...init, headers });
+      };
 
+      streamedHere.current = true;
       for await (const state of runTurn({
         endpoint,
         session: { current: null },
-        threadId: callId,
+        threadId: spiritConversationId(conversation),
         input,
         abortSignal: signal,
-        fetch: send,
-        origin,
+        fetch: named,
       })) {
-        askedForHuman ||= state.tools.some((tool) => tool.name === RequestHumanTool);
         replace(replyId, (held) => replyFrom(held, state));
       }
 
       replace(replyId, (held) => ({ ...held, status: { type: "complete", reason: "stop" } }));
-
-      // The bot asked for a person. The row exists on the host now, and the desk is the only
-      // one who can say where in the line the chat stands.
-      if (askedForHuman) await desk.refresh(callId);
+      awaitingCopy.current = replyId;
     },
-    [desk, endpoint, replace, send],
+    [endpoint, replace, send],
   );
 
   const onNew = useCallback(
     async (message: AppendMessage) => {
       const userId = crypto.randomUUID();
-      const user: Held = {
-        id: userId,
-        role: "user",
-        content: message.content,
-        createdAt: new Date(),
-      };
-
-      // The message the new one hangs off is whatever the widget held last, under the name the
-      // host knows it by. Null at the root of the call.
-      const parent = messages.at(-1);
-      const origin = {
-        message_id: userId,
-        parent_id: parent ? hostMessageId(parent) : null,
-      };
       const input = flatten({ ...message, id: userId } as ThreadMessage).content;
 
-      setMessages((held) => [...held, user]);
+      setMessages((held) => [
+        ...held,
+        { id: userId, role: "user", content: message.content, createdAt: new Date() },
+      ]);
       setRunning(true);
 
       const controller = new AbortController();
       abortRef.current = controller;
 
-      // The reply is made only for a bot turn. A person answers in their own time, and an empty
-      // row drawn as running would promise otherwise.
-      let reply: Held | null = null;
-
-      const bot = async (callId: string) => {
-        if (reply === null) {
-          const made = pendingReply();
-          reply = made;
-          setMessages((held) => [...held, made]);
-        }
-        await runBot(callId, reply.id, input, origin, controller.signal);
-      };
-
-      const person = async (callId: string) => {
-        if (reply !== null) {
-          const { id } = reply;
-          setMessages((held) => held.filter((m) => m.id !== id));
-          reply = null;
-        }
-        const created = await api.say(callId, input);
-        replace(userId, (held) => ({
-          ...held,
-          metadata: { custom: { hostMessageId: created.messageId } },
-        }));
-      };
-
-      const through = (status: string, callId: string) =>
-        withPerson(status) ? person(callId) : bot(callId);
+      // Made only for an AI turn: a person answers in their own time.
+      let replyId: string | null = null;
 
       try {
-        let id = callRef.current;
-        if (id === null) {
-          id = await api.createThread();
-          remember(id);
+        const started = await start();
+        const { client } = started;
+        // A start that failed on mount opens the socket from here.
+        setChat(started);
+
+        let held = conversationRef.current;
+        if (held === null) {
+          held = await client.createConversation();
+          adopt(held);
+          setDesk({ ...deskRef.current, chatwoot: held.status, status: "bot" });
+          setStore((s) => ({ ...s, olderCursor: null }));
         }
+
+        const posted = await client.post(held.id, input);
+        replace(userId, (row) => tagged(row, posted.id));
+
+        // A person has the chat: Chatwoot is all there is. A resolved chat reopens as `pending`
+        // on this very post, so it goes to the AI.
+        if (deskRef.current.chatwoot === "open") return;
+
+        const reply = pendingReply();
+        replyId = reply.id;
+        setMessages((rows) => [...rows, reply]);
 
         try {
-          await through(desk.state.status, id);
+          await runBot(held, posted.id, reply.id, input, controller.signal);
         } catch (error) {
-          if (wrongDoor(error)) {
-            // The chat changed hands since the state was read. Read it again and go through
-            // the other door, once.
-            const fresh = await desk.refresh(id);
-
-            await through(fresh.status, id);
-          } else if (callIsGone(error)) {
-            // The host forgot the call. The words on screen are the visitor's and stay; the host
-            // starts a fresh call for them, and a fresh call is always with the bot. Once.
-            remember(null);
-
-            const fresh = await api.createThread();
-
-            remember(fresh);
-
-            await bot(fresh);
-          } else {
-            throw error;
-          }
+          if (!(error instanceof TurnRefusedError && error.status === 409)) throw error;
+          // The chat is not the AI's any more; the socket says whose it is.
+          const gone = reply.id;
+          replyId = null;
+          setMessages((rows) => rows.filter((row) => row.id !== gone));
         }
       } catch (error) {
-        // The failure lands on the reply when there is one — with whatever it had streamed — and
-        // on a reply made for the purpose when a person's door refused.
         const status = {
           type: "incomplete" as const,
           reason: controller.signal.aborted ? ("cancelled" as const) : ("error" as const),
           error: error instanceof Error ? error.message : String(error),
         };
+        // Read through a widening: the narrowing here cannot see the assignment above.
+        const id = replyId as string | null;
 
-        // Read through a widening: the closures above assign `reply`, which the narrowing here
-        // cannot see.
-        const id = (reply as Held | null)?.id;
-
-        setMessages((held) =>
-          id !== undefined && held.some((m) => m.id === id)
-            ? held.map((m) => (m.id === id ? { ...m, status } : m))
-            : [...held, { ...pendingReply(), status }],
+        setMessages((rows) =>
+          id !== null && rows.some((row) => row.id === id)
+            ? rows.map((row) => (row.id === id ? { ...row, status } : row))
+            : [...rows, { ...pendingReply(), status }],
         );
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
-
         setRunning(false);
       }
     },
-    [api, desk, messages, remember, replace, runBot, setMessages],
+    [adopt, replace, runBot, setDesk, setMessages, start],
   );
 
   const onCancel = useCallback(async () => {
@@ -386,25 +353,27 @@ export function useWidgetRuntime(
   }, []);
 
   const runtime = useExternalStoreRuntime<Held>({
-    messages,
+    messages: store.messages,
     isRunning,
     onNew,
     onCancel,
     convertMessage: (message) => message,
   });
 
+  const { olderCursor } = store;
   const older = useMemo<OlderMessagesSource | undefined>(
     () =>
-      callId === null
+      chat === null || conversation === null
         ? undefined
         : {
-            id: callId,
+            id: String(conversation.id),
             initialCursor: olderCursor,
-            fetchPage: (before) => api.history(callId, before),
+            fetchPage: async (before) =>
+              pageFromChatwoot(await chat.client.messages(conversation.id, Number(before))),
             merge: (page) => setMessages((held) => prependOlder(held, heldFromPage(page))),
           },
-    [api, callId, olderCursor, setMessages],
+    [chat, conversation, olderCursor, setMessages],
   );
 
-  return { runtime, callId, receive, reload, older };
+  return { runtime, desk, chat, receive, move, presence, sync, sayTyping, older };
 }

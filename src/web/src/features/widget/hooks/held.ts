@@ -25,7 +25,7 @@ export function holds(held: readonly Held[], messageId: string): boolean {
   return held.some((message) => hostMessageId(message) === messageId);
 }
 
-/** One page of history as the widget holds it. The host names every row; the fallback is for the type. */
+/** One page of history as the widget holds it. Every row is named; the fallback is for the type. */
 export function heldFromPage(page: ExportedMessageRepository): Held[] {
   return page.messages.map(({ message }) => ({
     ...message,
@@ -37,7 +37,8 @@ export function heldFromPage(page: ExportedMessageRepository): Held[] {
  * Puts a freshly read newest page over what is held, as {@link reloadOver} says.
  *
  * An empty page covers nothing and replaces nothing: words typed before the host answered stay
- * on screen.
+ * on screen. A row the page names that is already held stays as held: a reply streamed on this
+ * page is richer than the Markdown copy the host keeps of it.
  *
  * @returns The rows to hold, and whether any held row was kept ahead of the page.
  */
@@ -47,7 +48,12 @@ export function reloadPage(
 ): { messages: readonly Held[]; kept: boolean } {
   if (fresh.length === 0) return { messages: held, kept: held.length > 0 };
 
-  const { rows, kept } = reloadOver(held, fresh, hostMessageId);
+  const known = new Map(held.map((row) => [hostMessageId(row), row]));
+  const { rows, kept } = reloadOver(
+    held,
+    fresh.map((row) => known.get(hostMessageId(row)) ?? row),
+    hostMessageId,
+  );
 
   return { messages: rows, kept: kept > 0 };
 }

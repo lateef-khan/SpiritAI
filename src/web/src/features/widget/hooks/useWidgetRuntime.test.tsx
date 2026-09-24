@@ -1,528 +1,220 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { ExportedMessageRepository } from "@assistant-ui/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { ConversationField } from "@/features/threads/transport";
-import { HostRefusedError, type FetchLike } from "@/lib/apiClient";
-import type { HandoffState, WidgetApi } from "../api/widgetApi";
-import { WithBot, type HandoffDesk } from "./useHandoffDesk";
-import { useWidgetRuntime, type WidgetRuntime } from "./useWidgetRuntime";
+import type { FetchLike } from "@/lib/apiClient";
+import type {
+  ChatwootClient,
+  ChatwootContact,
+  ChatwootConversation,
+  ChatwootConversationEvent,
+  ChatwootMessage,
+} from "@/lib/chatwoot";
+import contactCreated from "@/lib/chatwoot/payloads/contact_created.json";
+import conversationCreated from "@/lib/chatwoot/payloads/conversation_created.json";
+import conversationsList from "@/lib/chatwoot/payloads/conversations_list.json";
+import messagePosted from "@/lib/chatwoot/payloads/message_posted.json";
+import messagesNewest from "@/lib/chatwoot/payloads/messages_newest.json";
+import socketFrames from "@/lib/chatwoot/payloads/socket_frames.json";
+import type { WidgetChat } from "../api/widgetChat";
+import {
+  ChatwootConversationHeader,
+  ChatwootMessageHeader,
+  useWidgetRuntime,
+  type WidgetRuntime,
+} from "./useWidgetRuntime";
 
-/**
- * The widget's store, one test per promise about the call id.
- *
- * The host is a fake api and a scripted `fetch`: every turn is answered from a canned Responses
- * stream, and what is held in place is which call id each turn went up under, and when a thread
- * is made on the host. The failures these cover — a call the host forgot, a thread made twice —
- * are the ones a browser shows as a chat that quietly starts over.
+/*
+ * Chatwoot is a fake Client API that answers with payloads recorded from local Chatwoot 4.18.0:
+ * conversation 27, uuid f1d95917-…, whose first message is 180. Spirit is a scripted `fetch`
+ * that answers each turn with a canned Responses stream.
  */
 
-/** One data event, as the endpoint writes it. */
-function event(payload: unknown, eventName: string): string {
-  return `event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`;
+const Uuid = "f1d95917-bc28-4e1c-b4ef-2587df3a0113";
+
+/** The socket's pushes, by event, in the order they were recorded. */
+function pushes<T>(event: string): T[] {
+  return (socketFrames as { message?: { event: string; data: unknown } }[]).flatMap((frame) =>
+    frame.message?.event === event ? [frame.message.data as T] : [],
+  );
 }
 
-/** A whole reply saying `text`, closed with the turn facts. `tools` are named as having run. */
-function reply(text: string, messageId = "host-reply", tools: string[] = []): Response {
-  const body = [
-    ...tools.map((name) =>
-      event(
-        { agentcore_tool: { call_id: `t-${name}`, name, phase: "result", result: {} } },
-        "agentcore_tool",
-      ),
-    ),
-    event({ type: "response.output_text.delta", delta: text }, "response.output_text.delta"),
-    event(
-      {
-        type: "response.completed",
-        response: { id: "resp_1", metadata: { message_id: messageId, stage_after: "answer" } },
-      },
-      "response.completed",
-    ),
-  ].join("");
+const messagePushes = pushes<ChatwootMessage>("message.created");
+const botAnswer = messagePushes.find((message) => message.sender?.type === "agent_bot")!;
+const staffReply = messagePushes.find((message) => message.sender?.type === "user")!;
+const staffTookIt = pushes<ChatwootConversationEvent>("conversation.status_changed").find(
+  (event) => event.status === "open",
+)!;
 
-  return new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+/** A whole reply saying `text`, as Spirit streams it. */
+function reply(text: string): Response {
+  const event = (payload: unknown, name: string) =>
+    `event: ${name}\ndata: ${JSON.stringify(payload)}\n\n`;
+  return new Response(
+    event({ type: "response.output_text.delta", delta: text }, "response.output_text.delta") +
+      event({ type: "response.completed", response: { id: "resp_1" } }, "response.completed"),
+    { status: 200, headers: { "Content-Type": "text/event-stream" } },
+  );
 }
 
-/** A refusal in the shape the endpoint writes. */
-function refusal(status: number, code: string): Response {
-  return new Response(JSON.stringify({ error: { message: `refused: ${code}`, code } }), {
-    status,
+/** Spirit's refusal of a turn on a chat the AI does not have. */
+function notPending(): Response {
+  return new Response(JSON.stringify({ error: { message: "Not pending.", code: "conflict" } }), {
+    status: 409,
     headers: { "Content-Type": "application/json" },
   });
 }
 
-/** The door's refusal once the call's row is gone: a problem body, no code. */
-function noSuchThread(): Response {
-  return new Response(
-    JSON.stringify({ title: "No such thread.", status: 404, detail: "This caller has no thread." }),
-    { status: 404, headers: { "Content-Type": "application/problem+json" } },
-  );
-}
+type Turn = {
+  conversation: unknown;
+  chatwootConversation: string | null;
+  chatwootMessage: string | null;
+};
 
-/** One recorded turn. */
-type Sent = { conversation: string | null };
-
-/** A `fetch` that answers from a script and records the conversation each turn named. */
-function scripted(responses: Response[]): { send: FetchLike; sent: Sent[] } {
-  const sent: Sent[] = [];
-  let index = 0;
-
-  const send: FetchLike = (_url, init) => {
-    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-    sent.push({
-      conversation:
-        typeof body[ConversationField] === "string" ? (body[ConversationField] as string) : null,
+/** Spirit, answering from a script, recording what each turn named. */
+function spirit(responses: Response[]): { send: FetchLike; turns: Turn[] } {
+  const turns: Turn[] = [];
+  const send: FetchLike = async (_url, init) => {
+    const headers = new Headers(init?.headers);
+    turns.push({
+      conversation: (JSON.parse(String(init?.body)) as Record<string, unknown>)[ConversationField],
+      chatwootConversation: headers.get(ChatwootConversationHeader),
+      chatwootMessage: headers.get(ChatwootMessageHeader),
     });
-
-    const response = responses[index++];
-    if (!response) throw new Error("the test scripted fewer answers than turns.");
-    return Promise.resolve(response);
+    const next = responses.shift();
+    if (!next) throw new Error("the test scripted fewer answers than turns.");
+    return next;
   };
-
-  return { send, sent };
+  return { send, turns };
 }
 
-/**
- * The visitor's newest chat, as the fake host answers it: the runtime opens it on mount. A promise
- * holds the answer back until the test settles it.
- */
-let newest: string | null | Promise<string | null> = null;
-
-/** Waits for the runtime to open a chat. */
-async function opened(view: { result: { current: WidgetRuntime } }, callId: string) {
-  await waitFor(() => expect(view.result.current.callId).toBe(callId));
-}
-
-/**
- * A fake host that mints ids in order, answers one history, records what was said to a person,
- * and names `newest` as the visitor's newest chat.
- */
-function fakeApi(
-  history: (callId: string) => Promise<ExportedMessageRepository>,
-  page: { nextCursor: string | null } = { nextCursor: null },
-  say: (callId: string, text: string) => Promise<{ messageId: string }> = async () => ({
-    messageId: "host-said",
-  }),
-): {
-  api: WidgetApi;
-  created: string[];
-  said: { callId: string; text: string }[];
-} {
-  const created: string[] = [];
-  const said: { callId: string; text: string }[] = [];
-
-  return {
-    created,
-    said,
-    api: {
-      createThread: async () => {
-        const id = `call-${created.length + 1}`;
-        created.push(id);
-        return id;
-      },
-      latestThread: async () => newest,
-      history: async (callId) => ({ repository: await history(callId), ...page }),
-      handoffState: async () => WithBot,
-      leavePhone: async () => {},
-      say: async (callId, text) => {
-        said.push({ callId, text });
-        const { messageId } = await say(callId, text);
-        return { callId, messageId, role: "user", text, speaker: null, at: "2026-09-16T09:00:00Z" };
-      },
+/** Chatwoot, as one visitor's Client API, with or without a conversation already. */
+function chatwoot(conversations: unknown[]) {
+  const posted: { id: number; content: string }[] = [];
+  let created = 0;
+  const client: ChatwootClient = {
+    contact: async () => contactCreated as ChatwootContact,
+    conversations: async () => conversations as ChatwootConversation[],
+    createConversation: async () => {
+      created += 1;
+      return conversationCreated as ChatwootConversation;
     },
+    post: async (id, content) => {
+      posted.push({ id, content });
+      return { ...(messagePosted as ChatwootMessage), content };
+    },
+    messages: async () => messagesNewest as ChatwootMessage[],
+    typing: async () => {},
   };
-}
-
-/**
- * A desk that holds one state, and answers `answers` in turn on each refresh: the last one again
- * once they run out, and the held state when there are none.
- */
-function fakeDesk(
-  state: HandoffState,
-  ...answers: HandoffState[]
-): HandoffDesk & { refreshed: number } {
-  const desk = {
-    refreshed: 0,
-    state,
-    refresh: async () => {
-      const next = answers[Math.min(desk.refreshed, answers.length - 1)] ?? desk.state;
-      desk.refreshed += 1;
-      desk.state = next;
-      return next;
-    },
-    leavePhone: async () => {},
-    apply: (change: Partial<HandoffState>) => {
-      desk.state = { ...desk.state, ...change };
-    },
+  const chat: WidgetChat = {
+    settings: { chatwootBaseUrl: "http://localhost:53000", chatwootInboxIdentifier: "inbox" },
+    client,
+    contact: contactCreated as ChatwootContact,
   };
-  return desk;
+  const start = () => Promise.resolve(chat);
+  return { start, posted, created: () => created };
 }
 
-const waiting: HandoffState = {
-  status: "waiting",
-  assigneeName: null,
-  staffOnline: true,
-  phone: null,
-  code: null,
-};
-
-const stored: ExportedMessageRepository = {
-  headId: "m2",
-  messages: [
-    {
-      parentId: null,
-      message: {
-        id: "m1",
-        role: "user",
-        content: [{ type: "text", text: "hello" }],
-        createdAt: new Date("2026-09-16T09:00:00Z"),
-        attachments: [],
-        metadata: { custom: {} },
-      },
-    },
-    {
-      parentId: "m1",
-      message: {
-        id: "m2",
-        role: "assistant",
-        content: [{ type: "text", text: "hi there" }],
-        createdAt: new Date("2026-09-16T09:00:01Z"),
-        status: { type: "complete", reason: "stop" },
-        metadata: {
-          unstable_state: null,
-          unstable_annotations: [],
-          unstable_data: [],
-          steps: [],
-          custom: {},
-        },
-      },
-    },
-  ],
-};
-
-/** The text of every message the runtime holds, in order. */
-function texts({ runtime }: ReturnType<typeof useWidgetRuntime>): string[] {
-  return runtime.thread.getState().messages.map((message) =>
-    message.content
-      .filter((part): part is { type: "text"; text: string } => part.type === "text")
-      .map((part) => part.text)
-      .join(""),
-  );
+function texts({ runtime }: WidgetRuntime): string[] {
+  return runtime.thread
+    .getState()
+    .messages.map((message) =>
+      message.content.map((part) => (part.type === "text" ? part.text : "")).join(""),
+    );
 }
 
-async function send({ runtime }: ReturnType<typeof useWidgetRuntime>, text: string) {
+async function say(widget: WidgetRuntime, text: string) {
   await act(async () => {
-    await runtime.thread.append({ role: "user", content: [{ type: "text", text }] });
+    await widget.runtime.thread.append({ role: "user", content: [{ type: "text", text }] });
   });
 }
-
-beforeEach(() => {
-  newest = null;
-});
 
 describe("useWidgetRuntime", () => {
-  it("opens the visitor's newest chat on mount", async () => {
-    newest = "call-latest";
-    const read: string[] = [];
-    const { api } = fakeApi(async (callId) => {
-      read.push(callId);
-      return stored;
-    });
-    const { send: fetch } = scripted([]);
-    const desk = fakeDesk(WithBot);
+  it("makes the conversation on the first send, posts to Chatwoot, then asks Spirit", async () => {
+    const cw = chatwoot([]);
+    const { send, turns } = spirit([reply("Yes, it is in stock.")]);
+    const view = renderHook(() => useWidgetRuntime("/v1/public/main/responses", cw.start, send));
+    await waitFor(() => expect(view.result.current.chat).not.toBeNull());
 
-    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch, desk));
+    await say(view.result.current, "Do you have the XT485 in stock?");
 
-    await waitFor(() => expect(texts(view.result.current)).toEqual(["hello", "hi there"]));
-    expect(read).toEqual(["call-latest"]);
-    expect(view.result.current.callId).toBe("call-latest");
-    expect(desk.refreshed).toBe(1);
-  });
-
-  it("keeps a call a send made while the host was asked for the newest chat", async () => {
-    let answer: (callId: string) => void = () => {};
-    newest = new Promise<string | null>((resolve) => {
-      answer = resolve;
-    });
-    const { api, created } = fakeApi(async () => ({ messages: [] }));
-    const { send: fetch } = scripted([reply("welcome")]);
-
-    const view = renderHook(() =>
-      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
-    );
-
-    await send(view.result.current, "hi");
-    await waitFor(() => expect(texts(view.result.current)).toEqual(["hi", "welcome"]));
-
-    await act(async () => answer("call-older"));
-
-    expect(created).toEqual(["call-1"]);
-    expect(view.result.current.callId).toBe("call-1");
-    expect(texts(view.result.current)).toEqual(["hi", "welcome"]);
-  });
-
-  it("forgets a chat the host answers 404 for", async () => {
-    newest = "call-gone";
-    const read: string[] = [];
-    const { api } = fakeApi(async (callId) => {
-      read.push(callId);
-      throw new HostRefusedError(404, "/v1/public/threads/call-gone/messages");
-    });
-    const { send: fetch } = scripted([]);
-
-    const view = renderHook(() =>
-      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
-    );
-
-    await waitFor(() => expect(read).toEqual(["call-gone"]));
-    await waitFor(() => expect(view.result.current.callId).toBeNull());
-    expect(texts(view.result.current)).toEqual([]);
-  });
-
-  it("makes the thread on the first send and runs the turn under its id", async () => {
-    const { api, created } = fakeApi(async () => stored);
-    const { send: fetch, sent } = scripted([reply("welcome")]);
-
-    const view = renderHook(() =>
-      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
-    );
-    expect(created).toEqual([]);
-
-    await send(view.result.current, "hi");
-
-    await waitFor(() => expect(texts(view.result.current)).toEqual(["hi", "welcome"]));
-    expect(created).toEqual(["call-1"]);
-    expect(sent.map((turn) => turn.conversation)).toEqual(["call-1"]);
-    expect(view.result.current.callId).toBe("call-1");
-  });
-
-  it("does not make the thread again on the second send", async () => {
-    const { api, created } = fakeApi(async () => stored);
-    const { send: fetch, sent } = scripted([reply("one"), reply("two", "host-reply-2")]);
-
-    const view = renderHook(() =>
-      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
-    );
-
-    await send(view.result.current, "first");
-    await waitFor(() => expect(texts(view.result.current)).toEqual(["first", "one"]));
-    await send(view.result.current, "second");
-    await waitFor(() =>
-      expect(texts(view.result.current)).toEqual(["first", "one", "second", "two"]),
-    );
-
-    expect(created).toEqual(["call-1"]);
-    expect(sent.map((turn) => turn.conversation)).toEqual(["call-1", "call-1"]);
-  });
-
-  it("makes a new thread and retries once when the host forgot the call", async () => {
-    newest = "call-stale";
-    const { api, created } = fakeApi(async () => ({ messages: [] }));
-    const { send: fetch, sent } = scripted([noSuchThread(), reply("again")]);
-
-    const view = renderHook(() =>
-      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
-    );
-    await opened(view, "call-stale");
-
-    await send(view.result.current, "still there?");
-
-    await waitFor(() => expect(texts(view.result.current)).toEqual(["still there?", "again"]));
-    expect(created).toEqual(["call-1"]);
-    expect(sent.map((turn) => turn.conversation)).toEqual(["call-stale", "call-1"]);
-    expect(view.result.current.callId).toBe("call-1");
-  });
-
-  it("reports a refusal that is not a forgotten call on the reply", async () => {
-    newest = "call-kept";
-    const { api, created } = fakeApi(async () => ({ messages: [] }));
-    const { send: fetch } = scripted([refusal(429, "rate_limited")]);
-
-    const view = renderHook(() =>
-      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
-    );
-    await opened(view, "call-kept");
-
-    await send(view.result.current, "hi");
-
-    await waitFor(() =>
-      expect(view.result.current.runtime.thread.getState().messages.at(-1)?.status).toMatchObject({
-        type: "incomplete",
-        reason: "error",
-      }),
-    );
-    expect(created).toEqual([]);
-    expect(view.result.current.callId).toBe("call-kept");
-  });
-
-  it("sends to the person and draws no reply while the chat is waiting", async () => {
-    newest = "call-kept";
-    const { api, said } = fakeApi(async () => ({ messages: [] }));
-    const { send: fetch, sent } = scripted([]);
-    const desk = fakeDesk(waiting);
-
-    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch, desk));
-    await opened(view, "call-kept");
-
-    await send(view.result.current, "are you there?");
-
-    await waitFor(() => expect(said).toEqual([{ callId: "call-kept", text: "are you there?" }]));
-    const held = view.result.current.runtime.thread.getState().messages;
-    expect(held.map((m) => m.role)).toEqual(["user"]);
-    expect(held[0]?.metadata.custom).toMatchObject({ hostMessageId: "host-said" });
-    expect(sent).toEqual([]);
-  });
-
-  it("reads the desk again after a turn in which the bot asked for a person", async () => {
-    newest = "call-kept";
-    const { api } = fakeApi(async () => ({ messages: [] }));
-    const { send: fetch } = scripted([
-      reply("I have asked a person to join.", "r1", ["request_human"]),
+    expect(cw.created()).toBe(1);
+    expect(cw.posted).toEqual([{ id: 27, content: "Do you have the XT485 in stock?" }]);
+    expect(turns).toEqual([
+      { conversation: `cw_${Uuid}`, chatwootConversation: "27", chatwootMessage: "180" },
     ]);
-    const desk = fakeDesk(WithBot, WithBot, waiting);
-
-    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch, desk));
-    await opened(view, "call-kept");
-
-    await send(view.result.current, "I want a human");
-
-    await waitFor(() => expect(desk.refreshed).toBe(2));
     expect(texts(view.result.current)).toEqual([
-      "I want a human",
-      "I have asked a person to join.",
+      "Do you have the XT485 in stock?",
+      "Yes, it is in stock.",
     ]);
   });
 
-  it("does not read the desk again after an ordinary turn", async () => {
-    newest = "call-kept";
-    const { api } = fakeApi(async () => ({ messages: [] }));
-    const { send: fetch } = scripted([reply("sure", "r1", ["lookup_model"])]);
-    const desk = fakeDesk(WithBot);
+  it("drops Chatwoot's copy of an answer the page streamed, and shows a staff reply", async () => {
+    const cw = chatwoot([]);
+    const { send } = spirit([reply("Yes, it is in stock.")]);
+    const view = renderHook(() => useWidgetRuntime("/v1/public/main/responses", cw.start, send));
+    await waitFor(() => expect(view.result.current.chat).not.toBeNull());
+    await say(view.result.current, "Do you have the XT485 in stock?");
 
-    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch, desk));
-    await opened(view, "call-kept");
-
-    await send(view.result.current, "hi");
-
-    await waitFor(() => expect(texts(view.result.current)).toEqual(["hi", "sure"]));
-    // Once, for the chat opened on mount.
-    expect(desk.refreshed).toBe(1);
-  });
-
-  it("goes through the other door once when the chat changed hands", async () => {
-    newest = "call-kept";
-    const { api, said } = fakeApi(async () => ({ messages: [] }));
-    const { send: fetch } = scripted([
-      new Response(
-        JSON.stringify({ title: "A person has this chat.", status: 409, type: "handoff_open" }),
-        { status: 409, headers: { "Content-Type": "application/problem+json" } },
-      ),
-    ]);
-    const desk = fakeDesk(WithBot, WithBot, waiting);
-
-    const view = renderHook(() => useWidgetRuntime("/v1/public/responses", api, fetch, desk));
-    await opened(view, "call-kept");
-
-    await send(view.result.current, "still there?");
-
-    await waitFor(() => expect(said).toEqual([{ callId: "call-kept", text: "still there?" }]));
-    expect(desk.refreshed).toBe(2);
-    expect(view.result.current.runtime.thread.getState().messages.map((m) => m.role)).toEqual([
-      "user",
-    ]);
-  });
-
-  it("takes a pushed reply once, and never the visitor's own words", async () => {
-    newest = "call-kept";
-    const { api } = fakeApi(async () => ({ messages: [] }));
-    const { send: fetch } = scripted([]);
-
-    const view = renderHook(() =>
-      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(waiting)),
-    );
-    await opened(view, "call-kept");
-
-    const reply = {
-      callId: "call-kept",
-      messageId: "host-9",
-      role: "assistant",
-      text: "Hi, Dana here.",
-      speaker: { kind: "human", name: "Dana R.", detail: "Support" },
-      at: "2026-09-16T09:00:00Z",
-    };
+    let copy = true;
+    let staff = false;
     act(() => {
-      view.result.current.receive(reply);
-      view.result.current.receive(reply);
-      view.result.current.receive({ ...reply, messageId: "host-10", role: "user", text: "me" });
+      copy = view.result.current.receive(botAnswer);
+      staff = view.result.current.receive(staffReply);
     });
 
-    const held = view.result.current.runtime.thread.getState().messages;
-    expect(texts(view.result.current)).toEqual(["Hi, Dana here."]);
-    expect(held[0]?.metadata.custom).toMatchObject({
-      speaker: { kind: "human", name: "Dana R." },
-      hostMessageId: "host-9",
+    expect([copy, staff]).toEqual([false, true]);
+    expect(texts(view.result.current)).toEqual([
+      "Do you have the XT485 in stock?",
+      "Yes, it is in stock.",
+      "Hi, this is Matthew. I can help.",
+    ]);
+  });
+
+  it("posts to Chatwoot only once a person has the chat, and says who joined", async () => {
+    const cw = chatwoot([]);
+    const { send, turns } = spirit([reply("Yes, it is in stock.")]);
+    const view = renderHook(() => useWidgetRuntime("/v1/public/main/responses", cw.start, send));
+    await waitFor(() => expect(view.result.current.chat).not.toBeNull());
+    await say(view.result.current, "Do you have the XT485 in stock?");
+
+    act(() => view.result.current.move(staffTookIt));
+    await say(view.result.current, "Thanks, Matthew.");
+
+    expect(turns).toHaveLength(1);
+    expect(cw.posted.map((post) => post.content)).toEqual([
+      "Do you have the XT485 in stock?",
+      "Thanks, Matthew.",
+    ]);
+    expect(texts(view.result.current).slice(2)).toEqual([
+      "Matthew Hsu joined the chat.",
+      "Thanks, Matthew.",
+    ]);
+    expect(view.result.current.desk).toMatchObject({
+      status: "human",
+      assigneeName: "Matthew Hsu",
     });
   });
 
-  it("does not double a pushed reply the reload already brought", async () => {
-    newest = "call-kept";
-    const stored: ExportedMessageRepository = {
-      headId: "host-9",
-      messages: [
-        {
-          parentId: null,
-          message: {
-            id: "host-9",
-            role: "assistant",
-            content: [{ type: "text", text: "Hi, Dana here." }],
-            createdAt: new Date("2026-09-16T09:00:00Z"),
-            status: { type: "complete", reason: "stop" },
-            metadata: {
-              unstable_state: null,
-              unstable_annotations: [],
-              unstable_data: [],
-              steps: [],
-              custom: { hostMessageId: "host-9" },
-            },
-          },
-        },
-      ],
-    };
-    const { api } = fakeApi(async () => stored);
-    const { send: fetch } = scripted([]);
+  it("takes back the empty reply when Spirit says the AI no longer has the chat", async () => {
+    const cw = chatwoot([]);
+    const { send } = spirit([notPending()]);
+    const view = renderHook(() => useWidgetRuntime("/v1/public/main/responses", cw.start, send));
+    await waitFor(() => expect(view.result.current.chat).not.toBeNull());
 
-    const view = renderHook(() =>
-      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(waiting)),
-    );
-    await opened(view, "call-kept");
-    await waitFor(() => expect(texts(view.result.current)).toEqual(["Hi, Dana here."]));
+    await say(view.result.current, "Hello?");
 
-    act(() => {
-      view.result.current.receive({
-        callId: "call-kept",
-        messageId: "host-9",
-        role: "assistant",
-        text: "Hi, Dana here.",
-        speaker: null,
-        at: "2026-09-16T09:00:00Z",
-      });
-    });
-
-    expect(texts(view.result.current)).toEqual(["Hi, Dana here."]);
+    expect(texts(view.result.current)).toEqual(["Hello?"]);
   });
 
-  it("follows the call id as it is made", async () => {
-    const { api } = fakeApi(async () => ({ messages: [] }));
-    const { send: fetch } = scripted([reply("hello")]);
+  it("opens the newest conversation on start, with its newest page and where to page from", async () => {
+    const cw = chatwoot(conversationsList);
+    const { send } = spirit([]);
+    const view = renderHook(() => useWidgetRuntime("/v1/public/main/responses", cw.start, send));
 
-    const view = renderHook(() =>
-      useWidgetRuntime("/v1/public/responses", api, fetch, fakeDesk(WithBot)),
-    );
-    expect(view.result.current.callId).toBeNull();
-
-    await send(view.result.current, "hi");
-
-    await waitFor(() => expect(view.result.current.callId).toBe("call-1"));
+    await waitFor(() => expect(view.result.current.older?.initialCursor).toBe("189"));
+    expect(view.result.current.older?.id).toBe("27");
+    expect(texts(view.result.current)).toHaveLength(20);
+    expect(texts(view.result.current).at(-1)).toBe("Page probe 22");
   });
 });

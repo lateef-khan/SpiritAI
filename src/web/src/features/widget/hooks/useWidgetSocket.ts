@@ -1,103 +1,70 @@
-import { useCallback } from "react";
+import { useEffect, useRef } from "react";
 
-import * as Events from "@/features/handoff/events";
 import { useTypingIndicator } from "@/features/handoff/useTypingIndicator";
-import type { Presence, Signal } from "@/lib/realtime/socket";
-import { useSocket } from "@/lib/realtime/useSocket";
-import { readVisitorKey } from "../api/visitorIdentity";
-import type { WireHandoffMessage } from "../api/widgetApi";
-import type { HandoffDesk } from "./useHandoffDesk";
+import { openChatwootSocket, type ChatwootSettings, type ChatwootSocket } from "@/lib/chatwoot";
 import type { WidgetRuntime } from "./useWidgetRuntime";
 
 /**
- * Keeps the socket open while a person is asked for or has the chat, and closed otherwise.
+ * Keeps Chatwoot's socket open for the visitor's contact once the widget has started.
  *
- * With the bot there is nothing to hear: the bot answers on the turn's own stream. The socket is
- * for the human phase — a reply landing, the line moving, a person joining or leaving — and it
- * closes again once the chat is back with the bot, so a visitor who never asked for anyone costs
- * the host no connection.
- *
- * Every open, the first and each reconnect, reads the state and the history over REST before it
- * listens: a push lost while the socket was down is caught up, not missed.
+ * It carries staff replies, typing, the status and the assignee, and staff presence. Every
+ * reconnect reads the newest page again, so a push lost while the socket was down is late, not
+ * missed. The first open needs no read: the start just made one.
  */
 
 /** What the socket reaches into, and what it tells the screen. */
 export type WidgetSocketOptions = {
-  readonly desk: HandoffDesk;
   readonly widget: WidgetRuntime;
-  /** Called for every message a person or the host wrote, after it is on screen. */
-  readonly onMessage?: (message: WireHandoffMessage) => void;
-  /** How the socket is opened. Defaults to the real hub. */
-  readonly open?: Parameters<typeof useSocket>[2];
-};
-
-/** What the widget learns from the socket beyond the desk and the store. */
-export type WidgetSocketState = {
-  /** Whether the person holding the chat is typing right now. */
-  readonly typing: boolean;
-  /** Tells the person holding the chat whether the visitor is typing. */
-  sayTyping(on: boolean): void;
+  /** Called for every staff reply, after it is on screen. */
+  readonly onMessage?: () => void;
+  /** How the socket is opened. Defaults to Chatwoot's. */
+  readonly open?: (settings: ChatwootSettings, pubsubToken: string) => ChatwootSocket;
 };
 
 /**
- * Opens and closes the socket as the chat's state and call id change.
- *
- * @param options The desk, the store, and what to tell the screen.
- * @returns Typing, in and out.
+ * @param options The store, and what to tell the screen.
+ * @returns Whether a member of staff is typing right now.
  */
 export function useWidgetSocket({
-  desk,
   widget,
   onMessage,
-  open,
-}: WidgetSocketOptions): WidgetSocketState {
-  const { callId } = widget;
-  const listening = desk.state.status === "waiting" || desk.state.status === "human";
+  open = openChatwootSocket,
+}: WidgetSocketOptions): { typing: boolean } {
+  const { chat } = widget;
   const [typing, showTyping] = useTypingIndicator();
+  // The socket lives as long as the contact; the handlers read the newest render through these.
+  const latest = useRef({ widget, onMessage });
+  useEffect(() => {
+    latest.current = { widget, onMessage };
+  });
 
-  const handle = useSocket(
-    callId !== null && listening
-      ? { kind: "visitor", callId, visitorKey: readVisitorKey() }
-      : null,
-    {
-      onOpen: () => {
-        if (callId !== null) void desk.refresh(callId);
-        void widget.reload();
-      },
-      on: {
-        [Events.MessageCreated]: (message: WireHandoffMessage) => {
-          widget.receive(message);
-          // The visitor's own words are already on screen; the push is the host telling staff.
-          if (message.role !== "user") {
-            showTyping(false);
-            onMessage?.(message);
-          }
-        },
-        [Events.Claimed]: (push: Events.ClaimedPush) =>
-          desk.apply({ status: "human", assigneeName: push.assignee.name }),
-        [Events.Done]: () => {
-          desk.apply({ status: "done", assigneeName: null });
-          showTyping(false);
-        },
-        presence: (push: Presence) => {
-          if (push.kind === Events.StaffKind) desk.apply({ staffOnline: push.online > 0 });
-        },
-        signal: (signal: Signal<Events.TypingSignal>) => {
-          if (signal.name === Events.Typing && signal.sender.kind === Events.StaffKind) {
-            showTyping(signal.payload.on);
-          }
-        },
-      },
-    },
-    open,
-  );
+  useEffect(() => {
+    if (chat === null) return;
 
-  const sayTyping = useCallback(
-    (on: boolean) => {
-      if (callId !== null) void handle.signal(Events.StaffGroup, Events.Typing, { callId, on });
-    },
-    [callId, handle],
-  );
+    const socket = open(chat.settings, chat.contact.pubsub_token);
+    let opened = false;
 
-  return { typing, sayTyping };
+    socket.onOpen(() => {
+      if (opened) void latest.current.widget.sync().catch(() => {});
+      opened = true;
+    });
+    socket.on("message.created", (message) => {
+      if (!latest.current.widget.receive(message)) return;
+      showTyping(false);
+      latest.current.onMessage?.();
+    });
+    socket.on("conversation.status_changed", (event) => latest.current.widget.move(event));
+    socket.on("conversation.updated", (event) => latest.current.widget.move(event));
+    socket.on("presence.update", (push) => latest.current.widget.presence(push));
+    socket.on("conversation.typing_on", (push) => {
+      if (push.user.type === "user" && !push.is_private) showTyping(true);
+    });
+    socket.on("conversation.typing_off", (push) => {
+      if (push.user.type === "user" && !push.is_private) showTyping(false);
+    });
+
+    return () => socket.close();
+  }, [chat, open, showTyping]);
+
+  return { typing };
 }

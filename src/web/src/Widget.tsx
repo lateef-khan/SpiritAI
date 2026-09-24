@@ -12,10 +12,9 @@ import {
   shareVisitorKey,
   visitorFetch,
 } from "./features/widget/api/visitorIdentity";
-import { createWidgetApi } from "./features/widget/api/widgetApi";
+import { connectWidgetChat } from "./features/widget/api/widgetChat";
 import { HandoffBanner } from "./features/widget/components/HandoffBanner";
 import { WidgetWelcome } from "./features/widget/components/WidgetWelcome";
-import { useHandoffDesk } from "./features/widget/hooks/useHandoffDesk";
 import { useWidgetRuntime } from "./features/widget/hooks/useWidgetRuntime";
 import { useWidgetSocket } from "./features/widget/hooks/useWidgetSocket";
 
@@ -51,7 +50,10 @@ const send = visitorFetch(readVisitorKey);
 
 shareVisitorKey(readVisitorKey());
 
-const api = createWidgetApi(send);
+/*
+ * The visitor's Chatwoot side, started once on the first ask.
+ */
+const start = connectWidgetChat(send, readVisitorKey());
 
 /**
  * The pages of history the reader scrolls up for, once read.
@@ -83,15 +85,13 @@ function useFrameSize(phase: Phase) {
 }
 
 export function Widget() {
-  const desk = useHandoffDesk(api);
-  const widget = useWidgetRuntime(endpoint, api, send, desk);
+  const widget = useWidgetRuntime(endpoint, start, send);
   const [phase, setPhase] = useState<Phase>("closed");
   const [unread, setUnread] = useState(0);
   const [bounceKey, setBounceKey] = useState(0);
   const isOpen = phase === "open";
 
-  const { typing, sayTyping } = useWidgetSocket({
-    desk,
+  const { typing } = useWidgetSocket({
     widget,
     onMessage: () => {
       if (phase === "closed") {
@@ -102,11 +102,6 @@ export function Widget() {
   });
 
   useFrameSize(phase);
-
-  // A phone box only shows on a chat waiting for a person, which always has a call.
-  const leavePhone = async (phone: string) => {
-    if (widget.callId !== null) await desk.leavePhone(widget.callId, phone);
-  };
 
   const onOpenChange = (next: boolean) => {
     setPhase(next ? "open" : "closed");
@@ -136,11 +131,11 @@ export function Widget() {
                 >
                   <XIcon className="size-4" />
                 </PopoverClose>
-                <HandoffBanner state={desk.state} typing={typing} onLeavePhone={leavePhone} />
+                <HandoffBanner state={widget.desk} typing={typing} />
                 <div className="min-h-0 flex-1">
                   <Thread components={WIDGET_COMPONENTS} olderMessages={widget.older} />
                 </div>
-                <TypingReporter sayTyping={sayTyping} />
+                <TypingReporter sayTyping={widget.sayTyping} />
               </PopoverContent>
             </div>
           </Popover>
