@@ -66,7 +66,7 @@ public sealed class VisitorChatDoorTests
     {
         await using var world = await World.StartAsync();
         var conversationId = await world.MakeChatAsync(VisitorPrincipal.KeyOf(VisitorKey));
-        await world.Handoffs.AskAsync(conversationId, HandoffAskedBy.Visitor, null, TestContext.Current.CancellationToken);
+        await world.Handoffs.AskAsync(conversationId, HandoffAskedBy.Visitor, null, HandoffSummary.Empty, TestContext.Current.CancellationToken);
 
         var response = await world.PostAsync(VisitorKey, conversationId);
 

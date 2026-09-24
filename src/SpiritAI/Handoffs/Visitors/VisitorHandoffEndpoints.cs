@@ -133,7 +133,7 @@ public static class VisitorHandoffEndpoints
 
         return ForOwnedAsync(http, conversations, contacts, contactConversations, conversationId, cancellationToken, async () =>
         {
-            var asked = await desk.AskAsync(conversationId, HandoffAskedBy.Visitor, body.Reason, cancellationToken).ConfigureAwait(false);
+            var asked = await desk.AskAsync(conversationId, HandoffAskedBy.Visitor, body.Reason, HandoffSummary.Empty, cancellationToken).ConfigureAwait(false);
 
             copies.Enqueue(conversationId);
 

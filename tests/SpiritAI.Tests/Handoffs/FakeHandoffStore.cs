@@ -15,7 +15,11 @@ internal sealed class FakeHandoffStore(TimeProvider clock) : IHandoffStore
     public List<Handoff> Rows { get; } = [];
 
     public Task<Handoff> AskAsync(
-        string conversationId, HandoffAskedBy askedBy, string? reason, CancellationToken cancellationToken)
+        string conversationId,
+        HandoffAskedBy askedBy,
+        string? reason,
+        HandoffSummary summary,
+        CancellationToken cancellationToken)
     {
         var row = Open(conversationId);
 
@@ -33,6 +37,11 @@ internal sealed class FakeHandoffStore(TimeProvider clock) : IHandoffStore
 
             Rows.Add(row);
         }
+
+        row.Product ??= summary.Product;
+        row.Serial ??= summary.Serial;
+        row.Tried ??= summary.Tried;
+        row.Wants ??= summary.Wants;
 
         return Task.FromResult(row);
     }

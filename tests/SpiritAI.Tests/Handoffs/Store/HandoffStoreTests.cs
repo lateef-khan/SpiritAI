@@ -32,9 +32,9 @@ public sealed class HandoffStoreTests(PostgresFixture fixture)
             var clock = new TestTimeProvider(Start);
             var store = new HandoffStore(database, clock);
 
-            var a = await store.AskAsync(first, HandoffAskedBy.Visitor, null, Cancel);
+            var a = await store.AskAsync(first, HandoffAskedBy.Visitor, null, HandoffSummary.Empty, Cancel);
             clock.Now += TimeSpan.FromMinutes(1);
-            var b = await store.AskAsync(second, HandoffAskedBy.Bot, "warranty claim", Cancel);
+            var b = await store.AskAsync(second, HandoffAskedBy.Bot, "warranty claim", HandoffSummary.Empty, Cancel);
 
             Assert.Equal(HandoffStatus.Waiting, a.Status);
             Assert.Equal(HandoffStatus.Waiting, b.Status);
@@ -63,8 +63,8 @@ public sealed class HandoffStoreTests(PostgresFixture fixture)
             await using var database = fixture.Open();
             var store = new HandoffStore(database, new TestTimeProvider(Start));
 
-            var once = await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
-            var twice = await store.AskAsync(conversationId, HandoffAskedBy.Bot, "again", Cancel);
+            var once = await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, HandoffSummary.Empty, Cancel);
+            var twice = await store.AskAsync(conversationId, HandoffAskedBy.Bot, "again", HandoffSummary.Empty, Cancel);
 
             Assert.Equal(once.Id, twice.Id);
             Assert.Equal(HandoffAskedBy.Visitor, twice.AskedBy);
@@ -88,7 +88,7 @@ public sealed class HandoffStoreTests(PostgresFixture fixture)
             var clock = new TestTimeProvider(Start);
             var store = new HandoffStore(database, clock);
 
-            await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
+            await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, HandoffSummary.Empty, Cancel);
             clock.Now += TimeSpan.FromMinutes(1);
 
             var dana = await store.ClaimAsync(conversationId, "staff:dana", "Dana R.", Cancel);
@@ -129,7 +129,7 @@ public sealed class HandoffStoreTests(PostgresFixture fixture)
             await using var database = fixture.Open();
             var store = new HandoffStore(database, new TestTimeProvider(Start));
 
-            await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
+            await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, HandoffSummary.Empty, Cancel);
 
             Assert.False(await store.HandOverAsync(conversationId, "staff:sam", "Sam", Cancel));
 
@@ -165,7 +165,7 @@ public sealed class HandoffStoreTests(PostgresFixture fixture)
             var clock = new TestTimeProvider(Start);
             var store = new HandoffStore(database, clock);
 
-            var first = await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
+            var first = await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, HandoffSummary.Empty, Cancel);
             clock.Now += TimeSpan.FromMinutes(1);
 
             Assert.True(await store.DoneAsync(conversationId, Cancel));
@@ -179,7 +179,7 @@ public sealed class HandoffStoreTests(PostgresFixture fixture)
             Assert.Equal(clock.Now, closed.DoneAt);
 
             clock.Now += TimeSpan.FromMinutes(1);
-            var again = await store.AskAsync(conversationId, HandoffAskedBy.Bot, "still stuck", Cancel);
+            var again = await store.AskAsync(conversationId, HandoffAskedBy.Bot, "still stuck", HandoffSummary.Empty, Cancel);
 
             Assert.NotEqual(first.Id, again.Id);
             Assert.Equal(2, await database.Handoffs.CountAsync(h => h.ConversationId == conversationId, Cancel));
@@ -208,7 +208,7 @@ public sealed class HandoffStoreTests(PostgresFixture fixture)
             await using var database = fixture.Open();
             var store = new HandoffStore(database, new TestTimeProvider(Start));
 
-            await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
+            await store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, HandoffSummary.Empty, Cancel);
 
             Assert.True(await store.SetPhoneAsync(conversationId, "+12015550123", Cancel));
 
@@ -218,6 +218,74 @@ public sealed class HandoffStoreTests(PostgresFixture fixture)
             Assert.Equal("+12015550123", row.Phone);
 
             Assert.False(await store.SetPhoneAsync(NewConversationId(), "+12015550123", Cancel));
+        }
+        finally
+        {
+            await fixture.DeleteConversationAsync(conversationId);
+        }
+    }
+
+    [Fact]
+    public async Task TheSummaryIsSavedWithTheAsk()
+    {
+        var conversationId = NewConversationId();
+        await fixture.MakeConversationAsync(conversationId);
+
+        try
+        {
+            await using var database = fixture.Open();
+            var store = new HandoffStore(database, new TestTimeProvider(Start));
+            var summary = new HandoffSummary("XT485 treadmill", "0045210000001234", "Lubricated the belt; no change", "A technician visit");
+
+            var asked = await store.AskAsync(conversationId, HandoffAskedBy.Bot, "Belt slips at speed 6", summary, Cancel);
+
+            var row = await store.OpenAsync(conversationId, Cancel);
+
+            Assert.NotNull(row);
+            Assert.Equal(asked.Id, row.Id);
+            Assert.Equal("XT485 treadmill", row.Product);
+            Assert.Equal("0045210000001234", row.Serial);
+            Assert.Equal("Lubricated the belt; no change", row.Tried);
+            Assert.Equal("A technician visit", row.Wants);
+        }
+        finally
+        {
+            await fixture.DeleteConversationAsync(conversationId);
+        }
+    }
+
+    [Fact]
+    public async Task ASecondAskFillsOnlyThePartsStillEmpty()
+    {
+        var conversationId = NewConversationId();
+        await fixture.MakeConversationAsync(conversationId);
+
+        try
+        {
+            await using var database = fixture.Open();
+            var store = new HandoffStore(database, new TestTimeProvider(Start));
+
+            var once = await store.AskAsync(
+                conversationId, HandoffAskedBy.Bot, "Belt slips", new HandoffSummary("XT485 treadmill", null, null, null), Cancel);
+
+            var twice = await store.AskAsync(
+                conversationId,
+                HandoffAskedBy.Bot,
+                "Belt slips",
+                new HandoffSummary("F80 treadmill", "0045210000001234", "Lubricated the belt", null),
+                Cancel);
+
+            Assert.Equal(once.Id, twice.Id);
+            Assert.Equal("XT485 treadmill", twice.Product);
+            Assert.Equal("0045210000001234", twice.Serial);
+            Assert.Equal("Lubricated the belt", twice.Tried);
+            Assert.Null(twice.Wants);
+
+            var row = await store.OpenAsync(conversationId, Cancel);
+
+            Assert.NotNull(row);
+            Assert.Equal("XT485 treadmill", row.Product);
+            Assert.Equal("0045210000001234", row.Serial);
         }
         finally
         {

@@ -126,7 +126,7 @@ public sealed class ChatwootEventHandlerTests
         var conversationId = Guid.NewGuid().ToString("N");
         await _conversations.CreateAsync(conversationId, Cancel);
 
-        await _store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, Cancel);
+        await _store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, HandoffSummary.Empty, Cancel);
         await _store.ClaimAsync(conversationId, "chatwoot:Dana R.", "Dana R.", Cancel);
 
         return conversationId;

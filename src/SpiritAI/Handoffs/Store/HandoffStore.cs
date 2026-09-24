@@ -17,12 +17,18 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
 
     /// <inheritdoc />
     public async Task<Handoff> AskAsync(
-        string conversationId, HandoffAskedBy askedBy, string? reason, CancellationToken cancellationToken)
+        string conversationId,
+        HandoffAskedBy askedBy,
+        string? reason,
+        HandoffSummary summary,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(conversationId);
+        ArgumentNullException.ThrowIfNull(summary);
 
-        return await _queries.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false)
-            ?? await InsertWaitingAsync(conversationId, askedBy, reason, cancellationToken).ConfigureAwait(false);
+        return await _queries.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false) is { } open
+            ? await FillAsync(open, summary, cancellationToken).ConfigureAwait(false)
+            : await InsertWaitingAsync(conversationId, askedBy, reason, summary, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -128,7 +134,11 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
     /// Inserts the waiting row, or, when another ask got in first, hands back the row it made.
     /// </summary>
     private async Task<Handoff> InsertWaitingAsync(
-        string conversationId, HandoffAskedBy askedBy, string? reason, CancellationToken cancellationToken)
+        string conversationId,
+        HandoffAskedBy askedBy,
+        string? reason,
+        HandoffSummary summary,
+        CancellationToken cancellationToken)
     {
         var row = new Handoff
         {
@@ -137,6 +147,10 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
             AskedBy = askedBy,
             Reason = reason,
             AskedAt = clock.GetUtcNow(),
+            Product = summary.Product,
+            Serial = summary.Serial,
+            Tried = summary.Tried,
+            Wants = summary.Wants,
         };
 
         database.Handoffs.Add(row);
@@ -150,13 +164,42 @@ public sealed class HandoffStore(SpiritDbContext database, TimeProvider clock) :
             // Left tracked, the context would try the insert again on its next save.
             database.Entry(row).State = EntityState.Detached;
 
-            return await _queries.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false)
+            var open = await _queries.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException(
                     $"A second open handoff for conversation '{conversationId}' was refused, but none can be read.",
                     refused);
+
+            return await FillAsync(open, summary, cancellationToken).ConfigureAwait(false);
         }
 
         return row;
+    }
+
+    /// <summary>
+    /// Puts the summary on a row that was open already, in the parts still empty, so nothing staff
+    /// may have read changes under them.
+    /// </summary>
+    private async Task<Handoff> FillAsync(Handoff open, HandoffSummary summary, CancellationToken cancellationToken)
+    {
+        if (summary.IsEmpty)
+        {
+            return open;
+        }
+
+        await database.Handoffs
+            .Where(h => h.Id == open.Id)
+            .ExecuteUpdateAsync(
+                s => s
+                    .SetProperty(h => h.Product, h => h.Product ?? summary.Product)
+                    .SetProperty(h => h.Serial, h => h.Serial ?? summary.Serial)
+                    .SetProperty(h => h.Tried, h => h.Tried ?? summary.Tried)
+                    .SetProperty(h => h.Wants, h => h.Wants ?? summary.Wants),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return await database.Handoffs.AsNoTracking()
+            .SingleAsync(h => h.Id == open.Id, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>Whether the database refused a second open row for one chat.</summary>

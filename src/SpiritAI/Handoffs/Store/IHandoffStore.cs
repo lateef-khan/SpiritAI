@@ -9,15 +9,21 @@ public interface IHandoffStore
 {
     /// <summary>
     /// Asks for a person on a chat. A chat that already has an open handoff gets that one back;
-    /// two asks racing on one chat both get the row the first one made.
+    /// two asks racing on one chat both get the row the first one made. The summary is saved with
+    /// the ask; on a row that was open already it fills only the parts still empty.
     /// </summary>
     /// <param name="conversationId">The chat.</param>
     /// <param name="askedBy">Which side asked.</param>
     /// <param name="reason">What the person is for, when the asker said.</param>
+    /// <param name="summary">What the asker told staff about the chat.</param>
     /// <param name="cancellationToken">Cancels the ask.</param>
     /// <returns>The open row.</returns>
     Task<Handoff> AskAsync(
-        string conversationId, HandoffAskedBy askedBy, string? reason, CancellationToken cancellationToken);
+        string conversationId,
+        HandoffAskedBy askedBy,
+        string? reason,
+        HandoffSummary summary,
+        CancellationToken cancellationToken);
 
     /// <summary>The chat's open handoff, waiting or with a person.</summary>
     /// <param name="conversationId">The chat.</param>

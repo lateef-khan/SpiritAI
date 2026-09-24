@@ -21,13 +21,15 @@ public sealed class RequestHumanTool(HandoffDesk desk, IOptions<CallbackOptions>
     /// <param name="conversationId">The chat, as AgentCore names it to the binding.</param>
     /// <param name="reason">Why, in the person's own words.</param>
     /// <param name="phone">The phone number they gave, as they typed it, when they gave one.</param>
+    /// <param name="summary">What the model told staff about the chat.</param>
     /// <param name="cancellationToken">Cancels the ask.</param>
     /// <returns>One sentence for the model to pass on.</returns>
-    public async Task<RequestHumanAnswer> AskAsync(string conversationId, string reason, string? phone, CancellationToken cancellationToken)
+    public async Task<RequestHumanAnswer> AskAsync(
+        string conversationId, string reason, string? phone, HandoffSummary summary, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(conversationId);
 
-        var asked = await desk.AskAsync(conversationId, HandoffAskedBy.Bot, reason, cancellationToken).ConfigureAwait(false);
+        var asked = await desk.AskAsync(conversationId, HandoffAskedBy.Bot, reason, summary, cancellationToken).ConfigureAwait(false);
 
         if (VisitorPhone.TryRead(phone, out var e164))
         {

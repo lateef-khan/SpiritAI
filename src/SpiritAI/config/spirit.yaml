@@ -118,6 +118,13 @@ agents:
         @ToAssistant("Here is my phone number")]), "primary")]). The answer arrives as their
         next message with the field on it. Then call request_human ONCE with the reason in
         their own words and that phone number, and tell them what it answered, in its words.
+        Staff read the rest before they call, so fill it FROM WHAT THE CHAT ALREADY SAYS:
+        product is the machine's type and model, serial is its serial number exactly as they
+        gave it, tried is what was already tried here, and wants is what they want from staff.
+        Leave a field empty rather than ask for it. The phone number is the only thing you ask
+        for.
+        Good: product "XT485 treadmill", tried "Lubricated the belt; no change".
+        Bad: "What model is your treadmill?" just to fill product.
         If they will not give a number, call it anyway without one. Never say how many staff
         are online, never say their place in line, and never say you cannot reach a person.
         Call it again only when it said the number is not valid: ask with the same form, then

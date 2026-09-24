@@ -8,6 +8,7 @@ using AgentCore.Hosting;
 using Microsoft.Extensions.Caching.Hybrid;
 
 using SpiritAI.Handoffs.Bot;
+using SpiritAI.Handoffs.Model;
 using SpiritAI.Knowledge;
 using SpiritAI.Lookup;
 
@@ -94,13 +95,17 @@ public static class AgentCoreExtensions
                 async (
                     [Description("Why the person needs a human, in one sentence, in the person's own words.")] string reason,
                     [Description("The person's phone number, exactly as they gave it, so a member of staff can call them back. Omit it only if they declined to give one.")] string? phone,
+                    [Description("The machine, type and model, such as \"XT485 treadmill\", from what the chat already says. Empty if unknown.")] string? product,
+                    [Description("The machine's serial number exactly as the person gave it, as text, leading zeros kept. Empty if unknown.")] string? serial,
+                    [Description("What was already tried in this chat, in one short sentence. Empty if nothing.")] string? tried,
+                    [Description("What the person wants from staff, in one short sentence, such as \"a technician visit\".")] string? wants,
                     ToolCallScope scope,
                     CancellationToken cancellationToken) =>
                 {
                     await using var container = services.GetRequiredService<IServiceScopeFactory>().CreateAsyncScope();
 
                     return await container.ServiceProvider.GetRequiredService<RequestHumanTool>()
-                        .AskAsync(scope.ConversationId, reason, phone, cancellationToken)
+                        .AskAsync(scope.ConversationId, reason, phone, new HandoffSummary(product, serial, tried, wants), cancellationToken)
                         .ConfigureAwait(false);
                 });
     }

@@ -49,16 +49,21 @@ public sealed class HandoffDesk(
     /// <param name="conversationId">The chat.</param>
     /// <param name="askedBy">Which side asked.</param>
     /// <param name="reason">What the person is for, when the asker said.</param>
+    /// <param name="summary">What the asker told staff about the chat.</param>
     /// <param name="cancellationToken">Cancels the ask.</param>
     /// <returns>The open row, and whether this ask is the one that made it.</returns>
     public async Task<HandoffAsked> AskAsync(
-        string conversationId, HandoffAskedBy askedBy, string? reason, CancellationToken cancellationToken)
+        string conversationId,
+        HandoffAskedBy askedBy,
+        string? reason,
+        HandoffSummary summary,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(conversationId);
 
         var wasOpen = await handoffs.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false) is not null;
 
-        var row = await handoffs.AskAsync(conversationId, askedBy, reason, cancellationToken).ConfigureAwait(false);
+        var row = await handoffs.AskAsync(conversationId, askedBy, reason, summary, cancellationToken).ConfigureAwait(false);
 
         return new HandoffAsked(row, Created: !wasOpen);
     }

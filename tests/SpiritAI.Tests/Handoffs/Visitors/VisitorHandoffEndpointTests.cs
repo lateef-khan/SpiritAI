@@ -96,7 +96,7 @@ public sealed class VisitorHandoffEndpointTests
     {
         await using var world = await VisitorHandoffWorld.StartAsync();
         var conversationId = await world.MakeChatAsync(world.Visitor);
-        await world.Store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, TestContext.Current.CancellationToken);
+        await world.Store.AskAsync(conversationId, HandoffAskedBy.Visitor, null, HandoffSummary.Empty, TestContext.Current.CancellationToken);
         await world.Store.ClaimAsync(conversationId, "user:dana", "Dana R.", TestContext.Current.CancellationToken);
 
         var state = await world.Visitor.ReadAsync<HandoffState>($"{Handoff}/{conversationId}");

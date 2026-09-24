@@ -47,7 +47,7 @@ public sealed class RequestHumanToolTests
     {
         var conversationId = await NewChatAsync();
 
-        var answer = await _tool.AskAsync(conversationId, "they want a real person", phone: null, Cancel);
+        var answer = await _tool.AskAsync(conversationId, "they want a real person", phone: null, HandoffSummary.Empty, Cancel);
 
         Assert.Equal(RequestHumanTool.NoPhoneNote, answer.Note);
 
@@ -60,11 +60,26 @@ public sealed class RequestHumanToolTests
     }
 
     [Fact]
+    public async Task TheSummaryGivenWithTheAskLandsOnTheRow()
+    {
+        var conversationId = await NewChatAsync();
+        var summary = new HandoffSummary("XT485 treadmill", "0045210000001234", "Lubricated the belt; no change", "A technician visit");
+
+        await _tool.AskAsync(conversationId, "Belt slips at speed 6", "(201) 555-0123", summary, Cancel);
+
+        var row = Assert.Single(_store.Rows);
+        Assert.Equal("XT485 treadmill", row.Product);
+        Assert.Equal("0045210000001234", row.Serial);
+        Assert.Equal("Lubricated the belt; no change", row.Tried);
+        Assert.Equal("A technician visit", row.Wants);
+    }
+
+    [Fact]
     public async Task APhoneGivenWithTheAskLandsOnTheRowAndInTheAnswer()
     {
         var conversationId = await NewChatAsync();
 
-        var answer = await _tool.AskAsync(conversationId, "they want a real person", "(201) 555-0123", Cancel);
+        var answer = await _tool.AskAsync(conversationId, "they want a real person", "(201) 555-0123", HandoffSummary.Empty, Cancel);
 
         var row = Assert.Single(_store.Rows);
         Assert.Equal("+12015550123", row.Phone);
@@ -79,7 +94,7 @@ public sealed class RequestHumanToolTests
         _callback.Promise = "within 2 hours, Mon-Fri 9-5";
         var conversationId = await NewChatAsync();
 
-        var answer = await _tool.AskAsync(conversationId, "they want a real person", "(201) 555-0123", Cancel);
+        var answer = await _tool.AskAsync(conversationId, "they want a real person", "(201) 555-0123", HandoffSummary.Empty, Cancel);
 
         Assert.StartsWith("We will call you at +1 201-555-0123 within 2 hours, Mon-Fri 9-5. Your code is ", answer.Note);
     }
@@ -89,7 +104,7 @@ public sealed class RequestHumanToolTests
     {
         var conversationId = await NewChatAsync();
 
-        var answer = await _tool.AskAsync(conversationId, "they want a real person", "12", Cancel);
+        var answer = await _tool.AskAsync(conversationId, "they want a real person", "12", HandoffSummary.Empty, Cancel);
 
         Assert.Null(Assert.Single(_store.Rows).Phone);
         Assert.Equal(RequestHumanTool.NoPhoneNote + RequestHumanTool.BadPhoneNote, answer.Note);

@@ -35,6 +35,18 @@ public sealed class Handoff
     /// <summary>The phone number the visitor left for staff to call back, in E.164 form.</summary>
     public string? Phone { get; set; }
 
+    /// <summary>The machine the chat is about, as the AI summed it up for staff.</summary>
+    public string? Product { get; set; }
+
+    /// <summary>The machine's serial number, as text, as the AI summed it up for staff.</summary>
+    public string? Serial { get; set; }
+
+    /// <summary>What was already tried in the chat, as the AI summed it up for staff.</summary>
+    public string? Tried { get; set; }
+
+    /// <summary>What the person wants from staff, as the AI summed it up.</summary>
+    public string? Wants { get; set; }
+
     /// <summary>When the chat was handed back to the bot.</summary>
     public DateTimeOffset? DoneAt { get; set; }
 }
