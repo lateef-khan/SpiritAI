@@ -1,0 +1,8 @@
+{
+  "access_token": "fake-goto-access-token",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "scope": "call-events.v1.notifications.manage call-events.v1.events.read",
+  "principal": "owner@example.test",
+  "loa": 3
+}

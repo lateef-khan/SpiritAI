@@ -1,11 +1,11 @@
 using System.Net;
 using System.Net.Http.Headers;
 
-namespace SpiritAI.Tests.Chatwoot;
+namespace SpiritAI.Tests;
 
 /// <summary>
-/// Stands in for Chatwoot at the wire. Keeps each request and answers it with a saved Chatwoot
-/// reply from <c>Payloads</c>, or with an empty body when there is none.
+/// Stands in for a vendor at the wire. Keeps each request and answers it with a saved vendor reply
+/// from <c>{Folder}/Payloads</c>, or with an empty body when there is none.
 /// </summary>
 /// <param name="replies">
 /// Each saved reply's file name, without <c>.json</c>, and its status, one per request in order.
@@ -29,7 +29,10 @@ internal sealed class ReplayingHandler(IReadOnlyList<(string? Payload, HttpStatu
     {
     }
 
-    public List<(string Url, string Body, string? Token)> Requests { get; } = [];
+    /// <summary>The test folder whose <c>Payloads</c> the replies are read from.</summary>
+    public string Folder { get; init; } = "Chatwoot";
+
+    public List<(string Method, string Url, string Body, string? Token, string? Authorization)> Requests { get; } = [];
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
@@ -38,7 +41,7 @@ internal sealed class ReplayingHandler(IReadOnlyList<(string? Payload, HttpStatu
 
         var (payload, status) = replies[Math.Min(Requests.Count, replies.Count - 1)];
 
-        Requests.Add((request.RequestUri!.ToString(), body, token));
+        Requests.Add((request.Method.Method, request.RequestUri!.ToString(), body, token, request.Headers.Authorization?.ToString()));
 
         if (payload is null)
         {
@@ -46,7 +49,7 @@ internal sealed class ReplayingHandler(IReadOnlyList<(string? Payload, HttpStatu
         }
 
         var reply = await File.ReadAllTextAsync(
-            Path.Combine(AppContext.BaseDirectory, "Chatwoot", "Payloads", payload + ".json"),
+            Path.Combine(AppContext.BaseDirectory, Folder, "Payloads", payload + ".json"),
             cancellationToken);
 
         return new HttpResponseMessage(status)

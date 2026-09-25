@@ -19,5 +19,6 @@
 
   <ItemGroup>
     <None Include="Chatwoot/Payloads/*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="GoTo/Payloads/*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

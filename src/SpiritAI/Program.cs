@@ -3,6 +3,7 @@ using SpiritAI.Auth;
 using SpiritAI.Caching;
 using SpiritAI.Chatwoot;
 using SpiritAI.Database;
+using SpiritAI.GoTo;
 using SpiritAI.Handoffs;
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
@@ -24,6 +25,8 @@ builder.Services.AddThreadSessions();
 builder.Services.AddSpiritDatabase(builder.Configuration);
 
 builder.Services.AddChatwoot(builder.Configuration);
+
+builder.Services.AddGoToHttpClients(builder.Configuration);
 
 builder.Services.AddHandoffs();
 

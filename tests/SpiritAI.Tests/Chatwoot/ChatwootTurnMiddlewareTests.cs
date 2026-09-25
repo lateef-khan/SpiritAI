@@ -209,7 +209,7 @@ public sealed class ChatwootTurnMiddlewareTests
         }
 
         /// <summary>Waits for a request that is sent after the response, as the answer post is.</summary>
-        public async Task<(string Url, string Body, string? Token)> WaitForRequestAsync(int index)
+        public async Task<(string Method, string Url, string Body, string? Token, string? Authorization)> WaitForRequestAsync(int index)
         {
             for (var tries = 0; Wire.Requests.Count <= index; tries++)
             {
