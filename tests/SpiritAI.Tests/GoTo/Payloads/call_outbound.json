@@ -1,0 +1,67 @@
+{
+  "id": "60eef9c5-6736-4c7e-846f-a061327cfbbb",
+  "source": "call-events",
+  "type": "call-state",
+  "timestamp": "2026-09-25T19:32:52.897Z",
+  "ttl": 600,
+  "content": {
+    "metadata": {
+      "conversationSpaceId": "f110e96b-02f8-393c-885f-f23f9af0a17c",
+      "direction": "OUTBOUND",
+      "accountKey": "5442810562173005068",
+      "callCreated": "2026-09-25T19:26:16.056Z",
+      "callInitiator": "DIRECT",
+      "dialString": "7179914381"
+    },
+    "state": {
+      "id": "51e96c06-8ca1-557d-9ab9-510ed4afcb8f",
+      "sequenceNumber": 5,
+      "type": "ACTIVE",
+      "timestamp": "2026-09-25T19:32:52.815Z",
+      "participants": [
+        {
+          "id": "902393af-e49f-588f-84d7-e7edb92b3805",
+          "legId": "52081473-923a-4924-8f97-ab464d5c56bb",
+          "originator": "902393af-e49f-588f-84d7-e7edb92b3805",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "type": {
+            "value": "LINE",
+            "lineId": "ffc88d70-ab57-4b7a-84e4-00242d1334ec",
+            "deviceId": "21f7445a-e9a8-4e8e-b501-a47c74f5d136",
+            "extensionNumber": "8654",
+            "name": "Test Name",
+            "device": {
+              "id": "21f7445a-e9a8-4e8e-b501-a47c74f5d136",
+              "model": "yealink.sip.t48s",
+              "user": {
+                "id": "abcd5df6-2834-4bdb-857c-f2bfa593d5bf"
+              }
+            }
+          }
+        },
+        {
+          "id": "905919f4-4e72-56fb-ac50-e010b209f69a",
+          "legId": "ed61336d-d09c-41e8-b281-8d35190607f2",
+          "originator": "902393af-e49f-588f-84d7-e7edb92b3805",
+          "status": {
+            "value": "DISCONNECTING"
+          },
+          "type": {
+            "value": "PHONE_NUMBER",
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "number": "+12015550100",
+            "name": "+12015550100",
+            "callProvider": "PSTN",
+            "callee": {
+              "name": "Test Name",
+              "number": "+12015550102"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "bypassDoNotDisturb": false
+}

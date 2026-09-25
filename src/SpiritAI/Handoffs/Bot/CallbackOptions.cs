@@ -1,7 +1,8 @@
 namespace SpiritAI.Handoffs.Bot;
 
 /// <summary>
-/// What the visitor is promised about the call back, bound from the <see cref="SectionName"/> section.
+/// What the visitor is promised about the call back, and who hears when they call, bound from the
+/// <see cref="SectionName"/> section.
 /// </summary>
 public sealed class CallbackOptions
 {
@@ -13,4 +14,10 @@ public sealed class CallbackOptions
     /// It follows "We will call you at +1 201-555-0123". Empty says nothing about timing.
     /// </summary>
     public string? Promise { get; set; }
+
+    /// <summary>
+    /// The Chatwoot team mentioned in a ring note when the ringing line matches no member of staff
+    /// and the conversation has no team. Empty mentions nobody.
+    /// </summary>
+    public int? FallbackTeamId { get; set; }
 }

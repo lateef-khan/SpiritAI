@@ -1,0 +1,19 @@
+{
+  "results": [
+    {
+      "key": "7300195775692112874",
+      "email": "sam@spiritfitness.com"
+    },
+    {
+      "key": "2029402004371069196",
+      "email": "dana@spiritfitness.com"
+    },
+    {
+      "key": "999",
+      "email": "desk-phone@devices.logmein.com"
+    }
+  ],
+  "fromIndex": 0,
+  "toIndex": 2,
+  "total": 3
+}

@@ -4,8 +4,9 @@ namespace SpiritAI.GoTo;
 public static class GoToServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds the GoTo HTTP clients, the call-event queue and its reader, and the job that keeps the
-    /// webhook channel alive. The job is off until the webhook keys in <see cref="GoToOptions"/> are set.
+    /// Adds the GoTo HTTP clients, the staff directory, the call-event queue and its reader, and the
+    /// job that keeps the webhook channel alive. The job is off until the webhook keys in
+    /// <see cref="GoToOptions"/> are set. A feature adds an <see cref="IGoToCallHandler"/> to act on calls.
     /// </summary>
     /// <param name="services">The host's services.</param>
     /// <param name="configuration">Where <see cref="GoToOptions.SectionName"/> is read from.</param>
@@ -16,6 +17,8 @@ public static class GoToServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddGoToHttpClients(configuration);
+
+        services.AddTransient<GoToStaffDirectory>();
 
         services.AddSingleton<GoToCallEventQueue>();
 

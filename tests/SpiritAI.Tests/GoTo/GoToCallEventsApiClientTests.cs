@@ -25,7 +25,7 @@ public sealed class GoToCallEventsApiClientTests
         Assert.Equal("POST", request.Method);
         Assert.Equal("https://api.goto.com/call-events/v1/subscriptions", request.Url);
         Assert.Equal(
-            """{"channelId":"Webhook.1252c4bf-ca42-43c3-8fcb-f3b2c8f0125f","accountKeys":[{"id":"1234567890123456789","events":["STARTING","ENDING"]}]}""",
+            """{"channelId":"Webhook.1252c4bf-ca42-43c3-8fcb-f3b2c8f0125f","accountKeys":[{"id":"1234567890123456789","events":["STARTING","ACTIVE","ENDING"]}]}""",
             request.Body);
         Assert.Equal("Bearer fake-goto-access-token", request.Authorization);
     }

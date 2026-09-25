@@ -59,6 +59,54 @@ public sealed class ChatwootClientTests
     }
 
     [Fact]
+    public async Task AgentsAreListedAsTheServiceUser()
+    {
+        var wire = new ReplayingHandler("agents");
+
+        var agents = await Client(wire).ListAgentsAsync(Cancel);
+
+        Assert.Equal(new ChatwootAgent(3, "Dana Test", "dana@spiritfitness.com"), agents[0]);
+        Assert.Equal(3, agents.Count);
+
+        var request = Assert.Single(wire.Requests);
+        Assert.Equal("http://chatwoot.test/api/v1/accounts/2/agents", request.Url);
+        Assert.Equal("service-token", request.Token);
+    }
+
+    [Fact]
+    public async Task AContactIsFoundByItsExactPhoneNumber()
+    {
+        var wire = new ReplayingHandler(["contacts_found", "contacts_found"]);
+        var client = Client(wire);
+
+        Assert.Equal([1], await client.FindContactsByPhoneAsync("+12015550123", Cancel));
+
+        // Chatwoot's search matches part of a number; the answer holds +12015550123 only.
+        Assert.Empty(await client.FindContactsByPhoneAsync("+1201555012", Cancel));
+
+        Assert.Equal("http://chatwoot.test/api/v1/accounts/2/contacts/search?q=%2B12015550123", wire.Requests[0].Url);
+        Assert.Equal("service-token", wire.Requests[0].Token);
+    }
+
+    [Fact]
+    public async Task AContactsConversationsAreListedWithTheirTeam()
+    {
+        var wire = new ReplayingHandler("contact_conversations");
+
+        var conversations = await Client(wire).ListContactConversationsAsync(1, Cancel);
+
+        var conversation = Assert.Single(conversations);
+        Assert.Equal(
+            new ChatwootContactConversation(1, "open", DateTimeOffset.FromUnixTimeSeconds(1790365946), new ChatwootTeam(1, "service", "probe")),
+            conversation);
+        Assert.True(conversation.Open);
+
+        var request = Assert.Single(wire.Requests);
+        Assert.Equal("http://chatwoot.test/api/v1/accounts/2/contacts/1/conversations", request.Url);
+        Assert.Equal("service-token", request.Token);
+    }
+
+    [Fact]
     public async Task ContactFieldsAreListedAsTheServiceUser()
     {
         var wire = new ReplayingHandler("contact_attribute_definitions");

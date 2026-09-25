@@ -1,0 +1,127 @@
+{
+    "payload": [
+        {
+            "meta": {
+                "sender": {
+                    "additional_attributes": {},
+                    "availability_status": "offline",
+                    "email": null,
+                    "id": 1,
+                    "name": "Probe Visitor",
+                    "phone_number": "+12015550123",
+                    "blocked": false,
+                    "identifier": null,
+                    "thumbnail": "",
+                    "custom_attributes": {},
+                    "created_at": 1790365366
+                },
+                "channel": "Channel::Api",
+                "team": {
+                    "id": 1,
+                    "name": "service",
+                    "description": "probe",
+                    "allow_auto_assign": true,
+                    "icon": "",
+                    "icon_color": "",
+                    "account_id": 1,
+                    "is_member": false
+                },
+                "hmac_verified": false
+            },
+            "id": 1,
+            "messages": [
+                {
+                    "id": 4,
+                    "content": "Assigned to service by Dev Admin",
+                    "account_id": 1,
+                    "inbox_id": 1,
+                    "conversation_id": 1,
+                    "message_type": 2,
+                    "created_at": 1790365946,
+                    "updated_at": "2026-09-25T19:52:26.434Z",
+                    "private": false,
+                    "status": "sent",
+                    "source_id": null,
+                    "content_type": "text",
+                    "content_attributes": {},
+                    "sender_type": null,
+                    "sender_id": null,
+                    "external_source_ids": {},
+                    "additional_attributes": {},
+                    "processed_message_content": "Assigned to service by Dev Admin",
+                    "sentiment": {},
+                    "conversation": {
+                        "assignee_id": null,
+                        "unread_count": 0,
+                        "last_activity_at": 1790365946,
+                        "contact_inbox": {
+                            "source_id": "4f7db60a-0a80-408a-8ffb-4152c842c443"
+                        }
+                    }
+                }
+            ],
+            "account_id": 1,
+            "uuid": "bb8c0fe2-1bba-4853-80c0-2f282923e33b",
+            "additional_attributes": {},
+            "agent_last_seen_at": 0,
+            "assignee_last_seen_at": 0,
+            "can_reply": true,
+            "contact_info_request": {
+                "available": false,
+                "reason": null,
+                "delivery_mode": null
+            },
+            "contact_last_seen_at": 0,
+            "custom_attributes": {},
+            "inbox_id": 1,
+            "labels": [],
+            "muted": false,
+            "snoozed_until": null,
+            "status": "open",
+            "created_at": 1790365366,
+            "updated_at": 1790365946.7693498,
+            "timestamp": 1790365946,
+            "first_reply_created_at": 0,
+            "unread_count": 0,
+            "last_non_activity_message": {
+                "id": 3,
+                "content": "\ud83d\udcde calling now. [@service](mention://team/1/service)",
+                "account_id": 1,
+                "inbox_id": 1,
+                "conversation_id": 1,
+                "message_type": 1,
+                "created_at": 1790365434,
+                "updated_at": "2026-09-25T19:43:54.235Z",
+                "private": true,
+                "status": "sent",
+                "source_id": null,
+                "content_type": "text",
+                "content_attributes": {},
+                "sender_type": "AgentBot",
+                "sender_id": 1,
+                "external_source_ids": {},
+                "additional_attributes": {},
+                "processed_message_content": "\ud83d\udcde calling now. [@service](mention://team/1/service)",
+                "sentiment": {},
+                "conversation": {
+                    "assignee_id": null,
+                    "unread_count": 0,
+                    "last_activity_at": 1790365946,
+                    "contact_inbox": {
+                        "source_id": "4f7db60a-0a80-408a-8ffb-4152c842c443"
+                    }
+                },
+                "sender": {
+                    "id": 1,
+                    "name": "Spirit AI",
+                    "avatar_url": "",
+                    "type": "agent_bot"
+                }
+            },
+            "last_activity_at": 1790365946,
+            "priority": null,
+            "waiting_since": 1790365366,
+            "sla_policy_id": null
+        }
+    ]
+}

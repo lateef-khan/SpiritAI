@@ -3,10 +3,13 @@ using System.Text.Json;
 namespace SpiritAI.GoTo;
 
 /// <summary>
-/// Takes each call event off the <see cref="GoToCallEventQueue"/>. For now it only logs which call
-/// the event is about.
+/// Takes each call event off the <see cref="GoToCallEventQueue"/>, logs which call it is about, and
+/// hands a call with staff lines in it to every <see cref="IGoToCallHandler"/>.
 /// </summary>
-public sealed class GoToCallEventReader(GoToCallEventQueue queue, ILogger<GoToCallEventReader> logger) : BackgroundService
+public sealed class GoToCallEventReader(
+    GoToCallEventQueue queue,
+    IServiceScopeFactory scopes,
+    ILogger<GoToCallEventReader> logger) : BackgroundService
 {
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -15,12 +18,7 @@ public sealed class GoToCallEventReader(GoToCallEventQueue queue, ILogger<GoToCa
         {
             await foreach (var callEvent in queue.ReadAllAsync(stoppingToken).ConfigureAwait(false))
             {
-                // An event also carries phone numbers and names. Only kinds and ids go in the log.
-                logger.LogInformation(
-                    "GoTo call event {Type} ({State}) for call {ConversationSpaceId}.",
-                    Text(callEvent, "type"),
-                    Text(callEvent, "content", "state", "type"),
-                    Text(callEvent, "content", "metadata", "conversationSpaceId"));
+                await ReadOnceAsync(callEvent, stoppingToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -29,17 +27,34 @@ public sealed class GoToCallEventReader(GoToCallEventQueue queue, ILogger<GoToCa
         }
     }
 
-    /// <summary>The string at <paramref name="path"/>, or null when the event has no such field.</summary>
-    private static string? Text(JsonElement element, params string[] path)
+    private async Task ReadOnceAsync(JsonElement callEvent, CancellationToken cancellationToken)
     {
-        foreach (var name in path)
+        var call = GoToCall.Read(callEvent);
+
+        // An event also carries phone numbers and names. Only kinds and ids go in the log.
+        logger.LogInformation(
+            "GoTo call event {State} for call {ConversationSpaceId} with {Lines} staff lines.",
+            call?.State,
+            call?.Id,
+            call?.Lines.Count ?? 0);
+
+        if (call is not { Lines.Count: > 0 })
         {
-            if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty(name, out element))
-            {
-                return null;
-            }
+            return;
         }
 
-        return element.ValueKind == JsonValueKind.String ? element.GetString() : null;
+        await using var scope = scopes.CreateAsyncScope();
+
+        foreach (var handler in scope.ServiceProvider.GetServices<IGoToCallHandler>())
+        {
+            try
+            {
+                await handler.HandleAsync(call, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                logger.LogWarning(exception, "{Handler} failed on call {ConversationSpaceId}.", handler.GetType().Name, call.Id);
+            }
+        }
     }
 }

@@ -1,0 +1,43 @@
+{
+  "id": "1f4f6e0c-22a3-443a-825a-c8e5f816f569",
+  "source": "call-events",
+  "type": "call-state",
+  "timestamp": "2026-09-25T19:33:04.521Z",
+  "ttl": 600,
+  "content": {
+    "metadata": {
+      "conversationSpaceId": "8a484291-cc5e-31f1-afd2-c9f0eea271d2",
+      "direction": "INBOUND",
+      "accountKey": "5442810562173005068",
+      "callCreated": "2026-09-25T19:33:04.223Z"
+    },
+    "state": {
+      "id": "b2b8e13e-355b-55d7-8358-53a08dd5c3e5",
+      "sequenceNumber": 1,
+      "type": "STARTING",
+      "timestamp": "2026-09-25T19:33:04.223Z",
+      "participants": [
+        {
+          "id": "4eb87369-3985-5524-8e76-9e57a421eb40",
+          "legId": "b86973f3-719a-444a-aa5a-ee69f52cd4ac",
+          "originator": "4eb87369-3985-5524-8e76-9e57a421eb40",
+          "status": {
+            "value": "RINGING"
+          },
+          "type": {
+            "value": "PHONE_NUMBER",
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "number": "+12015550100",
+            "name": "+12015550100",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "Test Name",
+              "number": "+12015550123"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "bypassDoNotDisturb": false
+}

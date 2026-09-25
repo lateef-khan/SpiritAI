@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
+using SpiritAI.GoTo;
 using SpiritAI.Handoffs.Bot;
+using SpiritAI.Handoffs.Callback;
 
 namespace SpiritAI.Handoffs;
 
@@ -8,8 +10,9 @@ namespace SpiritAI.Handoffs;
 public static class HandoffServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds the bot's <see cref="RequestHumanTool"/> with its <see cref="CallbackOptions"/>, and the
-    /// handoff's Chatwoot tools. Add it after <c>AddChatwoot</c>.
+    /// Adds the bot's <see cref="RequestHumanTool"/> with its <see cref="CallbackOptions"/>, the
+    /// handoff's Chatwoot tools, and the <see cref="CallRingAlert"/> on GoTo calls. Add it after
+    /// <c>AddChatwoot</c> and <c>AddGoTo</c>.
     /// </summary>
     /// <param name="services">The host's services.</param>
     /// <returns>The same collection.</returns>
@@ -30,6 +33,8 @@ public static class HandoffServiceCollectionExtensions
         services.AddScoped<ListTeamsTool>();
 
         services.AddScoped<ListContactFieldsTool>();
+
+        services.AddScoped<IGoToCallHandler, CallRingAlert>();
 
         return services;
     }

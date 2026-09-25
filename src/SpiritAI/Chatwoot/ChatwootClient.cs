@@ -105,10 +105,7 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     {
         var teams = await GetAsServiceAsync($"{Account}/teams", cancellationToken).ConfigureAwait(false);
 
-        return [.. teams.EnumerateArray().Select(t => new ChatwootTeam(
-            t.GetProperty("id").GetInt32(),
-            t.GetProperty("name").GetString() ?? string.Empty,
-            t.GetProperty("description").GetString() ?? string.Empty))];
+        return [.. teams.EnumerateArray().Select(ReadTeam)];
     }
 
     /// <summary>Every custom field a contact can carry, as the service user.</summary>
@@ -124,6 +121,58 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
             f.GetProperty("attribute_display_name").GetString() ?? string.Empty,
             f.GetProperty("attribute_display_type").GetString() ?? string.Empty,
             f.GetProperty("attribute_description").GetString() ?? string.Empty))];
+    }
+
+    /// <summary>Every member of staff in the account, as the service user: the bot token cannot list them.</summary>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>Each agent's id, name, and email.</returns>
+    public async Task<IReadOnlyList<ChatwootAgent>> ListAgentsAsync(CancellationToken cancellationToken)
+    {
+        var agents = await GetAsServiceAsync($"{Account}/agents", cancellationToken).ConfigureAwait(false);
+
+        return [.. agents.EnumerateArray().Select(a => new ChatwootAgent(
+            a.GetProperty("id").GetInt32(),
+            a.GetProperty("name").GetString() ?? string.Empty,
+            a.GetProperty("email").GetString() ?? string.Empty))];
+    }
+
+    /// <summary>
+    /// The contacts whose phone number is exactly <paramref name="e164"/>, as the service user.
+    /// Chatwoot's search also matches part of a number, so the answer is filtered here.
+    /// </summary>
+    /// <param name="e164">The number in E.164 form, as <c>request_human</c> saves it.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The contact ids; empty when nobody has the number.</returns>
+    public async Task<IReadOnlyList<int>> FindContactsByPhoneAsync(string e164, CancellationToken cancellationToken)
+    {
+        var found = await GetAsServiceAsync($"{Account}/contacts/search?q={Uri.EscapeDataString(e164)}", cancellationToken)
+            .ConfigureAwait(false);
+
+        return [.. found.GetProperty("payload").EnumerateArray()
+            .Where(c => c.TryGetProperty("phone_number", out var phone) && phone.GetString() == e164)
+            .Select(c => c.GetProperty("id").GetInt32())];
+    }
+
+    /// <summary>
+    /// A contact's newest conversations, as the service user. A plain agent only sees conversations
+    /// in its own inboxes, so the service user must be a member of the Spirit inbox.
+    /// </summary>
+    /// <param name="contactId">The contact's id in the account.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>Up to 25 conversations, newest first.</returns>
+    public async Task<IReadOnlyList<ChatwootContactConversation>> ListContactConversationsAsync(int contactId, CancellationToken cancellationToken)
+    {
+        var listed = await GetAsServiceAsync(
+                string.Create(CultureInfo.InvariantCulture, $"{Account}/contacts/{contactId}/conversations"), cancellationToken)
+            .ConfigureAwait(false);
+
+        return [.. listed.GetProperty("payload").EnumerateArray().Select(c => new ChatwootContactConversation(
+            c.GetProperty("id").GetInt32(),
+            c.GetProperty("status").GetString()!,
+            DateTimeOffset.FromUnixTimeSeconds(c.GetProperty("last_activity_at").GetInt64()),
+            c.GetProperty("meta").TryGetProperty("team", out var team) && team.ValueKind == JsonValueKind.Object
+                ? ReadTeam(team)
+                : null))];
     }
 
     /// <summary>
@@ -229,6 +278,11 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
             inbox.GetProperty("working_hours_enabled").GetBoolean(),
             [.. inbox.GetProperty("working_hours").EnumerateArray().Select(ChatwootWorkingDay.Read)]);
     }
+
+    private static ChatwootTeam ReadTeam(JsonElement team) => new(
+        team.GetProperty("id").GetInt32(),
+        team.GetProperty("name").GetString() ?? string.Empty,
+        team.GetProperty("description").GetString() ?? string.Empty);
 
     private string ConversationUrl(int conversationId)
         => $"{Account}/conversations/{conversationId.ToString(CultureInfo.InvariantCulture)}";

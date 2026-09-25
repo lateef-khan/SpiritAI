@@ -33,7 +33,7 @@ public sealed class GoToCallEventsApiClient(
             ["accountKeys"] = new JsonArray(new JsonObject
             {
                 ["id"] = accountKey,
-                ["events"] = new JsonArray("STARTING", "ENDING"),
+                ["events"] = new JsonArray("STARTING", "ACTIVE", "ENDING"),
             }),
         };
 

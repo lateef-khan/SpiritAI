@@ -25,6 +25,9 @@ internal static class GoToTestServices
 
         services.AddHttpClient(nameof(IGoToNotificationChannelApiClient)).ConfigurePrimaryHttpMessageHandler(() => wire);
         services.AddHttpClient(nameof(IGoToCallEventsApiClient)).ConfigurePrimaryHttpMessageHandler(() => wire);
+        services.AddHttpClient(nameof(IGoToDirectoryApiClient)).ConfigurePrimaryHttpMessageHandler(() => wire);
+        services.AddSingleton(TestHybridCache.Create());
+        services.AddTransient<GoToStaffDirectory>();
         services.AddSingleton<IGoToAuthTokenProvider>(new FixedToken());
         services.AddLogging();
 

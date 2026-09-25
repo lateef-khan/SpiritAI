@@ -11,8 +11,8 @@ password := "spirit"
 database := "spirit"
 pg_conn := "Host=localhost;Port=" + port + ";Database=" + database + ";Username=" + user + ";Password=" + password
 
-# Dashed, not POSTGRES_CONNECTION_STRING: user secrets already set this exact key to Neon and
-# win over the environment, so only overriding the same key takes effect.
+# Dashed, not POSTGRES_CONNECTION_STRING: secrets/dev.env sets that one to Neon, and AgentCore reads
+# this dashed setting before the capitals, so the local database wins.
 pg_secret := "AgentCore__Secrets__postgres-connection-string"
 
 blob_container := "spirit-s3"
@@ -124,8 +124,22 @@ local-config:
         config/spirit.yaml > {{local_config}}
 
 # Run the host on http://localhost:5299/chat against PostgreSQL and MinIO.
+# Every secret and setting comes from secrets/dev.env.
 run: db-up blob-up local-config
-    cd SpiritAI && env "{{pg_secret}}={{pg_conn}}" \
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -f ../secrets/dev.env ]; then
+        echo "secrets/dev.env is missing. Run: just secrets init dev" >&2
+        exit 1
+    fi
+    # Read line by line, not sourced: the values are not shell-quoted.
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*=.+ ]]; then
+            export "$line"
+        fi
+    done < ../secrets/dev.env
+    cd SpiritAI
+    exec env "{{pg_secret}}={{pg_conn}}" \
         "{{blob_key_secret}}={{blob_key}}" "{{blob_secret_secret}}={{blob_secret}}" \
         ASPNETCORE_ENVIRONMENT=Development "ASPNETCORE_URLS={{spirit_urls}}" \
         AgentCore__ConfigurationPath={{local_config}} \
