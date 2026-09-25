@@ -26,7 +26,7 @@ builder.Services.AddSpiritDatabase(builder.Configuration);
 
 builder.Services.AddChatwoot(builder.Configuration);
 
-builder.Services.AddGoToHttpClients(builder.Configuration);
+builder.Services.AddGoTo(builder.Configuration);
 
 builder.Services.AddHandoffs();
 
@@ -72,6 +72,8 @@ app.MapWidgetSettings();
 app.MapThreads();
 
 app.MapLookup();
+
+app.MapGoToWebhook();
 
 app.UseWidgetFrameAncestors(builder.Configuration);
 

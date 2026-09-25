@@ -1,0 +1,18 @@
+{
+  "nextPageMarker": "ZmFrZS1wYWdlLW1hcmtlcg",
+  "items": [
+    {
+      "channelId": "Webhook.2b0c7f1e-8d4a-4c55-9e61-7a3f0d9b1c42",
+      "channelNickname": "spirit-prod",
+      "webhookChannelData": {
+        "webhook": {
+          "url": "https://spirit-prod.example.test/goto/webhook/prod"
+        },
+        "channelType": "Webhook"
+      },
+      "channelLifetime": 2147483647,
+      "resourceURL": "https://webrtc.jive.com/notification-channel/v1/channels/spirit-prod/Webhook.2b0c7f1e-8d4a-4c55-9e61-7a3f0d9b1c42",
+      "doNotDisturbAware": false
+    }
+  ]
+}

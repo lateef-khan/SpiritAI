@@ -1,0 +1,30 @@
+{
+  "items": [
+    {
+      "channelId": "Webhook.2b0c7f1e-8d4a-4c55-9e61-7a3f0d9b1c42",
+      "channelNickname": "spirit-prod",
+      "webhookChannelData": {
+        "webhook": {
+          "url": "https://spirit-prod.example.test/goto/webhook/prod"
+        },
+        "channelType": "Webhook"
+      },
+      "channelLifetime": 2147483647,
+      "resourceURL": "https://webrtc.jive.com/notification-channel/v1/channels/spirit-prod/Webhook.2b0c7f1e-8d4a-4c55-9e61-7a3f0d9b1c42",
+      "doNotDisturbAware": false
+    },
+    {
+      "channelId": "Webhook.9d6e3a10-44f2-4b8e-a1c7-5e2b8f60d913",
+      "channelNickname": "spiritprobe",
+      "webhookChannelData": {
+        "webhook": {
+          "url": "https://old-tunnel.example.test/goto/webhook/probe"
+        },
+        "channelType": "Webhook"
+      },
+      "channelLifetime": 2147483647,
+      "resourceURL": "https://webrtc.jive.com/notification-channel/v1/channels/spiritprobe/Webhook.9d6e3a10-44f2-4b8e-a1c7-5e2b8f60d913",
+      "doNotDisturbAware": false
+    }
+  ]
+}

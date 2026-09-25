@@ -1,4 +1,3 @@
-using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -6,9 +5,7 @@ using Microsoft.Extensions.Options;
 
 namespace SpiritAI.GoTo;
 
-/// <summary>
-/// The GoTo notification-channel and call-events calls.
-/// </summary>
+/// <summary>The GoTo call-events subscription calls.</summary>
 public sealed class GoToCallEventsApiClient(
     HttpClient http,
     IGoToRequestAuthorizer authorizer,
@@ -16,36 +13,7 @@ public sealed class GoToCallEventsApiClient(
     IOptions<GoToOptions> options)
     : IGoToCallEventsApiClient
 {
-    /// <summary>The GoTo API host.</summary>
-    public static readonly Uri ApiHost = new("https://api.goto.com/");
-
-    /// <inheritdoc />
-    public async Task<GoToChannel> CreateWebhookChannelAsync(
-        string nickname, Uri webhookUrl, CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(nickname);
-        ArgumentNullException.ThrowIfNull(webhookUrl);
-
-        var body = new JsonObject
-        {
-            ["channelType"] = "Webhook",
-            ["webhookChannelData"] = new JsonObject
-            {
-                ["webhook"] = new JsonObject { ["url"] = webhookUrl.AbsoluteUri },
-            },
-        };
-
-        using var response = await PostAsync(
-                $"notification-channel/v1/channels/{Uri.EscapeDataString(nickname)}", body, cancellationToken)
-            .ConfigureAwait(false);
-
-        var made = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
-
-        return new GoToChannel(
-            made.GetProperty("channelId").GetString()!,
-            made.GetProperty("channelNickname").GetString()!,
-            made.GetProperty("channelLifetime").GetInt64());
-    }
+    private const string Subscriptions = "call-events/v1/subscriptions";
 
     /// <inheritdoc />
     public async Task SubscribeToCallEventsAsync(string channelId, CancellationToken cancellationToken = default)
@@ -69,7 +37,8 @@ public sealed class GoToCallEventsApiClient(
             }),
         };
 
-        using var response = await PostAsync("call-events/v1/subscriptions", body, cancellationToken).ConfigureAwait(false);
+        using var request = new HttpRequestMessage(HttpMethod.Post, Subscriptions) { Content = JsonContent.Create(body) };
+        using var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         // A 207 carries one status per account key, and any of them can be a refusal.
         var said = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -82,31 +51,23 @@ public sealed class GoToCallEventsApiClient(
         }
     }
 
-    /// <summary>Sends one signed POST and throws with GoTo's own words when it fails.</summary>
-    private async Task<HttpResponseMessage> PostAsync(string path, JsonObject body, CancellationToken cancellationToken)
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> ReadSubscribedAccountKeysAsync(
+        string channelId, CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = JsonContent.Create(body) };
+        ArgumentException.ThrowIfNullOrWhiteSpace(channelId);
 
-        await authorizer.AuthorizeAsync(request, cancellationToken).ConfigureAwait(false);
+        // Without channelId GoTo answers 400 "must be a WebSocket channel", which only means the id is missing.
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{Subscriptions}?channelId={Uri.EscapeDataString(channelId)}");
+        using var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-        var response = await http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        var answer = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
 
-        if (response.IsSuccessStatusCode)
-        {
-            return response;
-        }
-
-        using (response)
-        {
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                await tokens.InvalidateBearerTokenAsync(cancellationToken).ConfigureAwait(false);
-            }
-
-            var said = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-
-            throw new HttpRequestException(
-                $"GoTo answered {(int)response.StatusCode} to POST /{path}: {said}", inner: null, response.StatusCode);
-        }
+        return answer.TryGetProperty("accountKeys", out var keys)
+            ? [.. keys.EnumerateArray().Select(k => k.GetString()!)]
+            : [];
     }
+
+    private Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        => GoToApiCall.SendAsync(http, authorizer, tokens, request, cancellationToken);
 }
