@@ -1,20 +1,19 @@
 # Self-hosted Chatwoot for local development. Settings come from chatwoot/.env; `just env`
-# makes it from .env.example. With DATABASE_URL empty, `just up` also starts the throwaway
-# postgres below. Nothing local survives `just down`.
-
 name: spirit-chatwoot
 
 x-chatwoot: &chatwoot
   build: .
   image: spirit-chatwoot:local
-  env_file: .env
+  env_file:
+    - .env
+    - path: .secrets.env
+      required: false
   environment:
     NODE_ENV: production
     RAILS_ENV: production
     INSTALLATION_ENV: docker
     PRESENCE_DURATION: "60"
-    # Tables go in the chatwoot schema, not public, so Chatwoot can share a database.
-    DATABASE_URL: ${DATABASE_URL:-postgres://chatwoot:chatwoot@postgres:5432/chatwoot?schema_search_path=chatwoot,public}
+    DATABASE_URL: ${DATABASE_URL:-postgres://chatwoot:chatwoot@postgres:5432/chatwoot}
   volumes:
     - storage:/app/storage
   # Lets webhooks reach Spirit running on the host in local dev.
@@ -59,7 +58,7 @@ services:
     restart: unless-stopped
 
   # Only when DATABASE_URL is empty. pgvector, because Chatwoot's migrations create the
-  # vector extension. The init script makes the chatwoot schema, as you must do by hand on Neon.
+  # vector extension.
   postgres:
     image: pgvector/pgvector:pg16
     profiles: [localdb]
@@ -67,8 +66,6 @@ services:
       POSTGRES_DB: chatwoot
       POSTGRES_USER: chatwoot
       POSTGRES_PASSWORD: chatwoot
-    volumes:
-      - ./local-db.sql:/docker-entrypoint-initdb.d/local-db.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 2s

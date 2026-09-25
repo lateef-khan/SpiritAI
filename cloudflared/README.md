@@ -13,7 +13,8 @@ On the server, run `just <recipe>` inside this folder.
 2. In the Cloudflare dashboard, go to **Zero Trust → Networks → Tunnels**. Make a tunnel of
    type **Cloudflared**.
 3. Copy the token from its install command (the long string after `--token`).
-4. `just env`, then paste the token into `.env` as `TUNNEL_TOKEN`.
+4. Paste the token into `secrets/prod.env` as `CLOUDFLARE_TUNNEL_TOKEN` (`just secrets init prod`
+   makes the file).
 5. `just up`. No app has to run first.
 6. In the tunnel's **Public Hostname** tab, add one row per app (the table below).
 

@@ -17,7 +17,8 @@ just chatwoot down    # stops and deletes everything local
 - Chatwoot: http://localhost:53000 (the first visit asks you to make the admin user)
 - Caught emails: http://localhost:58025
 
-With `DATABASE_URL` empty, a throwaway postgres starts too. Nothing is kept: postgres,
+Secrets are the `CHATWOOT_*` keys in `secrets/dev.env` (`just secrets init dev`). With
+`CHATWOOT_DATABASE_URL` empty, a throwaway postgres starts too. Nothing is kept: postgres,
 redis, and uploads are deleted by `down`, so every `up` starts clean.
 
 Other recipes: `logs`, `console`.
@@ -38,14 +39,14 @@ Other recipes: `logs`, `console`.
 First setup on the server:
 
 1. Copy this folder to the server. Install Docker and `just`.
-2. `just env`, then edit `.env`: `DATABASE_URL`, `FRONTEND_URL` (the public HTTPS address),
-   `REDIS_PASSWORD`, the `STORAGE_*` bucket values, and the `SMTP_*` and `MAILER_SENDER_EMAIL` values.
-   Set `SAFE_FETCH_ALLOW_PRIVATE_NETWORK=false`.
-3. On the database, run `create schema chatwoot;` once. Use Neon's direct host, not `-pooler`.
-4. `just prod-up`.
-5. `just setup` with `CHATWOOT_ADMIN_TOKEN`, `CHATWOOT_ACCOUNT_ID`, and
-   `CHATWOOT_URL=https://desk.<domain>` (production has no port on the host).
-   Put the settings it prints in Spirit's environment.
+2. `just env`, then edit `.env`: `FRONTEND_URL` (the public HTTPS address), the `STORAGE_*`
+   bucket place, and the `SMTP_*` and `MAILER_SENDER_EMAIL` values.
+   Set `SAFE_FETCH_ALLOW_PRIVATE_NETWORK=false`. In `secrets/prod.env`: `CHATWOOT_DATABASE_URL`
+   (Neon's direct host, not `-pooler`), the `CHATWOOT_STORAGE_*` keys, and `CHATWOOT_SMTP_PASSWORD`.
+3. `just prod-up`.
+4. In `secrets/prod.env`, set `CHATWOOT_ADMIN_TOKEN`, `Chatwoot__AccountId`,
+   `Chatwoot__BaseUrl=https://desk.<domain>`, and `Chatwoot__ServiceToken`. Then `just setup prod`.
+   It writes the inbox identifier and the bot token into the same file.
 
 | Recipe | Does |
 | --- | --- |
@@ -72,10 +73,10 @@ door; see `cloudflared/README.md`.
 | --- | --- |
 | Version | `Dockerfile` `FROM` tag |
 | Settings | `.env` (git-ignored), `.env.example` (documented defaults) |
+| Secrets | `CHATWOOT_*` in `secrets/<env>.env`; see `secrets/README.md` |
 | Production differences | `compose.prod.yaml` |
-| Local schema setup | `local-db.sql` |
 | Small code patches | `initializers/`, copied in by `Dockerfile`. Last resort |
-| Spirit's API inbox and agent bot | `just setup` (`setup/spirit-inbox.sh`) |
+| Spirit's API inbox, agent bot, and teams | `just setup` (`setup/spirit-inbox.sh`) |
 
 ## The Spirit inbox
 
@@ -88,11 +89,11 @@ door; see `cloudflared/README.md`.
 - **The out-of-office message stays empty.** The handoff skill tells a person what happens
   while the office is closed. Chatwoot would post its own message as well.
 
-## Tables in their own schema
+## Tables in the public schema
 
-`DATABASE_URL` carries `schema_search_path=chatwoot,public`, so Chatwoot's tables go in the
-`chatwoot` schema and it can share a database with SpiritAI. Upstream does not document this
-setup. Test each version update against a Neon branch before production.
+Chatwoot puts its tables in the default `public` schema. It shares the Neon database with
+SpiritAI, whose tables are in `agentcore`, `neon_auth`, and `spirit`. Test each version update
+against a Neon branch before production.
 
 ## The public contact guard
 

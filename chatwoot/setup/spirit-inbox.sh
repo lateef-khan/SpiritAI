@@ -1,37 +1,52 @@
 #!/usr/bin/env bash
-# Needs, in the environment or chatwoot/.env:
-#   CHATWOOT_ADMIN_TOKEN  an administrator's access token (Profile settings > Access token)
-#   CHATWOOT_ACCOUNT_ID   the account id from the dashboard URL (/app/accounts/<id>/...)
-# Optional:
-#   CHATWOOT_URL          defaults to http://localhost:$CHATWOOT_PORT
-#   CHATWOOT_SERVICE_TOKEN  the access token of a plain agent. Spirit lists teams and contact
-#                         fields as it, and saves a visitor's phone and email with it.
-#                         Make it once per server in the Super Admin console (/super_admin):
-#                         Users > New user, confirmed, then Add account user as an agent. Its page
-#                         shows the token. Without it, Spirit cannot list teams or save the phone.
+# Makes or updates the Spirit API inbox, the agent bot, and the teams, then writes the inbox's
+# identifier and the bot's token into secrets/<env>.env for Spirit.
+#
+#   setup/spirit-inbox.sh [dev|prod]
+#
+# Reads from secrets/<env>.env:
+#   CHATWOOT_ADMIN_TOKEN    an administrator's access token (Profile settings > Access token)
+#   Chatwoot__BaseUrl       Chatwoot's address, such as https://desk.<domain>
+#   Chatwoot__AccountId     the account id from the dashboard URL (/app/accounts/<id>/...)
+#   Chatwoot__ServiceToken  optional: the access token of a plain agent. Spirit lists teams and
+#                           contact fields as it, saves a visitor's phone and email with it, and
+#                           finds a caller's conversation with it. The script adds it to the inbox.
+#                           Make it once per server in the Super Admin console (/super_admin):
+#                           Users > New user, confirmed, then Add account user as an agent. Its
+#                           page shows the token. Without it, Spirit cannot list teams or save the phone.
 set -euo pipefail
 
-inbox_name="Spirit"
+env="${1:-dev}"
+secrets_dir="$(cd "$(dirname "$0")/../../secrets" && pwd)"
+secrets_file="$secrets_dir/$env.env"
+
+inbox_name="Spirit Chat/Phone"
 bot_name="Spirit AI"
 
-# chatwoot/.env is not sourced: its values are not shell-quoted (MAILER_SENDER_EMAIL has a <).
-env_file="$(dirname "$0")/../.env"
-from_env_file() {
-    [ -f "$env_file" ] && grep -oP "^$1=\K.*" "$env_file" | tail -1 || true
+# The secrets file is not sourced: its values are not shell-quoted.
+read_secret() {
+    grep -m1 "^$1=" "$secrets_file" | cut -d= -f2- || true
 }
-for key in CHATWOOT_ADMIN_TOKEN CHATWOOT_ACCOUNT_ID CHATWOOT_URL CHATWOOT_PORT CHATWOOT_SERVICE_TOKEN; do
-    [ -z "${!key:-}" ] && printf -v "$key" '%s' "$(from_env_file "$key")"
-done
 
-: "${CHATWOOT_ADMIN_TOKEN:?set CHATWOOT_ADMIN_TOKEN}"
-: "${CHATWOOT_ACCOUNT_ID:?set CHATWOOT_ACCOUNT_ID}"
-base="${CHATWOOT_URL:-http://localhost:${CHATWOOT_PORT:-53000}}"
-api="$base/api/v1/accounts/$CHATWOOT_ACCOUNT_ID"
+if [ ! -f "$secrets_file" ]; then
+    echo "$secrets_file is missing. Run: just secrets init $env" >&2
+    exit 1
+fi
+
+admin_token="$(read_secret CHATWOOT_ADMIN_TOKEN)"
+account_id="$(read_secret Chatwoot__AccountId)"
+base="$(read_secret Chatwoot__BaseUrl)"
+service_token="$(read_secret Chatwoot__ServiceToken)"
+
+: "${admin_token:?set CHATWOOT_ADMIN_TOKEN in secrets/$env.env}"
+: "${account_id:?set Chatwoot__AccountId in secrets/$env.env}"
+: "${base:?set Chatwoot__BaseUrl in secrets/$env.env}"
+api="$base/api/v1/accounts/$account_id"
 
 call() {
     local method="$1" path="$2" body="${3:-}"
     local args=(--silent --show-error --fail-with-body --request "$method"
-        --header "api_access_token: $CHATWOOT_ADMIN_TOKEN"
+        --header "api_access_token: $admin_token"
         --header "Content-Type: application/json")
     [ -n "$body" ] && args+=(--data "$body")
     curl "${args[@]}" "$api$path"
@@ -74,17 +89,36 @@ echo "Connected the agent bot to the inbox." >&2
 
 bot="$(call GET "/agent_bots/$bot_id")"
 
-cat <<EOF
+# A plain agent only sees conversations in its own inboxes. Spirit finds a caller's conversation
+# as the service user, so the service user joins the inbox. A repeat add is harmless.
+if [ -n "$service_token" ]; then
+    service_id="$(curl --silent --show-error --fail-with-body \
+        --header "api_access_token: $service_token" "$base/api/v1/profile" | jq '.id')"
+    call POST /inbox_members "$(jq -n --argjson inbox "$inbox_id" --argjson user "$service_id" \
+        '{inbox_id: $inbox, user_ids: [$user]}')" >/dev/null
+    echo "Added the service user (id $service_id) to the inbox." >&2
+fi
 
-Spirit settings:
-Chatwoot__BaseUrl=$base
-Chatwoot__AccountId=$CHATWOOT_ACCOUNT_ID
-Chatwoot__InboxIdentifier=$(jq -r '.inbox_identifier' <<<"$inbox")
-Chatwoot__BotToken=$(jq -r '.access_token' <<<"$bot")
-EOF
+# The AI picks the team of a handoff by its description (list_teams). Chatwoot saves a team name
+# in lowercase. A team that exists is left as staff have it.
+teams="$(call GET /teams)"
+while IFS=$'\t' read -r team_name team_description; do
+    if jq -e --arg name "$team_name" 'any(.[]; .name == $name)' <<<"$teams" >/dev/null; then
+        echo "Found the team '$team_name'." >&2
+    else
+        call POST /teams "$(jq -n --arg name "$team_name" --arg description "$team_description" \
+            '{name: $name, description: $description}')" >/dev/null
+        echo "Made the team '$team_name'." >&2
+    fi
+done <<'TEAMS'
+sales	Buying new equipment: prices, models, quotes, orders, and finding a dealer.
+service	Equipment already owned: repairs, parts, warranty claims, and technician visits.
+TEAMS
 
-if [ -n "${CHATWOOT_SERVICE_TOKEN:-}" ]; then
-    echo "Chatwoot__ServiceToken=$CHATWOOT_SERVICE_TOKEN"
-else
-    echo "CHATWOOT_SERVICE_TOKEN is not set: Spirit cannot list teams or save the phone. See the top of this script." >&2
+"$secrets_dir/set.sh" "$env" Chatwoot__InboxIdentifier "$(jq -r '.inbox_identifier' <<<"$inbox")"
+"$secrets_dir/set.sh" "$env" Chatwoot__BotToken "$(jq -r '.access_token' <<<"$bot")"
+echo "Wrote Chatwoot__InboxIdentifier and Chatwoot__BotToken to secrets/$env.env." >&2
+
+if [ -z "$service_token" ]; then
+    echo "Chatwoot__ServiceToken is not set: Spirit cannot list teams or save the phone. See the top of this script." >&2
 fi

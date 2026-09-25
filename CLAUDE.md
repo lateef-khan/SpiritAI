@@ -73,6 +73,8 @@ Say which one applies in your report.
 
 - `src/SpiritAI/` — ASP.NET Core host. `Program.cs` wires up AgentCore
   (`AddAgentCoreHost` / `MapAgentCoreHost`) and serves the chat UI at `/chat`.
+- `secrets/` — every app's secrets, one git-ignored file per environment (`dev.env`,
+  `prod.env`); `example.env` lists the keys. See `secrets/README.md`.
 - `src/SpiritAI/config/` — agent pipelines as YAML. `spirit.yaml` is the app config
   (needs `OPENAI_API_KEY` in the environment). `example.yaml` is the annotated
   reference copied from AgentCore; treat it as documentation.

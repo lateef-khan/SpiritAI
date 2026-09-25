@@ -16,7 +16,8 @@ just twenty down    # stops and deletes everything local
 - Twenty: http://localhost:53001 (the first visit asks you to make the admin user)
 - Emails: `EMAIL_DRIVER=LOGGER` prints them in `just twenty logs`
 
-With `PG_DATABASE_URL` empty, a throwaway postgres starts too. Nothing is kept: postgres,
+Secrets are the `TWENTY_*` keys in `secrets/dev.env` (`just secrets init dev`). With
+`TWENTY_PG_DATABASE_URL` empty, a throwaway postgres starts too. Nothing is kept: postgres,
 redis, and uploads are deleted by `down`, so every `up` starts clean.
 
 ## Production (company server)
@@ -26,7 +27,7 @@ redis, and uploads are deleted by `down`, so every `up` starts clean.
 
 | | Local dev | Production |
 | --- | --- | --- |
-| Postgres | Throwaway container | `PG_DATABASE_URL` (Neon), required |
+| Postgres | Throwaway container | `TWENTY_PG_DATABASE_URL` (Neon), required |
 | Redis | Memory only | Append-only file on the `redis` volume, 512 MB cap, 1 GB container cap, `noeviction` |
 | Uploads | Deleted by `down` | S3-compatible bucket (Backblaze B2), `STORAGE_S3_*`, required |
 | Email | Printed in the logs | `EMAIL_*` in `.env` (Resend example in `.env.example`) |
@@ -41,10 +42,11 @@ First setup on the server:
 1. Copy this folder to the server. Install Docker and `just`. Give Twenty at least 2 GB of RAM.
 2. On Neon, make a database of its own: `create database twenty;`. Twenty makes many schemas
    (`core`, one `workspace_*` per workspace), so it does not share SpiritAI's database.
-3. `just env`, then edit `.env`: `PG_DATABASE_URL` (Neon's direct host, not `-pooler`),
-   `SERVER_URL` (the public HTTPS address), the `STORAGE_S3_*` bucket values, and the
-   `EMAIL_*` values.
-4. Keep a copy of `ENCRYPTION_KEY` outside the server. Without it, the secrets in the
+3. `just env`, then edit `.env`: `SERVER_URL` (the public HTTPS address), the `STORAGE_S3_*`
+   bucket place, and the `EMAIL_*` values. In `secrets/prod.env`: `TWENTY_PG_DATABASE_URL`
+   (Neon's direct host, not `-pooler`), the `TWENTY_STORAGE_S3_*` keys, and
+   `TWENTY_EMAIL_SMTP_PASSWORD`.
+4. Keep a copy of `TWENTY_ENCRYPTION_KEY` outside the server. Without it, the secrets in the
    database cannot be read.
 5. `just prod-up`.
 6. Open `SERVER_URL` and make the admin user. The first user is the server admin.

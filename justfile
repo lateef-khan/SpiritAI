@@ -11,6 +11,9 @@ mod chatwoot
 # Cloudflare Tunnel recipes: `just cloudflared <recipe>`. See cloudflared/README.md.
 mod cloudflared
 
+# Secrets of every app, one file per environment: `just secrets <recipe>`. See secrets/README.md.
+mod secrets
+
 # Twenty CRM recipes: `just twenty <recipe>`. See twenty/README.md.
 mod twenty
 

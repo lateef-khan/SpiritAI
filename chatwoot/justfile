@@ -4,14 +4,15 @@
 # Local dev and production use different compose projects, so `down` can never touch the
 # production volumes.
 
-dev := "docker compose --file compose.yaml"
-prod := "docker compose --file compose.yaml --file compose.prod.yaml"
+# Each command first writes this app's secrets from secrets/<env>.env into .secrets.env.
+dev := "../secrets/export.sh dev CHATWOOT_ .secrets.env CHATWOOT_ADMIN_TOKEN && docker compose --file compose.yaml --env-file .env --env-file .secrets.env"
+prod := "../secrets/export.sh prod CHATWOOT_ .secrets.env CHATWOOT_ADMIN_TOKEN && docker compose --file compose.yaml --file compose.prod.yaml --env-file .env --env-file .secrets.env"
 
 # List the recipes.
 default:
     @just --list
 
-# Make .env from .env.example, with a fresh SECRET_KEY_BASE. Never overwrites.
+# Make .env from .env.example. Never overwrites. The secrets are in secrets/<env>.env.
 env:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -19,17 +20,17 @@ env:
         echo "chatwoot/.env already exists; leaving it alone."
         exit 0
     fi
-    sed "s|^SECRET_KEY_BASE=.*|SECRET_KEY_BASE=$(openssl rand -hex 64)|" .env.example > .env
+    cp .env.example .env
     echo "Wrote chatwoot/.env."
 
-# Local dev: start and wait. With DATABASE_URL empty, a throwaway postgres starts too.
+# Local dev: start and wait. With CHATWOOT_DATABASE_URL empty, a throwaway postgres starts too.
 up: env _edge
     #!/usr/bin/env bash
     set -euo pipefail
     profile=()
-    if ! grep -qE '^DATABASE_URL=.+' .env; then
+    if ! grep -qE '^CHATWOOT_DATABASE_URL=.+' ../secrets/dev.env; then
         profile=(--profile localdb)
-        echo "DATABASE_URL is empty: starting a throwaway local postgres."
+        echo "CHATWOOT_DATABASE_URL is empty: starting a throwaway local postgres."
     fi
     {{dev}} "${profile[@]}" up --detach --build
     just _wait "{{dev}}"
@@ -47,9 +48,10 @@ logs:
 console:
     {{dev}} exec web bundle exec rails console
 
-# Make or update the Spirit API inbox and agent bot, and print Spirit's settings. See setup/spirit-inbox.sh.
-setup:
-    ./setup/spirit-inbox.sh
+# Make or update the Spirit API inbox, agent bot, and teams, and write Spirit's Chatwoot settings
+# into secrets/<env>.env. See setup/spirit-inbox.sh.
+setup env="dev":
+    ./setup/spirit-inbox.sh {{env}}
 
 # Prove the public contact routes drop email and phone (initializers/spirit_public_contact_guard.rb).
 # Makes one throwaway contact. The inbox identifier is the one `just setup` prints.
@@ -71,7 +73,7 @@ check-contact-guard inbox_identifier url="http://localhost:53000":
     done
     echo "OK: the public contact routes dropped email and phone."
 
-# Production: first start, or start after prod-down. Needs DATABASE_URL in .env.
+# Production: first start, or start after prod-down. Needs CHATWOOT_DATABASE_URL in secrets/prod.env.
 prod-up: _edge
     {{prod}} up --detach --build
     just _wait "{{prod}}"

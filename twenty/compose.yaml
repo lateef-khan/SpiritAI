@@ -1,16 +1,20 @@
 # Self-hosted Twenty CRM for local development. Settings come from twenty/.env; `just env`
-# makes it from .env.example. With PG_DATABASE_URL empty, `just up` also starts the throwaway
-# postgres below. Nothing local survives `just down`.
+# makes it from .env.example. Secrets come from .secrets.env, which every recipe writes from the
+# TWENTY_* keys in secrets/<env>.env. With TWENTY_PG_DATABASE_URL empty, `just up` also starts
+# the throwaway postgres below. Nothing local survives `just down`.
 
 name: spirit-twenty
 
 x-twenty: &twenty
   image: twentycrm/twenty:v2.41.0
-  env_file: .env
+  env_file:
+    - .env
+    - path: .secrets.env
+      required: false
   environment: &twenty-env
     NODE_PORT: "3000"
     PG_DATABASE_URL: ${PG_DATABASE_URL:-postgres://twenty:twenty@postgres:5432/twenty}
-    REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in twenty/.env}@redis:6379
+    REDIS_URL: redis://:${REDIS_PASSWORD:?TWENTY_REDIS_PASSWORD must be set in secrets/<env>.env}@redis:6379
   volumes:
     - storage:/app/packages/twenty-server/.local-storage
   depends_on: &twenty-deps

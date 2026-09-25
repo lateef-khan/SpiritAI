@@ -4,14 +4,15 @@
 # Local dev and production use different compose projects, so `down` can never touch the
 # production volumes.
 
-dev := "docker compose --file compose.yaml"
-prod := "docker compose --file compose.yaml --file compose.prod.yaml"
+# Each command first writes this app's secrets from secrets/<env>.env into .secrets.env.
+dev := "../secrets/export.sh dev TWENTY_ .secrets.env && docker compose --file compose.yaml --env-file .env --env-file .secrets.env"
+prod := "../secrets/export.sh prod TWENTY_ .secrets.env && docker compose --file compose.yaml --file compose.prod.yaml --env-file .env --env-file .secrets.env"
 
 # List the recipes.
 default:
     @just --list
 
-# Make .env from .env.example, with a fresh ENCRYPTION_KEY and REDIS_PASSWORD. Never overwrites.
+# Make .env from .env.example. Never overwrites. The secrets are in secrets/<env>.env.
 env:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -19,19 +20,17 @@ env:
         echo "twenty/.env already exists; leaving it alone."
         exit 0
     fi
-    sed -e "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=$(openssl rand -base64 32)|" \
-        -e "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=$(openssl rand -hex 24)|" \
-        .env.example > .env
+    cp .env.example .env
     echo "Wrote twenty/.env."
 
-# Local dev: start and wait. With PG_DATABASE_URL empty, a throwaway postgres starts too.
+# Local dev: start and wait. With TWENTY_PG_DATABASE_URL empty, a throwaway postgres starts too.
 up: env _edge
     #!/usr/bin/env bash
     set -euo pipefail
     profile=()
-    if ! grep -qE '^PG_DATABASE_URL=.+' .env; then
+    if ! grep -qE '^TWENTY_PG_DATABASE_URL=.+' ../secrets/dev.env; then
         profile=(--profile localdb)
-        echo "PG_DATABASE_URL is empty: starting a throwaway local postgres."
+        echo "TWENTY_PG_DATABASE_URL is empty: starting a throwaway local postgres."
     fi
     {{dev}} "${profile[@]}" up --detach --wait --wait-timeout 2400
     echo "Twenty is ready on http://localhost:$(grep -oP '^TWENTY_PORT=\K.+' .env || echo 53001)."
@@ -44,7 +43,8 @@ down:
 logs:
     {{dev}} --profile localdb logs --follow --tail=100
 
-# Production: first start, or start after prod-down. Needs PG_DATABASE_URL and the bucket in .env.
+# Production: first start, or start after prod-down. Needs the database and the bucket: the
+# bucket's place in .env, TWENTY_PG_DATABASE_URL and its keys in secrets/prod.env.
 prod-up: _edge
     {{prod}} up --detach --wait --wait-timeout 2400
     @echo "Twenty is ready."

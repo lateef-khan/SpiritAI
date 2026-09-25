@@ -1,7 +1,9 @@
 # Cloudflare Tunnel recipes. From the repo root: `just cloudflared <recipe>`. On the server:
 # `just <recipe>` inside this folder. Recipes run here either way.
 
-compose := "docker compose --file compose.yaml"
+# The tunnel runs on the server only, so its token is in secrets/prod.env. Each command first
+# writes it into .secrets.env.
+compose := "../secrets/export.sh prod CLOUDFLARE_ .secrets.env && docker compose --file compose.yaml --env-file .secrets.env"
 
 # The names the root `just stack-*` recipes call on every app.
 alias prod-up := up
@@ -12,19 +14,8 @@ alias prod-status := status
 default:
     @just --list
 
-# Make .env from .env.example. Never overwrites.
-env:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [ -f .env ]; then
-        echo "cloudflared/.env already exists; leaving it alone."
-        exit 0
-    fi
-    cp .env.example .env
-    echo "Wrote cloudflared/.env. Paste the tunnel token into it."
-
 # Start the tunnel and wait until Cloudflare has it.
-up: env _edge
+up: _edge
     {{compose}} up --detach --wait --wait-timeout 300
     @echo "The tunnel is connected."
 
