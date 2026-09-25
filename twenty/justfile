@@ -69,3 +69,52 @@ prod-logs:
 # The network the tunnel shares with every app.
 _edge:
     @docker network inspect spirit-edge >/dev/null 2>&1 || docker network create spirit-edge
+
+# Twenty's own repo. Our fork pulls released tags from here.
+upstream := "https://github.com/twentyhq/twenty.git"
+
+# The branch `spirit` starts at the released tag that compose.yaml runs. Make the fork on GitHub first.
+# One time: add our fork of Twenty as the submodule twenty/source, on the branch `spirit`.
+source-add fork_url:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -e source ]; then
+        echo "twenty/source already exists. On a fresh clone, run: just twenty source-init"
+        exit 1
+    fi
+    tag="twenty/$(grep -oP 'image: twentycrm/twenty:\K\S+' compose.yaml)"
+    # Blobless: the whole history is there for merges, file contents download when needed.
+    git clone --filter=blob:none --no-checkout "{{fork_url}}" source
+    git submodule add "{{fork_url}}" source
+    git config --file "$(git rev-parse --show-toplevel)/.gitmodules" submodule.twenty/source.branch spirit
+    cd source
+    git remote add upstream "{{upstream}}"
+    git fetch upstream tag "$tag" --no-tags
+    git switch --create spirit "$tag"
+    git push --set-upstream origin spirit
+    cd ..
+    git add source "$(git rev-parse --show-toplevel)/.gitmodules"
+    echo "twenty/source is on branch spirit at $tag. Commit it in SpiritAI."
+
+# The branch `spirit` starts at the commit SpiritAI pins, which can be behind the fork.
+# On a fresh clone of SpiritAI: download twenty/source.
+source-init:
+    git submodule update --init --filter=blob:none source
+    git -C source switch --force-create spirit
+    git -C source branch --set-upstream-to origin/spirit
+
+# Stops on a conflict: fix the files, then `git commit` inside twenty/source and run the steps it prints.
+# Merge a released Twenty tag (e.g. v2.42.0) into our branch `spirit`.
+source-update tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd source
+    git remote get-url upstream >/dev/null 2>&1 || git remote add upstream "{{upstream}}"
+    git switch spirit
+    git fetch upstream tag "twenty/{{tag}}" --no-tags
+    git merge --no-edit "twenty/{{tag}}"
+    echo "Merged twenty/{{tag}}. Next:"
+    echo "  1. Test it."
+    echo "  2. git -C twenty/source push"
+    echo "  3. Set the image tag in twenty/compose.yaml to {{tag}}."
+    echo "  4. Commit twenty/source and twenty/compose.yaml in SpiritAI."

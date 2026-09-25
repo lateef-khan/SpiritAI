@@ -1,7 +1,15 @@
 # Twenty
 
 Self-hosted [Twenty](https://github.com/twentyhq/twenty) CRM. We run the official image,
-pinned in `compose.yaml`. We do not fork its code.
+pinned in `compose.yaml`. Our fork of its source goes in `source/`, and our extension apps go
+in `apps/`. Until `compose.yaml` builds from `source/`, the running server is the official
+image.
+
+| Folder | Holds |
+| --- | --- |
+| `.` | How we run Twenty: compose files, `.env`, recipes |
+| `source/` | Git submodule: our fork of Twenty, branch `spirit`. See [Source code](#source-code) |
+| `apps/` | Our extension apps, one folder each. See [apps/README.md](apps/README.md) |
 
 Recipes live in `twenty/justfile`. From the repo root, run `just twenty <recipe>`. On the
 server, run `just <recipe>` inside this folder.
@@ -79,6 +87,37 @@ Twenty releases often. Use a tag that has a GitHub release, not only a Docker ta
 The server runs the schema upgrade each time it starts. Test each update against a Neon
 branch before production.
 
+When `source/` exists, update it to the same tag: `just twenty source-update <tag>`.
+
+## Source code
+
+`source/` is a git submodule, which means it is a separate git repo inside this one. It points
+at our fork of Twenty on GitHub. SpiritAI stores only which commit of the fork to use. Our
+changes live on the fork's branch `spirit`. Twenty's released tags (`twenty/vX.Y.Z`) are
+merged into that branch, so our changes stay.
+
+Twenty's code is AGPL-3.0, except for the files marked as enterprise code. Change only the
+AGPL code, and do not copy or unlock the enterprise code.
+
+| Recipe | Does |
+| --- | --- |
+| `source-add <fork-url>` | One time. Makes `spirit` from the tag in `compose.yaml` and pushes it to the fork |
+| `source-init` | On a fresh clone of SpiritAI: downloads `source/` |
+| `source-update <tag>` | Merges a released tag, e.g. `v2.42.0`, into `spirit`. Prints the next steps |
+
+First setup:
+
+1. On GitHub, fork `twentyhq/twenty`.
+2. `just twenty source-add <fork-url>`
+3. Commit `.gitmodules` and `twenty/source` in SpiritAI.
+
+When a merge stops on a conflict, both sides changed the same lines. Fix the files in
+`source/`, then `git add` them and `git commit` inside `source/`. To keep conflicts small, put
+our code in new files and change as few of Twenty's lines as we can.
+
+The source is blobless: git has the whole history, and it downloads each file's contents the
+first time something needs them.
+
 ## Where things go
 
 | What | Where |
@@ -87,3 +126,5 @@ branch before production.
 | Settings | `.env` (git-ignored), `.env.example` (documented defaults) |
 | Production differences | `compose.prod.yaml` |
 | Settings that are not in `.env` | Twenty's admin panel (`IS_CONFIG_VARIABLES_IN_DB_ENABLED`, on by default) |
+| Changes to Twenty's own code | `source/`, branch `spirit` |
+| Extension apps | `apps/<app>/` |
