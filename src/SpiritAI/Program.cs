@@ -1,3 +1,4 @@
+using AgentCore.AspNetCore.Endpoints;
 using AgentCore.Hosting;
 using SpiritAI.Access;
 using SpiritAI.Auth;
@@ -20,8 +21,6 @@ builder.AddSpiritAgentCore();
 builder.Services.AddProxyHeaders(builder.Configuration);
 
 builder.Services.AddPublicChat(builder.Configuration);
-
-builder.Services.AddThreadSessions();
 
 builder.Services.AddSpiritDatabase(builder.Configuration);
 
@@ -57,6 +56,8 @@ app.UseRateLimiter();
 
 app.UseNeonAuthOnApi();
 
+app.UseAuthorization();
+
 app.UseThreadSessions();
 
 app.UseChatwootTurn(AgentCoreExtensions.RouteOf(publicChat.Pattern));
@@ -66,7 +67,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.MapAgentCoreHost();
+app.MapAgentCoreHost(AgentCoreExtensions.ChatResponsesPattern).Responses.SelectEntry<GroupEntrySelector>();
 
 app.MapPublicChat();
 

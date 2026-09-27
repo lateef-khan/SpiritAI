@@ -20,11 +20,11 @@ using Xunit;
 namespace SpiritAI.Tests.Threads;
 
 /// <summary>
-/// The door in front of the Responses endpoint, for a thread that was opened days ago.
+/// The door in front of the Responses endpoint: a turn may name only a thread the caller owns.
 /// </summary>
 public sealed class ThreadSessionTests
 {
-    private const string Responses = "/v1/main/responses";
+    private const string Responses = "/v1/chat/responses";
     private const string PublicResponses = "/v1/public/main/responses";
 
     [Fact]
@@ -35,11 +35,10 @@ public sealed class ThreadSessionTests
         var response = await world.PostAsync(world.OwnerToken, thread: null);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Empty(world.Sessions.Reopened);
     }
 
     [Fact]
-    public async Task AnOwnedThreadWithNoLiveSessionIsReopened()
+    public async Task AnOwnedThreadIsLetThrough()
     {
         await using var world = await World.StartAsync();
         var remoteId = await world.MakeThreadAsync(World.OwnerKey);
@@ -47,20 +46,6 @@ public sealed class ThreadSessionTests
         var response = await world.PostAsync(world.OwnerToken, remoteId);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal([remoteId], world.Sessions.Reopened);
-    }
-
-    [Fact]
-    public async Task AThreadThatIsAlreadyLiveIsLeftAlone()
-    {
-        await using var world = await World.StartAsync();
-        var remoteId = await world.MakeThreadAsync(World.OwnerKey);
-        world.Sessions.MarkLive(remoteId);
-
-        var response = await world.PostAsync(world.OwnerToken, remoteId);
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Empty(world.Sessions.Reopened);
     }
 
     [Fact]
@@ -74,7 +59,6 @@ public sealed class ThreadSessionTests
         // Without this the endpoint would happily continue the owner's conversation for
         // anybody who names its id.
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Empty(world.Sessions.Reopened);
     }
 
     [Fact]
@@ -97,7 +81,6 @@ public sealed class ThreadSessionTests
         var response = await world.PostPublicAsync(conversation: "anything at all");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Empty(world.Sessions.Reopened);
     }
 
     private sealed class World : IAsyncDisposable
@@ -109,17 +92,14 @@ public sealed class ThreadSessionTests
         private readonly IHost _host;
         private readonly InMemoryConversationStore _store;
 
-        private World(IHost host, NeonAuthTestKit kit, InMemoryConversationStore store, FakeSessions sessions)
+        private World(IHost host, NeonAuthTestKit kit, InMemoryConversationStore store)
         {
             _host = host;
             _store = store;
-            Sessions = sessions;
             Client = host.GetTestClient();
             OwnerToken = kit.Token(subject: OwnerSubject);
             StrangerToken = kit.Token(subject: StrangerSubject);
         }
-
-        public FakeSessions Sessions { get; }
 
         public HttpClient Client { get; }
 
@@ -176,14 +156,12 @@ public sealed class ThreadSessionTests
         {
             var kit = new NeonAuthTestKit();
             InMemoryConversationStore store = new();
-            FakeSessions sessions = new();
 
             var host = await ThreadTestHost.StartAsync(
                 kit,
                 services =>
                 {
                     services.AddSingleton<IConversations>(new Conversations(store, blobs: null));
-                    services.AddSingleton<IThreadSessions>(sessions);
                 },
                 app =>
                 {
@@ -198,7 +176,7 @@ public sealed class ThreadSessionTests
                 },
                 options => options.OpenPathPrefixes = [PublicResponses]);
 
-            return new World(host, kit, store, sessions);
+            return new World(host, kit, store);
         }
 
         public async ValueTask DisposeAsync()

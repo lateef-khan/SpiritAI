@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.AI;
 
+using SpiritAI.Access;
+
 namespace SpiritAI.Lookup;
 
 /// <summary>
@@ -66,11 +68,13 @@ public static class LookupEndpointRouteBuilderExtensions
 
         endpoints.MapGet(UnitPattern, UnitAsync)
             .WithName("getUnit")
-            .WithTags("Lookup");
+            .WithTags("Lookup")
+            .RequireAuthorization(AccessPolicies.Staff);
 
         endpoints.MapGet(OrderPattern, OrderAsync)
             .WithName("getOrder")
-            .WithTags("Lookup");
+            .WithTags("Lookup")
+            .RequireAuthorization(AccessPolicies.Staff);
 
         return endpoints;
     }

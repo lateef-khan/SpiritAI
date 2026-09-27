@@ -29,9 +29,9 @@ import { PanelRightIcon, PrinterIcon } from "lucide-react";
  *
  * It is read from the page rather than compiled in, because the host can move the endpoint —
  * `MapAgentCoreHost` takes a pattern — and a rebuilt bundle should not be the price of that. The
- * default is the one `MapResponses` uses when a host names none, with the host's one entry filled in.
+ * route names no entry: the server picks the agent from the caller's access group.
  */
-const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/main/responses";
+const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/chat/responses";
 
 /**
  * The thread list, on the host. Built once: swapping the adapter does not reload the list, so a

@@ -39,8 +39,13 @@ public static class AgentCoreExtensions
     /// <summary>The <c>binds:</c> name of the handoff's list of contact fields.</summary>
     public const string ListContactFieldsBinding = "ListContactFields";
 
-    /// <summary>The <c>entries:</c> key every route and store reads. Staff and visitors share it.</summary>
+    /// <summary>The <c>entries:</c> key the public widget runs.</summary>
     public const string Entry = "main";
+
+    /// <summary>
+    /// The one Responses route a signed-in person calls.
+    /// </summary>
+    public const string ChatResponsesPattern = "/v1/chat/responses";
 
     /// <summary>
     /// The one path a route with <c>{entry}</c> answers on for <see cref="Entry"/>, so a door that

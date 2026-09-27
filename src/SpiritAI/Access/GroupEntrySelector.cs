@@ -5,7 +5,7 @@ namespace SpiritAI.Access;
 /// <summary>
 /// Runs the entry of the caller's highest access group, and refuses a caller with no group.
 /// </summary>
-internal sealed class GroupEntrySelector : IEntrySelector
+public sealed class GroupEntrySelector : IEntrySelector
 {
     /// <inheritdoc />
     public ValueTask<string?> SelectAsync(HttpContext http, CancellationToken cancellationToken)

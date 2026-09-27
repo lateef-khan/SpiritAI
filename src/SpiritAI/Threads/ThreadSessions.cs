@@ -1,5 +1,4 @@
 using AgentCore.Application.Ports;
-using AgentCore.AspNetCore.Endpoints;
 
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,60 +6,11 @@ using SpiritAI.Hosting;
 
 namespace SpiritAI.Threads;
 
-/// <summary>
-/// Whether a conversation has a live session, and how to give it one.
-/// </summary>
-public interface IThreadSessions
-{
-    /// <summary>Whether this host is already holding a session for one conversation.</summary>
-    /// <param name="conversationId">The call to ask about.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    ValueTask<bool> IsLiveAsync(string conversationId, CancellationToken cancellationToken = default);
-
-    /// <summary>Opens a session for a conversation that already exists.</summary>
-    /// <param name="conversationId">The call to pick up again.</param>
-    /// <param name="cancellationToken">Cancels the open.</param>
-    ValueTask ReopenAsync(string conversationId, CancellationToken cancellationToken = default);
-}
-
-/// <summary>The two answers, from the session table of the one entry this host serves.</summary>
-internal sealed class AgentCoreThreadSessions(IConversationSessionRegistry registry) : IThreadSessions
-{
-    /// <inheritdoc />
-    public async ValueTask<bool> IsLiveAsync(string conversationId, CancellationToken cancellationToken = default)
-        => await registry.Sessions
-            .TryGetAsync(AgentCoreExtensions.Entry, conversationId, cancellationToken)
-            .ConfigureAwait(false) is not null;
-
-    /// <inheritdoc />
-    public async ValueTask ReopenAsync(string conversationId, CancellationToken cancellationToken = default)
-        => await registry.Sessions
-            .GetOrOpenAsync(AgentCoreExtensions.Entry, conversationId, state: null, cancellationToken)
-            .ConfigureAwait(false);
-}
-
-/// <summary>Registers the seam the turn's door reads.</summary>
-public static class ThreadSessionServiceCollectionExtensions
-{
-    /// <summary>Adds the default <see cref="IThreadSessions"/>, over AgentCore's session table.</summary>
-    /// <param name="services">The host's services.</param>
-    /// <returns>The same collection.</returns>
-    public static IServiceCollection AddThreadSessions(this IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        services.AddSingleton<IThreadSessions, AgentCoreThreadSessions>();
-
-        return services;
-    }
-}
-
 /// <summary>The door in front of the Responses endpoint.</summary>
 public static class ThreadSessionApplicationBuilderExtensions
 {
-    /// <summary>The route this guards when the host names none: the one entry's Responses route.</summary>
-    public static readonly string DefaultResponsesPattern =
-        AgentCoreExtensions.RouteOf(ResponsesEndpointRouteBuilderExtensions.DefaultPattern);
+    /// <summary>The route this guards when the host names none: the signed-in Responses route.</summary>
+    public const string DefaultResponsesPattern = AgentCoreExtensions.ChatResponsesPattern;
 
     /// <summary>
     /// Lets a turn continue a thread the caller owns, and refuses one that names anybody else's.
@@ -80,11 +30,11 @@ public static class ThreadSessionApplicationBuilderExtensions
 }
 
 /// <summary>
-/// Opens a session for a turn that names a thread, once the thread is proved to be the caller's.
+/// Refuses a turn that names a thread the caller does not own. AgentCore opens an owned thread itself.
 /// </summary>
 internal sealed class ThreadSessionMiddleware(RequestDelegate next, string pattern)
 {
-    public async Task InvokeAsync(HttpContext context, IConversations conversations, IThreadSessions sessions)
+    public async Task InvokeAsync(HttpContext context, IConversations conversations)
     {
         if (!context.Request.Path.StartsWithSegments(pattern, StringComparison.OrdinalIgnoreCase))
         {
@@ -107,11 +57,6 @@ internal sealed class ThreadSessionMiddleware(RequestDelegate next, string patte
         {
             await RefuseAsync(context, namedThread).ConfigureAwait(false);
             return;
-        }
-
-        if (!await sessions.IsLiveAsync(namedThread, context.RequestAborted).ConfigureAwait(false))
-        {
-            await sessions.ReopenAsync(namedThread, context.RequestAborted).ConfigureAwait(false);
         }
 
         await next(context).ConfigureAwait(false);
