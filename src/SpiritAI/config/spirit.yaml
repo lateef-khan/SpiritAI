@@ -50,7 +50,7 @@ tools:
     kind: binding
     binds: KnownContact
     description: >-
-      The phone and email this person gave in an earlier chat. Empty when there are none.
+      The phone and email on file for this person from an earlier chat. Empty when there are none.
 
   - id: check_contact
     kind: binding

@@ -3,9 +3,9 @@ using SpiritAI.Chatwoot;
 namespace SpiritAI.Handoffs.Bot;
 
 /// <summary>
-/// The private note a handoff leaves for staff: how to reach the person, saved on the contact or
-/// not, and then the model's summary. The phone and email are always in it, because a value
-/// Chatwoot refused is nowhere else.
+/// The private note a handoff leaves for staff: how to reach the person, and then the model's
+/// summary. The phone and email are always in it: the phone is never saved on the contact, and an
+/// email Chatwoot refused is nowhere else.
 /// </summary>
 public static class HandoffNote
 {
@@ -17,21 +17,30 @@ public static class HandoffNote
     public static string Write(string phone, string email, string summary)
         => $"Call back\n- Phone: {phone}\n- Email: {email}\n\n{summary.Trim()}";
 
-    /// <summary>One way to reach the person, and what became of it.</summary>
+    /// <summary>One way to reach the person that is not saved on the contact.</summary>
     /// <param name="given">What the model passed.</param>
     /// <param name="shown">The checked value as staff read it, or <see langword="null"/> when it is not valid.</param>
-    /// <param name="update">What Chatwoot did with it, or <see langword="null"/> when Chatwoot did not answer.</param>
     /// <returns>The line.</returns>
-    public static string Line(string? given, string? shown, ChatwootContactUpdate? update)
+    public static string Line(string? given, string? shown)
     {
         if (string.IsNullOrWhiteSpace(given))
         {
             return "none given";
         }
 
-        if (shown is null)
+        return shown ?? $"{given.Trim()} (not valid)";
+    }
+
+    /// <summary>One way to reach the person, and what became of it on the contact.</summary>
+    /// <param name="given">What the model passed.</param>
+    /// <param name="shown">The checked value as staff read it, or <see langword="null"/> when it is not valid.</param>
+    /// <param name="update">What Chatwoot did with it, or <see langword="null"/> when Chatwoot did not answer.</param>
+    /// <returns>The line.</returns>
+    public static string Line(string? given, string? shown, ChatwootContactUpdate? update)
+    {
+        if (string.IsNullOrWhiteSpace(given) || shown is null)
         {
-            return $"{given.Trim()} (not valid)";
+            return Line(given, shown);
         }
 
         return update switch

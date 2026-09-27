@@ -10,9 +10,7 @@ namespace SpiritAI.Handoffs;
 public static class HandoffServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds the bot's <see cref="RequestHumanTool"/> with its <see cref="CallbackOptions"/>, the
-    /// handoff's Chatwoot tools, and the <see cref="CallRingAlert"/> on GoTo calls. Add it after
-    /// <c>AddChatwoot</c> and <c>AddGoTo</c>.
+    /// Hand off dependency injection.
     /// </summary>
     /// <param name="services">The host's services.</param>
     /// <returns>The same collection.</returns>
@@ -34,7 +32,11 @@ public static class HandoffServiceCollectionExtensions
 
         services.AddScoped<ListContactFieldsTool>();
 
+        services.AddScoped<CallStaff>();
+
         services.AddScoped<IGoToCallHandler, CallRingAlert>();
+
+        services.AddScoped<IGoToCallHandler, CallbackCalled>();
 
         return services;
     }

@@ -11,20 +11,17 @@ namespace SpiritAI.Handoffs.Callback;
 
 /// <summary>
 /// When a staff phone rings with a visitor who asked for a person, posts a private note in the
-/// visitor's open Chatwoot conversation that mentions whoever's phone it is. The mention is what
-/// makes Chatwoot push a notification.
+/// visitor's open Chatwoot conversation that mentions whoever's phone it is.
 /// </summary>
 public sealed class CallRingAlert(
     ChatwootClient chatwoot,
-    GoToStaffDirectory directory,
+    CallStaff staff,
     HybridCache cache,
     IOptions<CallbackOptions> options,
     ILogger<CallRingAlert> logger) : IGoToCallHandler
 {
     /// <summary>How long a line in a call is remembered as done. GoTo sends a ring on two or more events.</summary>
     public static readonly TimeSpan SeenFor = TimeSpan.FromHours(2);
-
-    private const string AgentsKey = "chatwoot:agents";
 
     private const string Told = "told";
 
@@ -33,13 +30,6 @@ public sealed class CallRingAlert(
     {
         Expiration = SeenFor,
         LocalCacheExpiration = SeenFor,
-    };
-
-    private static readonly HybridCacheEntryOptions AgentsEntry = new()
-    {
-        Expiration = TimeSpan.FromMinutes(5),
-        LocalCacheExpiration = TimeSpan.FromMinutes(5),
-        Flags = HybridCacheEntryFlags.DisableDistributedCache,
     };
 
     /// <summary>
@@ -124,20 +114,11 @@ public sealed class CallRingAlert(
     private async Task<IReadOnlyList<string>> MentionsAsync(
         IReadOnlyList<GoToCallLine> lines, ChatwootContactConversation conversation, CancellationToken cancellationToken)
     {
-        var agents = await cache.GetOrCreateAsync(
-                AgentsKey,
-                async ct => await chatwoot.ListAgentsAsync(ct).ConfigureAwait(false),
-                AgentsEntry,
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-
         var mentioned = new List<ChatwootAgent>();
 
         foreach (var line in lines)
         {
-            var email = await directory.FindEmailAsync(line.LineId, cancellationToken).ConfigureAwait(false);
-
-            if (agents.FirstOrDefault(a => string.Equals(a.Email, email, StringComparison.OrdinalIgnoreCase)) is { } agent
+            if (await staff.FindAgentAsync(line, cancellationToken).ConfigureAwait(false) is { } agent
                 && !mentioned.Contains(agent))
             {
                 mentioned.Add(agent);

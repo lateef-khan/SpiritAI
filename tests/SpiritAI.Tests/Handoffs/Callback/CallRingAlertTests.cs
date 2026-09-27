@@ -83,17 +83,22 @@ public sealed class CallRingAlertTests : IAsyncDisposable
 
     public ValueTask DisposeAsync() => _gotoServices.DisposeAsync();
 
-    private CallRingAlert Alert(ReplayingHandler chatwoot) => new(
-        new ChatwootClient(new HttpClient(chatwoot), Options.Create(new ChatwootOptions
+    private CallRingAlert Alert(ReplayingHandler chatwoot)
+    {
+        var client = new ChatwootClient(new HttpClient(chatwoot), Options.Create(new ChatwootOptions
         {
             BaseUrl = "http://chatwoot.test/",
             AccountId = 2,
             InboxIdentifier = "inbox-key",
             BotToken = "bot-token",
             ServiceToken = "service-token",
-        })),
-        _gotoServices.GetRequiredService<GoToStaffDirectory>(),
-        TestHybridCache.Create(),
-        Options.Create(new CallbackOptions()),
-        NullLogger<CallRingAlert>.Instance);
+        }));
+
+        return new(
+            client,
+            new CallStaff(client, _gotoServices.GetRequiredService<GoToStaffDirectory>(), TestHybridCache.Create()),
+            TestHybridCache.Create(),
+            Options.Create(new CallbackOptions()),
+            NullLogger<CallRingAlert>.Instance);
+    }
 }

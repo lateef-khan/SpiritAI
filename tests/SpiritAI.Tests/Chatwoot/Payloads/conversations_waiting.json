@@ -1,0 +1,138 @@
+{
+    "meta": {
+        "mine_count": 0,
+        "unassigned_count": 1,
+        "all_count": 1
+    },
+    "payload": [
+        {
+            "meta": {
+                "sender": {
+                    "additional_attributes": {},
+                    "availability_status": "offline",
+                    "email": null,
+                    "id": 1,
+                    "name": "Probe Visitor",
+                    "phone_number": "+12015550123",
+                    "blocked": false,
+                    "identifier": null,
+                    "thumbnail": "",
+                    "custom_attributes": {},
+                    "created_at": 1790367873
+                },
+                "channel": "Channel::Api",
+                "team": {
+                    "id": 3,
+                    "name": "service",
+                    "description": "Equipment already owned: repairs, parts, warranty claims, and technician visits.",
+                    "allow_auto_assign": true,
+                    "icon": "",
+                    "icon_color": "",
+                    "account_id": 1,
+                    "is_member": false
+                },
+                "hmac_verified": false
+            },
+            "id": 1,
+            "messages": [
+                {
+                    "id": 15,
+                    "content": "Spirit AI added callback",
+                    "account_id": 1,
+                    "inbox_id": 1,
+                    "conversation_id": 1,
+                    "message_type": 2,
+                    "created_at": 1790385307,
+                    "updated_at": "2026-09-26T01:15:07.716Z",
+                    "private": false,
+                    "status": "sent",
+                    "source_id": null,
+                    "content_type": "text",
+                    "content_attributes": {},
+                    "sender_type": null,
+                    "sender_id": null,
+                    "external_source_ids": {},
+                    "additional_attributes": {},
+                    "processed_message_content": "Spirit AI added callback",
+                    "sentiment": {},
+                    "conversation": {
+                        "assignee_id": null,
+                        "unread_count": 0,
+                        "last_activity_at": 1790385307,
+                        "contact_inbox": {
+                            "source_id": "249d1622-c6be-4534-bfec-8c570ae76cff"
+                        }
+                    }
+                }
+            ],
+            "account_id": 1,
+            "uuid": "5af72ffb-f934-4495-99ad-bcb4f2ac0663",
+            "additional_attributes": {},
+            "agent_last_seen_at": 1790374720,
+            "assignee_last_seen_at": 0,
+            "can_reply": true,
+            "contact_info_request": {
+                "available": false,
+                "reason": null,
+                "delivery_mode": null
+            },
+            "contact_last_seen_at": 0,
+            "custom_attributes": {
+                "visit": "first",
+                "callback_phone": "+12015550123"
+            },
+            "inbox_id": 1,
+            "labels": [
+                "sales",
+                "callback"
+            ],
+            "muted": false,
+            "snoozed_until": null,
+            "status": "open",
+            "created_at": 1790367874,
+            "updated_at": 1790385307.7926762,
+            "timestamp": 1790385307,
+            "first_reply_created_at": 0,
+            "unread_count": 0,
+            "last_non_activity_message": {
+                "id": 7,
+                "content": "📞 +1 201-555-0123 is calling now — code 1. [@service](mention://team/3/service)",
+                "account_id": 1,
+                "inbox_id": 1,
+                "conversation_id": 1,
+                "message_type": 1,
+                "created_at": 1790374720,
+                "updated_at": "2026-09-25T22:18:40.377Z",
+                "private": true,
+                "status": "sent",
+                "source_id": null,
+                "content_type": "text",
+                "content_attributes": {},
+                "sender_type": "AgentBot",
+                "sender_id": 1,
+                "external_source_ids": {},
+                "additional_attributes": {},
+                "processed_message_content": "📞 +1 201-555-0123 is calling now — code 1. [@service](mention://team/3/service)",
+                "sentiment": {},
+                "conversation": {
+                    "assignee_id": null,
+                    "unread_count": 0,
+                    "last_activity_at": 1790385307,
+                    "contact_inbox": {
+                        "source_id": "249d1622-c6be-4534-bfec-8c570ae76cff"
+                    }
+                },
+                "sender": {
+                    "id": 1,
+                    "name": "Spirit AI",
+                    "avatar_url": "",
+                    "type": "agent_bot"
+                }
+            },
+            "last_activity_at": 1790385307,
+            "priority": null,
+            "waiting_since": 1790367874,
+            "sla_policy_id": null
+        }
+    ]
+}

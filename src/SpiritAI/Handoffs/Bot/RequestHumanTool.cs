@@ -8,13 +8,12 @@ using SpiritAI.Handoffs.Model;
 namespace SpiritAI.Handoffs.Bot;
 
 /// <summary>
-/// Hands the chat of the turn under way to staff in Chatwoot: the team, the phone and
-/// email on the visitor's own contact, the contact fields, the summary as a private note, and then
-/// status <c>open</c>. What <c>RequestHuman</c> in <c>spirit.yaml</c> runs.
+/// Hands the chat of the turn under way to staff in Chatwoot.
 /// </summary>
 public sealed class RequestHumanTool(
     IConversations conversations,
     ChatwootClient chatwoot,
+    ChatwootConversationTags tags,
     ListContactFieldsTool contactFields,
     IOptions<CallbackOptions> callback,
     ILogger<RequestHumanTool> logger)
@@ -55,9 +54,17 @@ public sealed class RequestHumanTool(
 
         var reach = CheckContactTool.Check(request.Phone, request.Email);
 
-        var phoneUpdate = reach.Phone is { } phone
-            ? await SetAsync(contactId, "phone_number", phone, cancellationToken).ConfigureAwait(false)
-            : null;
+        if (reach.Phone is { } phone)
+        {
+            await TryAsync(
+                    "queueing the call back",
+                    async () =>
+                    {
+                        await tags.SetFieldAsync(code, CallbackQueue.PhoneField, phone, cancellationToken).ConfigureAwait(false);
+                        await tags.AddLabelAsync(code, CallbackQueue.Label, cancellationToken).ConfigureAwait(false);
+                    })
+                .ConfigureAwait(false);
+        }
 
         var emailUpdate = reach.Email is { } email
             ? await SetAsync(contactId, "email", email, cancellationToken).ConfigureAwait(false)
@@ -66,7 +73,7 @@ public sealed class RequestHumanTool(
         await SetFieldsAsync(contactId, request.ContactFields, cancellationToken).ConfigureAwait(false);
 
         var note = HandoffNote.Write(
-            HandoffNote.Line(request.Phone, reach.Phone is { } e164 ? VisitorPhone.Display(e164) : null, phoneUpdate),
+            HandoffNote.Line(request.Phone, reach.Phone is { } e164 ? VisitorPhone.Display(e164) : null),
             HandoffNote.Line(request.Email, reach.Email, emailUpdate),
             request.Summary);
 

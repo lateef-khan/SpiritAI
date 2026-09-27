@@ -12,11 +12,11 @@ namespace SpiritAI.Chatwoot;
 /// </summary>
 public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> options)
 {
-    private const string TokenHeader = "api_access_token";
+    private readonly ChatwootApi api = new(http, options);
 
-    private ChatwootOptions Settings => options.Value;
+    private ChatwootOptions Settings => api.Settings;
 
-    private string Account => $"{Settings.BaseUrl.TrimEnd('/')}/api/v1/accounts/{Settings.AccountId}";
+    private string Account => api.Account;
 
     /// <summary>Posts one message into a conversation.</summary>
     /// <param name="conversationId">The conversation's display id.</param>
@@ -30,10 +30,10 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     {
         var body = new JsonObject { ["content"] = content, ["message_type"] = fromVisitor ? "incoming" : "outgoing" };
 
-        using var response = await SendAsync(HttpMethod.Post, $"{ConversationUrl(conversationId)}/messages", body, cancellationToken)
+        using var response = await api.SendAsync(HttpMethod.Post, $"{ConversationUrl(conversationId)}/messages", body, cancellationToken)
             .ConfigureAwait(false);
 
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Posts a private note, which only staff see.</summary>
@@ -44,10 +44,10 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     {
         var body = new JsonObject { ["content"] = content, ["message_type"] = "outgoing", ["private"] = true };
 
-        using var response = await SendAsync(HttpMethod.Post, $"{ConversationUrl(conversationId)}/messages", body, cancellationToken)
+        using var response = await api.SendAsync(HttpMethod.Post, $"{ConversationUrl(conversationId)}/messages", body, cancellationToken)
             .ConfigureAwait(false);
 
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -58,11 +58,11 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     /// <param name="cancellationToken">Cancels the call.</param>
     public async Task HandToStaffAsync(int conversationId, CancellationToken cancellationToken)
     {
-        using var response = await SendAsync(
+        using var response = await api.SendAsync(
                 HttpMethod.Post, $"{ConversationUrl(conversationId)}/toggle_status", new JsonObject { ["status"] = "open" }, cancellationToken)
             .ConfigureAwait(false);
 
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Reads one conversation as the bot.</summary>
@@ -71,10 +71,10 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     /// <returns>Its ids, its status, and its contact.</returns>
     public async Task<ChatwootConversation> GetConversationAsync(int conversationId, CancellationToken cancellationToken)
     {
-        using var response = await SendAsync(HttpMethod.Get, ConversationUrl(conversationId), body: null, cancellationToken)
+        using var response = await api.SendAsync(HttpMethod.Get, ConversationUrl(conversationId), body: null, cancellationToken)
             .ConfigureAwait(false);
 
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
 
         var shown = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
 
@@ -91,11 +91,24 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     /// <param name="cancellationToken">Cancels the call.</param>
     public async Task AssignTeamAsync(int conversationId, int teamId, CancellationToken cancellationToken)
     {
-        using var response = await SendAsync(
+        using var response = await api.SendAsync(
                 HttpMethod.Post, $"{ConversationUrl(conversationId)}/assignments", new JsonObject { ["team_id"] = teamId }, cancellationToken)
             .ConfigureAwait(false);
 
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Gives a conversation to one member of staff, as the bot.</summary>
+    /// <param name="conversationId">The conversation's display id.</param>
+    /// <param name="agentId">The agent, from <see cref="ListAgentsAsync"/>.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    public async Task AssignAgentAsync(int conversationId, int agentId, CancellationToken cancellationToken)
+    {
+        using var response = await api.SendAsync(
+                HttpMethod.Post, $"{ConversationUrl(conversationId)}/assignments", new JsonObject { ["assignee_id"] = agentId }, cancellationToken)
+            .ConfigureAwait(false);
+
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Every team in the account, as the service user: the bot token cannot list them.</summary>
@@ -103,7 +116,7 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     /// <returns>Each team's id, name, and description.</returns>
     public async Task<IReadOnlyList<ChatwootTeam>> ListTeamsAsync(CancellationToken cancellationToken)
     {
-        var teams = await GetAsServiceAsync($"{Account}/teams", cancellationToken).ConfigureAwait(false);
+        var teams = await api.GetAsServiceAsync($"{Account}/teams", cancellationToken).ConfigureAwait(false);
 
         return [.. teams.EnumerateArray().Select(ReadTeam)];
     }
@@ -113,7 +126,7 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     /// <returns>Each field's key, name, type, and description.</returns>
     public async Task<IReadOnlyList<ChatwootContactField>> ListContactFieldsAsync(CancellationToken cancellationToken)
     {
-        var fields = await GetAsServiceAsync($"{Account}/custom_attribute_definitions?attribute_model=1", cancellationToken)
+        var fields = await api.GetAsServiceAsync($"{Account}/custom_attribute_definitions?attribute_model=1", cancellationToken)
             .ConfigureAwait(false);
 
         return [.. fields.EnumerateArray().Select(f => new ChatwootContactField(
@@ -128,7 +141,7 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     /// <returns>Each agent's id, name, and email.</returns>
     public async Task<IReadOnlyList<ChatwootAgent>> ListAgentsAsync(CancellationToken cancellationToken)
     {
-        var agents = await GetAsServiceAsync($"{Account}/agents", cancellationToken).ConfigureAwait(false);
+        var agents = await api.GetAsServiceAsync($"{Account}/agents", cancellationToken).ConfigureAwait(false);
 
         return [.. agents.EnumerateArray().Select(a => new ChatwootAgent(
             a.GetProperty("id").GetInt32(),
@@ -145,7 +158,7 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     /// <returns>The contact ids; empty when nobody has the number.</returns>
     public async Task<IReadOnlyList<int>> FindContactsByPhoneAsync(string e164, CancellationToken cancellationToken)
     {
-        var found = await GetAsServiceAsync($"{Account}/contacts/search?q={Uri.EscapeDataString(e164)}", cancellationToken)
+        var found = await api.GetAsServiceAsync($"{Account}/contacts/search?q={Uri.EscapeDataString(e164)}", cancellationToken)
             .ConfigureAwait(false);
 
         return [.. found.GetProperty("payload").EnumerateArray()
@@ -162,7 +175,7 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     /// <returns>Up to 25 conversations, newest first.</returns>
     public async Task<IReadOnlyList<ChatwootContactConversation>> ListContactConversationsAsync(int contactId, CancellationToken cancellationToken)
     {
-        var listed = await GetAsServiceAsync(
+        var listed = await api.GetAsServiceAsync(
                 string.Create(CultureInfo.InvariantCulture, $"{Account}/contacts/{contactId}/conversations"), cancellationToken)
             .ConfigureAwait(false);
 
@@ -235,7 +248,7 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
             return null;
         }
 
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
 
         var messages = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
 
@@ -250,7 +263,7 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     {
         using var response = await http.GetAsync(ContactUrl(sourceId), cancellationToken).ConfigureAwait(false);
 
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
 
         var contact = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
 
@@ -269,7 +282,7 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
             .GetAsync($"{Settings.BaseUrl.TrimEnd('/')}/public/api/v1/inboxes/{Settings.InboxIdentifier}", cancellationToken)
             .ConfigureAwait(false);
 
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
 
         var inbox = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
 
@@ -284,26 +297,15 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
         team.GetProperty("name").GetString() ?? string.Empty,
         team.GetProperty("description").GetString() ?? string.Empty);
 
-    private string ConversationUrl(int conversationId)
-        => $"{Account}/conversations/{conversationId.ToString(CultureInfo.InvariantCulture)}";
+    private string ConversationUrl(int conversationId) => api.ConversationUrl(conversationId);
 
     private string ContactUrl(string sourceId)
         => $"{Settings.BaseUrl.TrimEnd('/')}/public/api/v1/inboxes/{Settings.InboxIdentifier}/contacts/{Uri.EscapeDataString(sourceId)}";
 
-    private async Task<JsonElement> GetAsServiceAsync(string url, CancellationToken cancellationToken)
-    {
-        using var response = await SendAsync(HttpMethod.Get, url, body: null, cancellationToken, Settings.ServiceToken)
-            .ConfigureAwait(false);
-
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
-
-        return await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
-    }
-
     /// <summary>Chatwoot answers a refused change with <c>422</c> and <c>{"message": …}</c>.</summary>
     private async Task<ChatwootContactUpdate> UpdateContactAsync(int contactId, JsonObject body, CancellationToken cancellationToken)
     {
-        using var response = await SendAsync(
+        using var response = await api.SendAsync(
                 HttpMethod.Patch,
                 string.Create(CultureInfo.InvariantCulture, $"{Account}/contacts/{contactId}"),
                 body,
@@ -318,39 +320,8 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
             return new ChatwootContactUpdate(refused.GetProperty("message").GetString() ?? "refused");
         }
 
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
 
         return ChatwootContactUpdate.Saved;
-    }
-
-    /// <summary>Sends as the bot, unless another <paramref name="token"/> is given.</summary>
-    private async Task<HttpResponseMessage> SendAsync(
-        HttpMethod method, string url, JsonObject? body, CancellationToken cancellationToken, string? token = null)
-    {
-        using var request = new HttpRequestMessage(method, url);
-        request.Headers.Add(TokenHeader, token ?? Settings.BotToken);
-
-        if (body is not null)
-        {
-            request.Content = JsonContent.Create(body);
-        }
-
-        return await http.SendAsync(request, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>Throws with Chatwoot's own words, which name what it refused.</summary>
-    private static async Task EnsureSuccessAsync(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        if (response.IsSuccessStatusCode)
-        {
-            return;
-        }
-
-        var said = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-
-        throw new HttpRequestException(
-            $"Chatwoot answered {(int)response.StatusCode} to {response.RequestMessage?.Method} {response.RequestMessage?.RequestUri?.AbsolutePath}: {said}",
-            inner: null,
-            response.StatusCode);
     }
 }

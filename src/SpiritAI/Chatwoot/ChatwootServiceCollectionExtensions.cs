@@ -25,6 +25,8 @@ public static class ChatwootServiceCollectionExtensions
 
         services.AddHttpClient<ChatwootClient>();
 
+        services.AddHttpClient<ChatwootConversationTags>();
+
         services.AddScoped<ChatwootCatchUp>();
 
         services.AddScoped<ChatwootAnswer>();
