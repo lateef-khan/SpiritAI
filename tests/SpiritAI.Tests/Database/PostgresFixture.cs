@@ -15,7 +15,7 @@ using Xunit;
 namespace SpiritAI.Tests.Database;
 
 /// <summary>
-/// The throwaway PostgreSQL <c>just db-up</c> provides, with both schemas in place.
+/// The throwaway PostgreSQL <c>just db-up</c> provides, with the agentcore, neon_auth, and spirit schemas in place.
 /// </summary>
 public sealed class PostgresFixture : IAsyncLifetime
 {
@@ -42,6 +42,13 @@ public sealed class PostgresFixture : IAsyncLifetime
         _dataSource = NpgsqlDataSource.Create(_connectionString);
 
         await PostgresSchema.ApplyAsync(_dataSource, TestContext.Current.CancellationToken);
+
+        // Neon creates neon_auth."user"; the throwaway database needs the copy before the migrations.
+        await using (var neonAuth = _dataSource.CreateCommand(
+            await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Database", "neon-auth.sql"), TestContext.Current.CancellationToken)))
+        {
+            await neonAuth.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        }
 
         await using var database = Open();
         await database.Database.MigrateAsync(TestContext.Current.CancellationToken);

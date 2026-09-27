@@ -26,15 +26,17 @@ public interface IThreadSessions
 /// <summary>The two answers, from the session table of the one entry this host serves.</summary>
 internal sealed class AgentCoreThreadSessions(IConversationSessionRegistry registry) : IThreadSessions
 {
-    private readonly IConversationSessions sessions = registry.ForSessions(AgentCoreExtensions.Entry);
-
     /// <inheritdoc />
     public async ValueTask<bool> IsLiveAsync(string conversationId, CancellationToken cancellationToken = default)
-        => await sessions.TryGetAsync(conversationId, cancellationToken).ConfigureAwait(false) is not null;
+        => await registry.Sessions
+            .TryGetAsync(AgentCoreExtensions.Entry, conversationId, cancellationToken)
+            .ConfigureAwait(false) is not null;
 
     /// <inheritdoc />
     public async ValueTask ReopenAsync(string conversationId, CancellationToken cancellationToken = default)
-        => await sessions.OpenAsync(conversationId, cancellationToken).ConfigureAwait(false);
+        => await registry.Sessions
+            .GetOrOpenAsync(AgentCoreExtensions.Entry, conversationId, state: null, cancellationToken)
+            .ConfigureAwait(false);
 }
 
 /// <summary>Registers the seam the turn's door reads.</summary>

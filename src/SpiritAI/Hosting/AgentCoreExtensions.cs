@@ -69,8 +69,6 @@ public static class AgentCoreExtensions
             .AddOptions<AgentCoreOptions>()
             .Configure<IServiceProvider, IHostEnvironment>(Configure);
 
-        builder.Services.AddConversationSweep();
-
         return builder;
     }
 

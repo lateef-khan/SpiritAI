@@ -11,6 +11,11 @@ password := "spirit"
 database := "spirit"
 pg_conn := "Host=localhost;Port=" + port + ";Database=" + database + ";Username=" + user + ";Password=" + password
 
+# Neon creates neon_auth."user"; the local database gets this copy so the spirit.user_role key has
+# a table to point at, then a few made-up users.
+neon_auth_sql := "SpiritAI/Database/Local/neon-auth.sql"
+local_seed_sql := "SpiritAI/Database/Local/local-seed.sql"
+
 # Dashed, not POSTGRES_CONNECTION_STRING: secrets/dev.env sets that one to Neon, and AgentCore reads
 # this dashed setting before the capitals, so the local database wins.
 pg_secret := "AgentCore__Secrets__postgres-connection-string"
@@ -38,12 +43,14 @@ spirit_urls := if docker_host_ip == "" { "http://localhost:5299" } else { "http:
 default:
     @just --list
 
-# Start PostgreSQL and wait until it answers.
+# Start PostgreSQL, wait until it answers, and add a local copy of Neon Auth's users.
 db-up:
     #!/usr/bin/env bash
     set -euo pipefail
 
     if [ -n "$(docker ps --quiet --filter 'name=^{{container}}$')" ]; then
+        docker exec --interactive {{container}} psql --quiet -v ON_ERROR_STOP=1 \
+            --username={{user}} --dbname={{database}} < <(cat {{neon_auth_sql}} {{local_seed_sql}})
         echo "{{container}} is already up on port {{port}}."
         exit 0
     fi
@@ -57,8 +64,11 @@ db-up:
         --publish {{port}}:5432 \
         {{image}} >/dev/null
 
-    for _ in $(seq 1 60); do
-        if docker exec {{container}} pg_isready --username={{user}} --dbname={{database}} >/dev/null 2>&1; then
+    for _ in $(seq 1 180); do
+        # Over TCP: the image's first-boot server listens on the socket alone, then restarts.
+        if docker exec {{container}} pg_isready --host=127.0.0.1 --username={{user}} --dbname={{database}} >/dev/null 2>&1; then
+            docker exec --interactive {{container}} psql --quiet -v ON_ERROR_STOP=1 \
+                --username={{user}} --dbname={{database}} < <(cat {{neon_auth_sql}} {{local_seed_sql}})
             echo "{{container}} is ready on port {{port}}."
             exit 0
         fi
@@ -72,6 +82,7 @@ db-up:
 db-url:
     @echo '{{pg_conn}}'
 
+# Run it after `just spirit run` has migrated the local database once. It only reads Neon.
 # Open psql.
 db-shell:
     docker exec --interactive --tty {{container}} psql --username={{user}} --dbname={{database}}
