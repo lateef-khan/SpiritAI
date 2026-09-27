@@ -71,7 +71,8 @@ internal sealed class NeonAuthTestKit
         DateTimeOffset? notBefore = null,
         string algorithm = "EdDSA",
         string keyId = KeyId,
-        bool corruptSignature = false)
+        bool corruptSignature = false,
+        bool? banned = null)
     {
         var header = new Dictionary<string, object?> { ["alg"] = algorithm, ["typ"] = "JWT", ["kid"] = keyId };
 
@@ -83,6 +84,11 @@ internal sealed class NeonAuthTestKit
             ["email"] = email,
             ["exp"] = (expires ?? Clock.GetUtcNow().AddMinutes(15)).ToUnixTimeSeconds(),
         };
+
+        if (banned is { } isBanned)
+        {
+            payload["banned"] = isBanned;
+        }
 
         if (notBefore is { } nbf)
         {

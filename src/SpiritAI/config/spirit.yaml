@@ -189,6 +189,14 @@ agents:
 entries:
   main:
     agent: spirit
+  dealer:
+    agent: spirit
+  staff:
+    agent: spirit
+  manager:
+    agent: spirit
+  admin:
+    agent: spirit
 
 providers:
   llm:

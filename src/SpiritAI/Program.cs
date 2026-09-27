@@ -1,4 +1,5 @@
 using AgentCore.Hosting;
+using SpiritAI.Access;
 using SpiritAI.Auth;
 using SpiritAI.Caching;
 using SpiritAI.Chatwoot;
@@ -23,6 +24,8 @@ builder.Services.AddPublicChat(builder.Configuration);
 builder.Services.AddThreadSessions();
 
 builder.Services.AddSpiritDatabase(builder.Configuration);
+
+builder.Services.AddAccess();
 
 builder.Services.AddChatwoot(builder.Configuration);
 
