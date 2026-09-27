@@ -23,6 +23,7 @@ Edit the file, then run the app again. Nothing else needs a copy.
 | Chatwoot | `CHATWOOT_*` | Its recipes write them, without the prefix, into `chatwoot/.secrets.env` for compose |
 | Twenty | `TWENTY_*` | The same, into `twenty/.secrets.env` |
 | Cloudflare Tunnel | `CLOUDFLARE_*` | The same, into `cloudflared/.secrets.env`, from `prod.env` only |
+| PostgreSQL | `POSTGRES_SERVER_*` | The same, into `postgres/.secrets.env`. `just postgres setup` also reads `CHATWOOT_DATABASE_URL` and `TWENTY_PG_DATABASE_URL` |
 
 An app's `.env` keeps its settings (ports, addresses, email sender). Secrets never go there.
 

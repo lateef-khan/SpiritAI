@@ -48,7 +48,7 @@ db-up:
         exit 0
     fi
 
-    docker rm --force {{container}} >/dev/null 2>&1 || true
+    docker rm --force --volumes {{container}} >/dev/null 2>&1 || true
 
     docker run --detach --name {{container}} \
         --env POSTGRES_USER={{user}} \
@@ -82,7 +82,7 @@ blob-up:
     set -euo pipefail
 
     if [ -z "$(docker ps --quiet --filter 'name=^{{blob_container}}$')" ]; then
-        docker rm --force {{blob_container}} >/dev/null 2>&1 || true
+        docker rm --force --volumes {{blob_container}} >/dev/null 2>&1 || true
 
         docker run --detach --name {{blob_container}} \
             --env MINIO_ROOT_USER={{blob_key}} \
@@ -147,5 +147,5 @@ run: db-up blob-up local-config
 
 # Remove PostgreSQL and MinIO, and everything in them.
 down:
-    @docker rm --force {{container}} {{blob_container}} >/dev/null 2>&1 || true
+    @docker rm --force --volumes {{container}} {{blob_container}} >/dev/null 2>&1 || true
     @echo "{{container}} and {{blob_container}} are gone."

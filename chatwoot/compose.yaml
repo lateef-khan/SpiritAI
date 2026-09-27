@@ -1,4 +1,8 @@
 # Self-hosted Chatwoot for local development. Settings come from chatwoot/.env; `just env`
+# makes it from .env.example. Secrets come from .secrets.env, which every recipe writes from the
+# CHATWOOT_* keys in secrets/<env>.env. The database is Chatwoot's own on the shared server in
+# postgres/, which `just up` starts.
+
 name: spirit-chatwoot
 
 x-chatwoot: &chatwoot
@@ -13,16 +17,18 @@ x-chatwoot: &chatwoot
     RAILS_ENV: production
     INSTALLATION_ENV: docker
     PRESENCE_DURATION: "60"
+    # The same default as postgres/justfile.
     DATABASE_URL: ${DATABASE_URL:-postgres://chatwoot:chatwoot@postgres:5432/chatwoot}
   volumes:
     - storage:/app/storage
+  # db reaches the shared server as postgres:5432. default keeps redis in reach.
+  networks:
+    default:
+    db:
   # Lets webhooks reach Spirit running on the host in local dev.
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on:
-    postgres:
-      condition: service_healthy
-      required: false
     redis:
       condition: service_healthy
 
@@ -42,6 +48,7 @@ services:
     # The tunnel reaches web on the shared network as http://chatwoot:3000.
     networks:
       default:
+      db:
       edge:
         aliases: [chatwoot]
     depends_on:
@@ -55,21 +62,6 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-    restart: unless-stopped
-
-  # Only when DATABASE_URL is empty. pgvector, because Chatwoot's migrations create the
-  # vector extension.
-  postgres:
-    image: pgvector/pgvector:pg16
-    profiles: [localdb]
-    environment:
-      POSTGRES_DB: chatwoot
-      POSTGRES_USER: chatwoot
-      POSTGRES_PASSWORD: chatwoot
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 2s
-      retries: 30
     restart: unless-stopped
 
   redis:
@@ -100,3 +92,7 @@ networks:
   edge:
     external: true
     name: spirit-edge
+  # Made by `just postgres up` or `prod-up`.
+  db:
+    external: true
+    name: spirit-db

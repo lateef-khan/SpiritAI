@@ -1,9 +1,8 @@
 # Twenty
 
-Self-hosted [Twenty](https://github.com/twentyhq/twenty) CRM. We run the official image,
-pinned in `compose.yaml`. Our fork of its source goes in `source/`, and our extension apps go
-in `apps/`. Until `compose.yaml` builds from `source/`, the running server is the official
-image.
+Self-hosted [Twenty](https://github.com/twentyhq/twenty) CRM. We run our own image, built from
+our fork of Twenty's source in `source/`. GitHub builds it and stores it on ghcr.io, and
+`compose.yaml` pins its tag. Our extension apps go in `apps/`.
 
 | Folder | Holds |
 | --- | --- |
@@ -24,9 +23,13 @@ just twenty down    # stops and deletes everything local
 - Twenty: http://localhost:53001 (the first visit asks you to make the admin user)
 - Emails: `EMAIL_DRIVER=LOGGER` prints them in `just twenty logs`
 
-Secrets are the `TWENTY_*` keys in `secrets/dev.env` (`just secrets init dev`). With
-`TWENTY_PG_DATABASE_URL` empty, a throwaway postgres starts too. Nothing is kept: postgres,
-redis, and uploads are deleted by `down`, so every `up` starts clean.
+`just twenty up source` builds the image from `source/` on your PC instead of pulling it. Use
+it to check a change before a release. It takes 10 to 20 minutes and about 8 GB of RAM. For
+daily coding, run Twenty's own dev mode in `source/` instead.
+
+Secrets are the `TWENTY_*` keys in `secrets/dev.env` (`just secrets init dev`). `up` starts
+the shared database server in `postgres/` first, the same as production. Nothing is kept: `down`
+deletes redis, uploads, and Twenty's database, so every `up` starts clean.
 
 ## Production (company server)
 
@@ -35,7 +38,7 @@ redis, and uploads are deleted by `down`, so every `up` starts clean.
 
 | | Local dev | Production |
 | --- | --- | --- |
-| Postgres | Throwaway container | `TWENTY_PG_DATABASE_URL` (Neon), required |
+| Postgres | Throwaway container | Database `twenty` on the shared server in `postgres/`, required |
 | Redis | Memory only | Append-only file on the `redis` volume, 512 MB cap, 1 GB container cap, `noeviction` |
 | Uploads | Deleted by `down` | S3-compatible bucket (Backblaze B2), `STORAGE_S3_*`, required |
 | Email | Printed in the logs | `EMAIL_*` in `.env` (Resend example in `.env.example`) |
@@ -48,12 +51,12 @@ lost job.
 First setup on the server:
 
 1. Copy this folder to the server. Install Docker and `just`. Give Twenty at least 2 GB of RAM.
-2. On Neon, make a database of its own: `create database twenty;`. Twenty makes many schemas
-   (`core`, one `workspace_*` per workspace), so it does not share SpiritAI's database.
+2. Start the database server: `just postgres prod-up` (see `postgres/README.md`). It makes Twenty's
+   own database, `twenty`, from `TWENTY_PG_DATABASE_URL`. Twenty makes many schemas in it
+   (`core`, one `workspace_*` per workspace).
 3. `just env`, then edit `.env`: `SERVER_URL` (the public HTTPS address), the `STORAGE_S3_*`
-   bucket place, and the `EMAIL_*` values. In `secrets/prod.env`: `TWENTY_PG_DATABASE_URL`
-   (Neon's direct host, not `-pooler`), the `TWENTY_STORAGE_S3_*` keys, and
-   `TWENTY_EMAIL_SMTP_PASSWORD`.
+   bucket place, and the `EMAIL_*` values. In `secrets/prod.env`: the `TWENTY_STORAGE_S3_*` keys
+   and `TWENTY_EMAIL_SMTP_PASSWORD`.
 4. Keep a copy of `TWENTY_ENCRYPTION_KEY` outside the server. Without it, the secrets in the
    database cannot be read.
 5. `just prod-up`.
@@ -75,19 +78,31 @@ Twenty to run, and Twenty does not need the tunnel.
 1. In the tunnel's **Public Hostname** tab: `crm.<domain>` → `http://twenty:3000`.
 2. Put `crm.<domain>` behind Cloudflare Access. It is staff only.
 
+## Release our image
+
+The server never builds Twenty. It pulls a finished image from ghcr.io.
+
+1. Commit and push our change in `source/` (branch `spirit`).
+2. `just twenty release v2.41.0-spirit.2`. This tags the commit. A GitHub Action on the fork
+   (`source/.github/workflows/spirit-image.yaml`) builds `ghcr.io/lateef-khan/twenty` with
+   the same tag. It takes 20 to 40 minutes.
+3. Set the new tag in `compose.yaml` (`x-twenty` → `image`).
+4. Local: `just twenty down && just twenty up`. Commit `twenty/source` and `compose.yaml`.
+5. Production: back up first (`just postgres backup`), then `just prod-update`.
+
+A tag is `<Twenty version>-spirit.<n>`. Count `n` up for each release on the same Twenty
+version. Never move a tag. To roll back, set the old tag and run `just prod-update`.
+
 ## Update Twenty
 
 Twenty releases often. Use a tag that has a GitHub release, not only a Docker tag.
 
 1. Read the release notes between the old and new tag. Since v1.23 you can skip versions.
-2. Change the tag in `compose.yaml` (`x-twenty` → `image`).
-3. Production: back up first. On Neon, make a branch; it is the backup.
-4. Local: `just twenty down && just twenty up`. Production: `just prod-update`.
+2. `just twenty source-update v2.42.0` merges it into `spirit` and prints the next steps.
+3. Release it as `v2.42.0-spirit.1`, the same as [any release](#release-our-image).
 
-The server runs the schema upgrade each time it starts. Test each update against a Neon
-branch before production.
-
-When `source/` exists, update it to the same tag: `just twenty source-update <tag>`.
+The server runs the schema upgrade each time it starts. Run `just postgres backup` before each
+update in production.
 
 ## Source code
 
@@ -104,6 +119,7 @@ AGPL code, and do not copy or unlock the enterprise code.
 | `source-add <fork-url>` | One time. Makes `spirit` from the tag in `compose.yaml` and pushes it to the fork |
 | `source-init` | On a fresh clone of SpiritAI: downloads `source/` |
 | `source-update <tag>` | Merges a released tag, e.g. `v2.42.0`, into `spirit`. Prints the next steps |
+| `release <tag>` | Tags the pushed `spirit` commit, e.g. `v2.41.0-spirit.2`. GitHub builds the image |
 
 First setup:
 
@@ -123,6 +139,8 @@ first time something needs them.
 | What | Where |
 | --- | --- |
 | Version | `compose.yaml`, `x-twenty` → `image` |
+| How the image is built | `source/.github/workflows/spirit-image.yaml` |
+| Build from source locally | `compose.source.yaml` |
 | Settings | `.env` (git-ignored), `.env.example` (documented defaults) |
 | Production differences | `compose.prod.yaml` |
 | Settings that are not in `.env` | Twenty's admin panel (`IS_CONFIG_VARIABLES_IN_DB_ENABLED`, on by default) |

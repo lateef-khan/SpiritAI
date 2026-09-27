@@ -19,7 +19,8 @@ fi
 umask 077
 {
     echo "# Written by secrets/export.sh from secrets/$env.env. Edit that file, not this one."
-    grep -E "^${prefix}[A-Z0-9_]+=.+" "$source_file" | while IFS= read -r line; do
+    # An app with every key empty is fine: grep finds nothing, and the file has only the header.
+    { grep -E "^${prefix}[A-Z0-9_]+=.+" "$source_file" || true; } | while IFS= read -r line; do
         key="${line%%=*}"
         for skipped in "$@"; do
             [ "$key" = "$skipped" ] && continue 2

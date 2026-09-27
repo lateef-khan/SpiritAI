@@ -17,9 +17,9 @@ just chatwoot down    # stops and deletes everything local
 - Chatwoot: http://localhost:53000 (the first visit asks you to make the admin user)
 - Caught emails: http://localhost:58025
 
-Secrets are the `CHATWOOT_*` keys in `secrets/dev.env` (`just secrets init dev`). With
-`CHATWOOT_DATABASE_URL` empty, a throwaway postgres starts too. Nothing is kept: postgres,
-redis, and uploads are deleted by `down`, so every `up` starts clean.
+Secrets are the `CHATWOOT_*` keys in `secrets/dev.env` (`just secrets init dev`). `up` starts
+the shared database server in `postgres/` first, the same as production. Nothing is kept: `down`
+deletes redis, uploads, and Chatwoot's database, so every `up` starts clean.
 
 Other recipes: `logs`, `console`.
 
@@ -30,7 +30,7 @@ Other recipes: `logs`, `console`.
 
 | | Local dev | Production |
 | --- | --- | --- |
-| Postgres | Throwaway container | `DATABASE_URL` (Neon), required |
+| Postgres | Throwaway container | Database `chatwoot` on the shared server in `postgres/`, required |
 | Redis | Memory only | Append-only file on the `redis` volume, 512 MB cap, `noeviction` |
 | Uploads | Deleted by `down` | S3-compatible bucket (Backblaze B2), `STORAGE_*`, required |
 | Email | Mailpit | `SMTP_*` in `.env` (Resend example in `.env.example`) |
@@ -41,10 +41,12 @@ First setup on the server:
 1. Copy this folder to the server. Install Docker and `just`.
 2. `just env`, then edit `.env`: `FRONTEND_URL` (the public HTTPS address), the `STORAGE_*`
    bucket place, and the `SMTP_*` and `MAILER_SENDER_EMAIL` values.
-   Set `SAFE_FETCH_ALLOW_PRIVATE_NETWORK=false`. In `secrets/prod.env`: `CHATWOOT_DATABASE_URL`
-   (Neon's direct host, not `-pooler`), the `CHATWOOT_STORAGE_*` keys, and `CHATWOOT_SMTP_PASSWORD`.
-3. `just prod-up`.
-4. In `secrets/prod.env`, set `CHATWOOT_ADMIN_TOKEN`, `Chatwoot__AccountId`,
+   Set `SAFE_FETCH_ALLOW_PRIVATE_NETWORK=false`. In `secrets/prod.env`: the `CHATWOOT_STORAGE_*`
+   keys and `CHATWOOT_SMTP_PASSWORD`.
+3. Start the database server: `just postgres prod-up` (see `postgres/README.md`). It makes Chatwoot's
+   database from `CHATWOOT_DATABASE_URL`.
+4. `just prod-up`.
+5. In `secrets/prod.env`, set `CHATWOOT_ADMIN_TOKEN`, `Chatwoot__AccountId`,
    `Chatwoot__BaseUrl=https://desk.<domain>`, and `Chatwoot__ServiceToken`. Then `just setup prod`.
    It writes the inbox identifier and the bot token into the same file.
 
@@ -63,7 +65,8 @@ door; see `cloudflared/README.md`.
 
 1. Read the release notes between the old and new tag.
 2. Change the tag in `Dockerfile`.
-3. Local: `just chatwoot down && just chatwoot up`. Production: `just prod-update`.
+3. Local: `just chatwoot down && just chatwoot up`. Production: `just postgres backup`, then
+   `just prod-update`.
 4. `just check-contact-guard <inbox identifier>` (add the public URL on production). It must say OK.
    If Chatwoot will not start and names `spirit_public_contact_guard.rb`, the guard needs a fix.
 
@@ -89,11 +92,28 @@ door; see `cloudflared/README.md`.
 - **The out-of-office message stays empty.** The handoff skill tells a person what happens
   while the office is closed. Chatwoot would post its own message as well.
 
-## Tables in the public schema
+## Staff and push popups
 
-Chatwoot puts its tables in the default `public` schema. It shares the Neon database with
-SpiritAI, whose tables are in `agentcore`, `neon_auth`, and `spirit`. Test each version update
-against a Neon branch before production.
+A GoTo ring posts a note that mentions the member of staff, or their team. Chatwoot tells a
+mentioned user only when that user is an administrator or a member of the Spirit inbox. `just setup`
+adds only the service user. Add every member of staff to the inbox (Settings → Inboxes →
+Spirit Chat/Phone → Collaborators) and to their team (Settings → Teams).
+
+The popup is Chatwoot's browser push. Each member of staff turns it on one time:
+see [staff-call-alerts.md](staff-call-alerts.md).
+
+Push needs VAPID keys (the key pair that signs each push). Chatwoot makes them on the first page
+load and keeps them in the database, in `installation_configs` (`VAPID_KEYS`). The browsers'
+push subscriptions are in the same database (`notification_subscriptions`). A redeploy keeps
+both. `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` are read only when the row is missing, which
+means a new database, which has no subscriptions either. So we do not set them.
+
+## Its own database
+
+Chatwoot has a database of its own, `chatwoot`, on the PostgreSQL server in `postgres/`. It
+shares the server with Twenty, not the database. Its tables are in the default `public` schema.
+Run `just postgres backup` before each version update: the update changes the schema when
+Chatwoot starts.
 
 ## The public contact guard
 

@@ -1,6 +1,6 @@
 # Production layer on top of compose.yaml. Use it through `just prod-*`, never alone.
-# Differences from local dev: the database and the S3 bucket are required, redis is kept on
-# disk with a memory cap, there is no local postgres or mailpit, and no port on the host.
+# Differences from local dev: the database URL and the S3 bucket are required, redis is kept on
+# disk with a memory cap, there is no mailpit, and no port on the host.
 
 name: spirit-chatwoot-prod
 

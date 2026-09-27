@@ -1,19 +1,5 @@
 #!/usr/bin/env bash
-# Makes or updates the Spirit API inbox, the agent bot, and the teams, then writes the inbox's
-# identifier and the bot's token into secrets/<env>.env for Spirit.
-#
-#   setup/spirit-inbox.sh [dev|prod]
-#
-# Reads from secrets/<env>.env:
-#   CHATWOOT_ADMIN_TOKEN    an administrator's access token (Profile settings > Access token)
-#   Chatwoot__BaseUrl       Chatwoot's address, such as https://desk.<domain>
-#   Chatwoot__AccountId     the account id from the dashboard URL (/app/accounts/<id>/...)
-#   Chatwoot__ServiceToken  optional: the access token of a plain agent. Spirit lists teams and
-#                           contact fields as it, saves a visitor's phone and email with it, and
-#                           finds a caller's conversation with it. The script adds it to the inbox.
-#                           Make it once per server in the Super Admin console (/super_admin):
-#                           Users > New user, confirmed, then Add account user as an agent. Its
-#                           page shows the token. Without it, Spirit cannot list teams or save the phone.
+
 set -euo pipefail
 
 env="${1:-dev}"
@@ -115,10 +101,46 @@ sales	Buying new equipment: prices, models, quotes, orders, and finding a dealer
 service	Equipment already owned: repairs, parts, warranty claims, and technician visits.
 TEAMS
 
+# A handoff with a phone number puts the number in the conversation field callback_phone and the
+# label callback on the conversation. When staff dial that number, Spirit assigns the conversation
+# to them; the label stays until staff resolve it, because GoTo cannot tell a person from a
+# voicemail. Chatwoot drops a value for a field it does not define. Match these to CallbackQueue.cs.
+if call GET /labels | jq -e 'any(.payload[]; .title == "callback")' >/dev/null; then
+    echo "Found the label 'callback'." >&2
+else
+    call POST /labels '{"title": "callback", "description": "Waits for staff to call the visitor back.", "color": "#D97706", "show_on_sidebar": true}' >/dev/null
+    echo "Made the label 'callback'." >&2
+fi
+
+if call GET "/custom_attribute_definitions?attribute_model=0" | jq -e 'any(.[]; .attribute_key == "callback_phone")' >/dev/null; then
+    echo "Found the conversation field 'callback_phone'." >&2
+else
+    call POST /custom_attribute_definitions '{"attribute_display_name": "Callback phone", "attribute_key": "callback_phone", "attribute_model": 0, "attribute_display_type": 0, "attribute_description": "The number the visitor typed for a call back. Not checked."}' >/dev/null
+    echo "Made the conversation field 'callback_phone'." >&2
+fi
+
+# Resolving a conversation takes it out of the call-back queue. The trigger is "conversation
+# updated" with status resolved, not "conversation resolved": the dashboard offers label actions
+# only for the first, so staff can read and edit the rule there.
+rule_name="Resolved leaves the call-back queue"
+if call GET /automation_rules | jq -e --arg name "$rule_name" 'any(.payload[]; .name == $name)' >/dev/null; then
+    echo "Found the automation rule '$rule_name'." >&2
+else
+    call POST /automation_rules "$(jq -n --arg name "$rule_name" '{
+        name: $name,
+        description: "Takes the label callback off a conversation when staff resolve it.",
+        event_name: "conversation_updated",
+        active: true,
+        conditions: [{attribute_key: "status", filter_operator: "equal_to", values: ["resolved"], query_operator: null}],
+        actions: [{action_name: "remove_label", action_params: ["callback"]}]
+    }')" >/dev/null
+    echo "Made the automation rule '$rule_name'." >&2
+fi
+
 "$secrets_dir/set.sh" "$env" Chatwoot__InboxIdentifier "$(jq -r '.inbox_identifier' <<<"$inbox")"
 "$secrets_dir/set.sh" "$env" Chatwoot__BotToken "$(jq -r '.access_token' <<<"$bot")"
 echo "Wrote Chatwoot__InboxIdentifier and Chatwoot__BotToken to secrets/$env.env." >&2
 
 if [ -z "$service_token" ]; then
-    echo "Chatwoot__ServiceToken is not set: Spirit cannot list teams or save the phone. See the top of this script." >&2
+    echo "Chatwoot__ServiceToken is not set: Spirit cannot list teams or find calls. See the top of this script." >&2
 fi

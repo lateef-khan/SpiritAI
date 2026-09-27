@@ -1,0 +1,16 @@
+# Local dev layer on top of compose.yaml: build Twenty from twenty/source instead of pulling our
+# image. Use it through `just up source`, never in production.
+
+services:
+  server:
+    image: spirit-twenty:source
+    build:
+      context: ./source
+      dockerfile: packages/twenty-docker/twenty/Dockerfile
+      target: twenty
+      args:
+        APP_VERSION: ${APP_VERSION:?the justfile sets APP_VERSION}
+  # Uses the image the server builds, so it is built once.
+  worker:
+    image: spirit-twenty:source
+    pull_policy: never

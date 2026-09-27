@@ -18,7 +18,7 @@ Every secret is in `secrets/dev.env` (local) and `secrets/prod.env` (production)
 By default the app builds against the local AgentCore source (fast dev loop, debuggable).
 Pass `-p:UseLocalAgentCore=false` to build against the published `AgentCore.Hosting`
 NuGet package instead — that is what CI and the `Dockerfile` do, and it needs no sibling
-checkout. See `CLAUDE.md` for the full story.
+checkout. The switch is in `Directory.Build.props`.
 
 ## Deploy
 
@@ -33,11 +33,11 @@ tests, creates the Fly app if needed, syncs secrets and deploys. Nothing to run 
 `GRAFANA_CLOUD_API_TOKEN` are optional, and optional together.
 
 `./tailscale-setup.sh` walks you through the Tailscale side and proves it works before you
-merge. One Fly app serves both the UI and the API — see the Fly.io section of `CLAUDE.md`.
+merge. One Fly app serves both the UI and the API; its settings are in `fly.toml`.
 
 ## Company server apps
 
-Chatwoot, Twenty, and the Cloudflare tunnel run on the company server. Each app is a folder
+Chatwoot, Twenty, their PostgreSQL server, and the Cloudflare tunnel run on the company server. Each app is a folder
 with its own `compose.yaml`, `.env`, `justfile`, and `README.md`. An app's settings are in
 its own `.env`. Its secrets are in `secrets/prod.env` (see `secrets/README.md`).
 
@@ -49,4 +49,5 @@ just stack-down     # stop every app (keeps the volumes)
 
 An app that fails does not stop the others; the recipe names it at the end. The list of
 apps is `stack_apps` in the root `justfile`. The apps share one Docker network,
-`spirit-edge`, and have no port on the host; see `cloudflared/README.md`.
+`spirit-edge`, and have no port on the host; see `cloudflared/README.md`. Chatwoot and Twenty
+each keep a database on the one PostgreSQL server; see `postgres/README.md`.

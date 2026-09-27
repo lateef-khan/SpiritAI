@@ -1,26 +1,31 @@
 # Self-hosted Twenty CRM for local development. Settings come from twenty/.env; `just env`
 # makes it from .env.example. Secrets come from .secrets.env, which every recipe writes from the
-# TWENTY_* keys in secrets/<env>.env. With TWENTY_PG_DATABASE_URL empty, `just up` also starts
-# the throwaway postgres below. Nothing local survives `just down`.
+# TWENTY_* keys in secrets/<env>.env. The database is Twenty's own on the shared server in
+# postgres/, which `just up` starts. Nothing local survives `just down`.
+#
+# The image is our fork's build from ghcr.io (see `just release`). compose.source.yaml builds it
+# from twenty/source instead, for `just up source`.
 
 name: spirit-twenty
 
 x-twenty: &twenty
-  image: twentycrm/twenty:v2.41.0
+  image: ghcr.io/lateef-khan/twenty:v2.41.0-spirit.1
   env_file:
     - .env
     - path: .secrets.env
       required: false
   environment: &twenty-env
     NODE_PORT: "3000"
+    # The same default as postgres/justfile.
     PG_DATABASE_URL: ${PG_DATABASE_URL:-postgres://twenty:twenty@postgres:5432/twenty}
     REDIS_URL: redis://:${REDIS_PASSWORD:?TWENTY_REDIS_PASSWORD must be set in secrets/<env>.env}@redis:6379
   volumes:
     - storage:/app/packages/twenty-server/.local-storage
+  # db reaches the shared server as postgres:5432. default keeps redis in reach.
+  networks:
+    default:
+    db:
   depends_on: &twenty-deps
-    postgres:
-      condition: service_healthy
-      required: false
     redis:
       condition: service_healthy
 
@@ -33,6 +38,7 @@ services:
     # The tunnel reaches the server on the shared network as http://twenty:3000.
     networks:
       default:
+      db:
       edge:
         aliases: [twenty]
     healthcheck:
@@ -58,20 +64,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Only when PG_DATABASE_URL is empty. Twenty makes its own schemas (core, workspace_*).
-  postgres:
-    image: postgres:16
-    profiles: [localdb]
-    environment:
-      POSTGRES_DB: twenty
-      POSTGRES_USER: twenty
-      POSTGRES_PASSWORD: twenty
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 2s
-      retries: 30
-    restart: unless-stopped
-
   redis:
     image: redis:7-alpine
     # Memory only: cache and job queues. Queues need noeviction, or redis drops jobs when full.
@@ -93,3 +85,7 @@ networks:
   edge:
     external: true
     name: spirit-edge
+  # Made by `just postgres up` or `prod-up`.
+  db:
+    external: true
+    name: spirit-db
