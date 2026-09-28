@@ -40,7 +40,12 @@
 
   function keepVisitor(key) {
     document.cookie =
-      visitorCookie + "=" + key + "; max-age=" + visitorYear + "; path=/; SameSite=Lax" +
+      visitorCookie +
+      "=" +
+      key +
+      "; max-age=" +
+      visitorYear +
+      "; path=/; SameSite=Lax" +
       (window.location.protocol === "https:" ? "; Secure" : "");
   }
 
