@@ -82,7 +82,16 @@ db-up:
 db-url:
     @echo '{{pg_conn}}'
 
-# Run it after `just spirit run` has migrated the local database once. It only reads Neon.
+# Fill spirit.role and spirit.user_role from the access sheet, and make missing Neon Auth users.
+# A dry run unless you pass --apply. Needs NEON_ADMIN_COOKIE in secrets/dev.env.
+seed-access *args:
+    uv run SpiritAI/Database/Seed/seed_access.py {{args}}
+
+# The same roles in the throwaway database, and one local role for each made-up user. Run it after
+# `just spirit run` has migrated the database once.
+seed-access-local:
+    uv run SpiritAI/Database/Seed/seed_access.py --local '{{pg_conn}}'
+
 # Open psql.
 db-shell:
     docker exec --interactive --tty {{container}} psql --username={{user}} --dbname={{database}}
