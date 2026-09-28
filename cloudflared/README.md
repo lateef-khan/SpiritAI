@@ -23,7 +23,7 @@ On the server, run `just <recipe>` inside this folder.
 | `desk.<domain>` | `http://chatwoot:3000` (Chatwoot) | Staff only |
 | `chat.<domain>` | `http://host.docker.internal:5299` (Spirit, if it runs on the host) | Yes |
 | `crm.<domain>` | `http://twenty:3000` (Twenty) | Staff only |
-| `hub.<domain>` | The app shell, when it exists | Staff only |
+| `hub.<domain>` | `http://host.docker.internal:5299` (Spirit, if it runs on the host — same target as `chat.`) | Staff only |
 
 After step 6, set Chatwoot's `FRONTEND_URL` to `https://desk.<domain>` and run
 `just chatwoot prod-update`. Set Twenty's `SERVER_URL` to `https://crm.<domain>` and run

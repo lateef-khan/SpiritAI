@@ -40,8 +40,13 @@ First setup on the server:
 
 1. Copy this folder to the server. Install Docker and `just`.
 2. `just env`, then edit `.env`: `FRONTEND_URL` (the public HTTPS address), the `STORAGE_*`
-   bucket place, and the `SMTP_*` and `MAILER_SENDER_EMAIL` values.
-   Set `SAFE_FETCH_ALLOW_PRIVATE_NETWORK=false`. In `secrets/prod.env`: the `CHATWOOT_STORAGE_*`
+   bucket place, and the `SMTP_*` and `MAILER_SENDER_EMAIL` values. Set
+   `SAFE_FETCH_ALLOW_PRIVATE_NETWORK=false`, and the Hub settings (see "The Hub" below):
+   `SPIRIT_HUB_ORIGIN=https://hub.spiritfitnessapps.com`,
+   `SPIRIT_HUB_LOGIN_URL=https://hub.spiritfitnessapps.com/chat/login.html?app=desk`,
+   `LOGOUT_REDIRECT_LINK=https://hub.spiritfitnessapps.com/chat/login.html?app=desk`.
+   `.env.example`'s values for these three are for local dev only; copying them as-is sends
+   production visitors to `hub.spirit.localhost`. In `secrets/prod.env`: the `CHATWOOT_STORAGE_*`
    keys and `CHATWOOT_SMTP_PASSWORD`.
 3. Start the database server: `just postgres prod-up` (see `postgres/README.md`). It makes Chatwoot's
    database from `CHATWOOT_DATABASE_URL`.
@@ -69,6 +74,7 @@ door; see `cloudflared/README.md`.
    `just prod-update`.
 4. `just check-contact-guard <inbox identifier>` (add the public URL on production). It must say OK.
    If Chatwoot will not start and names `spirit_public_contact_guard.rb`, the guard needs a fix.
+5. `just check-hub <desk-url> <hub-origin>`. It must say all checks passed.
 
 ## Where things go
 
@@ -80,6 +86,7 @@ door; see `cloudflared/README.md`.
 | Production differences | `compose.prod.yaml` |
 | Small code patches | `initializers/`, copied in by `Dockerfile`. Last resort |
 | Spirit's API inbox, agent bot, and teams | `just setup` (`setup/spirit-inbox.sh`) |
+| Spirit's name, logo, and brand links | `just setup` (`setup/branding.sh`, logo in `brand/`) |
 
 ## The Spirit inbox
 
@@ -114,6 +121,42 @@ Chatwoot has a database of its own, `chatwoot`, on the PostgreSQL server in `pos
 shares the server with Twenty, not the database. Its tables are in the default `public` schema.
 Run `just postgres backup` before each version update: the update changes the schema when
 Chatwoot starts.
+
+## The Hub
+
+`initializers/spirit_hub.rb` lets the Spirit Hub hold Desk in a frame, and sends anyone who is
+not signed in to the Hub instead of Chatwoot's own sign-in page.
+
+- A response that refuses framing outright (`X-Frame-Options`, and no `Content-Security-Policy`
+  of its own) gets `Content-Security-Policy: frame-ancestors 'self' <SPIRIT_HUB_ORIGIN>` instead.
+  A response that already carries its own `Content-Security-Policy` — a web widget inbox with
+  `allowed_domains`, for example — is left exactly as Chatwoot made it.
+- A plain `GET /app/login` (no `sso_auth_token`, no `?local=1`) redirects to
+  `SPIRIT_HUB_LOGIN_URL`, the Hub's sign-in page for Desk. `?local=1` still shows Chatwoot's own
+  form, for the back-door admin. A repeated or trailing slash on `/app/login` cannot bypass the
+  match: the path is collapsed and trimmed first.
+- `GET /spirit/sign-out` is a page that deletes the Chatwoot session, then posts
+  `{ type: "hub:signed-out", app: "desk" }` to `SPIRIT_HUB_ORIGIN`. It is a plain `GET`, with no
+  token and no confirmation: any link or image tag pointed at it signs the current Desk session
+  out. That is an acceptable trade — signing a person out is not a destructive action — and
+  framing Desk at all is limited to `SPIRIT_HUB_ORIGIN` by the `Content-Security-Policy` above.
+
+Three plain settings, in `.env`, not secrets: `SPIRIT_HUB_ORIGIN`, `SPIRIT_HUB_LOGIN_URL`, and
+Chatwoot's own `LOGOUT_REDIRECT_LINK` (where it sends a visitor after they sign out of the
+dashboard; set it to the same address as `SPIRIT_HUB_LOGIN_URL`). `spirit_hub.rb` reads
+`SPIRIT_HUB_ORIGIN` and `SPIRIT_HUB_LOGIN_URL` with `ENV.fetch`: either one missing stops
+Chatwoot's web container from starting at all. `LOGOUT_REDIRECT_LINK` is Chatwoot's own setting
+and fails soft (falls back to `/`), so a miss there is a wrong redirect, not a crash. On a server
+already set up before this section existed, add the three keys (production values, above) to its
+`.env` before the next `just prod-update`.
+
+`just setup` also makes or finds a Platform App named "Spirit Hub" and gives it the account, so
+the Hub can call the Platform API to make and sign in Desk users. It writes
+`Chatwoot__PlatformToken`, `Chatwoot__AdminToken`, and `Chatwoot__InboxId` into
+`secrets/<env>.env`, the same way it writes the inbox identifier and bot token.
+
+Run `just check-hub <desk-url> <hub-origin>` after every version change. It must say all checks
+passed.
 
 ## The public contact guard
 

@@ -9,22 +9,68 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
+import { isHubAppId, type HubAppId } from "../hub/hubMessages";
 import { useSession } from "./authClient";
-import { APP_URL } from "./routes";
+import { safeReturnTo } from "./returnTo";
+import { APP_URL, loginUrlWithReturnTo } from "./routes";
 import { useEmailCodeSignIn } from "./useEmailCodeSignIn";
+
+/** The app named in `?app=`, or `null` when it names none of the Hub's apps. */
+function hubAppFromQuery(): HubAppId | null {
+  const app = new URLSearchParams(window.location.search).get("app");
+  return isHubAppId(app) ? app : null;
+}
 
 export function LoginPage() {
   const signIn = useEmailCodeSignIn();
   const { data: session, isPending } = useSession();
 
+  // Chatwoot and Twenty send their own sign-in redirect here, framed inside the Hub, so this page
+  // can hand off without ever drawing the Neon form where a stranger's iframe could read it. This
+  // has to run before any of the ordinary page's form-or-redirect logic below, and stays out of it
+  // even when the frame names no app the Hub knows.
+  const framed = window.parent !== window;
+  const app = framed ? hubAppFromQuery() : null;
+
+  useEffect(() => {
+    if (!framed) return;
+
+    if (!app) {
+      window.top!.location.assign(loginUrlWithReturnTo("/"));
+      return;
+    }
+    if (isPending) return;
+
+    if (session) {
+      window.parent.postMessage({ type: "hub:needs-sign-in", app }, window.location.origin);
+    } else {
+      window.top!.location.assign(loginUrlWithReturnTo("/#" + app));
+    }
+  }, [framed, app, isPending, session]);
+
   // Two ways to arrive at the app, and neither happens on its own. A code accepted on this page
   // hands back a session in the same page load, and someone who reloads with a live session should
   // not be asked to sign in again; both are one navigation away from leaving.
-  const leaving = signIn.status === "signedIn" || Boolean(session);
+  const leaving = !framed && (signIn.status === "signedIn" || Boolean(session));
 
   useEffect(() => {
-    if (leaving) window.location.replace(APP_URL);
+    if (!leaving) return;
+
+    const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+    if (returnTo !== null) {
+      window.location.replace(safeReturnTo(returnTo, window.location.origin));
+      return;
+    }
+
+    // No returnTo, but the query still names an app when Chatwoot or Twenty sent someone here
+    // directly (not framed) with a live session already — send them straight to that tile rather
+    // than dropping them on the chat app they may not have been looking for.
+    const app = hubAppFromQuery();
+    window.location.replace(app ? `/#${app}` : APP_URL);
   }, [leaving]);
+
+  // Never draw the sign-in form inside a frame, whether or not the frame named an app.
+  if (framed) return <main className="h-dvh" aria-busy />;
 
   // Drawing the form first would show them a sign-in page they do not need, so hold the blank
   // ground until the redirect lands.

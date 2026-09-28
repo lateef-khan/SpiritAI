@@ -144,7 +144,10 @@ local-config:
         config/spirit.yaml > {{local_config}}
 
 # Run the host on http://localhost:5299/chat against PostgreSQL and MinIO.
-# Every secret and setting comes from secrets/dev.env.
+# Every secret and setting comes from secrets/dev.env, read line by line below, including
+# Hub__Host/DeskUrl/CrmUrl and Twenty__BaseUrl/HubSecret: no special-casing, the same as
+# Chatwoot__* and Goto__*. Set them to the *.localhost addresses in secrets/example.env to open
+# the Hub at http://hub.spirit.localhost:5299/.
 run: db-up blob-up local-config
     #!/usr/bin/env bash
     set -euo pipefail
@@ -159,7 +162,7 @@ run: db-up blob-up local-config
         fi
     done < ../secrets/dev.env
     cd SpiritAI
-    exec env "{{pg_secret}}={{pg_conn}}" \
+    exec env "{{pg_secret}}={{pg_conn}}" "POSTGRES_CONNECTION_STRING={{pg_conn}}" \
         "{{blob_key_secret}}={{blob_key}}" "{{blob_secret_secret}}={{blob_secret}}" \
         ASPNETCORE_ENVIRONMENT=Development "ASPNETCORE_URLS={{spirit_urls}}" \
         AgentCore__ConfigurationPath={{local_config}} \

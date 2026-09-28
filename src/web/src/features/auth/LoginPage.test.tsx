@@ -21,8 +21,13 @@ vi.mock("./emailCode", () => ({
 const { LoginPage } = await import("./LoginPage");
 
 // Testing-library only registers its own cleanup when vitest runs with `globals: true`. It does
-// not here, so each test would otherwise leave its DOM in the body.
-afterEach(cleanup);
+// not here, so each test would otherwise leave its DOM in the body. Mock spies on `window.location`
+// / `.parent` / `.top` go here too, so a test that fails before its own `restoreAllMocks` call
+// cannot leak a spy into the next test.
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -60,15 +65,36 @@ function enterCode(code: string) {
   screen.getByRole("button", { name: /^sign in$/i }).click();
 }
 
-/** Replaces `window.location` so a navigation can be observed instead of performed. */
-function watchNavigation() {
+/**
+ * Replaces `window.location` so a navigation can be observed instead of performed.
+ *
+ * `Location`'s fields live on its prototype, not as the object's own properties, so `{
+ * ...window.location }` copies none of them — only the ones named here are.
+ */
+function watchNavigation(overrides: Partial<Location> = {}) {
   const replace = vi.fn();
   vi.spyOn(window, "location", "get").mockReturnValue({
-    ...window.location,
+    origin: window.location.origin,
+    pathname: window.location.pathname,
+    search: window.location.search,
+    hash: window.location.hash,
     replace,
+    ...overrides,
   } as unknown as Location);
 
   return replace;
+}
+
+/** Puts the page in a frame, as the Hub does. `parent` need only differ from `window`. */
+function frameThePage(parent: object = {}) {
+  vi.spyOn(window, "parent", "get").mockReturnValue(parent as Window);
+}
+
+/** Stands in for the top window the framed page's hand-off navigates. */
+function watchTopNavigation() {
+  const assign = vi.fn();
+  vi.spyOn(window, "top", "get").mockReturnValue({ location: { assign } } as unknown as Window);
+  return assign;
 }
 
 describe("LoginPage", () => {
@@ -145,8 +171,6 @@ describe("LoginPage", () => {
     enterCode("123456");
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/chat/"));
-
-    vi.restoreAllMocks();
   });
 
   test("pushes a signed-in visitor to the app instead of the form", async () => {
@@ -157,7 +181,77 @@ describe("LoginPage", () => {
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/chat/"));
     expect(screen.queryByLabelText("Email")).toBeNull();
+  });
 
-    vi.restoreAllMocks();
+  test("returns a signed-in visitor to the page named in ?returnTo instead of the app", async () => {
+    const replace = watchNavigation({ search: "?returnTo=%2F%23crm" });
+
+    useSession.mockReturnValue({ data: { user: {} }, isPending: false });
+    render(<LoginPage />);
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/#crm"));
+  });
+
+  test("sends a signed-in visitor to the Hub when ?returnTo is present but empty", async () => {
+    const replace = watchNavigation({ search: "?returnTo=" });
+
+    useSession.mockReturnValue({ data: { user: {} }, isPending: false });
+    render(<LoginPage />);
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
+  });
+
+  describe("framed inside the Hub", () => {
+    test("tells the parent it needs a sign-in when the visitor already has a session", async () => {
+      const postMessage = vi.fn();
+      frameThePage({ postMessage });
+      watchNavigation({ search: "?app=desk" });
+      useSession.mockReturnValue({ data: { user: {} }, isPending: false });
+
+      render(<LoginPage />);
+
+      await waitFor(() =>
+        expect(postMessage).toHaveBeenCalledWith(
+          { type: "hub:needs-sign-in", app: "desk" },
+          window.location.origin,
+        ),
+      );
+      expect(screen.queryByLabelText("Email")).toBeNull();
+    });
+
+    test("sends the top window to a fresh sign-in when there is no session", async () => {
+      frameThePage();
+      const assign = watchTopNavigation();
+      watchNavigation({ search: "?app=desk" });
+      useSession.mockReturnValue({ data: null, isPending: false });
+
+      render(<LoginPage />);
+
+      await waitFor(() =>
+        expect(assign).toHaveBeenCalledWith("/chat/login.html?returnTo=%2F%23desk"),
+      );
+      expect(screen.queryByLabelText("Email")).toBeNull();
+    });
+
+    test("sends the top window to a fresh sign-in returning to the Hub when the frame names no app the Hub knows", async () => {
+      frameThePage();
+      const assign = watchTopNavigation();
+      watchNavigation({ search: "" });
+      useSession.mockReturnValue({ data: null, isPending: false });
+
+      render(<LoginPage />);
+
+      await waitFor(() => expect(assign).toHaveBeenCalledWith("/chat/login.html?returnTo=%2F"));
+      expect(screen.queryByLabelText("Email")).toBeNull();
+    });
+  });
+
+  test("returns a signed-in visitor with ?app= to that app's tile instead of the plain app", async () => {
+    const replace = watchNavigation({ search: "?app=crm" });
+
+    useSession.mockReturnValue({ data: { user: {} }, isPending: false });
+    render(<LoginPage />);
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/#crm"));
   });
 });

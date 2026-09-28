@@ -41,6 +41,9 @@ Chatwoot, Twenty, their PostgreSQL server, and the Cloudflare tunnel run on the 
 with its own `compose.yaml`, `.env`, `justfile`, and `README.md`. An app's settings are in
 its own `.env`. Its secrets are in `secrets/prod.env` (see `secrets/README.md`).
 
+The Hub is served by the Spirit host itself, not a company server app: staff sign in once at
+`hub.<domain>` and get tiles onto Desk, CRM, and Settings, which creates the Desk and CRM users.
+
 ```bash
 just stack-up       # start every app
 just stack-status   # show every app's containers

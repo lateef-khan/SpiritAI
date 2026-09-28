@@ -344,10 +344,222 @@
           }
         }
       }
+    },
+    "/v1/hub/apps": {
+      "get": {
+        "tags": [
+          "Hub"
+        ],
+        "operationId": "listHubApps",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HubAppList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hub/{app}/sign-in": {
+      "post": {
+        "tags": [
+          "Hub"
+        ],
+        "operationId": "openHubApp",
+        "parameters": [
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HubSignIn"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/settings/people": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "listPeople",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PersonRow"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/settings/people/{id}/{app}": {
+      "post": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "linkPerson",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonRow"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AccessGroup": {
+        "enum": [
+          "Guest",
+          "Dealer",
+          "TechService",
+          "InsideSales",
+          "InsideSalesSupervisor",
+          "TechServiceManager",
+          "InsideSalesManager",
+          "Admin"
+        ]
+      },
+      "HubAppList": {
+        "required": [
+          "tiles"
+        ],
+        "type": "object",
+        "properties": {
+          "tiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HubTile"
+            }
+          }
+        }
+      },
+      "HubSignIn": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "HubTile": {
+        "required": [
+          "id",
+          "name",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
       "JobStatus": {
         "enum": [
           "open",
@@ -356,6 +568,13 @@
         ]
       },
       "JsonElement": { },
+      "LinkState": {
+        "enum": [
+          "none",
+          "unfinished",
+          "ready"
+        ]
+      },
       "OrderDocument": {
         "required": [
           "orderNumber",
@@ -498,6 +717,41 @@
           },
           "isReturned": {
             "type": "boolean"
+          }
+        }
+      },
+      "PersonRow": {
+        "required": [
+          "id",
+          "name",
+          "email",
+          "groups",
+          "desk",
+          "crm"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccessGroup"
+            }
+          },
+          "desk": {
+            "$ref": "#/components/schemas/LinkState"
+          },
+          "crm": {
+            "$ref": "#/components/schemas/LinkState"
           }
         }
       },
@@ -1309,6 +1563,12 @@
     },
     {
       "name": "Widget"
+    },
+    {
+      "name": "Hub"
+    },
+    {
+      "name": "Settings"
     }
   ]
 }

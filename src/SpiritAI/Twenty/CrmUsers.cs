@@ -1,0 +1,64 @@
+using System.Net;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+using Microsoft.Extensions.Options;
+
+using SpiritAI.Hub;
+
+namespace SpiritAI.Twenty;
+
+/// <summary>CRM users through the Twenty fork's own endpoints.</summary>
+public sealed class CrmUsers(HttpClient http, IOptions<TwentyOptions> twenty, IOptions<HubOptions> hub, TimeProvider clock)
+{
+    /// <exception cref="EmailAlreadyUsedException">Twenty already has a user with this email.</exception>
+    /// <exception cref="CrmUnavailableException">
+    /// Twenty could not be reached, answered with anything other than success or a conflict, or
+    /// <see cref="TwentyOptions.BaseUrl"/> is empty — which would otherwise fail as a relative URI.
+    /// </exception>
+    public async Task<string> CreateUserAsync(string name, string email, CancellationToken cancellationToken)
+    {
+        var space = name.IndexOf(' ', StringComparison.Ordinal);
+        var body = new JsonObject
+        {
+            ["email"] = email,
+            ["firstName"] = space < 0 ? name : name[..space],
+            ["lastName"] = space < 0 ? string.Empty : name[(space + 1)..],
+        };
+
+        HttpResponseMessage response;
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{twenty.Value.BaseUrl.TrimEnd('/')}/auth/spirit/users")
+            {
+                Content = JsonContent.Create(body),
+            };
+            request.Headers.Authorization = new("Bearer", twenty.Value.HubSecret);
+
+            response = await http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
+        {
+            throw new CrmUnavailableException(ex);
+        }
+
+        using (response)
+        {
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                throw new EmailAlreadyUsedException("CRM");
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new CrmUnavailableException();
+            }
+
+            var created = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
+            return created.GetProperty("id").GetString()!;
+        }
+    }
+
+    public string SignInUrl(string twentyUserId)
+        => $"{hub.Value.CrmUrl.TrimEnd('/')}/auth/spirit?note={Uri.EscapeDataString(HubNote.ForCrm(twentyUserId, twenty.Value.HubSecret, clock))}";
+}

@@ -10,15 +10,20 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 
 import { useSession } from "./authClient";
-import { LOGIN_URL } from "./routes";
+import { loginUrlWithReturnTo } from "./routes";
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { data, isPending } = useSession();
   const signedOut = !isPending && !data;
 
   useEffect(() => {
-    // `replace`, so the back button does not bounce between the app and the login page.
-    if (signedOut) window.location.replace(LOGIN_URL);
+    // `replace`, so the back button does not bounce between the app and the login page. The page
+    // they were on comes back as `returnTo`, so signing in returns them to it instead of the app's
+    // front door.
+    if (signedOut) {
+      const { pathname, search, hash } = window.location;
+      window.location.replace(loginUrlWithReturnTo(pathname + search + hash));
+    }
   }, [signedOut]);
 
   // Pending and signed-out render the same blank ground: one is about to become the app, the other

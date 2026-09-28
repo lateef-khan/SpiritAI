@@ -1,0 +1,43 @@
+{
+  "payload": [
+    {
+      "id": 3,
+      "account_id": 1,
+      "availability_status": "offline",
+      "auto_offline": true,
+      "confirmed": true,
+      "email": "person2@spiritfitness.test",
+      "provider": "email",
+      "available_name": "Person 2",
+      "name": "Person 2",
+      "role": "agent",
+      "thumbnail": ""
+    },
+    {
+      "id": 2,
+      "account_id": 1,
+      "availability_status": "offline",
+      "auto_offline": true,
+      "confirmed": true,
+      "email": "person1@spiritfitness.test",
+      "provider": "email",
+      "available_name": "Person 1",
+      "name": "Person 1",
+      "role": "agent",
+      "thumbnail": ""
+    },
+    {
+      "id": 4,
+      "account_id": 1,
+      "availability_status": "offline",
+      "auto_offline": true,
+      "confirmed": true,
+      "email": "lateef.khan@spiritfitness.test",
+      "provider": "email",
+      "available_name": "Lateef Khan",
+      "name": "Lateef Khan",
+      "role": "agent",
+      "thumbnail": ""
+    }
+  ]
+}

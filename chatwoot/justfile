@@ -44,10 +44,18 @@ logs:
 console:
     {{dev}} exec web bundle exec rails console
 
-# Make or update the Spirit API inbox, agent bot, and teams, and write Spirit's Chatwoot settings
-# into secrets/<env>.env. See setup/spirit-inbox.sh.
+# Make or update the Spirit API inbox, agent bot, teams, and Hub Platform App, write Spirit's
+# Chatwoot settings into secrets/<env>.env, and set Spirit's branding. See setup/.
 setup env="dev":
-    ./setup/spirit-inbox.sh {{env}}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "{{env}}" = "prod" ]; then
+        compose='{{prod}}'
+    else
+        compose='{{dev}}'
+    fi
+    ./setup/spirit-inbox.sh {{env}} "$compose"
+    ./setup/branding.sh "$compose"
 
 # Prove the public contact routes drop email and phone (initializers/spirit_public_contact_guard.rb).
 # Makes one throwaway contact. The inbox identifier is the one `just setup` prints.
@@ -68,6 +76,11 @@ check-contact-guard inbox_identifier url="http://localhost:53000":
         fi
     done
     echo "OK: the public contact routes dropped email and phone."
+
+# Prove the Hub can frame Desk, a signed-out visit leaves for the Hub, and sign-out tells the
+# Hub (initializers/spirit_hub.rb). Run after every version change.
+check-hub desk_url hub_origin:
+    bash setup/check-hub.sh {{desk_url}} {{hub_origin}}
 
 # Production: first start, or start after prod-down. Needs `just postgres prod-up` first.
 prod-up: _edge _db

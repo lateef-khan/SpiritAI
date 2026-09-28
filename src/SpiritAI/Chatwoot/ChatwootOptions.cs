@@ -27,6 +27,17 @@ public sealed class ChatwootOptions
     /// </summary>
     public string ServiceToken { get; set; } = string.Empty;
 
+    /// <summary>The Platform App's token: creates Desk users and asks for their one-time sign-in links.</summary>
+    public string PlatformToken { get; set; } = string.Empty;
+
+    /// <summary>
+    /// An administrator's token.
+    /// </summary>
+    public string AdminToken { get; set; } = string.Empty;
+
+    /// <summary>The Spirit inbox's numeric id, which inbox members are added to.</summary>
+    public int InboxId { get; set; }
+
     /// <summary>Whether the AI can answer widget chats Chatwoot holds: every setting a turn needs is set.</summary>
     public bool TurnEnabled => BaseUrl.Length > 0 && AccountId > 0 && InboxIdentifier.Length > 0 && BotToken.Length > 0;
 }

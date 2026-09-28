@@ -7,11 +7,11 @@ import { createApiClient, HostRefusedError } from "./apiClient";
  *
  * `createApiClient` takes a `FetchLike` in place of `authFetch`, so a test can answer with
  * whatever `Response` it likes and reach no network. What is worth holding in place here is that
- * a problem-detail body's `title` ends up on the thrown error, and that a body with no title at
- * all — the shape most refusals actually have — still throws with `title` set to `null`.
+ * a problem-detail body's `title` and `detail` end up on the thrown error, and that a body with
+ * neither — the shape most refusals actually have — still throws with both set to `null`.
  */
 describe("createApiClient refusals", () => {
-  it("reads title off a problem+json body", async () => {
+  it("reads title and detail off a problem+json body", async () => {
     const client = createApiClient(
       async () =>
         new Response(
@@ -31,9 +31,10 @@ describe("createApiClient refusals", () => {
     expect(refusal).toBeInstanceOf(HostRefusedError);
     expect((refusal as HostRefusedError).status).toBe(409);
     expect((refusal as HostRefusedError).title).toBe("Somebody has this chat.");
+    expect((refusal as HostRefusedError).detail).toBe("Dana took it.");
   });
 
-  it("leaves title null on an empty body", async () => {
+  it("leaves title and detail null on an empty body", async () => {
     const client = createApiClient(async () => new Response(null, { status: 404 }));
 
     const refusal = await client
@@ -44,5 +45,6 @@ describe("createApiClient refusals", () => {
     expect(refusal).toBeInstanceOf(HostRefusedError);
     expect((refusal as HostRefusedError).status).toBe(404);
     expect((refusal as HostRefusedError).title).toBeNull();
+    expect((refusal as HostRefusedError).detail).toBeNull();
   });
 });

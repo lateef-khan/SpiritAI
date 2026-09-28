@@ -8,6 +8,7 @@ using SpiritAI.Database;
 using SpiritAI.GoTo;
 using SpiritAI.Handoffs;
 using SpiritAI.Hosting;
+using SpiritAI.Hub;
 using SpiritAI.Lookup;
 using SpiritAI.PublicChat;
 using SpiritAI.Threads;
@@ -27,6 +28,8 @@ builder.Services.AddSpiritDatabase(builder.Configuration);
 builder.Services.AddAccess();
 
 builder.Services.AddChatwoot(builder.Configuration);
+
+builder.Services.AddHub(builder.Configuration);
 
 builder.Services.AddGoTo(builder.Configuration);
 
@@ -77,12 +80,20 @@ app.MapThreads();
 
 app.MapLookup();
 
+app.MapHub();
+
+app.MapSettings();
+
 app.MapGoToWebhook();
 
 app.UseWidgetFrameAncestors(builder.Configuration);
 
+app.UseHubHost(builder.Configuration);
+
 app.UseStaticFiles();
 
 app.MapFallbackToFile("/chat/{*path:nonfile}", "chat/index.html");
+
+app.MapHubPage(builder.Configuration);
 
 app.Run();

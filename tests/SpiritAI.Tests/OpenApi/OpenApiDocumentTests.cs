@@ -8,13 +8,19 @@ using AgentCore.Application.Ports;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
+using SpiritAI.Chatwoot;
+using SpiritAI.Database;
 using SpiritAI.Hosting;
+using SpiritAI.Hub;
 using SpiritAI.Lookup;
 using SpiritAI.PublicChat;
 using SpiritAI.Threads;
+using SpiritAI.Twenty;
 
 using Xunit;
 
@@ -54,6 +60,10 @@ public sealed class OpenApiDocumentTests
         "getUnit",
         "getOrder",
         "getWidgetSettings",
+        "listHubApps",
+        "openHubApp",
+        "listPeople",
+        "linkPerson",
     ];
 
     /// <summary>
@@ -100,8 +110,14 @@ public sealed class OpenApiDocumentTests
                 continue;
             }
 
+            // A list route's schema is an array of a named type rather than a $ref itself; the
+            // item is what must be named.
+            var named = body.Value.TryGetProperty("type", out var type) && type.ValueEquals("array")
+                ? body.Value.GetProperty("items")
+                : body.Value;
+
             Assert.True(
-                body.Value.TryGetProperty("$ref", out _),
+                named.TryGetProperty("$ref", out _),
                 $"{operationId} answers with an inline schema rather than a named type. "
                     + "Give its route a Produces<T>() naming the record it returns.");
         }
@@ -164,6 +180,15 @@ public sealed class OpenApiDocumentTests
                     services.AddSingleton(new CachedUnitLookup(
                         new UnitLookup((_, _, _) => ValueTask.FromResult(default(System.Text.Json.JsonElement))),
                         PassThroughHybridCache.Instance));
+                    services.AddSingleton(Options.Create(new HubOptions()));
+                    services.AddSingleton(Options.Create(new TwentyOptions()));
+                    services.AddSingleton(Options.Create(new ChatwootOptions()));
+                    services.AddSingleton(TimeProvider.System);
+                    services.AddHttpClient<DeskUsers>();
+                    services.AddHttpClient<CrmUsers>();
+                    services.AddScoped<LinkPerson>();
+                    services.AddDbContext<SpiritDbContext>(options =>
+                        options.UseSpiritNpgsql("Host=localhost;Database=openapi-doc-gen;Username=x;Password=x"));
                 })
                 .Configure(app =>
                 {
@@ -173,6 +198,8 @@ public sealed class OpenApiDocumentTests
                         endpoints.MapThreads();
                         endpoints.MapLookup();
                         endpoints.MapWidgetSettings();
+                        endpoints.MapHub();
+                        endpoints.MapSettings();
                         endpoints.MapOpenApi();
                     });
                 }))
