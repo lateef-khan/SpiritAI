@@ -79,7 +79,7 @@ To change an app's password, change its URL in `secrets/prod.env`, run `just set
 | `prod-status` | Show the container |
 | `prod-update` | Pull the pinned image again and restart |
 | `prod-logs` | Follow the logs |
-| `setup [dev\|prod]` | Make or update each app's role, database, and extensions |
+| `setup [dev\|prod]` | Make or update each app's role, database, and extensions; JIT off on Twenty's database |
 | `psql [database]` | Open `psql` as the superuser |
 
 ## Backups
