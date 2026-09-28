@@ -1,0 +1,34 @@
+# The one PostgreSQL server for Chatwoot and Twenty. Each app gets a database and a role of its
+# own on it; `just setup` makes them. This file is local dev: the data is in an anonymous volume
+# that `just down` deletes, and there are no backups. compose.prod.yaml keeps the data on a named
+# volume and backs it up.
+
+name: spirit-postgres
+
+services:
+  postgres:
+    # pgvector, because Chatwoot's migrations create the vector extension, plus pgBackRest.
+    build: .
+    image: spirit-postgres:local
+    # Fixed, so the recipes and the apps' readiness checks find it by name. It also means one
+    # machine runs either the dev server or the production one, never both.
+    container_name: spirit-postgres
+    environment:
+      POSTGRES_PASSWORD: ${SUPERUSER_PASSWORD:-postgres}
+    # Over TCP: on a first start, the image runs a socket-only setup server, then restarts. A
+    # socket check passes during that setup and the recipes' first query then fails.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -h 127.0.0.1"]
+      interval: 2s
+      retries: 30
+    # The apps reach it on this network as postgres:5432. It has no port on the host and is not
+    # on spirit-edge, so the tunnel cannot reach it.
+    networks:
+      db:
+        aliases: [postgres]
+    restart: unless-stopped
+
+networks:
+  db:
+    external: true
+    name: spirit-db

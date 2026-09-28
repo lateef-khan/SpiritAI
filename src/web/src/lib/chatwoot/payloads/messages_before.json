@@ -1,0 +1,119 @@
+[
+  {
+    "id": 180,
+    "content": "Do you have the XT485 in stock?",
+    "message_type": 0,
+    "content_type": "text",
+    "content_attributes": {},
+    "created_at": 1790274508,
+    "conversation_id": 27,
+    "sender": {
+      "additional_attributes": {},
+      "custom_attributes": {},
+      "email": null,
+      "id": 46,
+      "identifier": null,
+      "name": "red-grass-677",
+      "phone_number": null,
+      "thumbnail": "",
+      "blocked": false,
+      "type": "contact"
+    }
+  },
+  {
+    "id": 181,
+    "content": "Yes, the **XT485** is in stock.",
+    "message_type": 1,
+    "content_type": "text",
+    "content_attributes": {},
+    "created_at": 1790274509,
+    "conversation_id": 27,
+    "sender": {
+      "id": 1,
+      "name": "Spirit AI",
+      "avatar_url": "",
+      "type": "agent_bot"
+    }
+  },
+  {
+    "id": 184,
+    "content": "Hi, this is Matthew. I can help.",
+    "message_type": 1,
+    "content_type": "text",
+    "content_attributes": {},
+    "created_at": 1790274515,
+    "conversation_id": 27,
+    "sender": {
+      "id": 2,
+      "name": "Matthew Hsu",
+      "available_name": "Matthew Hsu",
+      "avatar_url": "",
+      "type": "user",
+      "availability_status": null,
+      "thumbnail": ""
+    }
+  },
+  {
+    "id": 186,
+    "content": "One more question.",
+    "message_type": 0,
+    "content_type": "text",
+    "content_attributes": {},
+    "created_at": 1790274519,
+    "conversation_id": 27,
+    "sender": {
+      "additional_attributes": {},
+      "custom_attributes": {},
+      "email": null,
+      "id": 46,
+      "identifier": null,
+      "name": "red-grass-677",
+      "phone_number": null,
+      "thumbnail": "",
+      "blocked": false,
+      "type": "contact"
+    }
+  },
+  {
+    "id": 187,
+    "content": "Page probe 1",
+    "message_type": 0,
+    "content_type": "text",
+    "content_attributes": {},
+    "created_at": 1790274522,
+    "conversation_id": 27,
+    "sender": {
+      "additional_attributes": {},
+      "custom_attributes": {},
+      "email": null,
+      "id": 46,
+      "identifier": null,
+      "name": "red-grass-677",
+      "phone_number": null,
+      "thumbnail": "",
+      "blocked": false,
+      "type": "contact"
+    }
+  },
+  {
+    "id": 188,
+    "content": "Page probe 2",
+    "message_type": 0,
+    "content_type": "text",
+    "content_attributes": {},
+    "created_at": 1790274522,
+    "conversation_id": 27,
+    "sender": {
+      "additional_attributes": {},
+      "custom_attributes": {},
+      "email": null,
+      "id": 46,
+      "identifier": null,
+      "name": "red-grass-677",
+      "phone_number": null,
+      "thumbnail": "",
+      "blocked": false,
+      "type": "contact"
+    }
+  }
+]

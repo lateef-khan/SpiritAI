@@ -1,0 +1,1400 @@
+[
+  {
+    "type": "welcome"
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "type": "confirm_subscription"
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "presence.update",
+      "data": {
+        "account_id": 2,
+        "users": {}
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "message.created",
+      "data": {
+        "id": 180,
+        "content": "Do you have the XT485 in stock?",
+        "account_id": 2,
+        "inbox_id": 1,
+        "conversation_id": 27,
+        "message_type": 0,
+        "created_at": 1790274508,
+        "updated_at": "2026-09-24T18:28:28.786Z",
+        "private": false,
+        "status": "sent",
+        "source_id": null,
+        "content_type": "text",
+        "content_attributes": {},
+        "sender_type": "Contact",
+        "sender_id": 46,
+        "external_source_ids": {},
+        "additional_attributes": {},
+        "processed_message_content": "Do you have the XT485 in stock?",
+        "sentiment": {},
+        "conversation": {
+          "assignee_id": null,
+          "unread_count": 1,
+          "last_activity_at": 1790274508,
+          "contact_inbox": {
+            "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+          }
+        },
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "message.created",
+      "data": {
+        "id": 181,
+        "content": "Yes, the **XT485** is in stock.",
+        "account_id": 2,
+        "inbox_id": 1,
+        "conversation_id": 27,
+        "message_type": 1,
+        "created_at": 1790274509,
+        "updated_at": "2026-09-24T18:28:29.842Z",
+        "private": false,
+        "status": "sent",
+        "source_id": null,
+        "content_type": "text",
+        "content_attributes": {},
+        "sender_type": "AgentBot",
+        "sender_id": 1,
+        "external_source_ids": {},
+        "additional_attributes": {},
+        "processed_message_content": "Yes, the **XT485** is in stock.",
+        "sentiment": {},
+        "conversation": {
+          "assignee_id": null,
+          "unread_count": 1,
+          "last_activity_at": 1790274509,
+          "contact_inbox": {
+            "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+          }
+        },
+        "sender": {
+          "id": 1,
+          "name": "Spirit AI",
+          "avatar_url": "",
+          "type": "agent_bot"
+        },
+        "performer": {
+          "id": 1,
+          "name": "Spirit AI",
+          "avatar_url": "",
+          "type": "agent_bot"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "conversation.updated",
+      "data": {
+        "additional_attributes": {},
+        "can_reply": true,
+        "channel": "Channel::Api",
+        "contact_inbox": {
+          "id": 48,
+          "contact_id": 46,
+          "inbox_id": 1,
+          "source_id": "probe95d22c7aa7d8c48aa5698ac0",
+          "created_at": "2026-09-24T18:28:26.087Z",
+          "updated_at": "2026-09-24T18:28:26.087Z",
+          "hmac_verified": false,
+          "pubsub_token": "77sXgnSogAvPv47snyXLFEgF"
+        },
+        "id": 27,
+        "inbox_id": 1,
+        "messages": [
+          {
+            "id": 181,
+            "content": "Yes, the **XT485** is in stock.",
+            "account_id": 2,
+            "inbox_id": 1,
+            "conversation_id": 27,
+            "message_type": 1,
+            "created_at": 1790274509,
+            "updated_at": "2026-09-24T18:28:29.842Z",
+            "private": false,
+            "status": "sent",
+            "source_id": null,
+            "content_type": "text",
+            "content_attributes": {},
+            "sender_type": "AgentBot",
+            "sender_id": 1,
+            "external_source_ids": {},
+            "additional_attributes": {},
+            "processed_message_content": "Yes, the **XT485** is in stock.",
+            "sentiment": {},
+            "conversation": {
+              "assignee_id": null,
+              "unread_count": 1,
+              "last_activity_at": 1790274509,
+              "contact_inbox": {
+                "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+              }
+            },
+            "sender": {
+              "id": 1,
+              "name": "Spirit AI",
+              "avatar_url": "",
+              "type": "agent_bot"
+            }
+          }
+        ],
+        "labels": [],
+        "meta": {
+          "sender": {
+            "additional_attributes": {},
+            "custom_attributes": {},
+            "email": null,
+            "id": 46,
+            "identifier": null,
+            "name": "red-grass-677",
+            "phone_number": null,
+            "thumbnail": "",
+            "blocked": false,
+            "type": "contact"
+          },
+          "assignee": {
+            "id": 1,
+            "name": "Spirit AI",
+            "avatar_url": "",
+            "type": "agent_bot"
+          },
+          "assignee_type": "AgentBot",
+          "team": null,
+          "hmac_verified": false
+        },
+        "status": "pending",
+        "custom_attributes": {},
+        "snoozed_until": null,
+        "unread_count": 1,
+        "first_reply_created_at": null,
+        "priority": null,
+        "waiting_since": 0,
+        "agent_last_seen_at": 0,
+        "contact_last_seen_at": 0,
+        "last_activity_at": 1790274509,
+        "timestamp": 1790274509,
+        "created_at": 1790274506,
+        "updated_at": 1790274509.971745,
+        "account_id": 2
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "conversation.status_changed",
+      "data": {
+        "additional_attributes": {},
+        "can_reply": true,
+        "channel": "Channel::Api",
+        "contact_inbox": {
+          "id": 48,
+          "contact_id": 46,
+          "inbox_id": 1,
+          "source_id": "probe95d22c7aa7d8c48aa5698ac0",
+          "created_at": "2026-09-24T18:28:26.087Z",
+          "updated_at": "2026-09-24T18:28:26.087Z",
+          "hmac_verified": false,
+          "pubsub_token": "77sXgnSogAvPv47snyXLFEgF"
+        },
+        "id": 27,
+        "inbox_id": 1,
+        "messages": [
+          {
+            "id": 181,
+            "content": "Yes, the **XT485** is in stock.",
+            "account_id": 2,
+            "inbox_id": 1,
+            "conversation_id": 27,
+            "message_type": 1,
+            "created_at": 1790274509,
+            "updated_at": "2026-09-24T18:28:29.842Z",
+            "private": false,
+            "status": "sent",
+            "source_id": null,
+            "content_type": "text",
+            "content_attributes": {},
+            "sender_type": "AgentBot",
+            "sender_id": 1,
+            "external_source_ids": {},
+            "additional_attributes": {},
+            "processed_message_content": "Yes, the **XT485** is in stock.",
+            "sentiment": {},
+            "conversation": {
+              "assignee_id": 2,
+              "unread_count": 1,
+              "last_activity_at": 1790274509,
+              "contact_inbox": {
+                "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+              }
+            },
+            "sender": {
+              "id": 1,
+              "name": "Spirit AI",
+              "avatar_url": "",
+              "type": "agent_bot"
+            }
+          }
+        ],
+        "labels": [],
+        "meta": {
+          "sender": {
+            "additional_attributes": {},
+            "custom_attributes": {},
+            "email": null,
+            "id": 46,
+            "identifier": null,
+            "name": "red-grass-677",
+            "phone_number": null,
+            "thumbnail": "",
+            "blocked": false,
+            "type": "contact"
+          },
+          "assignee": {
+            "id": 2,
+            "name": "Matthew Hsu",
+            "available_name": "Matthew Hsu",
+            "avatar_url": "",
+            "type": "user",
+            "availability_status": null,
+            "thumbnail": ""
+          },
+          "assignee_type": "User",
+          "team": null,
+          "hmac_verified": false
+        },
+        "status": "open",
+        "custom_attributes": {},
+        "snoozed_until": null,
+        "unread_count": 1,
+        "first_reply_created_at": null,
+        "priority": null,
+        "waiting_since": 1790274511,
+        "agent_last_seen_at": 0,
+        "contact_last_seen_at": 0,
+        "last_activity_at": 1790274509,
+        "timestamp": 1790274509,
+        "created_at": 1790274506,
+        "updated_at": 1790274511.9157708,
+        "account_id": 2
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "conversation.updated",
+      "data": {
+        "additional_attributes": {},
+        "can_reply": true,
+        "channel": "Channel::Api",
+        "contact_inbox": {
+          "id": 48,
+          "contact_id": 46,
+          "inbox_id": 1,
+          "source_id": "probe95d22c7aa7d8c48aa5698ac0",
+          "created_at": "2026-09-24T18:28:26.087Z",
+          "updated_at": "2026-09-24T18:28:26.087Z",
+          "hmac_verified": false,
+          "pubsub_token": "77sXgnSogAvPv47snyXLFEgF"
+        },
+        "id": 27,
+        "inbox_id": 1,
+        "messages": [
+          {
+            "id": 181,
+            "content": "Yes, the **XT485** is in stock.",
+            "account_id": 2,
+            "inbox_id": 1,
+            "conversation_id": 27,
+            "message_type": 1,
+            "created_at": 1790274509,
+            "updated_at": "2026-09-24T18:28:29.842Z",
+            "private": false,
+            "status": "sent",
+            "source_id": null,
+            "content_type": "text",
+            "content_attributes": {},
+            "sender_type": "AgentBot",
+            "sender_id": 1,
+            "external_source_ids": {},
+            "additional_attributes": {},
+            "processed_message_content": "Yes, the **XT485** is in stock.",
+            "sentiment": {},
+            "conversation": {
+              "assignee_id": 2,
+              "unread_count": 1,
+              "last_activity_at": 1790274509,
+              "contact_inbox": {
+                "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+              }
+            },
+            "sender": {
+              "id": 1,
+              "name": "Spirit AI",
+              "avatar_url": "",
+              "type": "agent_bot"
+            }
+          }
+        ],
+        "labels": [],
+        "meta": {
+          "sender": {
+            "additional_attributes": {},
+            "custom_attributes": {},
+            "email": null,
+            "id": 46,
+            "identifier": null,
+            "name": "red-grass-677",
+            "phone_number": null,
+            "thumbnail": "",
+            "blocked": false,
+            "type": "contact"
+          },
+          "assignee": {
+            "id": 2,
+            "name": "Matthew Hsu",
+            "available_name": "Matthew Hsu",
+            "avatar_url": "",
+            "type": "user",
+            "availability_status": null,
+            "thumbnail": ""
+          },
+          "assignee_type": "User",
+          "team": null,
+          "hmac_verified": false
+        },
+        "status": "open",
+        "custom_attributes": {},
+        "snoozed_until": null,
+        "unread_count": 1,
+        "first_reply_created_at": null,
+        "priority": null,
+        "waiting_since": 1790274511,
+        "agent_last_seen_at": 0,
+        "contact_last_seen_at": 0,
+        "last_activity_at": 1790274509,
+        "timestamp": 1790274509,
+        "created_at": 1790274506,
+        "updated_at": 1790274511.9157708,
+        "account_id": 2
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "conversation.typing_on",
+      "data": {
+        "conversation": {
+          "additional_attributes": {},
+          "can_reply": true,
+          "channel": "Channel::Api",
+          "contact_inbox": {
+            "id": 48,
+            "contact_id": 46,
+            "inbox_id": 1,
+            "source_id": "probe95d22c7aa7d8c48aa5698ac0",
+            "created_at": "2026-09-24T18:28:26.087Z",
+            "updated_at": "2026-09-24T18:28:26.087Z",
+            "hmac_verified": false,
+            "pubsub_token": "77sXgnSogAvPv47snyXLFEgF"
+          },
+          "id": 27,
+          "inbox_id": 1,
+          "messages": [
+            {
+              "id": 181,
+              "content": "Yes, the **XT485** is in stock.",
+              "account_id": 2,
+              "inbox_id": 1,
+              "conversation_id": 27,
+              "message_type": 1,
+              "created_at": 1790274509,
+              "updated_at": "2026-09-24T18:28:29.842Z",
+              "private": false,
+              "status": "sent",
+              "source_id": null,
+              "content_type": "text",
+              "content_attributes": {},
+              "sender_type": "AgentBot",
+              "sender_id": 1,
+              "external_source_ids": {},
+              "additional_attributes": {},
+              "processed_message_content": "Yes, the **XT485** is in stock.",
+              "sentiment": {},
+              "conversation": {
+                "assignee_id": 2,
+                "unread_count": 1,
+                "last_activity_at": 1790274512,
+                "contact_inbox": {
+                  "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+                }
+              },
+              "sender": {
+                "id": 1,
+                "name": "Spirit AI",
+                "avatar_url": "",
+                "type": "agent_bot"
+              }
+            }
+          ],
+          "labels": [],
+          "meta": {
+            "sender": {
+              "additional_attributes": {},
+              "custom_attributes": {},
+              "email": null,
+              "id": 46,
+              "identifier": null,
+              "name": "red-grass-677",
+              "phone_number": null,
+              "thumbnail": "",
+              "blocked": false,
+              "type": "contact"
+            },
+            "assignee": {
+              "id": 2,
+              "name": "Matthew Hsu",
+              "available_name": "Matthew Hsu",
+              "avatar_url": "",
+              "type": "user",
+              "availability_status": "offline",
+              "thumbnail": ""
+            },
+            "assignee_type": "User",
+            "team": null,
+            "hmac_verified": false
+          },
+          "status": "open",
+          "custom_attributes": {},
+          "snoozed_until": null,
+          "unread_count": 1,
+          "first_reply_created_at": null,
+          "priority": null,
+          "waiting_since": 1790274511,
+          "agent_last_seen_at": 0,
+          "contact_last_seen_at": 0,
+          "last_activity_at": 1790274512,
+          "timestamp": 1790274512,
+          "created_at": 1790274506,
+          "updated_at": 1790274512.670223
+        },
+        "user": {
+          "id": 2,
+          "name": "Matthew Hsu",
+          "available_name": "Matthew Hsu",
+          "avatar_url": "",
+          "type": "user",
+          "availability_status": "offline",
+          "thumbnail": ""
+        },
+        "is_private": false,
+        "account_id": 2,
+        "performer": {
+          "id": 2,
+          "name": "Matthew Hsu",
+          "available_name": "Matthew Hsu",
+          "avatar_url": "",
+          "type": "user",
+          "availability_status": "offline",
+          "thumbnail": ""
+        }
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "conversation.typing_off",
+      "data": {
+        "conversation": {
+          "additional_attributes": {},
+          "can_reply": true,
+          "channel": "Channel::Api",
+          "contact_inbox": {
+            "id": 48,
+            "contact_id": 46,
+            "inbox_id": 1,
+            "source_id": "probe95d22c7aa7d8c48aa5698ac0",
+            "created_at": "2026-09-24T18:28:26.087Z",
+            "updated_at": "2026-09-24T18:28:26.087Z",
+            "hmac_verified": false,
+            "pubsub_token": "77sXgnSogAvPv47snyXLFEgF"
+          },
+          "id": 27,
+          "inbox_id": 1,
+          "messages": [
+            {
+              "id": 181,
+              "content": "Yes, the **XT485** is in stock.",
+              "account_id": 2,
+              "inbox_id": 1,
+              "conversation_id": 27,
+              "message_type": 1,
+              "created_at": 1790274509,
+              "updated_at": "2026-09-24T18:28:29.842Z",
+              "private": false,
+              "status": "sent",
+              "source_id": null,
+              "content_type": "text",
+              "content_attributes": {},
+              "sender_type": "AgentBot",
+              "sender_id": 1,
+              "external_source_ids": {},
+              "additional_attributes": {},
+              "processed_message_content": "Yes, the **XT485** is in stock.",
+              "sentiment": {},
+              "conversation": {
+                "assignee_id": 2,
+                "unread_count": 1,
+                "last_activity_at": 1790274512,
+                "contact_inbox": {
+                  "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+                }
+              },
+              "sender": {
+                "id": 1,
+                "name": "Spirit AI",
+                "avatar_url": "",
+                "type": "agent_bot"
+              }
+            }
+          ],
+          "labels": [],
+          "meta": {
+            "sender": {
+              "additional_attributes": {},
+              "custom_attributes": {},
+              "email": null,
+              "id": 46,
+              "identifier": null,
+              "name": "red-grass-677",
+              "phone_number": null,
+              "thumbnail": "",
+              "blocked": false,
+              "type": "contact"
+            },
+            "assignee": {
+              "id": 2,
+              "name": "Matthew Hsu",
+              "available_name": "Matthew Hsu",
+              "avatar_url": "",
+              "type": "user",
+              "availability_status": "offline",
+              "thumbnail": ""
+            },
+            "assignee_type": "User",
+            "team": null,
+            "hmac_verified": false
+          },
+          "status": "open",
+          "custom_attributes": {},
+          "snoozed_until": null,
+          "unread_count": 1,
+          "first_reply_created_at": null,
+          "priority": null,
+          "waiting_since": 1790274511,
+          "agent_last_seen_at": 0,
+          "contact_last_seen_at": 0,
+          "last_activity_at": 1790274512,
+          "timestamp": 1790274512,
+          "created_at": 1790274506,
+          "updated_at": 1790274512.670223
+        },
+        "user": {
+          "id": 2,
+          "name": "Matthew Hsu",
+          "available_name": "Matthew Hsu",
+          "avatar_url": "",
+          "type": "user",
+          "availability_status": "offline",
+          "thumbnail": ""
+        },
+        "is_private": false,
+        "account_id": 2,
+        "performer": {
+          "id": 2,
+          "name": "Matthew Hsu",
+          "available_name": "Matthew Hsu",
+          "avatar_url": "",
+          "type": "user",
+          "availability_status": "offline",
+          "thumbnail": ""
+        }
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "message.created",
+      "data": {
+        "id": 184,
+        "content": "Hi, this is Matthew. I can help.",
+        "account_id": 2,
+        "inbox_id": 1,
+        "conversation_id": 27,
+        "message_type": 1,
+        "created_at": 1790274515,
+        "updated_at": "2026-09-24T18:28:35.608Z",
+        "private": false,
+        "status": "sent",
+        "source_id": null,
+        "content_type": "text",
+        "content_attributes": {},
+        "sender_type": "User",
+        "sender_id": 2,
+        "external_source_ids": {},
+        "additional_attributes": {},
+        "processed_message_content": "Hi, this is Matthew. I can help.",
+        "sentiment": {},
+        "conversation": {
+          "assignee_id": 2,
+          "unread_count": 1,
+          "last_activity_at": 1790274515,
+          "contact_inbox": {
+            "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+          }
+        },
+        "sender": {
+          "id": 2,
+          "name": "Matthew Hsu",
+          "available_name": "Matthew Hsu",
+          "avatar_url": "",
+          "type": "user",
+          "availability_status": "offline",
+          "thumbnail": ""
+        },
+        "performer": {
+          "id": 2,
+          "name": "Matthew Hsu",
+          "available_name": "Matthew Hsu",
+          "avatar_url": "",
+          "type": "user",
+          "availability_status": "offline",
+          "thumbnail": ""
+        }
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "conversation.updated",
+      "data": {
+        "additional_attributes": {},
+        "can_reply": true,
+        "channel": "Channel::Api",
+        "contact_inbox": {
+          "id": 48,
+          "contact_id": 46,
+          "inbox_id": 1,
+          "source_id": "probe95d22c7aa7d8c48aa5698ac0",
+          "created_at": "2026-09-24T18:28:26.087Z",
+          "updated_at": "2026-09-24T18:28:26.087Z",
+          "hmac_verified": false,
+          "pubsub_token": "77sXgnSogAvPv47snyXLFEgF"
+        },
+        "id": 27,
+        "inbox_id": 1,
+        "messages": [
+          {
+            "id": 184,
+            "content": "Hi, this is Matthew. I can help.",
+            "account_id": 2,
+            "inbox_id": 1,
+            "conversation_id": 27,
+            "message_type": 1,
+            "created_at": 1790274515,
+            "updated_at": "2026-09-24T18:28:35.608Z",
+            "private": false,
+            "status": "sent",
+            "source_id": null,
+            "content_type": "text",
+            "content_attributes": {},
+            "sender_type": "User",
+            "sender_id": 2,
+            "external_source_ids": {},
+            "additional_attributes": {},
+            "processed_message_content": "Hi, this is Matthew. I can help.",
+            "sentiment": {},
+            "conversation": {
+              "assignee_id": 2,
+              "unread_count": 1,
+              "last_activity_at": 1790274515,
+              "contact_inbox": {
+                "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+              }
+            },
+            "sender": {
+              "id": 2,
+              "name": "Matthew Hsu",
+              "available_name": "Matthew Hsu",
+              "avatar_url": "",
+              "type": "user",
+              "availability_status": null,
+              "thumbnail": ""
+            }
+          }
+        ],
+        "labels": [],
+        "meta": {
+          "sender": {
+            "additional_attributes": {},
+            "custom_attributes": {},
+            "email": null,
+            "id": 46,
+            "identifier": null,
+            "name": "red-grass-677",
+            "phone_number": null,
+            "thumbnail": "",
+            "blocked": false,
+            "type": "contact"
+          },
+          "assignee": {
+            "id": 2,
+            "name": "Matthew Hsu",
+            "available_name": "Matthew Hsu",
+            "avatar_url": "",
+            "type": "user",
+            "availability_status": null,
+            "thumbnail": ""
+          },
+          "assignee_type": "User",
+          "team": null,
+          "hmac_verified": false
+        },
+        "status": "open",
+        "custom_attributes": {},
+        "snoozed_until": null,
+        "unread_count": 1,
+        "first_reply_created_at": "2026-09-24T18:28:35.608Z",
+        "priority": null,
+        "waiting_since": 0,
+        "agent_last_seen_at": 0,
+        "contact_last_seen_at": 0,
+        "last_activity_at": 1790274515,
+        "timestamp": 1790274515,
+        "created_at": 1790274506,
+        "updated_at": 1790274515.721257,
+        "account_id": 2
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "presence.update",
+      "data": {
+        "account_id": 2,
+        "users": {}
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "conversation.status_changed",
+      "data": {
+        "additional_attributes": {},
+        "can_reply": true,
+        "channel": "Channel::Api",
+        "contact_inbox": {
+          "id": 48,
+          "contact_id": 46,
+          "inbox_id": 1,
+          "source_id": "probe95d22c7aa7d8c48aa5698ac0",
+          "created_at": "2026-09-24T18:28:26.087Z",
+          "updated_at": "2026-09-24T18:28:26.087Z",
+          "hmac_verified": false,
+          "pubsub_token": "77sXgnSogAvPv47snyXLFEgF"
+        },
+        "id": 27,
+        "inbox_id": 1,
+        "messages": [
+          {
+            "id": 184,
+            "content": "Hi, this is Matthew. I can help.",
+            "account_id": 2,
+            "inbox_id": 1,
+            "conversation_id": 27,
+            "message_type": 1,
+            "created_at": 1790274515,
+            "updated_at": "2026-09-24T18:28:35.608Z",
+            "private": false,
+            "status": "sent",
+            "source_id": null,
+            "content_type": "text",
+            "content_attributes": {},
+            "sender_type": "User",
+            "sender_id": 2,
+            "external_source_ids": {},
+            "additional_attributes": {},
+            "processed_message_content": "Hi, this is Matthew. I can help.",
+            "sentiment": {},
+            "conversation": {
+              "assignee_id": 2,
+              "unread_count": 1,
+              "last_activity_at": 1790274515,
+              "contact_inbox": {
+                "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+              }
+            },
+            "sender": {
+              "id": 2,
+              "name": "Matthew Hsu",
+              "available_name": "Matthew Hsu",
+              "avatar_url": "",
+              "type": "user",
+              "availability_status": null,
+              "thumbnail": ""
+            }
+          }
+        ],
+        "labels": [],
+        "meta": {
+          "sender": {
+            "additional_attributes": {},
+            "custom_attributes": {},
+            "email": null,
+            "id": 46,
+            "identifier": null,
+            "name": "red-grass-677",
+            "phone_number": null,
+            "thumbnail": "",
+            "blocked": false,
+            "type": "contact"
+          },
+          "assignee": {
+            "id": 2,
+            "name": "Matthew Hsu",
+            "available_name": "Matthew Hsu",
+            "avatar_url": "",
+            "type": "user",
+            "availability_status": null,
+            "thumbnail": ""
+          },
+          "assignee_type": "User",
+          "team": null,
+          "hmac_verified": false
+        },
+        "status": "resolved",
+        "custom_attributes": {},
+        "snoozed_until": null,
+        "unread_count": 1,
+        "first_reply_created_at": "2026-09-24T18:28:35.608Z",
+        "priority": null,
+        "waiting_since": 0,
+        "agent_last_seen_at": 0,
+        "contact_last_seen_at": 0,
+        "last_activity_at": 1790274515,
+        "timestamp": 1790274515,
+        "created_at": 1790274506,
+        "updated_at": 1790274518.149725,
+        "account_id": 2
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "conversation.updated",
+      "data": {
+        "additional_attributes": {},
+        "can_reply": true,
+        "channel": "Channel::Api",
+        "contact_inbox": {
+          "id": 48,
+          "contact_id": 46,
+          "inbox_id": 1,
+          "source_id": "probe95d22c7aa7d8c48aa5698ac0",
+          "created_at": "2026-09-24T18:28:26.087Z",
+          "updated_at": "2026-09-24T18:28:26.087Z",
+          "hmac_verified": false,
+          "pubsub_token": "77sXgnSogAvPv47snyXLFEgF"
+        },
+        "id": 27,
+        "inbox_id": 1,
+        "messages": [
+          {
+            "id": 184,
+            "content": "Hi, this is Matthew. I can help.",
+            "account_id": 2,
+            "inbox_id": 1,
+            "conversation_id": 27,
+            "message_type": 1,
+            "created_at": 1790274515,
+            "updated_at": "2026-09-24T18:28:35.608Z",
+            "private": false,
+            "status": "sent",
+            "source_id": null,
+            "content_type": "text",
+            "content_attributes": {},
+            "sender_type": "User",
+            "sender_id": 2,
+            "external_source_ids": {},
+            "additional_attributes": {},
+            "processed_message_content": "Hi, this is Matthew. I can help.",
+            "sentiment": {},
+            "conversation": {
+              "assignee_id": 2,
+              "unread_count": 1,
+              "last_activity_at": 1790274515,
+              "contact_inbox": {
+                "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+              }
+            },
+            "sender": {
+              "id": 2,
+              "name": "Matthew Hsu",
+              "available_name": "Matthew Hsu",
+              "avatar_url": "",
+              "type": "user",
+              "availability_status": null,
+              "thumbnail": ""
+            }
+          }
+        ],
+        "labels": [],
+        "meta": {
+          "sender": {
+            "additional_attributes": {},
+            "custom_attributes": {},
+            "email": null,
+            "id": 46,
+            "identifier": null,
+            "name": "red-grass-677",
+            "phone_number": null,
+            "thumbnail": "",
+            "blocked": false,
+            "type": "contact"
+          },
+          "assignee": {
+            "id": 2,
+            "name": "Matthew Hsu",
+            "available_name": "Matthew Hsu",
+            "avatar_url": "",
+            "type": "user",
+            "availability_status": null,
+            "thumbnail": ""
+          },
+          "assignee_type": "User",
+          "team": null,
+          "hmac_verified": false
+        },
+        "status": "resolved",
+        "custom_attributes": {},
+        "snoozed_until": null,
+        "unread_count": 1,
+        "first_reply_created_at": "2026-09-24T18:28:35.608Z",
+        "priority": null,
+        "waiting_since": 0,
+        "agent_last_seen_at": 0,
+        "contact_last_seen_at": 0,
+        "last_activity_at": 1790274515,
+        "timestamp": 1790274515,
+        "created_at": 1790274506,
+        "updated_at": 1790274518.149725,
+        "account_id": 2
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "conversation.status_changed",
+      "data": {
+        "additional_attributes": {},
+        "can_reply": true,
+        "channel": "Channel::Api",
+        "contact_inbox": {
+          "id": 48,
+          "contact_id": 46,
+          "inbox_id": 1,
+          "source_id": "probe95d22c7aa7d8c48aa5698ac0",
+          "created_at": "2026-09-24T18:28:26.087Z",
+          "updated_at": "2026-09-24T18:28:26.087Z",
+          "hmac_verified": false,
+          "pubsub_token": "77sXgnSogAvPv47snyXLFEgF"
+        },
+        "id": 27,
+        "inbox_id": 1,
+        "messages": [
+          {
+            "id": 186,
+            "content": "One more question.",
+            "account_id": 2,
+            "inbox_id": 1,
+            "conversation_id": 27,
+            "message_type": 0,
+            "created_at": 1790274519,
+            "updated_at": "2026-09-24T18:28:39.852Z",
+            "private": false,
+            "status": "sent",
+            "source_id": null,
+            "content_type": "text",
+            "content_attributes": {},
+            "sender_type": "Contact",
+            "sender_id": 46,
+            "external_source_ids": {},
+            "additional_attributes": {},
+            "processed_message_content": "One more question.",
+            "sentiment": {},
+            "conversation": {
+              "assignee_id": 2,
+              "unread_count": 2,
+              "last_activity_at": 1790274518,
+              "contact_inbox": {
+                "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+              }
+            },
+            "sender": {
+              "additional_attributes": {},
+              "custom_attributes": {},
+              "email": null,
+              "id": 46,
+              "identifier": null,
+              "name": "red-grass-677",
+              "phone_number": null,
+              "thumbnail": "",
+              "blocked": false,
+              "type": "contact"
+            }
+          }
+        ],
+        "labels": [],
+        "meta": {
+          "sender": {
+            "additional_attributes": {},
+            "custom_attributes": {},
+            "email": null,
+            "id": 46,
+            "identifier": null,
+            "name": "red-grass-677",
+            "phone_number": null,
+            "thumbnail": "",
+            "blocked": false,
+            "type": "contact"
+          },
+          "assignee": {
+            "id": 2,
+            "name": "Matthew Hsu",
+            "available_name": "Matthew Hsu",
+            "avatar_url": "",
+            "type": "user",
+            "availability_status": null,
+            "thumbnail": ""
+          },
+          "assignee_type": "User",
+          "team": null,
+          "hmac_verified": false
+        },
+        "status": "pending",
+        "custom_attributes": {},
+        "snoozed_until": null,
+        "unread_count": 2,
+        "first_reply_created_at": "2026-09-24T18:28:35.608Z",
+        "priority": null,
+        "waiting_since": 0,
+        "agent_last_seen_at": 0,
+        "contact_last_seen_at": 0,
+        "last_activity_at": 1790274518,
+        "timestamp": 1790274518,
+        "created_at": 1790274506,
+        "updated_at": 1790274519.899065,
+        "account_id": 2
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "message.created",
+      "data": {
+        "id": 186,
+        "content": "One more question.",
+        "account_id": 2,
+        "inbox_id": 1,
+        "conversation_id": 27,
+        "message_type": 0,
+        "created_at": 1790274519,
+        "updated_at": "2026-09-24T18:28:39.852Z",
+        "private": false,
+        "status": "sent",
+        "source_id": null,
+        "content_type": "text",
+        "content_attributes": {},
+        "sender_type": "Contact",
+        "sender_id": 46,
+        "external_source_ids": {},
+        "additional_attributes": {},
+        "processed_message_content": "One more question.",
+        "sentiment": {},
+        "conversation": {
+          "assignee_id": 2,
+          "unread_count": 2,
+          "last_activity_at": 1790274519,
+          "contact_inbox": {
+            "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+          }
+        },
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "conversation.updated",
+      "data": {
+        "additional_attributes": {},
+        "can_reply": true,
+        "channel": "Channel::Api",
+        "contact_inbox": {
+          "id": 48,
+          "contact_id": 46,
+          "inbox_id": 1,
+          "source_id": "probe95d22c7aa7d8c48aa5698ac0",
+          "created_at": "2026-09-24T18:28:26.087Z",
+          "updated_at": "2026-09-24T18:28:26.087Z",
+          "hmac_verified": false,
+          "pubsub_token": "77sXgnSogAvPv47snyXLFEgF"
+        },
+        "id": 27,
+        "inbox_id": 1,
+        "messages": [
+          {
+            "id": 186,
+            "content": "One more question.",
+            "account_id": 2,
+            "inbox_id": 1,
+            "conversation_id": 27,
+            "message_type": 0,
+            "created_at": 1790274519,
+            "updated_at": "2026-09-24T18:28:39.852Z",
+            "private": false,
+            "status": "sent",
+            "source_id": null,
+            "content_type": "text",
+            "content_attributes": {},
+            "sender_type": "Contact",
+            "sender_id": 46,
+            "external_source_ids": {},
+            "additional_attributes": {},
+            "processed_message_content": "One more question.",
+            "sentiment": {},
+            "conversation": {
+              "assignee_id": 2,
+              "unread_count": 2,
+              "last_activity_at": 1790274519,
+              "contact_inbox": {
+                "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+              }
+            },
+            "sender": {
+              "additional_attributes": {},
+              "custom_attributes": {},
+              "email": null,
+              "id": 46,
+              "identifier": null,
+              "name": "red-grass-677",
+              "phone_number": null,
+              "thumbnail": "",
+              "blocked": false,
+              "type": "contact"
+            }
+          }
+        ],
+        "labels": [],
+        "meta": {
+          "sender": {
+            "additional_attributes": {},
+            "custom_attributes": {},
+            "email": null,
+            "id": 46,
+            "identifier": null,
+            "name": "red-grass-677",
+            "phone_number": null,
+            "thumbnail": "",
+            "blocked": false,
+            "type": "contact"
+          },
+          "assignee": {
+            "id": 2,
+            "name": "Matthew Hsu",
+            "available_name": "Matthew Hsu",
+            "avatar_url": "",
+            "type": "user",
+            "availability_status": null,
+            "thumbnail": ""
+          },
+          "assignee_type": "User",
+          "team": null,
+          "hmac_verified": false
+        },
+        "status": "pending",
+        "custom_attributes": {},
+        "snoozed_until": null,
+        "unread_count": 2,
+        "first_reply_created_at": "2026-09-24T18:28:35.608Z",
+        "priority": null,
+        "waiting_since": 0,
+        "agent_last_seen_at": 0,
+        "contact_last_seen_at": 0,
+        "last_activity_at": 1790274519,
+        "timestamp": 1790274519,
+        "created_at": 1790274506,
+        "updated_at": 1790274519.983902,
+        "account_id": 2
+      }
+    }
+  },
+  {
+    "identifier": "{\"channel\":\"RoomChannel\",\"pubsub_token\":\"77sXgnSogAvPv47snyXLFEgF\"}",
+    "message": {
+      "event": "conversation.updated",
+      "data": {
+        "additional_attributes": {},
+        "can_reply": true,
+        "channel": "Channel::Api",
+        "contact_inbox": {
+          "id": 48,
+          "contact_id": 46,
+          "inbox_id": 1,
+          "source_id": "probe95d22c7aa7d8c48aa5698ac0",
+          "created_at": "2026-09-24T18:28:26.087Z",
+          "updated_at": "2026-09-24T18:28:26.087Z",
+          "hmac_verified": false,
+          "pubsub_token": "77sXgnSogAvPv47snyXLFEgF"
+        },
+        "id": 27,
+        "inbox_id": 1,
+        "messages": [
+          {
+            "id": 186,
+            "content": "One more question.",
+            "account_id": 2,
+            "inbox_id": 1,
+            "conversation_id": 27,
+            "message_type": 0,
+            "created_at": 1790274519,
+            "updated_at": "2026-09-24T18:28:39.852Z",
+            "private": false,
+            "status": "sent",
+            "source_id": null,
+            "content_type": "text",
+            "content_attributes": {},
+            "sender_type": "Contact",
+            "sender_id": 46,
+            "external_source_ids": {},
+            "additional_attributes": {},
+            "processed_message_content": "One more question.",
+            "sentiment": {},
+            "conversation": {
+              "assignee_id": 2,
+              "unread_count": 2,
+              "last_activity_at": 1790274519,
+              "contact_inbox": {
+                "source_id": "probe95d22c7aa7d8c48aa5698ac0"
+              }
+            },
+            "sender": {
+              "additional_attributes": {},
+              "custom_attributes": {},
+              "email": null,
+              "id": 46,
+              "identifier": null,
+              "name": "red-grass-677",
+              "phone_number": null,
+              "thumbnail": "",
+              "blocked": false,
+              "type": "contact"
+            }
+          }
+        ],
+        "labels": [],
+        "meta": {
+          "sender": {
+            "additional_attributes": {},
+            "custom_attributes": {},
+            "email": null,
+            "id": 46,
+            "identifier": null,
+            "name": "red-grass-677",
+            "phone_number": null,
+            "thumbnail": "",
+            "blocked": false,
+            "type": "contact"
+          },
+          "assignee": {
+            "id": 2,
+            "name": "Matthew Hsu",
+            "available_name": "Matthew Hsu",
+            "avatar_url": "",
+            "type": "user",
+            "availability_status": null,
+            "thumbnail": ""
+          },
+          "assignee_type": "User",
+          "team": null,
+          "hmac_verified": false
+        },
+        "status": "pending",
+        "custom_attributes": {},
+        "snoozed_until": null,
+        "unread_count": 2,
+        "first_reply_created_at": "2026-09-24T18:28:35.608Z",
+        "priority": null,
+        "waiting_since": 1790274519,
+        "agent_last_seen_at": 0,
+        "contact_last_seen_at": 0,
+        "last_activity_at": 1790274519,
+        "timestamp": 1790274519,
+        "created_at": 1790274506,
+        "updated_at": 1790274520.026783,
+        "account_id": 2
+      }
+    }
+  }
+]

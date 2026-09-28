@@ -1,17 +1,15 @@
+using AgentCore.AspNetCore.Endpoints;
 using AgentCore.Hosting;
+using SpiritAI.Access;
 using SpiritAI.Auth;
-using SpiritAI.Auth.Users;
 using SpiritAI.Caching;
+using SpiritAI.Chatwoot;
 using SpiritAI.Database;
+using SpiritAI.GoTo;
 using SpiritAI.Handoffs;
-using SpiritAI.Handoffs.Mail;
-using SpiritAI.Handoffs.RealTime;
-using SpiritAI.Handoffs.Staff;
-using SpiritAI.Handoffs.Visitors;
 using SpiritAI.Hosting;
 using SpiritAI.Lookup;
 using SpiritAI.PublicChat;
-using SpiritAI.RealTime;
 using SpiritAI.Threads;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,19 +22,15 @@ builder.Services.AddProxyHeaders(builder.Configuration);
 
 builder.Services.AddPublicChat(builder.Configuration);
 
-builder.Services.AddThreadSessions();
-
 builder.Services.AddSpiritDatabase(builder.Configuration);
 
-builder.Services.AddNeonUsers();
+builder.Services.AddAccess();
 
-builder.Services.AddRealTime(builder.Configuration);
+builder.Services.AddChatwoot(builder.Configuration);
+
+builder.Services.AddGoTo(builder.Configuration);
 
 builder.Services.AddHandoffs();
-
-builder.Services.AddHandoffMail(builder.Configuration);
-
-builder.Services.AddHandoffRealTime();
 
 builder.Services.AddUnitLookup();
 
@@ -50,12 +44,8 @@ builder.Services.AddNeonAuth(
     builder.Configuration,
     options =>
     {
-        // Every public route sits under one prefix and checks the visitor's key itself. The hub
-        // admits visitors with no token, so it does its own check too; see SpiritHub.
-        options.OpenPathPrefixes = publicChat.Enabled
-            ? [publicChat.PublicPrefix, SpiritHub.Pattern]
-            : [SpiritHub.Pattern];
-        options.QueryTokenPathPrefixes = [SpiritHub.Pattern];
+        // Every public route sits under one prefix and checks the visitor's key itself.
+        options.OpenPathPrefixes = publicChat.Enabled ? [publicChat.PublicPrefix] : [];
     });
 
 var app = builder.Build();
@@ -66,30 +56,28 @@ app.UseRateLimiter();
 
 app.UseNeonAuthOnApi();
 
+app.UseAuthorization();
+
 app.UseThreadSessions();
 
-app.UseVisitorChat(AgentCoreExtensions.RouteOf(publicChat.Pattern));
+app.UseChatwootTurn(AgentCoreExtensions.RouteOf(publicChat.Pattern));
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.MapAgentCoreHost();
+app.MapAgentCoreHost(AgentCoreExtensions.ChatResponsesPattern).Responses.SelectEntry<GroupEntrySelector>();
 
 app.MapPublicChat();
 
-app.MapPublicThreads();
-
-app.MapVisitorHandoffs();
+app.MapWidgetSettings();
 
 app.MapThreads();
 
-app.MapStaffHandoffs();
-
-app.MapRealTime();
-
 app.MapLookup();
+
+app.MapGoToWebhook();
 
 app.UseWidgetFrameAncestors(builder.Configuration);
 

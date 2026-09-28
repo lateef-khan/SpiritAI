@@ -1,0 +1,6 @@
+{
+  "message": "Phone number has already been taken",
+  "attributes": [
+    "phone_number"
+  ]
+}

@@ -1,0 +1,188 @@
+{
+  "id": "0ccbcb1a-b848-4bde-b16b-17df1c33e0bd",
+  "source": "call-events",
+  "type": "call-state",
+  "timestamp": "2026-09-25T19:32:02.96Z",
+  "ttl": 600,
+  "content": {
+    "metadata": {
+      "conversationSpaceId": "2dc505e9-94f6-3796-9a43-c8e4096fccb4",
+      "associatedConversations": [
+        "48d8d511-7692-33be-a897-ed07e85d7e01"
+      ],
+      "direction": "INBOUND",
+      "accountKey": "5442810562173005068",
+      "callCreated": "2026-09-25T19:21:54.173Z",
+      "callInitiator": "DIRECT"
+    },
+    "state": {
+      "id": "ba4b3531-4988-52e4-af6a-ac561bc621bb",
+      "sequenceNumber": 28,
+      "type": "ACTIVE",
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "5d980aff-209a-59b4-9399-30245c70850c",
+          "originator": "086a7003-ff29-514c-b2a2-63ab882442ba",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "type": {
+            "value": "DIAL_PLAN",
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "exec",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            }
+          }
+        },
+        {
+          "id": "303ec5cc-bd87-563a-8510-3623bf316626",
+          "originator": "086a7003-ff29-514c-b2a2-63ab882442ba",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "type": {
+            "value": "DIAL_PLAN",
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "exec",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1035",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1336",
+              "connector": "nextNode"
+            }
+          }
+        },
+        {
+          "id": "a315fdf9-84e2-500d-aafe-5120e6420eb2",
+          "originator": "086a7003-ff29-514c-b2a2-63ab882442ba",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "type": {
+            "value": "DIAL_PLAN",
+            "dialPlanId": "dca97919-51f1-42eb-abf2-2d01cac1ed99",
+            "executionId": "exec",
+            "currentNode": {
+              "id": "CallQueueNode_1040",
+              "type": "CallQueueNode"
+            },
+            "previousNode": {
+              "id": "PasswordNode_1015",
+              "connector": "onSucceed"
+            }
+          }
+        },
+        {
+          "id": "37e2363d-6e0e-5ac7-925b-5476528d3a6a",
+          "originator": "086a7003-ff29-514c-b2a2-63ab882442ba",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "type": {
+            "value": "CALL_QUEUE",
+            "queueId": "70a92c2e-7534-4b1a-9923-25638bb8ab3a",
+            "queueName": "Service - Premium",
+            "queueType": "BASIC",
+            "configuredWrapUpDuration": 90
+          }
+        }
+      ],
+      "timestamp": "2026-09-25T19:32:02.869Z",
+      "participants": [
+        {
+          "id": "086a7003-ff29-514c-b2a2-63ab882442ba",
+          "legId": "af615133-2ed4-4fd4-8d7c-3264bf65be04",
+          "originator": "086a7003-ff29-514c-b2a2-63ab882442ba",
+          "status": {
+            "value": "IN_WARM_TRANSFER",
+            "initiator": {
+              "participantId": "4a20b54b-47cb-5328-be6a-45b242e7505f",
+              "conversationSpaceId": "2dc505e9-94f6-3796-9a43-c8e4096fccb4",
+              "extensionNumber": "8636",
+              "name": "Test Name"
+            },
+            "transferrer": {
+              "participantId": "c0b21176-45b3-56ab-a184-1f582110014d",
+              "conversationSpaceId": "48d8d511-7692-33be-a897-ed07e85d7e01",
+              "extensionNumber": "8636",
+              "name": "Test Name"
+            },
+            "destination": {
+              "participantId": "a9366c2a-9946-51d4-9994-94796ed42e89",
+              "conversationSpaceId": "48d8d511-7692-33be-a897-ed07e85d7e01",
+              "extensionNumber": "8645",
+              "name": "Test Name"
+            }
+          },
+          "type": {
+            "value": "PHONE_NUMBER",
+            "phoneNumberId": "2af0a7bd-7bbd-4ce6-a3a8-95565f8dc90c",
+            "number": "+12015550103",
+            "name": "+12015550103",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "Test Name",
+              "number": "+12015550104"
+            },
+            "contact": {
+              "notAddedReason": "NO_CONTACT"
+            }
+          }
+        },
+        {
+          "id": "4a20b54b-47cb-5328-be6a-45b242e7505f",
+          "legId": "bfe7e5ca-e9ac-418b-85e4-07b2cb3cfe8e",
+          "originator": "086a7003-ff29-514c-b2a2-63ab882442ba",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "type": {
+            "value": "LINE",
+            "lineId": "a2c48187-2679-4275-8394-99469986dfe1",
+            "deviceId": "278b5f7f-db8c-4926-93b4-df67c70e36cb",
+            "extensionNumber": "8636",
+            "name": "Test Name",
+            "device": {
+              "id": "278b5f7f-db8c-4926-93b4-df67c70e36cb",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "58413458-b49b-4dcf-8db9-63a24e41c38f"
+              }
+            }
+          }
+        },
+        {
+          "id": "a9366c2a-9946-51d4-9994-94796ed42e89",
+          "legId": "3d1b7a41-ab9f-4887-97c2-d8ebd2972092",
+          "originator": "c0b21176-45b3-56ab-a184-1f582110014d",
+          "status": {
+            "value": "RINGING"
+          },
+          "type": {
+            "value": "LINE",
+            "lineId": "7a13af56-9197-4518-93dc-a9003192a928",
+            "deviceId": "f4d6276a-6844-4ee3-910e-2086cba7e167",
+            "extensionNumber": "8645",
+            "name": "Test Name",
+            "device": {
+              "id": "f4d6276a-6844-4ee3-910e-2086cba7e167",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "ef0aa50c-323e-4973-8cf4-d48b3d165dd4"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "bypassDoNotDisturb": false
+}

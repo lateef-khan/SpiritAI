@@ -17,4 +17,9 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Chatwoot/Payloads/*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="GoTo/Payloads/*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/SpiritAI/Database/Local/neon-auth.sql" Link="Database/neon-auth.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

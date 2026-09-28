@@ -1,0 +1,207 @@
+# PostgreSQL recipes. From the repo root: `just postgres <recipe>`. On the server: `just <recipe>`
+# inside this folder. Recipes run here either way.
+#
+# Local dev and production use different compose projects, so `down` can never touch the
+# production volume.
+
+# Each command first writes the superuser password from secrets/<env>.env into .secrets.env.
+dev := "../secrets/export.sh dev POSTGRES_SERVER_ .secrets.env && docker compose --file compose.yaml --env-file .secrets.env"
+prod := "../secrets/export.sh prod POSTGRES_SERVER_ .secrets.env && docker compose --file compose.yaml --file compose.prod.yaml --env-file .secrets.env"
+psql := "docker exec --interactive spirit-postgres psql --username=postgres --set=ON_ERROR_STOP=1 --quiet"
+pgbackrest := "docker exec --user=postgres spirit-postgres pgbackrest"
+
+# Each app's database and role in dev when its URL in secrets/dev.env is empty. The same defaults
+# are in chatwoot/compose.yaml and twenty/compose.yaml.
+chatwoot_dev_url := "postgres://chatwoot:chatwoot@postgres:5432/chatwoot"
+twenty_dev_url := "postgres://twenty:twenty@postgres:5432/twenty"
+
+# List the recipes.
+default:
+    @just --list
+
+# Local dev: start, wait, and make each app's role and database. Chatwoot's and Twenty's `up` run it.
+up: _db
+    @{{dev}} up --detach --build --wait --wait-timeout 120
+    @just setup dev
+    @echo "PostgreSQL is ready."
+
+# Local dev: stop and delete every database.
+down:
+    {{dev}} down --volumes
+
+# Local dev: delete one app's database. Its role stays. The app's `down` runs it.
+drop database:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! docker exec spirit-postgres pg_isready --quiet --host=127.0.0.1 2>/dev/null; then
+        exit 0
+    fi
+    if [ -n "$(docker ps --quiet --filter name=^spirit-postgres$ --filter label=com.docker.compose.project=spirit-postgres-prod)" ]; then
+        echo "spirit-postgres is the production server; drop refuses to touch it." >&2
+        exit 1
+    fi
+    docker exec spirit-postgres dropdb --username=postgres --if-exists --force {{database}}
+    echo "Dropped {{database}}."
+
+# Local dev: follow the logs.
+logs:
+    {{dev}} logs --follow --tail=100
+
+# Production: start, wait, make each app's role and database, and set up backups when S3 is set.
+prod-up: _db
+    @{{prod}} $(just _backup-profile) up --detach --build --wait --wait-timeout 120
+    @just _writable
+    @just setup prod
+    @just _backup-init
+    @echo "PostgreSQL is ready."
+
+# Production: rebuild on the newest base image and restart. A new major version needs a restore.
+prod-update: _db
+    {{prod}} build --pull
+    {{prod}} $(just _backup-profile) up --detach --wait --wait-timeout 120
+
+# Production: stop. Keeps every database. Stop Chatwoot and Twenty first.
+prod-down:
+    {{prod}} --profile backup down
+
+# Production: show the containers.
+prod-status:
+    {{prod}} --profile backup ps
+
+# Production: follow the logs.
+prod-logs:
+    {{prod}} --profile backup logs --follow --tail=100
+
+# Open psql as the superuser, on one database.
+psql database="postgres":
+    docker exec --interactive --tty spirit-postgres psql --username=postgres --dbname={{database}}
+
+# Make or update each app's role, database, and extensions from its URL in secrets/<env>.env.
+setup env="dev":
+    @just _app {{env}} CHATWOOT_DATABASE_URL "{{chatwoot_dev_url}}" "pg_stat_statements pg_trgm pgcrypto vector"
+    @just _app {{env}} TWENTY_PG_DATABASE_URL "{{twenty_dev_url}}" "citext unaccent uuid-ossp"
+
+# Production: back up the whole server to S3 now. type is incr, diff, or full.
+backup type="incr": _backup-on
+    {{pgbackrest}} backup --type={{type}}
+
+# Production: list the backups in S3, with their sizes and times.
+backups: _backup-on
+    {{pgbackrest}} info
+
+# target is a UTC time such as "2026-09-27 09:30:00+00"; empty means the latest backup and WAL.
+# Production: stop Chatwoot and Twenty first. Puts back the whole server, both apps, from S3.
+prod-restore target="": _s3-on
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for app in chatwoot twenty; do
+        if [ -n "$(docker ps --quiet --filter label=com.docker.compose.project=spirit-$app-prod)" ]; then
+            echo "Stop $app first: just $app prod-down" >&2
+            exit 1
+        fi
+    done
+    if [ -n "$(docker ps --quiet --filter name=^spirit-postgres$ --filter label=com.docker.compose.project=spirit-postgres)" ]; then
+        echo "The dev server is running here. Stop it first: just down" >&2
+        exit 1
+    fi
+    target=()
+    if [ -n "{{target}}" ]; then
+        target=(--type=time "--target={{target}}" --target-action=promote)
+    fi
+    just _db
+    {{prod}} --profile backup down
+    {{prod}} run --rm --no-deps --build --user=postgres --entrypoint=pgbackrest postgres --delta "${target[@]}" restore
+    just prod-up
+
+# After a restore, the server answers read-only while it replays WAL from S3. setup must wait.
+_writable:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for i in $(seq 1 3600); do
+        if [ "$(docker exec spirit-postgres psql --username=postgres --tuples-only --no-align --command='SELECT pg_is_in_recovery()')" = "f" ]; then
+            exit 0
+        fi
+        [ "$i" = 1 ] && echo "Waiting for the server to finish replaying WAL..."
+        sleep 1
+    done
+    echo "The server is still replaying WAL after an hour. See: just prod-logs" >&2
+    exit 1
+
+# `--profile backup` when S3 is set in secrets/prod.env, which starts the backup container.
+_backup-profile:
+    @grep -qE '^POSTGRES_SERVER_S3_ENDPOINT=.+' ../secrets/prod.env && echo "--profile backup" || true
+
+# Points archive_command at pgBackRest when S3 is set, and at /bin/true (WAL is recycled) when it
+# is not. With S3, creates the repository the first time and proves WAL reaches it. Safe to run again.
+_backup-init:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    archive() {
+        echo "ALTER SYSTEM SET archive_command = '$1'; SELECT pg_reload_conf();" | {{psql}} >/dev/null
+    }
+    if ! grep -qE '^POSTGRES_SERVER_S3_ENDPOINT=.+' ../secrets/prod.env; then
+        archive "/bin/true"
+        echo "Backups are off: POSTGRES_SERVER_S3_ENDPOINT is empty in secrets/prod.env."
+        exit 0
+    fi
+    archive "pgbackrest archive-push %p"
+    {{pgbackrest}} stanza-create
+    {{pgbackrest}} check
+    echo "Backups are on."
+
+# Backups exist only for the production server, and only with S3 set.
+_backup-on: _s3-on
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -z "$(docker ps --quiet --filter name=^spirit-postgres$ --filter label=com.docker.compose.project=spirit-postgres-prod)" ]; then
+        echo "The production server is not running here. Local dev has no backups." >&2
+        exit 1
+    fi
+
+_s3-on:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! grep -qE '^POSTGRES_SERVER_S3_ENDPOINT=.+' ../secrets/prod.env; then
+        echo "Backups are off: set POSTGRES_SERVER_S3_ENDPOINT and the other POSTGRES_SERVER_S3_* keys in secrets/prod.env, then run just prod-up." >&2
+        exit 1
+    fi
+
+# The superuser creates the extensions, because an app's own role may not.
+_app env key dev_url extensions:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    role="$(just _url {{env}} {{key}} "{{dev_url}}" role)"
+    password="$(just _url {{env}} {{key}} "{{dev_url}}" password)"
+    database="$(just _url {{env}} {{key}} "{{dev_url}}" database)"
+    {{psql}} --set=role="$role" --set=password="$password" --set=database="$database" < setup.sql
+    {
+        echo "SET client_min_messages = warning;"
+        for extension in {{extensions}}; do
+            echo "CREATE EXTENSION IF NOT EXISTS \"$extension\";"
+        done
+    } | {{psql}} --dbname="$database"
+    echo "$database: role and database are ready."
+
+# One part of an app's URL in secrets/<env>.env: postgres://<role>:<password>@postgres:5432/<database>
+# In dev, an empty URL means dev_url.
+_url env key dev_url part:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    url="$(grep -m1 '^{{key}}=' ../secrets/{{env}}.env | cut -d= -f2- || true)"
+    if [ -z "$url" ] && [ "{{env}}" = "dev" ]; then
+        url="{{dev_url}}"
+    fi
+    pattern='^postgres(ql)?://([^:@/]+):([^@/]+)@postgres(:5432)?/([^/?]+)$'
+    if [[ ! "$url" =~ $pattern ]]; then
+        echo "{{key}} in secrets/{{env}}.env must look like postgres://<role>:<password>@postgres:5432/<database>" >&2
+        exit 1
+    fi
+    case "{{part}}" in
+        role) echo "${BASH_REMATCH[2]}" ;;
+        password) echo "${BASH_REMATCH[3]}" ;;
+        database) echo "${BASH_REMATCH[5]}" ;;
+    esac
+
+# The network the apps share with the server. No recipe deletes it.
+_db:
+    @docker network inspect spirit-db >/dev/null 2>&1 || docker network create spirit-db

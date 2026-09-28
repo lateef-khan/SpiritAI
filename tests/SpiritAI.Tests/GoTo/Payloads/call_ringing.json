@@ -1,0 +1,165 @@
+{
+  "id": "9bff0242-de5a-4820-a6a5-1f80deb5fddb",
+  "source": "call-events",
+  "type": "call-state",
+  "timestamp": "2026-09-25T19:34:05.124Z",
+  "ttl": 600,
+  "content": {
+    "metadata": {
+      "conversationSpaceId": "8a484291-cc5e-31f1-afd2-c9f0eea271d2",
+      "direction": "INBOUND",
+      "accountKey": "5442810562173005068",
+      "callCreated": "2026-09-25T19:33:04.223Z",
+      "callInitiator": "DIRECT"
+    },
+    "state": {
+      "id": "d7e05353-7b82-5ca7-9f78-1ee529bc0c51",
+      "sequenceNumber": 21,
+      "type": "ACTIVE",
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "94c5dfc6-f985-55d4-bf2f-274806802e62",
+          "originator": "4eb87369-3985-5524-8e76-9e57a421eb40",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "type": {
+            "value": "DIAL_PLAN",
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "exec",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            }
+          }
+        },
+        {
+          "id": "c763856b-c12e-5c1f-9cf2-bf5ebeeda014",
+          "originator": "4eb87369-3985-5524-8e76-9e57a421eb40",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "type": {
+            "value": "DIAL_PLAN",
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "exec",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1035",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1336",
+              "connector": "nextNode"
+            }
+          }
+        },
+        {
+          "id": "0233e690-1188-52c1-84eb-dabdcbb6d27d",
+          "originator": "4eb87369-3985-5524-8e76-9e57a421eb40",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "type": {
+            "value": "DIAL_PLAN",
+            "dialPlanId": "dca97919-51f1-42eb-abf2-2d01cac1ed99",
+            "executionId": "exec",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1101",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ScheduleNode_1095",
+              "connector": "onOpen"
+            }
+          }
+        },
+        {
+          "id": "dab8a09d-3eab-507b-8b71-8d693dcc7dee",
+          "originator": "4eb87369-3985-5524-8e76-9e57a421eb40",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "type": {
+            "value": "DIAL_PLAN",
+            "dialPlanId": "b933906b-de72-4275-ac09-2fab9eb35756",
+            "executionId": "exec",
+            "currentNode": {
+              "id": "CallQueueNode_1003",
+              "type": "CallQueueNode"
+            },
+            "previousNode": {
+              "id": "",
+              "connector": ""
+            }
+          }
+        },
+        {
+          "id": "86682c0f-c34d-59c5-9cef-1c739876fccc",
+          "originator": "4eb87369-3985-5524-8e76-9e57a421eb40",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "type": {
+            "value": "CALL_QUEUE",
+            "queueId": "b2086680-8b6f-401e-bb99-03301a69ec2b",
+            "queueName": "Service - Registration/OOB",
+            "queueType": "BASIC",
+            "configuredWrapUpDuration": 90
+          }
+        }
+      ],
+      "timestamp": "2026-09-25T19:34:05.047Z",
+      "participants": [
+        {
+          "id": "4eb87369-3985-5524-8e76-9e57a421eb40",
+          "legId": "b86973f3-719a-444a-aa5a-ee69f52cd4ac",
+          "originator": "4eb87369-3985-5524-8e76-9e57a421eb40",
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          },
+          "type": {
+            "value": "PHONE_NUMBER",
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "number": "+12015550100",
+            "name": "+12015550100",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "Test Name",
+              "number": "+12015550123"
+            },
+            "contact": {
+              "notAddedReason": "NO_CONTACT"
+            }
+          }
+        },
+        {
+          "id": "e655830e-7b84-5502-a0e9-f46aac3b489c",
+          "legId": "b3ec5c82-258e-490e-89de-a35cddc1608c",
+          "originator": "4eb87369-3985-5524-8e76-9e57a421eb40",
+          "status": {
+            "value": "RINGING"
+          },
+          "type": {
+            "value": "LINE",
+            "lineId": "d3d10a08-2269-4872-a904-261c68494270",
+            "deviceId": "85966f93-a7e1-48fa-98ba-c01221a0e21b",
+            "extensionNumber": "8625",
+            "name": "Test Name",
+            "device": {
+              "id": "85966f93-a7e1-48fa-98ba-c01221a0e21b",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "ce0b3ec9-5faf-408e-9ff6-d0014a3f48bd"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "bypassDoNotDisturb": false
+}

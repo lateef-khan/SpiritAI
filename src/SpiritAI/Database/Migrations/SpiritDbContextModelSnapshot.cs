@@ -23,171 +23,67 @@ namespace SpiritAI.Database.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("SpiritAI.Handoffs.Model.ConversationStub", b =>
+            modelBuilder.Entity("SpiritAI.Access.NeonUserStub", b =>
                 {
-                    b.Property<string>("ConversationId")
-                        .HasColumnType("text")
-                        .HasColumnName("conversation_id");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
-                    b.HasKey("ConversationId");
+                    b.HasKey("Id");
 
-                    b.ToTable("conversation", "agentcore", t =>
+                    b.ToTable("user", "neon_auth", t =>
                         {
                             t.ExcludeFromMigrations();
                         });
                 });
 
-            modelBuilder.Entity("SpiritAI.Handoffs.Model.Handoff", b =>
+            modelBuilder.Entity("SpiritAI.Access.Role", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTimeOffset>("AskedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("asked_at")
-                        .HasDefaultValueSql("now()");
-
-                    b.Property<string>("AskedBy")
-                        .IsRequired()
+                    b.Property<string>("Name")
                         .HasColumnType("text")
-                        .HasColumnName("asked_by");
+                        .HasColumnName("name");
 
-                    b.Property<string>("AssigneeKey")
+                    b.Property<string>("AccessGroup")
                         .HasColumnType("text")
-                        .HasColumnName("assignee_key");
+                        .HasColumnName("access_group");
 
-                    b.Property<string>("AssigneeName")
-                        .HasColumnType("text")
-                        .HasColumnName("assignee_name");
+                    b.HasKey("Name");
 
-                    b.Property<DateTimeOffset?>("ClaimedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("claimed_at");
-
-                    b.Property<string>("ConversationId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("conversation_id");
-
-                    b.Property<DateTimeOffset?>("DoneAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("done_at");
-
-                    b.Property<string>("Email")
-                        .HasColumnType("text")
-                        .HasColumnName("email");
-
-                    b.Property<string>("Reason")
-                        .HasColumnType("text")
-                        .HasColumnName("reason");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("status");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ConversationId")
-                        .IsUnique()
-                        .HasDatabaseName("handoff_open_per_conversation")
-                        .HasFilter("status <> 'done'");
-
-                    b.HasIndex("Status", "AskedAt")
-                        .HasDatabaseName("handoff_queue");
-
-                    b.ToTable("handoff", "spirit", t =>
+                    b.ToTable("role", "spirit", t =>
                         {
-                            t.HasCheckConstraint("handoff_asked_by_check", "asked_by IN ('bot', 'visitor')");
-
-                            t.HasCheckConstraint("handoff_status_check", "status IN ('waiting', 'human', 'done')");
+                            t.HasCheckConstraint("role_access_group_check", "access_group IN ('Guest', 'Dealer', 'TechService', 'InsideSales', 'InsideSalesSupervisor', 'TechServiceManager', 'InsideSalesManager', 'Admin')");
                         });
                 });
 
-            modelBuilder.Entity("SpiritAI.Handoffs.Reads.ConversationRead", b =>
+            modelBuilder.Entity("SpiritAI.Access.UserRole", b =>
                 {
-                    b.Property<string>("ConversationId")
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Role")
                         .HasColumnType("text")
-                        .HasColumnName("conversation_id");
+                        .HasColumnName("role");
 
-                    b.Property<string>("StaffKey")
-                        .HasColumnType("text")
-                        .HasColumnName("staff_key");
+                    b.HasKey("UserId", "Role");
 
-                    b.Property<DateTimeOffset>("SeenAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("seen_at")
-                        .HasDefaultValueSql("now()");
+                    b.HasIndex("Role");
 
-                    b.Property<int>("SeenOrdinal")
-                        .HasColumnType("integer")
-                        .HasColumnName("seen_ordinal");
-
-                    b.HasKey("ConversationId", "StaffKey");
-
-                    b.ToTable("conversation_read", "spirit");
+                    b.ToTable("user_role", "spirit");
                 });
 
-            modelBuilder.Entity("SpiritAI.RealTime.Presence.Presence", b =>
+            modelBuilder.Entity("SpiritAI.Access.UserRole", b =>
                 {
-                    b.Property<string>("ConnectionId")
-                        .HasColumnType("text")
-                        .HasColumnName("connection_id");
-
-                    b.Property<string>("CallerKey")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("caller_key");
-
-                    b.Property<string>("CallerName")
-                        .HasColumnType("text")
-                        .HasColumnName("caller_name");
-
-                    b.Property<DateTimeOffset>("ConnectedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("connected_at")
-                        .HasDefaultValueSql("now()");
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("kind");
-
-                    b.Property<DateTimeOffset>("SeenAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("seen_at")
-                        .HasDefaultValueSql("now()");
-
-                    b.HasKey("ConnectionId");
-
-                    b.HasIndex("Kind", "SeenAt")
-                        .HasDatabaseName("presence_kind_seen_at");
-
-                    b.ToTable("presence", "spirit");
-                });
-
-            modelBuilder.Entity("SpiritAI.Handoffs.Model.Handoff", b =>
-                {
-                    b.HasOne("SpiritAI.Handoffs.Model.ConversationStub", null)
+                    b.HasOne("SpiritAI.Access.Role", null)
                         .WithMany()
-                        .HasForeignKey("ConversationId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasForeignKey("Role")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-                });
 
-            modelBuilder.Entity("SpiritAI.Handoffs.Reads.ConversationRead", b =>
-                {
-                    b.HasOne("SpiritAI.Handoffs.Model.ConversationStub", null)
+                    b.HasOne("SpiritAI.Access.NeonUserStub", null)
                         .WithMany()
-                        .HasForeignKey("ConversationId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

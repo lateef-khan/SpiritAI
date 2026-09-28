@@ -1,0 +1,65 @@
+[
+  {
+    "id": 95,
+    "content": "My treadmill belt slips.",
+    "message_type": 0,
+    "content_type": "text",
+    "content_attributes": {
+      "external_error": "Failed to open TCP connection to 172.17.0.1:5299 (Connection refused - connect(2) for \"172.17.0.1\" port 5299)"
+    },
+    "created_at": 1790236598,
+    "conversation_id": 18,
+    "sender": {
+      "additional_attributes": {},
+      "custom_attributes": {
+        "probe_other": "x",
+        "probe_serial": "SN123"
+      },
+      "email": null,
+      "id": 20,
+      "identifier": null,
+      "name": "Probe Visitor",
+      "phone_number": "+13125550100",
+      "thumbnail": "",
+      "blocked": false,
+      "type": "contact"
+    }
+  },
+  {
+    "id": 96,
+    "content": "Sorry to hear that. **Which model** is it?",
+    "message_type": 1,
+    "content_type": "text",
+    "content_attributes": {
+      "external_error": "Failed to open TCP connection to 172.17.0.1:5299 (Connection refused - connect(2) for \"172.17.0.1\" port 5299)"
+    },
+    "created_at": 1790236599,
+    "conversation_id": 18,
+    "sender": {
+      "id": 1,
+      "name": "Spirit AI",
+      "avatar_url": "",
+      "type": "agent_bot"
+    }
+  },
+  {
+    "id": 98,
+    "content": "Hi, this is Matthew from support.",
+    "message_type": 1,
+    "content_type": "text",
+    "content_attributes": {
+      "external_error": "Failed to open TCP connection to 172.17.0.1:5299 (Connection refused - connect(2) for \"172.17.0.1\" port 5299)"
+    },
+    "created_at": 1790236608,
+    "conversation_id": 18,
+    "sender": {
+      "id": 2,
+      "name": "Matthew Hsu",
+      "available_name": "Matthew Hsu",
+      "avatar_url": "",
+      "type": "user",
+      "availability_status": null,
+      "thumbnail": ""
+    }
+  }
+]

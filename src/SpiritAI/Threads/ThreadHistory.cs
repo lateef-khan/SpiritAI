@@ -8,7 +8,6 @@ using AgentCore.Domain.Sources;
 
 using Microsoft.Extensions.AI;
 
-using SpiritAI.Handoffs.Transcript;
 
 namespace SpiritAI.Threads;
 
@@ -73,9 +72,8 @@ public sealed record ThreadMessageStatus(string Type);
 public sealed record ThreadMessageMetadata
 {
     /// <summary>
-    /// Gets the application's own fields. One is written: <c>speaker</c>, who wrote a message of
-    /// the human phase, in the shape <see cref="SpeakerProperty"/> stores. The browser reads it from
-    /// <c>metadata.custom.speaker</c> and draws the name above the message.
+    /// Gets the application's own fields. The server writes none; assistant-ui's message shape has
+    /// the slot, and the widget fills it in the browser.
     /// </summary>
     public IReadOnlyDictionary<string, JsonElement> Custom { get; init; }
         = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
@@ -174,19 +172,11 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
 
         var openTurn = -1;
 
-        string? openSpeaker = null;
-
-        var openHuman = false;
-        
         foreach (var row in rows.OrderBy(row => row.Ordinal))
         {
             var agentSide = row.Content.Role == ChatRole.Assistant || row.Content.Role == ChatRole.Tool;
-            
-            var human = SpeakerKey(row) is { } key
-                && JsonDocument.Parse(key).RootElement.TryGetProperty("kind", out var kind)
-                && kind.GetString() == "human";
 
-            if (agentSide && open is not null && !human && !openHuman && openTurn == row.TurnIndex && openSpeaker == SpeakerKey(row))
+            if (agentSide && open is not null && openTurn == row.TurnIndex)
             {
                 open.Add(row);
                 continue;
@@ -196,15 +186,12 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
             {
                 yield return open;
                 open = null;
-                openHuman = false;
             }
 
             if (agentSide)
             {
                 open = [row];
                 openTurn = row.TurnIndex;
-                openSpeaker = SpeakerKey(row);
-                openHuman = human;
             }
             else
             {
@@ -217,10 +204,6 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
             yield return open;
         }
     }
-
-    /// <summary>Who a row speaks as, as the stored JSON spells it. No entry means the agent.</summary>
-    private static string? SpeakerKey(ConversationMessage row)
-        => SpeakerProperty.Read(row.Content)?.GetRawText();
 
     private static ThreadHistoryMessage Build(ConversationRecord conversation, List<ConversationMessage> turn, IReadOnlyDictionary<string, ThreadPart> files)
     {
@@ -284,7 +267,7 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
             role,
             parts,
             first.Content.CreatedAt ?? conversation.CreatedAt,
-            MetadataOf(first.Content))
+            new ThreadMessageMetadata())
         {
             Status = role == "assistant" ? new ThreadMessageStatus("complete") : null,
             Attachments = role == "user" ? [] : null,
@@ -310,14 +293,6 @@ public sealed record ThreadHistory(string? HeadId, IReadOnlyList<ThreadHistoryIt
 
         words.Clear();
     }
-
-    private static ThreadMessageMetadata MetadataOf(ChatMessage content)
-        => SpeakerProperty.Read(content) is { } speaker
-            ? new ThreadMessageMetadata
-            {
-                Custom = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { [SpeakerProperty.Name] = speaker },
-            }
-            : new ThreadMessageMetadata();
 
     private static ThreadToolCallPart ToolOf(FunctionCallContent called)
     {

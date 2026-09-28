@@ -71,6 +71,27 @@ public sealed class NeonTokenValidatorTests
     }
 
     [Fact]
+    public async Task Rejects_ABannedUser()
+    {
+        var kit = new NeonAuthTestKit();
+
+        var result = await kit.Validator().ValidateAsync(kit.Token(banned: true), TestContext.Current.CancellationToken);
+
+        Assert.Null(result.Principal);
+        Assert.Equal("the user is banned.", result.Failure);
+    }
+
+    [Fact]
+    public async Task Accepts_AUserTheBanWasLiftedFrom()
+    {
+        var kit = new NeonAuthTestKit();
+
+        var result = await kit.Validator().ValidateAsync(kit.Token(banned: false), TestContext.Current.CancellationToken);
+
+        Assert.NotNull(result.Principal);
+    }
+
+    [Fact]
     public async Task Rejects_AnExpiredToken()
     {
         var kit = new NeonAuthTestKit();

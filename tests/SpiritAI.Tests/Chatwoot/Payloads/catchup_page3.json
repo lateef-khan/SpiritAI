@@ -1,0 +1,105 @@
+[
+  {
+    "id": 101,
+    "content": "Visitor 1",
+    "message_type": 0,
+    "content_type": "text",
+    "content_attributes": {
+      "external_error": "Failed to open TCP connection to 172.17.0.1:5299 (Connection refused - connect(2) for \"172.17.0.1\" port 5299)"
+    },
+    "created_at": 1790237453,
+    "conversation_id": 19,
+    "sender": {
+      "additional_attributes": {},
+      "custom_attributes": {},
+      "email": null,
+      "id": 22,
+      "identifier": null,
+      "name": "Probe Visitor",
+      "phone_number": null,
+      "thumbnail": "",
+      "blocked": false,
+      "type": "contact"
+    }
+  },
+  {
+    "id": 102,
+    "content": "Bot 2",
+    "message_type": 1,
+    "content_type": "text",
+    "content_attributes": {
+      "external_error": "Failed to open TCP connection to 172.17.0.1:5299 (Connection refused - connect(2) for \"172.17.0.1\" port 5299)"
+    },
+    "created_at": 1790237454,
+    "conversation_id": 19,
+    "sender": {
+      "id": 1,
+      "name": "Spirit AI",
+      "avatar_url": "",
+      "type": "agent_bot"
+    }
+  },
+  {
+    "id": 103,
+    "content": "Visitor 3",
+    "message_type": 0,
+    "content_type": "text",
+    "content_attributes": {
+      "external_error": "Failed to open TCP connection to 172.17.0.1:5299 (Connection refused - connect(2) for \"172.17.0.1\" port 5299)"
+    },
+    "created_at": 1790237454,
+    "conversation_id": 19,
+    "sender": {
+      "additional_attributes": {},
+      "custom_attributes": {},
+      "email": null,
+      "id": 22,
+      "identifier": null,
+      "name": "Probe Visitor",
+      "phone_number": null,
+      "thumbnail": "",
+      "blocked": false,
+      "type": "contact"
+    }
+  },
+  {
+    "id": 104,
+    "content": "Bot 4",
+    "message_type": 1,
+    "content_type": "text",
+    "content_attributes": {
+      "external_error": "Failed to open TCP connection to 172.17.0.1:5299 (Connection refused - connect(2) for \"172.17.0.1\" port 5299)"
+    },
+    "created_at": 1790237454,
+    "conversation_id": 19,
+    "sender": {
+      "id": 1,
+      "name": "Spirit AI",
+      "avatar_url": "",
+      "type": "agent_bot"
+    }
+  },
+  {
+    "id": 105,
+    "content": "Visitor 5",
+    "message_type": 0,
+    "content_type": "text",
+    "content_attributes": {
+      "external_error": "Failed to open TCP connection to 172.17.0.1:5299 (Connection refused - connect(2) for \"172.17.0.1\" port 5299)"
+    },
+    "created_at": 1790237454,
+    "conversation_id": 19,
+    "sender": {
+      "additional_attributes": {},
+      "custom_attributes": {},
+      "email": null,
+      "id": 22,
+      "identifier": null,
+      "name": "Probe Visitor",
+      "phone_number": null,
+      "thumbnail": "",
+      "blocked": false,
+      "type": "contact"
+    }
+  }
+]

@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "userKey": "2029402004371069196",
+      "userId": "ce0b3ec9-5faf-408e-9ff6-d0014a3f48bd",
+      "lines": [
+        {
+          "id": "d3d10a08-2269-4872-a904-261c68494270",
+          "name": "Test Person 1",
+          "number": "8625",
+          "organization": {
+            "id": "org-test",
+            "name": "Test Org"
+          },
+          "accountKey": "1234567890123456789",
+          "primary": true,
+          "region": "US"
+        }
+      ]
+    },
+    {
+      "userKey": "7300195775692112874",
+      "userId": "500551ee-1230-4c43-9e89-e1dc34b3bb91",
+      "lines": [
+        {
+          "id": "a9770485-8b07-4b04-9086-4238d4484c03",
+          "name": "Test Person 2",
+          "number": "8627",
+          "organization": {
+            "id": "org-test",
+            "name": "Test Org"
+          },
+          "accountKey": "1234567890123456789",
+          "primary": true,
+          "region": "US"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+# Cloudflare Tunnel recipes. From the repo root: `just cloudflared <recipe>`. On the server:
+# `just <recipe>` inside this folder. Recipes run here either way.
+
+# The tunnel runs on the server only, so its token is in secrets/prod.env. Each command first
+# writes it into .secrets.env.
+compose := "../secrets/export.sh prod CLOUDFLARE_ .secrets.env && docker compose --file compose.yaml --env-file .secrets.env"
+
+# The names the root `just stack-*` recipes call on every app.
+alias prod-up := up
+alias prod-down := down
+alias prod-status := status
+
+# List the recipes.
+default:
+    @just --list
+
+# Start the tunnel and wait until Cloudflare has it.
+up: _edge
+    {{compose}} up --detach --wait --wait-timeout 300
+    @echo "The tunnel is connected."
+
+# Stop the tunnel. The apps keep running; they are only cut off from the internet.
+down:
+    {{compose}} down
+
+# Show the container.
+status:
+    {{compose}} ps
+
+# Pull the pinned image again and restart.
+update: _edge
+    {{compose}} up --detach --wait --wait-timeout 300 --pull always
+
+# Follow the logs.
+logs:
+    {{compose}} logs --follow --tail=100
+
+# The network the tunnel shares with every app.
+_edge:
+    @docker network inspect spirit-edge >/dev/null 2>&1 || docker network create spirit-edge

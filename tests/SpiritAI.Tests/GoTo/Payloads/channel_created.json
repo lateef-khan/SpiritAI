@@ -1,0 +1,13 @@
+{
+  "channelId": "Webhook.1252c4bf-ca42-43c3-8fcb-f3b2c8f0125f",
+  "channelNickname": "spiritprobe",
+  "webhookChannelData": {
+    "webhook": {
+      "url": "https://spirit.example.test/goto/webhook/probe"
+    },
+    "channelType": "Webhook"
+  },
+  "channelLifetime": 2147483647,
+  "resourceURL": "https://webrtc.jive.com/notification-channel/v1/channels/spiritprobe/Webhook.1252c4bf-ca42-43c3-8fcb-f3b2c8f0125f",
+  "doNotDisturbAware": false
+}

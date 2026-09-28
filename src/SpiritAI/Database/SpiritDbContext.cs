@@ -1,8 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-using SpiritAI.Handoffs.Model;
-using SpiritAI.Handoffs.Reads;
-using SpiritAI.RealTime.Presence;
+using SpiritAI.Access;
 
 namespace SpiritAI.Database;
 
@@ -14,14 +12,11 @@ public sealed class SpiritDbContext(DbContextOptions<SpiritDbContext> options) :
     /// <summary>The schema every table here lands in.</summary>
     public const string Schema = "spirit";
 
-    /// <summary>Every request for a person, open and closed.</summary>
-    public DbSet<Handoff> Handoffs => Set<Handoff>();
+    /// <summary>Every job role, and the access group it grants.</summary>
+    public DbSet<Role> Roles => Set<Role>();
 
-    /// <summary>How far each member of staff has read each chat.</summary>
-    public DbSet<ConversationRead> ConversationReads => Set<ConversationRead>();
-
-    /// <summary>Every open socket, whoever is on it.</summary>
-    public DbSet<Presence> Presence => Set<Presence>();
+    /// <summary>Which Neon Auth user holds which role.</summary>
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)

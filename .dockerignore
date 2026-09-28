@@ -18,6 +18,7 @@ src/SpiritAI/wwwroot/chat
 __queuestorage__
 tests
 docs
+twenty
 SpiritAI.slnx
 
 **/*.user

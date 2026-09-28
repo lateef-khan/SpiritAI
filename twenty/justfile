@@ -1,0 +1,155 @@
+# Twenty CRM recipes. From the repo root: `just twenty <recipe>`. On the server: `just <recipe>`
+# inside this folder. Recipes run here either way.
+#
+# Local dev and production use different compose projects, so `down` can never touch the
+# production volumes.
+
+# Each command first writes this app's secrets from secrets/<env>.env into .secrets.env.
+dev := "../secrets/export.sh dev TWENTY_ .secrets.env && docker compose --file compose.yaml --env-file .env --env-file .secrets.env"
+prod := "../secrets/export.sh prod TWENTY_ .secrets.env && docker compose --file compose.yaml --file compose.prod.yaml --env-file .env --env-file .secrets.env"
+
+# List the recipes.
+default:
+    @just --list
+
+# Make .env from .env.example. Never overwrites. The secrets are in secrets/<env>.env.
+env:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -f .env ]; then
+        echo "twenty/.env already exists; leaving it alone."
+        exit 0
+    fi
+    cp .env.example .env
+    echo "Wrote twenty/.env."
+
+# The Twenty release our image is built on, e.g. v2.41.0 for v2.41.0-spirit.1.
+app_version := `grep -oP 'image: ghcr.io/\S+:\Kv[0-9.]+(?=-spirit)' compose.yaml`
+
+# `just up source` builds the image from twenty/source instead of pulling it (10-20 minutes,
+# about 8 GB of RAM).
+# Local dev: start the shared database server, then Twenty, and wait.
+up from="image": env _edge
+    #!/usr/bin/env bash
+    set -euo pipefail
+    args=()
+    build=()
+    (cd ../postgres && just up)
+    case "{{from}}" in
+        image) ;;
+        source) args=(--file compose.source.yaml "${args[@]}"); export APP_VERSION="{{app_version}}"; build=(--build) ;;
+        *) echo "Use: just up, or just up source"; exit 1 ;;
+    esac
+    {{dev}} "${args[@]}" up "${build[@]}" --detach --wait --wait-timeout 2400
+    echo "Twenty is ready on http://localhost:$(grep -oP '^TWENTY_PORT=\K.+' .env || echo 53001)."
+
+# Local dev: stop and delete everything local: redis, uploads, and Twenty's database on the
+# shared server. Chatwoot's database and the server keep running.
+down:
+    {{dev}} down --volumes --remove-orphans
+    cd ../postgres && just drop twenty
+
+# Local dev: follow the logs.
+logs:
+    {{dev}} logs --follow --tail=100
+
+# Production: first start, or start after prod-down. Needs `just postgres prod-up` first, and the
+# bucket: its place in .env, its keys in secrets/prod.env.
+prod-up: _edge _db
+    {{prod}} up --detach --wait --wait-timeout 2400
+    @echo "Twenty is ready."
+
+# Production: pull the pinned image, upgrade the schema, and restart server and worker. Redis keeps running.
+prod-update: _edge _db
+    {{prod}} up --detach --wait --wait-timeout 2400 server worker
+    @echo "Twenty is ready."
+
+# Production: stop everything. Keeps the redis volume.
+prod-down:
+    {{prod}} down
+
+# Production: show the containers.
+prod-status:
+    {{prod}} ps
+
+# Production: follow the logs.
+prod-logs:
+    {{prod}} logs --follow --tail=100
+
+# The network the tunnel shares with every app.
+_edge:
+    @docker network inspect spirit-edge >/dev/null 2>&1 || docker network create spirit-edge
+
+# Production: the shared database server must answer first.
+_db:
+    @docker exec spirit-postgres pg_isready --quiet --host=127.0.0.1 2>/dev/null || { echo "The database is not running. Start it first: just postgres prod-up" >&2; exit 1; }
+
+# Twenty's own repo. Our fork pulls released tags from here.
+upstream := "https://github.com/twentyhq/twenty.git"
+
+# The branch `spirit` starts at the released tag that compose.yaml runs. Make the fork on GitHub first.
+# One time: add our fork of Twenty as the submodule twenty/source, on the branch `spirit`.
+source-add fork_url:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -e source ]; then
+        echo "twenty/source already exists. On a fresh clone, run: just twenty source-init"
+        exit 1
+    fi
+    tag="twenty/{{app_version}}"
+    # Blobless: the whole history is there for merges, file contents download when needed.
+    git clone --filter=blob:none --no-checkout "{{fork_url}}" source
+    git submodule add "{{fork_url}}" source
+    git config --file "$(git rev-parse --show-toplevel)/.gitmodules" submodule.twenty/source.branch spirit
+    cd source
+    git remote add upstream "{{upstream}}"
+    git fetch upstream tag "$tag" --no-tags
+    git switch --create spirit "$tag"
+    git push --set-upstream origin spirit
+    cd ..
+    git add source "$(git rev-parse --show-toplevel)/.gitmodules"
+    echo "twenty/source is on branch spirit at $tag. Commit it in SpiritAI."
+
+# The branch `spirit` starts at the commit SpiritAI pins, which can be behind the fork.
+# On a fresh clone of SpiritAI: download twenty/source.
+source-init:
+    git submodule update --init --filter=blob:none source
+    git -C source switch --force-create spirit
+    git -C source branch --set-upstream-to origin/spirit
+
+# Stops on a conflict: fix the files, then `git commit` inside twenty/source and run the steps it prints.
+# Merge a released Twenty tag (e.g. v2.42.0) into our branch `spirit`.
+source-update tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd source
+    git remote get-url upstream >/dev/null 2>&1 || git remote add upstream "{{upstream}}"
+    git switch spirit
+    git fetch upstream tag "twenty/{{tag}}" --no-tags
+    git merge --no-edit "twenty/{{tag}}"
+    echo "Merged twenty/{{tag}}. Next:"
+    echo "  1. git -C twenty/source push"
+    echo "  2. just twenty release {{tag}}-spirit.1"
+    echo "  3. When GitHub has built it, set the image tag in twenty/compose.yaml to {{tag}}-spirit.1."
+    echo "  4. Test it: just twenty down && just twenty up"
+    echo "  5. Commit twenty/source and twenty/compose.yaml in SpiritAI."
+
+# Count up the last number for each release on the same Twenty version.
+# Tag the pushed `spirit` commit, e.g. v2.41.0-spirit.1. GitHub builds the image with that tag.
+release tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! [[ "{{tag}}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-spirit\.[0-9]+$ ]]; then
+        echo "Use a tag like v2.41.0-spirit.1."
+        exit 1
+    fi
+    cd source
+    git fetch --quiet origin spirit
+    if ! git diff --quiet HEAD || [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/spirit)" ]; then
+        echo "twenty/source must be on the pushed spirit commit with no changes. Commit and push first."
+        exit 1
+    fi
+    git tag "{{tag}}"
+    git push origin "{{tag}}"
+    echo "GitHub is building ghcr.io/lateef-khan/twenty:{{tag}} (20-40 minutes)."
+    echo "Watch it: https://github.com/lateef-khan/twenty/actions"

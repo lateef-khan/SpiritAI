@@ -1,0 +1,32 @@
+name: spirit-cloudflared
+
+services:
+  tunnel:
+    image: cloudflare/cloudflared:2026.9.1
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN must be set in secrets/prod.env}
+      TUNNEL_METRICS: 0.0.0.0:20241
+    # The image has no shell or curl; cloudflared asks its own /ready endpoint.
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "--metrics", "localhost:20241", "ready"]
+      interval: 10s
+      retries: 30
+    # Apps that run on the host, outside Docker, are http://host.docker.internal:<port>.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Apps in Docker join this network under their own name, such as http://chatwoot:3000.
+    # No app has to run for the tunnel to start.
+    networks:
+      - edge
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    restart: unless-stopped
+
+networks:
+  edge:
+    external: true
+    name: spirit-edge

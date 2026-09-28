@@ -1,0 +1,570 @@
+[
+  {
+    "id": 27,
+    "uuid": "f1d95917-bc28-4e1c-b4ef-2587df3a0113",
+    "inbox_id": 1,
+    "contact_last_seen_at": 0,
+    "status": "pending",
+    "agent_last_seen_at": 0,
+    "messages": [
+      {
+        "id": 180,
+        "content": "Do you have the XT485 in stock?",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274508,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 181,
+        "content": "Yes, the **XT485** is in stock.",
+        "message_type": 1,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274509,
+        "conversation_id": 27,
+        "sender": {
+          "id": 1,
+          "name": "Spirit AI",
+          "avatar_url": "",
+          "type": "agent_bot"
+        }
+      },
+      {
+        "id": 184,
+        "content": "Hi, this is Matthew. I can help.",
+        "message_type": 1,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274515,
+        "conversation_id": 27,
+        "sender": {
+          "id": 2,
+          "name": "Matthew Hsu",
+          "available_name": "Matthew Hsu",
+          "avatar_url": "",
+          "type": "user",
+          "availability_status": null,
+          "thumbnail": ""
+        }
+      },
+      {
+        "id": 186,
+        "content": "One more question.",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274519,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 187,
+        "content": "Page probe 1",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274522,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 188,
+        "content": "Page probe 2",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274522,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 189,
+        "content": "Page probe 3",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274522,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 190,
+        "content": "Page probe 4",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274522,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 191,
+        "content": "Page probe 5",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274522,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 192,
+        "content": "Page probe 6",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274522,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 193,
+        "content": "Page probe 7",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274522,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 194,
+        "content": "Page probe 8",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274523,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 195,
+        "content": "Page probe 9",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274523,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 196,
+        "content": "Page probe 10",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274523,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 197,
+        "content": "Page probe 11",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274523,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 198,
+        "content": "Page probe 12",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274524,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 199,
+        "content": "Page probe 13",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274524,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 200,
+        "content": "Page probe 14",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274524,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 201,
+        "content": "Page probe 15",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274524,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 202,
+        "content": "Page probe 16",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274524,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 203,
+        "content": "Page probe 17",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274525,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 204,
+        "content": "Page probe 18",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274525,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 205,
+        "content": "Page probe 19",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274525,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 206,
+        "content": "Page probe 20",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274525,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 207,
+        "content": "Page probe 21",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274525,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      },
+      {
+        "id": 208,
+        "content": "Page probe 22",
+        "message_type": 0,
+        "content_type": "text",
+        "content_attributes": {},
+        "created_at": 1790274525,
+        "conversation_id": 27,
+        "sender": {
+          "additional_attributes": {},
+          "custom_attributes": {},
+          "email": null,
+          "id": 46,
+          "identifier": null,
+          "name": "red-grass-677",
+          "phone_number": null,
+          "thumbnail": "",
+          "blocked": false,
+          "type": "contact"
+        }
+      }
+    ],
+    "contact": {
+      "id": 46,
+      "name": "red-grass-677",
+      "email": null,
+      "phone_number": null,
+      "account_id": 2,
+      "created_at": "2026-09-24T18:28:25.700Z",
+      "updated_at": "2026-09-24T18:28:45.727Z",
+      "additional_attributes": {},
+      "identifier": null,
+      "custom_attributes": {},
+      "last_activity_at": "2026-09-24T18:28:45.726Z",
+      "contact_type": "visitor",
+      "middle_name": "",
+      "last_name": "",
+      "location": null,
+      "country_code": null,
+      "blocked": false,
+      "company_id": null,
+      "label_list": []
+    }
+  }
+]

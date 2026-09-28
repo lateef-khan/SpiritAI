@@ -1,0 +1,35 @@
+{
+    "meta": {
+        "count": 1,
+        "current_page": 1,
+        "has_more": false
+    },
+    "payload": [
+        {
+            "additional_attributes": {},
+            "availability_status": "offline",
+            "email": null,
+            "id": 1,
+            "name": "Probe Visitor",
+            "phone_number": "+12015550123",
+            "blocked": false,
+            "identifier": null,
+            "thumbnail": "",
+            "custom_attributes": {},
+            "created_at": 1790365366,
+            "contact_inboxes": [
+                {
+                    "source_id": "4f7db60a-0a80-408a-8ffb-4152c842c443",
+                    "inbox": {
+                        "id": 1,
+                        "avatar_url": "",
+                        "channel_id": 1,
+                        "name": "Spirit",
+                        "channel_type": "Channel::Api",
+                        "provider": null
+                    }
+                }
+            ]
+        }
+    ]
+}

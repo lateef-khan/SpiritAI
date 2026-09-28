@@ -4,16 +4,23 @@ using System.Threading.RateLimiting;
 using AgentCore.AspNetCore.Endpoints;
 
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 using SpiritAI.Hosting;
 
 namespace SpiritAI.PublicChat;
 
-/// <summary>Registers the public widget endpoint and the limiter in front of every public route.</summary>
+/// <summary>
+/// Registers the public widget endpoint, the limiter in front of every public route, and the sweep
+/// of widget transcripts.
+/// </summary>
 public static class PublicChatServiceCollectionExtensions
 {
-    /// <summary>Adds the public chat options and the rate limiter they configure.</summary>
+    /// <summary>
+    /// Adds the public chat options, the rate limiter they configure, and the
+    /// <see cref="WidgetTranscriptSweeper"/>.
+    /// </summary>
     /// <param name="services">The host's services.</param>
     /// <param name="configuration">Where <see cref="PublicChatOptions.SectionName"/> is read from.</param>
     public static IServiceCollection AddPublicChat(this IServiceCollection services, IConfiguration configuration)
@@ -46,6 +53,10 @@ public static class PublicChatServiceCollectionExtensions
         // Configured after AddRateLimiter, because the options it needs are only resolvable once
         // the container is built.
         services.AddSingleton<IConfigureOptions<RateLimiterOptions>, ConfigurePublicChatLimiter>();
+
+        services.TryAddSingleton(TimeProvider.System);
+
+        services.AddHostedService<WidgetTranscriptSweeper>();
 
         return services;
     }

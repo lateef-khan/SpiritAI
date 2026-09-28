@@ -1,16 +1,20 @@
-import { Hidden, Thread } from "@/components/assistant-ui/thread";
 import { LauncherBubble } from "@/components/assistant-ui/elements/launcher-bubble";
+import { Hidden, Thread } from "@/components/assistant-ui/thread";
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { readVisitorMemory, visitorFetch } from "./features/widget/api/visitorIdentity";
-import { createWidgetApi } from "./features/widget/api/widgetApi";
 import { TypingReporter } from "./features/handoff/TypingReporter";
+import {
+  readVisitorKey,
+  shareVisitorKey,
+  visitorFetch,
+} from "./features/widget/api/visitorIdentity";
+import { connectWidgetChat } from "./features/widget/api/widgetChat";
 import { HandoffBanner } from "./features/widget/components/HandoffBanner";
-import { useHandoffDesk } from "./features/widget/hooks/useHandoffDesk";
+import { WidgetWelcome } from "./features/widget/components/WidgetWelcome";
 import { useWidgetRuntime } from "./features/widget/hooks/useWidgetRuntime";
 import { useWidgetSocket } from "./features/widget/hooks/useWidgetSocket";
 
@@ -18,10 +22,19 @@ import { useWidgetSocket } from "./features/widget/hooks/useWidgetSocket";
  * The embeddable form of the chat: a bubble on someone else's page that opens into a panel.
  */
 
+/** The panel itself, in CSS pixels. The frame below is sized to hold this plus the bubble. */
+const PANEL = { width: 384, height: 600 } as const;
+
+/** What the panel needs around it: the page padding, the gap to the bubble, and the bubble. */
+const CHROME = { width: 24, height: 24 + 10 + 48 } as const;
+
 /** The size the frame should be, in CSS pixels, for each state. */
 const SIZE = {
   closed: { width: 96, height: 96 },
-  open: { width: 400, height: 620 },
+  open: {
+    width: PANEL.width + CHROME.width,
+    height: PANEL.height + CHROME.height,
+  },
 } as const;
 
 /*
@@ -33,9 +46,14 @@ const endpoint = document.documentElement.dataset.agentcoreEndpoint || "/v1/publ
  * Who this widget is, on every request it makes. Built once: the key is read per request, so
  * nothing here goes stale.
  */
-const send = visitorFetch(readVisitorMemory);
+const send = visitorFetch(readVisitorKey);
 
-const api = createWidgetApi(send);
+shareVisitorKey(readVisitorKey());
+
+/*
+ * The visitor's Chatwoot side, started once on the first ask.
+ */
+const start = connectWidgetChat(send, readVisitorKey());
 
 /**
  * The pages of history the reader scrolls up for, once read.
@@ -45,6 +63,8 @@ const queryClient = new QueryClient({
 });
 
 const WIDGET_COMPONENTS = {
+  Welcome: WidgetWelcome,
+  dockComposer: true,
   ToolGroup: Hidden,
   ToolFallback: Hidden,
   Sources: Hidden,
@@ -60,22 +80,18 @@ type Phase = "closed" | "open";
 function useFrameSize(phase: Phase) {
   useEffect(() => {
     const size = SIZE[phase];
-    // "*" rather than a fixed origin: the widget is embedded on sites it cannot know the names of,
-    // and the message carries no secret — only two numbers.
     window.parent?.postMessage({ source: "agentcore-widget", type: "resize", ...size }, "*");
   }, [phase]);
 }
 
 export function Widget() {
-  const desk = useHandoffDesk(api);
-  const widget = useWidgetRuntime(endpoint, api, send, desk);
+  const widget = useWidgetRuntime(endpoint, start, send);
   const [phase, setPhase] = useState<Phase>("closed");
   const [unread, setUnread] = useState(0);
   const [bounceKey, setBounceKey] = useState(0);
   const isOpen = phase === "open";
 
-  const { typing, sayTyping } = useWidgetSocket({
-    desk,
+  const { typing } = useWidgetSocket({
     widget,
     onMessage: () => {
       if (phase === "closed") {
@@ -106,7 +122,8 @@ export function Widget() {
 
               <PopoverContent
                 onOpenAutoFocus={(event) => event.preventDefault()}
-                className="flex h-[500px] w-[352px] flex-col overflow-hidden p-0"
+                style={{ height: PANEL.height, width: PANEL.width }}
+                className="flex flex-col overflow-hidden p-0"
               >
                 <PopoverClose
                   aria-label="Close chat"
@@ -114,11 +131,11 @@ export function Widget() {
                 >
                   <XIcon className="size-4" />
                 </PopoverClose>
-                <HandoffBanner state={desk.state} typing={typing} onLeaveEmail={desk.leaveEmail} />
+                <HandoffBanner state={widget.desk} typing={typing} />
                 <div className="min-h-0 flex-1">
                   <Thread components={WIDGET_COMPONENTS} olderMessages={widget.older} />
                 </div>
-                <TypingReporter sayTyping={sayTyping} />
+                <TypingReporter sayTyping={widget.sayTyping} />
               </PopoverContent>
             </div>
           </Popover>

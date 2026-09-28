@@ -143,6 +143,13 @@ public sealed class NeonTokenValidator(
                 return TokenResult.Invalid("the token names no subject.");
             }
 
+            // Neon Auth's admin plugin puts the ban in the token, so a banned user is refused here
+            // without a database read.
+            if (root.TryGetProperty("banned", out var banned) && banned.ValueKind == JsonValueKind.True)
+            {
+                return TokenResult.Invalid("the user is banned.");
+            }
+
             var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, subject) };
 
             if (Text(root, "email") is { Length: > 0 } email)

@@ -15,7 +15,7 @@ using Xunit;
 namespace SpiritAI.Tests.Database;
 
 /// <summary>
-/// The throwaway PostgreSQL <c>just db-up</c> provides, with both schemas in place.
+/// The throwaway PostgreSQL <c>just db-up</c> provides, with the agentcore, neon_auth, and spirit schemas in place.
 /// </summary>
 public sealed class PostgresFixture : IAsyncLifetime
 {
@@ -42,6 +42,13 @@ public sealed class PostgresFixture : IAsyncLifetime
         _dataSource = NpgsqlDataSource.Create(_connectionString);
 
         await PostgresSchema.ApplyAsync(_dataSource, TestContext.Current.CancellationToken);
+
+        // Neon creates neon_auth."user"; the throwaway database needs the copy before the migrations.
+        await using (var neonAuth = _dataSource.CreateCommand(
+            await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Database", "neon-auth.sql"), TestContext.Current.CancellationToken)))
+        {
+            await neonAuth.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        }
 
         await using var database = Open();
         await database.Database.MigrateAsync(TestContext.Current.CancellationToken);
@@ -81,16 +88,18 @@ public sealed class PostgresFixture : IAsyncLifetime
             TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Writes a row into AgentCore's <c>agentcore.conversation</c> for a handoff to point at.</summary>
-    /// <param name="conversationId">The call to make. Every other column has a default.</param>
-    public async Task MakeConversationAsync(string conversationId)
+    /// <summary>Moves a conversation's last change back in time, as if nothing had touched it since.</summary>
+    /// <param name="conversationId">The conversation.</param>
+    /// <param name="by">How far back.</param>
+    public async Task AgeConversationAsync(string conversationId, TimeSpan by)
     {
-        await using var insert = Source.CreateCommand("INSERT INTO agentcore.conversation (conversation_id) VALUES ($1)");
-        insert.Parameters.AddWithValue(conversationId);
-        await insert.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        await using var update = Source.CreateCommand("UPDATE agentcore.conversation SET updated_at = updated_at - $2 WHERE conversation_id = $1");
+        update.Parameters.AddWithValue(conversationId);
+        update.Parameters.AddWithValue(by);
+        await update.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Deletes a conversation, and by the cascade every handoff row that pointed at it.</summary>
+    /// <summary>Deletes a conversation.</summary>
     /// <param name="conversationId">The call to delete.</param>
     public async Task DeleteConversationAsync(string conversationId)
     {

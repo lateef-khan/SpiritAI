@@ -1,0 +1,12 @@
+[
+  {
+    "id": 2,
+    "name": "probe repairs",
+    "description": "Broken machines and parts",
+    "allow_auto_assign": true,
+    "icon": "",
+    "icon_color": "",
+    "account_id": 2,
+    "is_member": false
+  }
+]

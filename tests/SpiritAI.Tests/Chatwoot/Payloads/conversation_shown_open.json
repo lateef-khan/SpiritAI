@@ -1,0 +1,136 @@
+{
+  "meta": {
+    "sender": {
+      "additional_attributes": {},
+      "availability_status": "offline",
+      "email": null,
+      "id": 23,
+      "name": "Probe Visitor",
+      "phone_number": null,
+      "blocked": false,
+      "identifier": null,
+      "thumbnail": "",
+      "custom_attributes": {},
+      "last_activity_at": 1790238073,
+      "created_at": 1790238072
+    },
+    "channel": "Channel::Api",
+    "hmac_verified": false
+  },
+  "id": 20,
+  "messages": [
+    {
+      "id": 148,
+      "content": "I want a person.",
+      "account_id": 2,
+      "inbox_id": 1,
+      "conversation_id": 20,
+      "message_type": 0,
+      "created_at": 1790238073,
+      "updated_at": "2026-09-24T08:21:13.651Z",
+      "private": false,
+      "status": "failed",
+      "source_id": null,
+      "content_type": "text",
+      "content_attributes": {
+        "external_error": "Failed to open TCP connection to 172.17.0.1:5299 (Connection refused - connect(2) for \"172.17.0.1\" port 5299)"
+      },
+      "sender_type": "Contact",
+      "sender_id": 23,
+      "external_source_ids": {},
+      "additional_attributes": {},
+      "processed_message_content": "I want a person.",
+      "sentiment": {},
+      "conversation": {
+        "assignee_id": null,
+        "unread_count": 1,
+        "last_activity_at": 1790238073,
+        "contact_inbox": {
+          "source_id": "probe-open-key"
+        }
+      },
+      "sender": {
+        "additional_attributes": {},
+        "custom_attributes": {},
+        "email": null,
+        "id": 23,
+        "identifier": null,
+        "name": "Probe Visitor",
+        "phone_number": null,
+        "thumbnail": "",
+        "blocked": false,
+        "type": "contact"
+      }
+    }
+  ],
+  "account_id": 2,
+  "uuid": "450b5ac6-881d-4509-829a-22760ca0415b",
+  "additional_attributes": {},
+  "agent_last_seen_at": 0,
+  "assignee_last_seen_at": 0,
+  "can_reply": true,
+  "contact_info_request": {
+    "available": false,
+    "reason": null,
+    "delivery_mode": null
+  },
+  "contact_last_seen_at": 0,
+  "custom_attributes": {},
+  "inbox_id": 1,
+  "labels": [],
+  "muted": false,
+  "snoozed_until": null,
+  "status": "open",
+  "created_at": 1790238073,
+  "updated_at": 1790238073.651341,
+  "timestamp": 1790238073,
+  "first_reply_created_at": 0,
+  "unread_count": 1,
+  "last_non_activity_message": {
+    "id": 148,
+    "content": "I want a person.",
+    "account_id": 2,
+    "inbox_id": 1,
+    "conversation_id": 20,
+    "message_type": 0,
+    "created_at": 1790238073,
+    "updated_at": "2026-09-24T08:21:13.651Z",
+    "private": false,
+    "status": "failed",
+    "source_id": null,
+    "content_type": "text",
+    "content_attributes": {
+      "external_error": "Failed to open TCP connection to 172.17.0.1:5299 (Connection refused - connect(2) for \"172.17.0.1\" port 5299)"
+    },
+    "sender_type": "Contact",
+    "sender_id": 23,
+    "external_source_ids": {},
+    "additional_attributes": {},
+    "processed_message_content": "I want a person.",
+    "sentiment": {},
+    "conversation": {
+      "assignee_id": null,
+      "unread_count": 1,
+      "last_activity_at": 1790238073,
+      "contact_inbox": {
+        "source_id": "probe-open-key"
+      }
+    },
+    "sender": {
+      "additional_attributes": {},
+      "custom_attributes": {},
+      "email": null,
+      "id": 23,
+      "identifier": null,
+      "name": "Probe Visitor",
+      "phone_number": null,
+      "thumbnail": "",
+      "blocked": false,
+      "type": "contact"
+    }
+  },
+  "last_activity_at": 1790238073,
+  "priority": null,
+  "waiting_since": 1790238073,
+  "sla_policy_id": null
+}

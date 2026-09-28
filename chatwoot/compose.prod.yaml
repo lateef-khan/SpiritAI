@@ -1,0 +1,48 @@
+# Production layer on top of compose.yaml. Use it through `just prod-*`, never alone.
+# Differences from local dev: the database URL and the S3 bucket are required, redis is kept on
+# disk with a memory cap, there is no mailpit, and no port on the host.
+
+name: spirit-chatwoot-prod
+
+# Docker keeps each container's stdout in a file on the host. Without a cap it grows forever.
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+x-production: &production
+  <<: *logging
+  environment:
+    DATABASE_URL: ${DATABASE_URL:?CHATWOOT_DATABASE_URL must be set in secrets/prod.env}
+    ACTIVE_STORAGE_SERVICE: s3_compatible
+    STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:?STORAGE_ENDPOINT must be set in chatwoot/.env for production}
+    STORAGE_REGION: ${STORAGE_REGION:?STORAGE_REGION must be set in chatwoot/.env for production}
+    STORAGE_BUCKET_NAME: ${STORAGE_BUCKET_NAME:?STORAGE_BUCKET_NAME must be set in chatwoot/.env for production}
+    STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:?CHATWOOT_STORAGE_ACCESS_KEY_ID must be set in secrets/prod.env}
+    STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:?CHATWOOT_STORAGE_SECRET_ACCESS_KEY must be set in secrets/prod.env}
+    AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+    AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+
+services:
+  migrate: *production
+  # Only the tunnel reaches web, over the shared network.
+  web:
+    <<: *production
+    ports: !reset []
+  worker: *production
+  redis:
+    <<: *logging
+    command: [ "sh", "-c", "redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes --maxmemory 512mb --maxmemory-policy noeviction" ]
+    volumes:
+      - redis:/data
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+  mailpit:
+    profiles: [ never ]
+
+volumes:
+  redis:

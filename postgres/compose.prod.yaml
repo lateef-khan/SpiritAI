@@ -1,0 +1,74 @@
+# Production layer on top of compose.yaml. Use it through `just prod-*`, never alone.
+# Differences from local dev: the data is on a named volume that no recipe deletes, the password
+# is required, the logs are capped, and pgBackRest backs the server up to S3 when
+# POSTGRES_SERVER_S3_ENDPOINT is set in secrets/prod.env.
+
+name: spirit-postgres-prod
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+# pgBackRest reads every option from a PGBACKREST_* variable. Both containers need the same set.
+x-pgbackrest: &pgbackrest
+  PGBACKREST_STANZA: main
+  PGBACKREST_PG1_PATH: /var/lib/postgresql/data
+  PGBACKREST_REPO1_TYPE: s3
+  PGBACKREST_REPO1_PATH: /spirit-postgres
+  PGBACKREST_REPO1_S3_ENDPOINT: ${S3_ENDPOINT:-}
+  PGBACKREST_REPO1_S3_BUCKET: ${S3_BUCKET:-}
+  PGBACKREST_REPO1_S3_REGION: ${S3_REGION:-}
+  PGBACKREST_REPO1_S3_KEY: ${S3_KEY:-}
+  PGBACKREST_REPO1_S3_KEY_SECRET: ${S3_KEY_SECRET:-}
+  PGBACKREST_REPO1_S3_URI_STYLE: path
+  PGBACKREST_REPO1_CIPHER_TYPE: aes-256-cbc
+  PGBACKREST_REPO1_CIPHER_PASS: ${BACKUP_CIPHER_PASS:-}
+  # Four weeks of full backups, with the incremental backups and WAL between them.
+  PGBACKREST_REPO1_RETENTION_FULL: "4"
+  PGBACKREST_COMPRESS_TYPE: zst
+  # If S3 is down this long, WAL is dropped instead of filling the disk. The backups keep working,
+  # but a restore cannot reach a time inside the gap.
+  PGBACKREST_ARCHIVE_PUSH_QUEUE_MAX: 4GiB
+  PGBACKREST_START_FAST: "y"
+  PGBACKREST_LOG_LEVEL_CONSOLE: info
+  PGBACKREST_LOG_LEVEL_FILE: "off"
+
+services:
+  postgres:
+    <<: *logging
+    # archive_command is not set here: `just prod-up` sets it with ALTER SYSTEM, to pgBackRest when
+    # S3 is set and to /bin/true when it is not. A -c option here would override that.
+    command: ["postgres", "-c", "archive_mode=on"]
+    environment:
+      <<: *pgbackrest
+      POSTGRES_PASSWORD: ${SUPERUSER_PASSWORD:?POSTGRES_SERVER_SUPERUSER_PASSWORD must be set in secrets/prod.env}
+    volumes:
+      - data:/var/lib/postgresql/data
+      - socket:/var/run/postgresql
+
+  # Runs the daily backups. The recipes start it only when POSTGRES_SERVER_S3_ENDPOINT is set.
+  # It reads the data files and talks to the server over the shared socket.
+  backup:
+    <<: *logging
+    image: spirit-postgres:local
+    profiles: [backup]
+    user: postgres
+    entrypoint: ["/usr/local/bin/schedule.sh"]
+    environment:
+      <<: *pgbackrest
+      BACKUP_HOUR_UTC: "9"
+    volumes:
+      - data:/var/lib/postgresql/data
+      - socket:/var/run/postgresql
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  # Every database on the server. No recipe deletes it.
+  data:
+  socket:

@@ -1,20 +1,16 @@
-import { HeadsetIcon, HourglassIcon, MailCheckIcon } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { HeadsetIcon, HourglassIcon } from "lucide-react";
 
 import { TypingDots } from "@/components/assistant-ui/elements/typing-indicator";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import type { HandoffState } from "../api/widgetApi";
+import type { HandoffState } from "../hooks/desk";
 
 /**
  * The strip above the chat while a person is asked for, or has the chat.
  */
 
-/** Where the chat stands, and how to leave an email. */
+/** Where the chat stands, and whether the person on it is typing. */
 export type HandoffBannerProps = {
   state: HandoffState;
   typing?: boolean;
-  onLeaveEmail: (email: string) => Promise<void>;
 };
 
 /** The one line that says where the chat stands. */
@@ -61,58 +57,8 @@ function Presence({ online }: { online: boolean }) {
   );
 }
 
-/** The email box, shown while a person is waited for and no email has been left. */
-function EmailBox({ onLeaveEmail }: { onLeaveEmail: (email: string) => Promise<void> }) {
-  const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (busy || email.trim().length === 0) return;
-
-    setBusy(true);
-    setFailed(false);
-    try {
-      await onLeaveEmail(email.trim());
-    } catch {
-      setFailed(true);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form onSubmit={submit} className="flex flex-col gap-2">
-      <p className="text-muted-foreground">
-        Leave your email, and we will reply there if you step away.
-      </p>
-      <div className="flex gap-2">
-        <Input
-          type="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@example.com"
-          aria-label="Your email"
-          aria-invalid={failed || undefined}
-          className="h-8"
-        />
-        <Button type="submit" size="sm" disabled={busy || email.trim().length === 0}>
-          Send
-        </Button>
-      </div>
-      {failed && <p className="text-destructive">That did not go through. Try again.</p>}
-    </form>
-  );
-}
-
-export function HandoffBanner({ state, typing = false, onLeaveEmail }: HandoffBannerProps) {
+export function HandoffBanner({ state, typing = false }: HandoffBannerProps) {
   if (state.status !== "waiting" && state.status !== "human") return null;
-
-  // Asked whenever a person was requested and no address is on file, online or not: a visitor
-  // who closes the tab before someone is free would otherwise never hear back.
-  const asksForEmail = state.status === "waiting";
 
   return (
     <div
@@ -121,18 +67,6 @@ export function HandoffBanner({ state, typing = false, onLeaveEmail }: HandoffBa
     >
       <Line state={state} typing={typing} />
       {state.status === "waiting" && <Presence online={state.staffOnline} />}
-      {asksForEmail &&
-        (state.email ? (
-          <p className="text-muted-foreground flex items-center gap-2">
-            <MailCheckIcon className="size-4 shrink-0" aria-hidden />
-            <span>
-              We will email <span className="font-medium">{state.email}</span> when a person
-              replies.
-            </span>
-          </p>
-        ) : (
-          <EmailBox onLeaveEmail={onLeaveEmail} />
-        ))}
     </div>
   );
 }

@@ -178,10 +178,11 @@ export type ApprovalAsk = {
 /**
  * One piece of the reply in the order it arrived: a run of words, or a tool by its call id. Words
  * before a tool and words after it stay apart, so a sentence said before a slow step is not glued
- * to the answer that follows it.
+ * to the answer that follows it. Words from two output messages stay apart too, by `itemId`, for a
+ * turn whose tool frames are hidden.
  */
 export type TurnItem =
-  | { readonly type: "text"; readonly text: string }
+  | { readonly type: "text"; readonly text: string; readonly itemId?: string }
   | { readonly type: "tool"; readonly callId: string }
   | { readonly type: "note"; readonly noteId: string };
 
@@ -305,6 +306,8 @@ export type ApprovalFrame = {
 export type StreamChunk = {
   readonly type?: string;
   readonly delta?: string;
+  /** The output message a text delta belongs to. */
+  readonly item_id?: string;
   readonly response?: {
     readonly metadata?: TurnMetadata;
     readonly conversation?: { readonly id?: string };
@@ -454,13 +457,20 @@ function post(options: TurnOptions, session: string | null): Promise<Response> {
   });
 }
 
-/** Adds words to the open run of words, or opens one when the last item is a tool. */
-export function foldTextItem(items: readonly TurnItem[], delta: string): readonly TurnItem[] {
+/**
+ * Adds words to the open run of words, or opens one when the last item is a tool or the words
+ * belong to another output message.
+ */
+export function foldTextItem(
+  items: readonly TurnItem[],
+  delta: string,
+  itemId?: string,
+): readonly TurnItem[] {
   const last = items[items.length - 1];
-  if (last?.type === "text") {
-    return [...items.slice(0, -1), { type: "text", text: last.text + delta }];
+  if (last?.type === "text" && (itemId === undefined || last.itemId === itemId)) {
+    return [...items.slice(0, -1), { ...last, text: last.text + delta }];
   }
-  return [...items, { type: "text", text: delta }];
+  return [...items, { type: "text", text: delta, ...(itemId === undefined ? {} : { itemId }) }];
 }
 
 /** Places a tool call in the order it arrived. A result frame changes no order, so it adds nothing. */
@@ -803,7 +813,11 @@ export async function* runTurn(options: TurnOptions): AsyncGenerator<TurnState> 
             chunk.delta.length > 0
           ) {
             text += chunk.delta;
-            items = foldTextItem(items, chunk.delta);
+            items = foldTextItem(
+              items,
+              chunk.delta,
+              typeof chunk.item_id === "string" ? chunk.item_id : undefined,
+            );
             yield state();
           }
           // The minted conversation rides the created event; a continued one rides it too.

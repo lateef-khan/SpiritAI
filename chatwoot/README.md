@@ -1,0 +1,128 @@
+# Chatwoot
+
+Self-hosted [Chatwoot](https://github.com/chatwoot/chatwoot). It is the staff inbox and the
+conversation store for human handoff. We run the official image, pinned in `Dockerfile`.
+We do not fork its code.
+
+Recipes live in `chatwoot/justfile`. From the repo root, run `just chatwoot <recipe>`. On
+the server, run `just <recipe>` inside this folder.
+
+## Local development
+
+```bash
+just chatwoot up      # makes .env on first run, builds, migrates, starts, waits
+just chatwoot down    # stops and deletes everything local
+```
+
+- Chatwoot: http://localhost:53000 (the first visit asks you to make the admin user)
+- Caught emails: http://localhost:58025
+
+Secrets are the `CHATWOOT_*` keys in `secrets/dev.env` (`just secrets init dev`). `up` starts
+the shared database server in `postgres/` first, the same as production. Nothing is kept: `down`
+deletes redis, uploads, and Chatwoot's database, so every `up` starts clean.
+
+Other recipes: `logs`, `console`.
+
+## Production (company server)
+
+`compose.prod.yaml` sits on top of `compose.yaml`. It is its own compose project
+(`spirit-chatwoot-prod`), so the local `down` can never delete its volumes.
+
+| | Local dev | Production |
+| --- | --- | --- |
+| Postgres | Throwaway container | Database `chatwoot` on the shared server in `postgres/`, required |
+| Redis | Memory only | Append-only file on the `redis` volume, 512 MB cap, `noeviction` |
+| Uploads | Deleted by `down` | S3-compatible bucket (Backblaze B2), `STORAGE_*`, required |
+| Email | Mailpit | `SMTP_*` in `.env` (Resend example in `.env.example`) |
+| Host port | `127.0.0.1:53000` | None. Only the tunnel reaches web, as `http://chatwoot:3000` |
+
+First setup on the server:
+
+1. Copy this folder to the server. Install Docker and `just`.
+2. `just env`, then edit `.env`: `FRONTEND_URL` (the public HTTPS address), the `STORAGE_*`
+   bucket place, and the `SMTP_*` and `MAILER_SENDER_EMAIL` values.
+   Set `SAFE_FETCH_ALLOW_PRIVATE_NETWORK=false`. In `secrets/prod.env`: the `CHATWOOT_STORAGE_*`
+   keys and `CHATWOOT_SMTP_PASSWORD`.
+3. Start the database server: `just postgres prod-up` (see `postgres/README.md`). It makes Chatwoot's
+   database from `CHATWOOT_DATABASE_URL`.
+4. `just prod-up`.
+5. In `secrets/prod.env`, set `CHATWOOT_ADMIN_TOKEN`, `Chatwoot__AccountId`,
+   `Chatwoot__BaseUrl=https://desk.<domain>`, and `Chatwoot__ServiceToken`. Then `just setup prod`.
+   It writes the inbox identifier and the bot token into the same file.
+
+| Recipe | Does |
+| --- | --- |
+| `prod-up` | Start everything |
+| `prod-update` | Rebuild, migrate, restart web and worker. Redis keeps running |
+| `prod-down` | Stop everything. Keeps the volumes |
+| `prod-status` | Show the containers |
+| `prod-logs`, `prod-console` | Logs, Rails console |
+
+Web joins the shared network `spirit-edge` as `chatwoot`. The Cloudflare tunnel is its public
+door; see `cloudflared/README.md`.
+
+## Update Chatwoot
+
+1. Read the release notes between the old and new tag.
+2. Change the tag in `Dockerfile`.
+3. Local: `just chatwoot down && just chatwoot up`. Production: `just postgres backup`, then
+   `just prod-update`.
+4. `just check-contact-guard <inbox identifier>` (add the public URL on production). It must say OK.
+   If Chatwoot will not start and names `spirit_public_contact_guard.rb`, the guard needs a fix.
+
+## Where things go
+
+| What | Where |
+| --- | --- |
+| Version | `Dockerfile` `FROM` tag |
+| Settings | `.env` (git-ignored), `.env.example` (documented defaults) |
+| Secrets | `CHATWOOT_*` in `secrets/<env>.env`; see `secrets/README.md` |
+| Production differences | `compose.prod.yaml` |
+| Small code patches | `initializers/`, copied in by `Dockerfile`. Last resort |
+| Spirit's API inbox, agent bot, and teams | `just setup` (`setup/spirit-inbox.sh`) |
+
+## The Spirit inbox
+
+`just setup` keeps these, and each one matters:
+
+- **No webhook.** The inbox's `webhook_url` is empty. The widget hears Chatwoot's own socket,
+  and the AI reads what it missed from Chatwoot on its next turn.
+- **The agent bot stays connected.** A new conversation starts `pending`, which is the AI's,
+  and a resolved one comes back `pending` when the visitor writes again.
+- **The out-of-office message stays empty.** The handoff skill tells a person what happens
+  while the office is closed. Chatwoot would post its own message as well.
+
+## Staff and push popups
+
+A GoTo ring posts a note that mentions the member of staff, or their team. Chatwoot tells a
+mentioned user only when that user is an administrator or a member of the Spirit inbox. `just setup`
+adds only the service user. Add every member of staff to the inbox (Settings → Inboxes →
+Spirit Chat/Phone → Collaborators) and to their team (Settings → Teams).
+
+The popup is Chatwoot's browser push. Each member of staff turns it on one time:
+see [staff-call-alerts.md](staff-call-alerts.md).
+
+Push needs VAPID keys (the key pair that signs each push). Chatwoot makes them on the first page
+load and keeps them in the database, in `installation_configs` (`VAPID_KEYS`). The browsers'
+push subscriptions are in the same database (`notification_subscriptions`). A redeploy keeps
+both. `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` are read only when the row is missing, which
+means a new database, which has no subscriptions either. So we do not set them.
+
+## Its own database
+
+Chatwoot has a database of its own, `chatwoot`, on the PostgreSQL server in `postgres/`. It
+shares the server with Twenty, not the database. Its tables are in the default `public` schema.
+Run `just postgres backup` before each version update: the update changes the schema when
+Chatwoot starts.
+
+## The public contact guard
+
+`initializers/spirit_public_contact_guard.rb` changes one Chatwoot rule. The public contact routes
+(`/public/api/v1/inboxes/{inbox}/contacts`) keep the name and drop the email, phone number, and
+identifier.
+
+Without it, anyone with the inbox identifier (it is public) can send a stranger's email or phone
+and get back the stranger's contact: name, email, and phone. Our widget sends only a `source_id`,
+and Spirit sets phone and email with the staff API, so the guard takes nothing from us.
+
+The `/api/v1/widget` routes have the same gap, but they need a Website inbox. We have none.

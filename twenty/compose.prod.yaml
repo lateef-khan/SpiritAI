@@ -1,0 +1,45 @@
+# Production layer on top of compose.yaml. Use it through `just prod-*`, never alone.
+# Differences from local dev: the database URL and the S3 bucket are required, redis is kept on
+# disk with a memory cap, and there is no port on the host.
+
+name: spirit-twenty-prod
+
+# Docker keeps each container's stdout in a file on the host. Without a cap it grows forever.
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+x-production: &production
+  <<: *logging
+  environment:
+    PG_DATABASE_URL: ${PG_DATABASE_URL:?TWENTY_PG_DATABASE_URL must be set in secrets/prod.env}
+    STORAGE_TYPE: S_3
+    STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:?STORAGE_S3_ENDPOINT must be set in twenty/.env for production}
+    STORAGE_S3_REGION: ${STORAGE_S3_REGION:?STORAGE_S3_REGION must be set in twenty/.env for production}
+    STORAGE_S3_NAME: ${STORAGE_S3_NAME:?STORAGE_S3_NAME must be set in twenty/.env for production}
+    STORAGE_S3_ACCESS_KEY_ID: ${STORAGE_S3_ACCESS_KEY_ID:?TWENTY_STORAGE_S3_ACCESS_KEY_ID must be set in secrets/prod.env}
+    STORAGE_S3_SECRET_ACCESS_KEY: ${STORAGE_S3_SECRET_ACCESS_KEY:?TWENTY_STORAGE_S3_SECRET_ACCESS_KEY must be set in secrets/prod.env}
+    AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+    AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+
+services:
+  # Only the tunnel reaches the server, over the shared network.
+  server:
+    <<: *production
+    ports: !reset []
+  worker: *production
+  redis:
+    <<: *logging
+    command: ["sh", "-c", "redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes --maxmemory 512mb --maxmemory-policy noeviction"]
+    volumes:
+      - redis:/data
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+volumes:
+  redis:
