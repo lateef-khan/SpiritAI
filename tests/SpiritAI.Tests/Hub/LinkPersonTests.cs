@@ -29,7 +29,7 @@ public sealed class LinkPersonTests(PostgresFixture fixture)
 
         try
         {
-            var wire = new ReplayingHandler(["agents", "platform_user_created", "account_user_created", "inbox_members"]) { Folder = "Hub" };
+            var wire = new ReplayingHandler(["platform_user_created", "agents", "account_user_created", "inbox_members"]) { Folder = "Hub" };
             await using var db = fixture.Open();
 
             var state = await new LinkPerson(db, DeskOf(wire), CrmOf(new ReplayingHandler(payload: null)))
@@ -42,8 +42,8 @@ public sealed class LinkPersonTests(PostgresFixture fixture)
             Assert.Equal(4, wire.Requests.Count);
             Assert.Equal(
                 [
-                    "http://chatwoot.test/api/v1/accounts/2/agents",
                     "http://chatwoot.test/platform/api/v1/users",
+                    "http://chatwoot.test/api/v1/accounts/2/agents",
                     "http://chatwoot.test/platform/api/v1/accounts/2/account_users",
                     "http://chatwoot.test/api/v1/accounts/2/inbox_members",
                 ],
@@ -56,22 +56,31 @@ public sealed class LinkPersonTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task AnEmailAlreadyInDesk_IsRefused_AndNothingIsCreated()
+    public async Task AnEmailAlreadyInDesk_IsAdopted_AndKeepsItsAdministratorRole()
     {
-        const string email = "desk-admin@spiritfitness.test";
-        var personId = await AddPersonAsync("Desk Admin Namesake", email);
+        // platform_user_adopted.json is the desk-admin user, id 1, which agents.json lists as an
+        // administrator. Joining the account again would make it an agent, so that call must not happen.
+        var personId = await AddPersonAsync("Desk Admin", "desk-admin@spiritfitness.test");
 
         try
         {
-            var wire = new ReplayingHandler("agents") { Folder = "Hub" };
+            var wire = new ReplayingHandler(["platform_user_adopted", "agents", "inbox_members"]) { Folder = "Hub" };
             await using var db = fixture.Open();
 
-            var refused = await Assert.ThrowsAsync<EmailAlreadyUsedException>(
-                () => new LinkPerson(db, DeskOf(wire), CrmOf(new ReplayingHandler(payload: null))).RunAsync(personId, HubApps.Desk, Cancel));
+            var state = await new LinkPerson(db, DeskOf(wire), CrmOf(new ReplayingHandler(payload: null)))
+                .RunAsync(personId, HubApps.Desk, Cancel);
 
-            Assert.Equal("email already used in Desk", refused.Message);
-            Assert.Single(wire.Requests);
-            Assert.Null(await LinkAsync(personId, HubApps.Desk));
+            Assert.Equal(LinkState.Ready, state);
+            var link = await LinkAsync(personId, HubApps.Desk);
+            Assert.True(link!.Ready);
+            Assert.Equal("1", link.ExternalId);
+            Assert.Equal(
+                [
+                    "http://chatwoot.test/platform/api/v1/users",
+                    "http://chatwoot.test/api/v1/accounts/2/agents",
+                    "http://chatwoot.test/api/v1/accounts/2/inbox_members",
+                ],
+                wire.Requests.Select(request => request.Url));
         }
         finally
         {
@@ -85,7 +94,7 @@ public sealed class LinkPersonTests(PostgresFixture fixture)
         var personId = await AddPersonAsync("Half Done", Unique() + "@spiritfitness.test");
         var externalId = Random.Shared.Next(1, int.MaxValue).ToString();
         await SeedLinkAsync(personId, HubApps.Desk, externalId, ready: false);
-        var wire = new ReplayingHandler(["account_user_created", "inbox_members"]) { Folder = "Hub" };
+        var wire = new ReplayingHandler(["agents", "account_user_created", "inbox_members"]) { Folder = "Hub" };
         await using var db = fixture.Open();
 
         var state = await new LinkPerson(db, DeskOf(wire), CrmOf(new ReplayingHandler(payload: null)))
@@ -95,7 +104,7 @@ public sealed class LinkPersonTests(PostgresFixture fixture)
         var link = await LinkAsync(personId, HubApps.Desk);
         Assert.True(link!.Ready);
         Assert.Equal(externalId, link.ExternalId);
-        Assert.Equal(2, wire.Requests.Count);
+        Assert.Equal(3, wire.Requests.Count);
         Assert.DoesNotContain(wire.Requests, request => request.Url.Contains("/platform/api/v1/users", StringComparison.Ordinal));
     }
 
@@ -133,7 +142,7 @@ public sealed class LinkPersonTests(PostgresFixture fixture)
     {
         var personId = await AddPersonAsync("Raced Person", Unique() + "@spiritfitness.test");
         var winningExternalId = Random.Shared.Next(1, int.MaxValue).ToString();
-        var wire = new ReplayingHandler(["agents", "platform_user_created", "account_user_created", "inbox_members"]) { Folder = "Hub" };
+        var wire = new ReplayingHandler(["platform_user_created", "agents", "account_user_created", "inbox_members"]) { Folder = "Hub" };
         var racing = new RivalInsertsOnCreate(wire, fixture, personId, winningExternalId);
         await using var db = fixture.Open();
 

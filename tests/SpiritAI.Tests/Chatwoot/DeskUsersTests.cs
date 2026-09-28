@@ -15,12 +15,14 @@ namespace SpiritAI.Tests.Chatwoot;
 /// </summary>
 public sealed class DeskUsersTests
 {
-    [Fact]
-    public async Task AnEmailOnTheAgentList_IsUsed_WhateverItsCase()
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(4, false)]
+    public async Task AUserOnTheAgentList_IsInTheAccount_WhateverItsRole(int userId, bool expected)
     {
         var wire = new ReplayingHandler("agents") { Folder = "Hub" };
 
-        Assert.True(await Users(wire).EmailIsUsedAsync("DESK-ADMIN@spiritfitness.test", Cancel));
+        Assert.Equal(expected, await Users(wire).IsInAccountAsync(userId, Cancel));
         var request = Assert.Single(wire.Requests);
         Assert.Equal("http://chatwoot.test/api/v1/accounts/2/agents", request.Url);
         Assert.Equal("admin-token", request.Token);

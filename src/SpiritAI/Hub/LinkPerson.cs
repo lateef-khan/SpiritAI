@@ -22,7 +22,7 @@ public sealed class LinkPerson(SpiritDbContext db, DeskUsers deskUsers, CrmUsers
     /// <param name="cancellationToken">Cancels the wait.</param>
     /// <returns><see cref="LinkState.Ready"/>, since this only returns once the link is ready.</returns>
     /// <exception cref="KeyNotFoundException">No Person has <paramref name="personId"/>.</exception>
-    /// <exception cref="EmailAlreadyUsedException">The app already has this Person's email.</exception>
+    /// <exception cref="EmailAlreadyUsedException">CRM already has this Person's email.</exception>
     public Task<LinkState> RunAsync(Guid personId, string app, CancellationToken cancellationToken)
         => app switch
         {
@@ -46,7 +46,11 @@ public sealed class LinkPerson(SpiritDbContext db, DeskUsers deskUsers, CrmUsers
         link ??= await CreateDeskUserAsync(personId, cancellationToken).ConfigureAwait(false);
 
         var externalId = int.Parse(link.ExternalId);
-        await deskUsers.JoinAccountAsync(externalId, cancellationToken).ConfigureAwait(false);
+        if (!await deskUsers.IsInAccountAsync(externalId, cancellationToken).ConfigureAwait(false))
+        {
+            await deskUsers.JoinAccountAsync(externalId, cancellationToken).ConfigureAwait(false);
+        }
+
         await deskUsers.JoinInboxAsync(externalId, cancellationToken).ConfigureAwait(false);
 
         link.Ready = true;
@@ -56,19 +60,15 @@ public sealed class LinkPerson(SpiritDbContext db, DeskUsers deskUsers, CrmUsers
     }
 
     /// <summary>
-    /// Refuses an email Chatwoot already has, then makes the user and stores it, unfinished, at
-    /// once. Two admins racing this at once collide on the primary key: a unique violation on the
+    /// Makes the user, or adopts the Chatwoot user that already has the Person's email, and stores
+    /// it, unfinished, at once. The Person proved the email when they signed in to Spirit, so the
+    /// Chatwoot user with that email is theirs. Two admins racing this at once collide on the primary key: a unique violation on the
     /// insert. The loser reloads and resumes with the row that won, rather than the user it made
     /// and now leaves behind unjoined. Any other failure propagates.
     /// </summary>
     private async Task<LinkedUser> CreateDeskUserAsync(Guid personId, CancellationToken cancellationToken)
     {
         var (name, email) = await PersonAsync(personId, cancellationToken).ConfigureAwait(false);
-
-        if (await deskUsers.EmailIsUsedAsync(email, cancellationToken).ConfigureAwait(false))
-        {
-            throw new EmailAlreadyUsedException("Desk");
-        }
 
         var externalId = await deskUsers.CreateUserAsync(name, email, cancellationToken).ConfigureAwait(false);
 

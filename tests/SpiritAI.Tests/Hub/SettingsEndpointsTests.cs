@@ -80,19 +80,18 @@ public sealed class SettingsEndpointsTests(PostgresFixture fixture)
     [Fact]
     public async Task ARefusedCreate_Is409_WithTheAppsWords()
     {
-        const string email = "desk-admin@spiritfitness.test";
-        var personId = await AddPersonAsync("Desk Admin Namesake", email);
+        var personId = await AddPersonAsync("Ann Lee", Guid.NewGuid().ToString("N") + "@spiritfitness.test");
 
         try
         {
             await using var world = await World.StartAsync(
-                fixture, [AccessGroup.Admin], deskWire: new ReplayingHandler("agents") { Folder = "Hub" });
+                fixture, [AccessGroup.Admin], crmWire: new ReplayingHandler(payload: null, HttpStatusCode.Conflict) { Folder = "Hub" });
 
-            var response = await world.PostAsync($"{SettingsEndpoints.Pattern}/people/{personId}/desk");
+            var response = await world.PostAsync($"{SettingsEndpoints.Pattern}/people/{personId}/crm");
 
             Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
             using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Cancel));
-            Assert.Equal("email already used in Desk", problem.RootElement.GetProperty("detail").GetString());
+            Assert.Equal("email already used in CRM", problem.RootElement.GetProperty("detail").GetString());
         }
         finally
         {
@@ -183,11 +182,15 @@ public sealed class SettingsEndpointsTests(PostgresFixture fixture)
         public ReplayingHandler DeskWire { get; } = deskWire;
 
         public static async Task<World> StartAsync(
-            PostgresFixture fixture, AccessGroup[] groups, ReplayingHandler? deskWire = null, string twentyBaseUrl = "http://twenty.test")
+            PostgresFixture fixture,
+            AccessGroup[] groups,
+            ReplayingHandler? deskWire = null,
+            string twentyBaseUrl = "http://twenty.test",
+            ReplayingHandler? crmWire = null)
         {
             var kit = new NeonAuthTestKit();
             deskWire ??= new ReplayingHandler(payload: null) { Folder = "Hub" };
-            var crmWire = new ReplayingHandler(payload: null) { Folder = "Hub" };
+            crmWire ??= new ReplayingHandler(payload: null) { Folder = "Hub" };
 
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>

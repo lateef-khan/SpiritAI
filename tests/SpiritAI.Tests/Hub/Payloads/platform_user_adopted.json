@@ -1,0 +1,25 @@
+{
+  "access_token": "REDACTED",
+  "account_id": 1,
+  "available_name": "Admin",
+  "avatar_url": "",
+  "confirmed": true,
+  "display_name": null,
+  "message_signature": null,
+  "email": "desk-admin@spiritfitness.test",
+  "id": 1,
+  "name": "Admin",
+  "provider": "email",
+  "pubsub_token": "REDACTED",
+  "role": "administrator",
+  "ui_settings": {},
+  "uid": "desk-admin@spiritfitness.test",
+  "accounts": [
+    {
+      "id": 1,
+      "name": "Spirit",
+      "active_at": null,
+      "role": "administrator"
+    }
+  ]
+}
