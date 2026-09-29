@@ -22,7 +22,6 @@ public sealed class LinkPerson(SpiritDbContext db, DeskUsers deskUsers, CrmUsers
     /// <param name="cancellationToken">Cancels the wait.</param>
     /// <returns><see cref="LinkState.Ready"/>, since this only returns once the link is ready.</returns>
     /// <exception cref="KeyNotFoundException">No Person has <paramref name="personId"/>.</exception>
-    /// <exception cref="EmailAlreadyUsedException">CRM already has this Person's email.</exception>
     public Task<LinkState> RunAsync(Guid personId, string app, CancellationToken cancellationToken)
         => app switch
         {

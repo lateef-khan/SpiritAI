@@ -1,4 +1,3 @@
-using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -11,9 +10,12 @@ namespace SpiritAI.Twenty;
 /// <summary>CRM users through the Twenty fork's own endpoints.</summary>
 public sealed class CrmUsers(HttpClient http, IOptions<TwentyOptions> twenty, IOptions<HubOptions> hub, TimeProvider clock)
 {
-    /// <exception cref="EmailAlreadyUsedException">Twenty already has a user with this email.</exception>
+    /// <summary>
+    /// Makes the user, or returns the Twenty user that already has this email. The fork adopts
+    /// that user and leaves its password and role as they are.
+    /// </summary>
     /// <exception cref="CrmUnavailableException">
-    /// Twenty could not be reached, answered with anything other than success or a conflict, or
+    /// Twenty could not be reached, answered with anything other than success, or
     /// <see cref="TwentyOptions.BaseUrl"/> is empty — which would otherwise fail as a relative URI.
     /// </exception>
     public async Task<string> CreateUserAsync(string name, string email, CancellationToken cancellationToken)
@@ -44,11 +46,6 @@ public sealed class CrmUsers(HttpClient http, IOptions<TwentyOptions> twenty, IO
 
         using (response)
         {
-            if (response.StatusCode == HttpStatusCode.Conflict)
-            {
-                throw new EmailAlreadyUsedException("CRM");
-            }
-
             if (!response.IsSuccessStatusCode)
             {
                 throw new CrmUnavailableException();

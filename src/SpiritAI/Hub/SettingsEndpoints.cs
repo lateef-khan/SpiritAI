@@ -32,7 +32,6 @@ public static class SettingsEndpoints
             .Describe("linkPerson")
             .Produces<PersonRow>()
             .Produces(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
             .Produces(StatusCodes.Status404NotFound);
 
@@ -65,10 +64,6 @@ public static class SettingsEndpoints
         try
         {
             await linker.RunAsync(id, app, cancellationToken).ConfigureAwait(false);
-        }
-        catch (EmailAlreadyUsedException ex)
-        {
-            return TypedResults.Problem(ex.Message, statusCode: StatusCodes.Status409Conflict, title: "The app already has this email.");
         }
         catch (CrmUnavailableException ex)
         {

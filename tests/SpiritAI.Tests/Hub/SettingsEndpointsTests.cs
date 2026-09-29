@@ -78,28 +78,6 @@ public sealed class SettingsEndpointsTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task ARefusedCreate_Is409_WithTheAppsWords()
-    {
-        var personId = await AddPersonAsync("Ann Lee", Guid.NewGuid().ToString("N") + "@spiritfitness.test");
-
-        try
-        {
-            await using var world = await World.StartAsync(
-                fixture, [AccessGroup.Admin], crmWire: new ReplayingHandler(payload: null, HttpStatusCode.Conflict) { Folder = "Hub" });
-
-            var response = await world.PostAsync($"{SettingsEndpoints.Pattern}/people/{personId}/crm");
-
-            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-            using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Cancel));
-            Assert.Equal("email already used in CRM", problem.RootElement.GetProperty("detail").GetString());
-        }
-        finally
-        {
-            await DeletePersonAsync(personId);
-        }
-    }
-
-    [Fact]
     public async Task AnEmptyTwentyBaseUrl_Is503_WithTheHouseWords()
     {
         var personId = await AddPersonAsync("No Crm Yet", Unique() + "@spiritfitness.test");

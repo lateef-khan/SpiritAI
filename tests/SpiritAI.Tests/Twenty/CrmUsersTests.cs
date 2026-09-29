@@ -27,16 +27,6 @@ public sealed class CrmUsersTests
     }
 
     [Fact]
-    public async Task AnEmailTwentyAlreadyHas_IsRefused()
-    {
-        var wire = new ReplayingHandler(payload: null, HttpStatusCode.Conflict) { Folder = "Hub" };
-
-        var refused = await Assert.ThrowsAsync<EmailAlreadyUsedException>(
-            () => Users(wire).CreateUserAsync("Ann Lee", "ann.lee@spiritfitness.test", Cancel));
-        Assert.Equal("email already used in CRM", refused.Message);
-    }
-
-    [Fact]
     public void TheSignInUrl_GoesToTheForkOnTheCrmAddress_WithANote()
     {
         var url = new Uri(Users(new ReplayingHandler(payload: null)).SignInUrl("3b7c1d52"));
@@ -61,7 +51,7 @@ public sealed class CrmUsersTests
     }
 
     [Fact]
-    public async Task ANonConflictFailure_IsCrmUnavailable()
+    public async Task AFailedCreate_IsCrmUnavailable()
     {
         var wire = new ReplayingHandler(payload: null, HttpStatusCode.NotFound) { Folder = "Hub" };
 

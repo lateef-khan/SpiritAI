@@ -115,9 +115,11 @@ lets the Spirit Hub sign people in to the CRM, make their CRM users, and hold th
   `SPIRIT_HUB_SECRET`, audience `crm`, 60 seconds). It sends the frame to Twenty's own
   `/verify?loginToken=…`, which finishes the sign-in. A bad, old, or used note gets 401.
 - `POST /auth/spirit/users` with `Authorization: Bearer <SPIRIT_HUB_SECRET>` and
-  `{email, firstName, lastName}` makes a user with no password, in the one workspace, with the
-  workspace's default role. No email is sent. It answers `201 {"id"}`, `409` when Twenty already
-  has the email (the Hub never takes over an existing user), and `401` for a wrong secret.
+  `{email, firstName, lastName}` answers `201 {"id"}` and sends no email. A new email gets a user
+  with no password, in the one workspace, with the workspace's default role. An email Twenty
+  already has is adopted, the same as Desk: the answer is that user's id, and its password and role
+  stay as they are (a user outside the workspace joins it with the default role). This is how the
+  owner's own Twenty admin gets linked. A wrong secret gets `401`.
 - Every front-end page gets `Content-Security-Policy: frame-ancestors 'self' <SPIRIT_HUB_ORIGIN>`.
 - A full page load of `/welcome` (sign-out and a lost session both do one) goes to
   `SPIRIT_HUB_LOGIN_URL`. `/welcome?local=1` still shows Twenty's own sign-in, for the back-door

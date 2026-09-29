@@ -124,17 +124,29 @@ public sealed class LinkPersonTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task ACrmEmailTwentyAlreadyHas_IsRefused()
+    public async Task ACrmEmailTwentyAlreadyHas_IsAdopted_AndTheLinkIsReady()
     {
-        var personId = await AddPersonAsync("Ann Lee", Unique() + "@spiritfitness.test");
-        var wire = new ReplayingHandler(payload: null, HttpStatusCode.Conflict) { Folder = "Hub" };
-        await using var db = fixture.Open();
+        // crm_user_adopted.json is the fork's reply for its workspace admin's email: that user's own
+        // id, the same every run, so the row is deleted afterward.
+        var personId = await AddPersonAsync("CRM Admin", "admin@spiritfitness.test");
 
-        var refused = await Assert.ThrowsAsync<EmailAlreadyUsedException>(
-            () => new LinkPerson(db, DeskOf(new ReplayingHandler(payload: null)), CrmOf(wire)).RunAsync(personId, HubApps.Crm, Cancel));
+        try
+        {
+            var wire = new ReplayingHandler("crm_user_adopted", HttpStatusCode.Created) { Folder = "Hub" };
+            await using var db = fixture.Open();
 
-        Assert.Equal("email already used in CRM", refused.Message);
-        Assert.Null(await LinkAsync(personId, HubApps.Crm));
+            var state = await new LinkPerson(db, DeskOf(new ReplayingHandler(payload: null)), CrmOf(wire))
+                .RunAsync(personId, HubApps.Crm, Cancel);
+
+            Assert.Equal(LinkState.Ready, state);
+            var link = await LinkAsync(personId, HubApps.Crm);
+            Assert.True(link!.Ready);
+            Assert.Equal("8ed762b5-ddb7-4558-8958-1f05351931d0", link.ExternalId);
+        }
+        finally
+        {
+            await DeletePersonAsync(personId);
+        }
     }
 
     [Fact]
