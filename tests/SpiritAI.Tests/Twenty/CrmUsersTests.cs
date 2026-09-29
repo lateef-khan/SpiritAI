@@ -19,7 +19,7 @@ public sealed class CrmUsersTests
 
         var id = await Users(wire).CreateUserAsync("JW Hackett", "jw.hackett@spiritfitness.test", Cancel);
 
-        Assert.Equal("3b7c1d52-0d7e-4f0a-9d8e-2f1f6a0c9e11", id);
+        Assert.Equal("b3b3aae7-1714-4fd6-9002-093eab25e3bd", id);
         var request = Assert.Single(wire.Requests);
         Assert.Equal("http://twenty.test/auth/spirit/users", request.Url);
         Assert.Equal("Bearer hub-secret", request.Authorization);
@@ -77,7 +77,7 @@ public sealed class CrmUsersTests
 
         var id = await Users(wire).CreateUserAsync("Cher", "cher@spiritfitness.test", Cancel);
 
-        Assert.Equal("3b7c1d52-0d7e-4f0a-9d8e-2f1f6a0c9e11", id);
+        Assert.Equal("b3b3aae7-1714-4fd6-9002-093eab25e3bd", id);
         var request = Assert.Single(wire.Requests);
         Assert.Equal("""{"email":"cher@spiritfitness.test","firstName":"Cher","lastName":""}""", request.Body);
     }

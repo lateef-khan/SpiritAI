@@ -20,7 +20,9 @@ just twenty up      # makes .env on first run, starts, waits (the first start ta
 just twenty down    # stops and deletes everything local
 ```
 
-- Twenty: http://localhost:53001 (the first visit asks you to make the admin user)
+- Twenty: http://crm.spirit.localhost:53001 (the first visit asks you to make the admin user). A
+  `.env` made before the Hub still says `SERVER_URL=http://localhost:53001`; the Hub needs the
+  `crm.spirit.localhost` one (see [The Hub](#the-hub))
 - Emails: `EMAIL_DRIVER=LOGGER` prints them in `just twenty logs`
 
 `just twenty up source` builds the image from `source/` on your PC instead of pulling it. Use
@@ -103,6 +105,37 @@ Twenty releases often. Use a tag that has a GitHub release, not only a Docker ta
 
 The server runs the schema upgrade each time it starts. Run `just postgres backup` before each
 update in production.
+
+## The Hub
+
+The fork's `spirit-hub` module (`source/packages/twenty-server/src/engine/core-modules/spirit-hub/`)
+lets the Spirit Hub sign people in to the CRM, make their CRM users, and hold the CRM in a frame.
+
+- `GET /auth/spirit?note=…` takes a one-time note that Spirit signs (`HubNote.ForCrm`: HS256 with
+  `SPIRIT_HUB_SECRET`, audience `crm`, 60 seconds). It sends the frame to Twenty's own
+  `/verify?loginToken=…`, which finishes the sign-in. A bad, old, or used note gets 401.
+- `POST /auth/spirit/users` with `Authorization: Bearer <SPIRIT_HUB_SECRET>` and
+  `{email, firstName, lastName}` makes a user with no password, in the one workspace, with the
+  workspace's default role. No email is sent. It answers `201 {"id"}`, `409` when Twenty already
+  has the email (the Hub never takes over an existing user), and `401` for a wrong secret.
+- Every front-end page gets `Content-Security-Policy: frame-ancestors 'self' <SPIRIT_HUB_ORIGIN>`.
+- A full page load of `/welcome` (sign-out and a lost session both do one) goes to
+  `SPIRIT_HUB_LOGIN_URL`. `/welcome?local=1` still shows Twenty's own sign-in, for the back-door
+  admin.
+- `GET /spirit/sign-out` is a page that signs the CRM session out (the same `signOut` call as
+  Twenty's own menu), tells other open CRM tabs, and posts `{ type: "hub:signed-out", app: "crm" }`
+  to `SPIRIT_HUB_ORIGIN`. Like Desk's, it is a plain `GET`: any link to it signs the current CRM
+  session out, which is an acceptable trade.
+
+Settings: `SPIRIT_HUB_ORIGIN` and `SPIRIT_HUB_LOGIN_URL` in `.env` (production:
+`https://hub.spiritfitnessapps.com` and `https://hub.spiritfitnessapps.com/chat/login.html?app=crm`),
+and `TWENTY_SPIRIT_HUB_SECRET` in `secrets/<env>.env`, equal to Spirit's `Twenty__HubSecret`.
+Without the secret, both `/auth/spirit` endpoints answer 401. Without the origin, there is no
+sign-out page and no frame header, so browsers let any site frame the CRM.
+
+The Hub and the CRM must be the same site for the session cookie to reach the frame:
+`hub.spiritfitnessapps.com` and `crm.spiritfitnessapps.com`, or `hub.spirit.localhost` and
+`crm.spirit.localhost` locally.
 
 ## Source code
 
