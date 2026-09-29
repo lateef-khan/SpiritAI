@@ -1,0 +1,104 @@
+# Set up and update the company server apps from this laptop, over ssh. From the repo root:
+# `just spirit-srv-030 <recipe>`. Nothing here runs on the server itself.
+#
+# Only committed code ships, with `git archive`. The server never needs GitHub. A deploy never
+# touches the files that live only on the server: each app's .env and .secrets.env,
+# secrets/prod.env (only `just spirit-srv-030 secrets` writes it), and the Docker volumes.
+
+# The ssh alias of the server, from ~/.ssh/config. Another server is a change to this line.
+host := "spiritsrv-030"
+
+# The folder on the server, relative to the home folder of the ssh user.
+dir := "spirit"
+
+# The paths the server needs. The root justfile names spirit-srv-030, so it must parse there. twenty/source (the fork's code) and twenty/apps stay on the laptop.
+paths := "justfile src/justfile spirit-srv-030 postgres chatwoot cloudflared secrets twenty ':(exclude)twenty/source' ':(exclude)twenty/apps'"
+
+# List the recipes.
+default:
+    @just --list
+
+# ssh -t lets sudo ask for the password. Skips the install when just is already there.
+# One time: install just on the server, make the folder, and ship the code.
+setup ref="HEAD":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ssh {{host}} 'command -v just >/dev/null'; then
+        echo "just is already on {{host}}."
+    else
+        ssh -t {{host}} 'sudo apt install -y just'
+    fi
+    just sync {{ref}}
+    echo "Next: just spirit-srv-030 secrets. The order is in spirit-srv-030/README.md."
+
+# The ref can be a branch, tag, or commit. Refuses when HEAD is shipped and its paths have
+# uncommitted changes. Writes DEPLOYED on the server with the commit.
+# Ship the committed code to the server.
+sync ref="HEAD":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "$(git rev-parse --show-toplevel)"
+    paths=({{paths}})
+    commit="$(git rev-parse --verify "{{ref}}^{commit}")"
+    if [ "$commit" = "$(git rev-parse HEAD)" ] && [ -n "$(git status --porcelain --untracked-files=no -- "${paths[@]}")" ]; then
+        echo "Uncommitted changes in the shipped paths. Only committed code ships. Commit first:" >&2
+        git status --short --untracked-files=no -- "${paths[@]}" >&2
+        exit 1
+    fi
+    ssh {{host}} 'mkdir -p {{dir}}'
+    git archive "$commit" -- "${paths[@]}" | ssh {{host}} 'tar --extract --directory={{dir}}'
+    {
+        git log -1 --format='%H%n%s%n%cI' "$commit"
+        echo "shipped $(date -u +%FT%TZ)"
+    } | ssh {{host}} 'cat > {{dir}}/DEPLOYED'
+    echo "Shipped $(git log -1 --format='%h %s' "$commit") to {{host}}:~/{{dir}}."
+
+# Overwrites secrets/prod.env on the server with the laptop's copy (mode 600). Prints no values.
+secrets:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    file="{{justfile_directory()}}/../secrets/prod.env"
+    if [ ! -f "$file" ]; then
+        echo "secrets/prod.env is missing. Run: just secrets init prod" >&2
+        exit 1
+    fi
+    ssh {{host}} 'mkdir -p {{dir}}/secrets && umask 077 && cat > {{dir}}/secrets/prod.env && chmod 600 {{dir}}/secrets/prod.env' < "$file"
+    echo "Copied secrets/prod.env to {{host}}."
+
+# Ship the code, then run the app's update recipe on the server. The first start is `run <app> prod-up`.
+deploy app ref="HEAD": (sync ref)
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{app}}" in
+        postgres|chatwoot|twenty) recipe=prod-update ;;
+        cloudflared) recipe=update ;;
+        *) echo "Use one of: postgres chatwoot twenty cloudflared" >&2; exit 1 ;;
+    esac
+    ssh -t {{host}} 'cd {{dir}} && just {{app}} '"$recipe"
+
+# Run any recipe of an app on the server, e.g. `just spirit-srv-030 run twenty prod-up`.
+run app +recipe:
+    ssh -t {{host}} 'cd {{dir}} && just {{app}} {{recipe}}'
+
+# Show the shipped commit and the containers of every app.
+status:
+    ssh {{host}} 'cd {{dir}} && cat DEPLOYED && just stack-status'
+
+# Follow the logs of one app. Ctrl-C stops.
+logs app:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{app}}" in
+        postgres|chatwoot|twenty) recipe=prod-logs ;;
+        cloudflared) recipe=logs ;;
+        *) echo "Use one of: postgres chatwoot twenty cloudflared" >&2; exit 1 ;;
+    esac
+    ssh -t {{host}} 'cd {{dir}} && just {{app}} '"$recipe"
+
+# Start every app on the server, in order. See the root justfile.
+stack-up:
+    ssh -t {{host}} 'cd {{dir}} && just stack-up'
+
+# Stop every app on the server, the database last. Keeps the volumes.
+stack-down:
+    ssh -t {{host}} 'cd {{dir}} && just stack-down'

@@ -17,6 +17,9 @@ mod postgres
 # Secrets of every app, one file per environment: `just secrets <recipe>`. See secrets/README.md.
 mod secrets
 
+# Set up and update the company server SPIRITSRV-030 from this laptop: `just spirit-srv-030 <recipe>`. See spirit-srv-030/README.md.
+mod spirit-srv-030
+
 # Twenty CRM recipes: `just twenty <recipe>`. See twenty/README.md.
 mod twenty
 
