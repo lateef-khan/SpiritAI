@@ -127,6 +127,9 @@ lets the Spirit Hub sign people in to the CRM, make their CRM users, and hold th
   fork's sign-in page then does one full load of `/welcome` to let the server decide. When the
   document already was a load of `/welcome`, the server served it (no Hub set), and nothing
   reloads. `/welcome?local=1` still shows Twenty's own sign-in, for the back-door admin.
+  This holds on an empty Twenty too: type `/welcome?local=1` by hand to make the first admin
+  (Continue with Email → Sign up → Create workspace → Skip, profile, Skip). The whole sign-up
+  stays on one page load, so it never drops to the Hub.
 - `GET /spirit/sign-out` is a page that signs the CRM session out (the same `signOut` call as
   Twenty's own menu), tells other open CRM tabs, and posts `{ type: "hub:signed-out", app: "crm" }`
   to `SPIRIT_HUB_ORIGIN`. Like Desk's, it is a plain `GET`: any link to it signs the current CRM
