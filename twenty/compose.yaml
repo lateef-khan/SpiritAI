@@ -9,7 +9,7 @@
 name: spirit-twenty
 
 x-twenty: &twenty
-  image: ghcr.io/lateef-khan/twenty:v2.41.0-spirit.1
+  image: ghcr.io/lateef-khan/twenty:v2.41.0-spirit.2
   env_file:
     - .env
     - path: .secrets.env
