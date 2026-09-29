@@ -62,7 +62,8 @@ networks:
 - **Caching:** do not cache HTML on these hostnames. Cloudflare must pass the apps' frame
   headers (`X-Frame-Options`, `Content-Security-Policy`) through unchanged.
 - **WebSockets:** on (the default). Chatwoot's live inbox needs them.
-- **Staff-only hostnames:** put them behind Cloudflare Access. Leave the public chat and the
+- **Staff-only hostnames:** put them behind Cloudflare Access, except `desk.`, `crm.` and `hub.`:
+  the Hub frames Desk and CRM and Spirit's server calls them. Leave the public chat and the
   Chatwoot widget paths open, or customers cannot use them.
 
 | Recipe | Does |

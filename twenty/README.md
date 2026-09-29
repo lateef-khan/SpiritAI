@@ -78,7 +78,8 @@ The server joins the shared network `spirit-edge` as `twenty`. The tunnel does n
 Twenty to run, and Twenty does not need the tunnel.
 
 1. In the tunnel's **Public Hostname** tab: `crm.<domain>` → `http://twenty:3000`.
-2. Put `crm.<domain>` behind Cloudflare Access. It is staff only.
+2. Do not put `crm.<domain>` behind Cloudflare Access. Spirit's server calls `/auth/spirit/users`
+   there and the Hub frames it; Twenty's sign-in, which goes through the Hub, guards it.
 
 ## Release our image
 
