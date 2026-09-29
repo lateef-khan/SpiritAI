@@ -1,8 +1,8 @@
 namespace SpiritAI.Twenty;
 
 /// <summary>
-/// A CRM create failed for a reason that is not "this email already exists" — connection refused, a
-/// 404, or <see cref="TwentyOptions.BaseUrl"/> left empty.
+/// A CRM create failed: connection refused, a timeout, a 404, a reply that is not the fork's, or
+/// <see cref="TwentyOptions.BaseUrl"/> left empty.
 /// </summary>
 public sealed class CrmUnavailableException(Exception? inner = null)
     : Exception("CRM is not set up yet.", inner);

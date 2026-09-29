@@ -72,6 +72,32 @@ public sealed class CrmUsersTests
         Assert.Equal("""{"email":"cher@spiritfitness.test","firstName":"Cher","lastName":""}""", request.Body);
     }
 
+    [Fact]
+    public async Task ASuccessWithNoJsonBody_IsCrmUnavailable()
+    {
+        // A sign-in page in front of the fork (Cloudflare Access, for one) answers 200 with a body
+        // that is not the fork's reply.
+        var wire = new ReplayingHandler(payload: null, HttpStatusCode.OK) { Folder = "Hub" };
+
+        var refused = await Assert.ThrowsAsync<CrmUnavailableException>(
+            () => Users(wire).CreateUserAsync("Ann Lee", "ann.lee@spiritfitness.test", Cancel));
+        Assert.Equal("CRM is not set up yet.", refused.Message);
+    }
+
+    [Fact]
+    public async Task AForkThatNeverAnswers_IsCrmUnavailable()
+    {
+        var users = new CrmUsers(
+            new HttpClient(new HangingHandler()) { Timeout = TimeSpan.FromMilliseconds(50) },
+            Options.Create(new TwentyOptions { BaseUrl = "http://twenty.test", HubSecret = "hub-secret" }),
+            Options.Create(new HubOptions { CrmUrl = "https://crm.spirit.test" }),
+            new TestTimeProvider(DateTimeOffset.UtcNow));
+
+        var refused = await Assert.ThrowsAsync<CrmUnavailableException>(
+            () => users.CreateUserAsync("Ann Lee", "ann.lee@spiritfitness.test", Cancel));
+        Assert.Equal("CRM is not set up yet.", refused.Message);
+    }
+
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     private static CrmUsers Users(ReplayingHandler wire) => new(
@@ -79,4 +105,13 @@ public sealed class CrmUsersTests
         Options.Create(new TwentyOptions { BaseUrl = "http://twenty.test", HubSecret = "hub-secret" }),
         Options.Create(new HubOptions { CrmUrl = "https://crm.spirit.test" }),
         new TestTimeProvider(DateTimeOffset.UtcNow));
+
+    private sealed class HangingHandler : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        }
+    }
 }

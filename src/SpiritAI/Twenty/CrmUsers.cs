@@ -15,7 +15,8 @@ public sealed class CrmUsers(HttpClient http, IOptions<TwentyOptions> twenty, IO
     /// that user and leaves its password and role as they are.
     /// </summary>
     /// <exception cref="CrmUnavailableException">
-    /// Twenty could not be reached, answered with anything other than success, or
+    /// Twenty could not be reached or timed out, answered with anything other than success or with
+    /// a success that is not the fork's <c>{"id"}</c> (a sign-in page in front of it), or
     /// <see cref="TwentyOptions.BaseUrl"/> is empty — which would otherwise fail as a relative URI.
     /// </exception>
     public async Task<string> CreateUserAsync(string name, string email, CancellationToken cancellationToken)
@@ -39,7 +40,8 @@ public sealed class CrmUsers(HttpClient http, IOptions<TwentyOptions> twenty, IO
 
             response = await http.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException
+            || (ex is TaskCanceledException && !cancellationToken.IsCancellationRequested))
         {
             throw new CrmUnavailableException(ex);
         }
@@ -51,8 +53,17 @@ public sealed class CrmUsers(HttpClient http, IOptions<TwentyOptions> twenty, IO
                 throw new CrmUnavailableException();
             }
 
-            var created = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
-            return created.GetProperty("id").GetString()!;
+            try
+            {
+                var created = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
+                return created.TryGetProperty("id", out var id) && id.GetString() is { Length: > 0 } value
+                    ? value
+                    : throw new CrmUnavailableException();
+            }
+            catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException)
+            {
+                throw new CrmUnavailableException(ex);
+            }
         }
     }
 

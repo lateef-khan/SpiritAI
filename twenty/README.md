@@ -120,10 +120,13 @@ lets the Spirit Hub sign people in to the CRM, make their CRM users, and hold th
   already has is adopted, the same as Desk: the answer is that user's id, and its password and role
   stay as they are (a user outside the workspace joins it with the default role). This is how the
   owner's own Twenty admin gets linked. A wrong secret gets `401`.
-- Every front-end page gets `Content-Security-Policy: frame-ancestors 'self' <SPIRIT_HUB_ORIGIN>`.
-- A full page load of `/welcome` (sign-out and a lost session both do one) goes to
-  `SPIRIT_HUB_LOGIN_URL`. `/welcome?local=1` still shows Twenty's own sign-in, for the back-door
-  admin.
+- Every front-end page gets `Content-Security-Policy: frame-ancestors 'self' <SPIRIT_HUB_ORIGIN>`
+  (only `'self'` when the origin is not set, so a missing setting breaks the Hub, not the guard).
+- A full page load of `/welcome` goes to `SPIRIT_HUB_LOGIN_URL`. Twenty's front often reaches
+  `/welcome` without a page load (a first visit with no session, a session lost mid-use), so the
+  fork's sign-in page then does one full load of `/welcome` to let the server decide. When the
+  document already was a load of `/welcome`, the server served it (no Hub set), and nothing
+  reloads. `/welcome?local=1` still shows Twenty's own sign-in, for the back-door admin.
 - `GET /spirit/sign-out` is a page that signs the CRM session out (the same `signOut` call as
   Twenty's own menu), tells other open CRM tabs, and posts `{ type: "hub:signed-out", app: "crm" }`
   to `SPIRIT_HUB_ORIGIN`. Like Desk's, it is a plain `GET`: any link to it signs the current CRM
@@ -133,9 +136,11 @@ Settings: `SPIRIT_HUB_ORIGIN` and `SPIRIT_HUB_LOGIN_URL` in `.env` (production:
 `https://hub.spiritfitnessapps.com` and `https://hub.spiritfitnessapps.com/chat/login.html?app=crm`),
 and `TWENTY_SPIRIT_HUB_SECRET` in `secrets/<env>.env`, equal to Spirit's `Twenty__HubSecret`.
 Without the secret, both `/auth/spirit` endpoints answer 401. Without the origin, there is no
-sign-out page and no frame header, so browsers let any site frame the CRM.
+sign-out page and only the CRM itself may frame the CRM.
 
-The Hub and the CRM must be the same site for the session cookie to reach the frame:
+The origin of Spirit's `Hub__CrmUrl` must equal `SERVER_URL`'s origin, and `SPIRIT_HUB_ORIGIN`
+must be the Hub's origin. The Hub and the CRM must be the same site for the session cookie to
+reach the frame:
 `hub.spiritfitnessapps.com` and `crm.spiritfitnessapps.com`, or `hub.spirit.localhost` and
 `crm.spirit.localhost` locally.
 
