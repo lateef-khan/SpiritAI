@@ -21,12 +21,13 @@ On the server, run `just <recipe>` inside this folder.
 | Hostname | Service | Public? |
 | --- | --- | --- |
 | `desk.<domain>` | `http://chatwoot:3000` (Chatwoot) | Staff only |
-| `chat.<domain>` | `http://host.docker.internal:5299` (Spirit, if it runs on the host) | Yes |
 | `crm.<domain>` | `http://twenty:3000` (Twenty) | Staff only |
-| `hub.<domain>` | The app shell, when it exists | Staff only |
 
-After step 6, set Chatwoot's `FRONTEND_URL` to `https://desk.<domain>` and run
-`just chatwoot prod-update`. Set Twenty's `SERVER_URL` to `https://crm.<domain>` and run
+`chat.<domain>` and `hub.<domain>` are not tunnel rows. Spirit runs on Fly; they are DNS records
+that point at `spiritai.fly.dev`.
+
+After step 6, set `CHATWOOT_FRONTEND_URL` in `secrets/prod.env` to `https://desk.<domain>` and run
+`just chatwoot prod-update`. Set `TWENTY_SERVER_URL` to `https://crm.<domain>` and run
 `just twenty prod-update`.
 
 ## How the tunnel reaches an app
@@ -62,7 +63,8 @@ networks:
 - **Caching:** do not cache HTML on these hostnames. Cloudflare must pass the apps' frame
   headers (`X-Frame-Options`, `Content-Security-Policy`) through unchanged.
 - **WebSockets:** on (the default). Chatwoot's live inbox needs them.
-- **Staff-only hostnames:** put them behind Cloudflare Access. Leave the public chat and the
+- **Staff-only hostnames:** put them behind Cloudflare Access, except `desk.`, `crm.` and `hub.`:
+  the Hub frames Desk and CRM and Spirit's server calls them. Leave the public chat and the
   Chatwoot widget paths open, or customers cannot use them.
 
 | Recipe | Does |

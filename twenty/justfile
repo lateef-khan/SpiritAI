@@ -4,24 +4,13 @@
 # Local dev and production use different compose projects, so `down` can never touch the
 # production volumes.
 
-# Each command first writes this app's secrets from secrets/<env>.env into .secrets.env.
-dev := "../secrets/export.sh dev TWENTY_ .secrets.env && docker compose --file compose.yaml --env-file .env --env-file .secrets.env"
-prod := "../secrets/export.sh prod TWENTY_ .secrets.env && docker compose --file compose.yaml --file compose.prod.yaml --env-file .env --env-file .secrets.env"
+# Each command first writes this app's settings and secrets from secrets/<env>.env into .secrets.env.
+dev := "../secrets/export.sh dev TWENTY_ .secrets.env && docker compose --file compose.yaml --env-file .secrets.env"
+prod := "../secrets/export.sh prod TWENTY_ .secrets.env && docker compose --file compose.yaml --file compose.prod.yaml --env-file .secrets.env"
 
 # List the recipes.
 default:
     @just --list
-
-# Make .env from .env.example. Never overwrites. The secrets are in secrets/<env>.env.
-env:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [ -f .env ]; then
-        echo "twenty/.env already exists; leaving it alone."
-        exit 0
-    fi
-    cp .env.example .env
-    echo "Wrote twenty/.env."
 
 # The Twenty release our image is built on, e.g. v2.41.0 for v2.41.0-spirit.1.
 app_version := `grep -oP 'image: ghcr.io/\S+:\Kv[0-9.]+(?=-spirit)' compose.yaml`
@@ -29,7 +18,7 @@ app_version := `grep -oP 'image: ghcr.io/\S+:\Kv[0-9.]+(?=-spirit)' compose.yaml
 # `just up source` builds the image from twenty/source instead of pulling it (10-20 minutes,
 # about 8 GB of RAM).
 # Local dev: start the shared database server, then Twenty, and wait.
-up from="image": env _edge
+up from="image": _edge
     #!/usr/bin/env bash
     set -euo pipefail
     args=()
@@ -41,7 +30,7 @@ up from="image": env _edge
         *) echo "Use: just up, or just up source"; exit 1 ;;
     esac
     {{dev}} "${args[@]}" up "${build[@]}" --detach --wait --wait-timeout 2400
-    echo "Twenty is ready on http://localhost:$(grep -oP '^TWENTY_PORT=\K.+' .env || echo 53001)."
+    echo "Twenty is ready on http://localhost:$(grep -oP '^HOST_PORT=\K.+' .secrets.env || echo 53001)."
 
 # Local dev: stop and delete everything local: redis, uploads, and Twenty's database on the
 # shared server. Chatwoot's database and the server keep running.
@@ -54,7 +43,7 @@ logs:
     {{dev}} logs --follow --tail=100
 
 # Production: first start, or start after prod-down. Needs `just postgres prod-up` first, and the
-# bucket: its place in .env, its keys in secrets/prod.env.
+# bucket: its place and keys in secrets/prod.env.
 prod-up: _edge _db
     {{prod}} up --detach --wait --wait-timeout 2400
     @echo "Twenty is ready."

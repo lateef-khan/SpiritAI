@@ -26,8 +26,17 @@ ProxyHeaders__Enabled = "true"
 Widget__AllowedOrigins__0 = "https://www.spiritfitness.com"
 
 
-Goto__WebhookBaseUrl = "https://spiritai.fly.dev"
+# The public name, not spiritai.fly.dev. chat. must answer on Fly before this deploys: GoTo checks
+# the address when the channel is made.
+Goto__WebhookBaseUrl = "https://chat.spiritfitnessapps.com"
 Goto__ChannelNickname = "spirit-prod"
+
+# The Hub (docs/superpowers/specs/2026-09-27-hub-single-sign-in-design.md). Hub__CrmUrl's origin
+# must equal TWENTY_SERVER_URL in secrets/prod.env, and TWENTY_SPIRIT_HUB_ORIGIN must be https://<Hub__Host>.
+# Twenty__BaseUrl, Twenty__HubSecret and the Chatwoot Platform keys are Fly secrets.
+Hub__Host = "hub.spiritfitnessapps.com"
+Hub__DeskUrl = "https://desk.spiritfitnessapps.com"
+Hub__CrmUrl = "https://crm.spiritfitnessapps.com"
 
 [http_service]
 internal_port = 8080

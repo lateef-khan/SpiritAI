@@ -499,9 +499,6 @@ docs
 # Run `npm run gen:api` (or any `npm run build`) to write it.
 src/web/src/api/
 
-# Production chatwoot settings
-chatwoot/.env.production
-
 # Every app's secrets, one file per environment. Only the template and the scripts are kept.
 secrets/*
 !secrets/README.md
@@ -509,5 +506,6 @@ secrets/*
 !secrets/justfile
 !secrets/export.sh
 !secrets/set.sh
-# One app's secrets, written from secrets/<env>.env by secrets/export.sh before each compose command.
+!secrets/tidy.sh
+# One app's settings and secrets, written from secrets/<env>.env by secrets/export.sh before each compose command.
 .secrets.env

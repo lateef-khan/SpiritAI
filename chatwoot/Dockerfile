@@ -5,3 +5,5 @@
 FROM chatwoot/chatwoot:v4.18.0-ce
 
 COPY initializers/spirit_public_contact_guard.rb /app/config/initializers/
+COPY initializers/spirit_hub.rb /app/config/initializers/
+COPY brand/spirit-logo.png /app/public/brand-assets/

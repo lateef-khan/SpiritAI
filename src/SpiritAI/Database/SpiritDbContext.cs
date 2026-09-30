@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 
 using SpiritAI.Access;
+using SpiritAI.Hub;
 
 namespace SpiritAI.Database;
 
@@ -17,6 +18,9 @@ public sealed class SpiritDbContext(DbContextOptions<SpiritDbContext> options) :
 
     /// <summary>Which Neon Auth user holds which role.</summary>
     public DbSet<UserRole> UserRoles => Set<UserRole>();
+
+    /// <summary>Which Person has which Desk or CRM user.</summary>
+    public DbSet<LinkedUser> LinkedUsers => Set<LinkedUser>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)

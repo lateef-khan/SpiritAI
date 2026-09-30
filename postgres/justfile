@@ -76,10 +76,11 @@ prod-logs:
 psql database="postgres":
     docker exec --interactive --tty spirit-postgres psql --username=postgres --dbname={{database}}
 
+# Twenty's database runs with JIT off: its row access rule builds large queries that JIT makes slow.
 # Make or update each app's role, database, and extensions from its URL in secrets/<env>.env.
 setup env="dev":
-    @just _app {{env}} CHATWOOT_DATABASE_URL "{{chatwoot_dev_url}}" "pg_stat_statements pg_trgm pgcrypto vector"
-    @just _app {{env}} TWENTY_PG_DATABASE_URL "{{twenty_dev_url}}" "citext unaccent uuid-ossp"
+    @just _app {{env}} CHATWOOT_DATABASE_URL "{{chatwoot_dev_url}}" "pg_stat_statements pg_trgm pgcrypto vector" on
+    @just _app {{env}} TWENTY_PG_DATABASE_URL "{{twenty_dev_url}}" "citext unaccent uuid-ossp" off
 
 # Production: back up the whole server to S3 now. type is incr, diff, or full.
 backup type="incr": _backup-on
@@ -167,13 +168,13 @@ _s3-on:
     fi
 
 # The superuser creates the extensions, because an app's own role may not.
-_app env key dev_url extensions:
+_app env key dev_url extensions jit:
     #!/usr/bin/env bash
     set -euo pipefail
     role="$(just _url {{env}} {{key}} "{{dev_url}}" role)"
     password="$(just _url {{env}} {{key}} "{{dev_url}}" password)"
     database="$(just _url {{env}} {{key}} "{{dev_url}}" database)"
-    {{psql}} --set=role="$role" --set=password="$password" --set=database="$database" < setup.sql
+    {{psql}} --set=role="$role" --set=password="$password" --set=database="$database" --set=jit="{{jit}}" < setup.sql
     {
         echo "SET client_min_messages = warning;"
         for extension in {{extensions}}; do

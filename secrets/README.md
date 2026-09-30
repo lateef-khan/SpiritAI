@@ -1,6 +1,6 @@
 # Secrets
 
-Every secret of every app is in one file per environment:
+Every secret and every Chatwoot and Twenty setting is in one file per environment:
 
 - `secrets/dev.env`: your machine.
 - `secrets/prod.env`: production. Keep a copy in the password manager.
@@ -11,21 +11,28 @@ Both are git-ignored. `example.env` lists every key, with what it is and where t
 just secrets init dev    # make dev.env and generate the values that are random
 just secrets init prod   # the same for prod.env
 just secrets push        # send Spirit's keys in prod.env to GitHub
+just secrets tidy dev    # put dev.env back in example.env's layout (backup: dev.env.bak)
 ```
 
 Edit the file, then run the app again. Nothing else needs a copy.
+
+`tidy` regroups a file to match `example.env` and keeps every value as it is. Keys `example.env`
+does not list go last under `# --- Not in example.env ---`; a repeated key keeps its first value.
 
 ## Who reads what
 
 | App | Keys | How |
 | --- | --- | --- |
 | SpiritAI | The names the app reads: `OPENAI_API_KEY`, `Goto__ClientId`, … | `just spirit run` loads `dev.env`. Production: `just secrets push` → GitHub → the "Sync Fly secrets" workflow → Fly |
-| Chatwoot | `CHATWOOT_*` | Its recipes write them, without the prefix, into `chatwoot/.secrets.env` for compose |
+| Chatwoot | `CHATWOOT_*` | Its recipes write them, without the prefix, into `chatwoot/.secrets.env` for compose. Settings and secrets alike |
 | Twenty | `TWENTY_*` | The same, into `twenty/.secrets.env` |
 | Cloudflare Tunnel | `CLOUDFLARE_*` | The same, into `cloudflared/.secrets.env`, from `prod.env` only |
 | PostgreSQL | `POSTGRES_SERVER_*` | The same, into `postgres/.secrets.env`. `just postgres setup` also reads `CHATWOOT_DATABASE_URL` and `TWENTY_PG_DATABASE_URL` |
 
-An app's `.env` keeps its settings (ports, addresses, email sender). Secrets never go there.
+Chatwoot and Twenty have no `.env` of their own. Their settings (addresses, ports, email sender,
+bucket place) are keys in this file with the app prefix. In dev, `compose.yaml` has a default for
+each, so leave a key empty to use it. In prod there are no defaults: a missing required key stops
+the recipe and names the key.
 
 `just chatwoot setup` writes `Chatwoot__InboxIdentifier` and `Chatwoot__BotToken` into the file
 itself.

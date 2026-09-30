@@ -25,7 +25,7 @@ public sealed class GoToOptions
     /// <summary>The GoTo account whose calls Spirit subscribes to.</summary>
     public string AccountKey { get; set; } = string.Empty;
 
-    /// <summary>Spirit's public https address, such as <c>https://spirit.fly.dev</c>.</summary>
+    /// <summary>Spirit's public https address, such as <c>https://chat.spiritfitnessapps.com</c>.</summary>
     public string WebhookBaseUrl { get; set; } = string.Empty;
 
     /// <summary>

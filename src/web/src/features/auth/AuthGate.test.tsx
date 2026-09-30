@@ -15,11 +15,19 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** `window.location.replace` cannot be called for real in a test: it would tear down the document. */
-function stubNavigation() {
+/**
+ * `window.location.replace` cannot be called for real in a test: it would tear down the document.
+ *
+ * `Location`'s fields live on its prototype, not as the object's own properties, so `{
+ * ...window.location }` copies none of them — only the ones named here are.
+ */
+function stubNavigation(pathname = window.location.pathname) {
   const replace = vi.fn();
   vi.spyOn(window, "location", "get").mockReturnValue({
-    ...window.location,
+    origin: window.location.origin,
+    pathname,
+    search: window.location.search,
+    hash: window.location.hash,
     replace,
   } as unknown as Location);
   return replace;
@@ -41,8 +49,23 @@ describe("AuthGate", () => {
       </AuthGate>,
     );
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith("/chat/login.html"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/chat/login.html?returnTo=%2F"));
     expect(screen.queryByText("the app")).toBeNull();
+  });
+
+  test("sends a signed-out visitor back to the page they were on", async () => {
+    replace = stubNavigation("/chat/settings.html");
+    useSession.mockReturnValue({ data: null, isPending: false });
+
+    render(
+      <AuthGate>
+        <p>the app</p>
+      </AuthGate>,
+    );
+
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith("/chat/login.html?returnTo=%2Fchat%2Fsettings.html"),
+    );
   });
 
   test("waits out the pending session rather than flashing the login page", () => {

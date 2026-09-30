@@ -3,6 +3,7 @@
 set -euo pipefail
 
 env="${1:-dev}"
+compose="${2:?usage: spirit-inbox.sh <dev|prod> <docker compose command>}"
 secrets_dir="$(cd "$(dirname "$0")/../../secrets" && pwd)"
 secrets_file="$secrets_dir/$env.env"
 
@@ -140,6 +141,30 @@ fi
 "$secrets_dir/set.sh" "$env" Chatwoot__InboxIdentifier "$(jq -r '.inbox_identifier' <<<"$inbox")"
 "$secrets_dir/set.sh" "$env" Chatwoot__BotToken "$(jq -r '.access_token' <<<"$bot")"
 echo "Wrote Chatwoot__InboxIdentifier and Chatwoot__BotToken to secrets/$env.env." >&2
+
+# The Hub calls the Platform API to make and sign in Desk users. A Platform App has no
+# REST endpoint of its own; Chatwoot only makes one, and reads its token, from the Rails console.
+# Idempotent by name, the same as every other row this script keeps: a second run finds the one
+# already there instead of making a second.
+platform_app_output="$(bash -c "$compose exec -T -e SPIRIT_ACCOUNT_ID=$account_id web bundle exec rails runner -" <<'RUBY'
+account = Account.find(Integer(ENV.fetch('SPIRIT_ACCOUNT_ID')))
+app = PlatformApp.find_or_create_by!(name: 'Spirit Hub')
+PlatformAppPermissible.find_or_create_by!(platform_app: app, permissible: account)
+puts "SPIRIT_PLATFORM_TOKEN=#{app.access_token.token}"
+RUBY
+)"
+platform_token="$(printf '%s\n' "$platform_app_output" | { grep '^SPIRIT_PLATFORM_TOKEN=' || true; } | cut -d= -f2-)"
+if [ -z "$platform_token" ]; then
+    echo "rails runner did not print the Platform App token. Its output, with the token line removed:" >&2
+    printf '%s\n' "$platform_app_output" | grep -v '^SPIRIT_PLATFORM_TOKEN=' >&2
+    exit 1
+fi
+echo "Made or found the Platform App 'Spirit Hub', with the account." >&2
+
+"$secrets_dir/set.sh" "$env" Chatwoot__PlatformToken "$platform_token"
+"$secrets_dir/set.sh" "$env" Chatwoot__AdminToken "$admin_token"
+"$secrets_dir/set.sh" "$env" Chatwoot__InboxId "$inbox_id"
+echo "Wrote Chatwoot__PlatformToken, Chatwoot__AdminToken, and Chatwoot__InboxId to secrets/$env.env." >&2
 
 if [ -z "$service_token" ]; then
     echo "Chatwoot__ServiceToken is not set: Spirit cannot list teams or find calls. See the top of this script." >&2

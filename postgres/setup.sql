@@ -1,5 +1,5 @@
 -- Makes one app's role and database, or brings them up to date. Safe to run again.
--- `just setup` runs it once per app, with psql variables role, password, and database.
+-- `just setup` runs it once per app, with psql variables role, password, database, and jit.
 
 SELECT format('CREATE ROLE %I LOGIN', :'role')
 WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'role') \gexec
@@ -12,3 +12,7 @@ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'database') \gexec
 
 -- Only the owner connects, so one app cannot open the other's database.
 REVOKE ALL ON DATABASE :"database" FROM PUBLIC;
+
+-- A new session reads it, so an app restart picks it up.
+SELECT format('ALTER DATABASE %I SET jit = off', :'database')
+WHERE :'jit' = 'off' \gexec

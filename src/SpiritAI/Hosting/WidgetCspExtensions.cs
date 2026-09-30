@@ -23,8 +23,8 @@ public static class WidgetCspExtensions
         var origins = configuration.GetSection(OriginsKey).Get<string[]>();
 
         var frameAncestors = origins is { Length: > 0 }
-            ? string.Join(' ', origins)
-            : "'none'";
+            ? $"'self' {string.Join(' ', origins)}"
+            : "'self'";
 
         return app.Use(async (context, next) =>
         {

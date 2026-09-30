@@ -1,7 +1,6 @@
 import type * as React from "react";
-import { Sidebar, SidebarContent, SidebarFooter, SidebarRail } from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarRail } from "@/components/ui/sidebar";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
-import { AccountMenu } from "@/features/auth/AccountMenu";
 
 export function AgentCoreSidebar(props: React.ComponentProps<typeof Sidebar>) {
   return (
@@ -10,9 +9,6 @@ export function AgentCoreSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <ThreadList />
       </SidebarContent>
       <SidebarRail />
-      <SidebarFooter className="border-t">
-        <AccountMenu />
-      </SidebarFooter>
     </Sidebar>
   );
 }

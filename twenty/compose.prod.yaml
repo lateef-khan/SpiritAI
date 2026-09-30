@@ -1,5 +1,6 @@
 # Production layer on top of compose.yaml. Use it through `just prod-*`, never alone.
-# Differences from local dev: the database URL and the S3 bucket are required, redis is kept on
+# Differences from local dev: the public URL, the Hub addresses, the email server, the database URL
+# and the S3 bucket are required with no default (set them in secrets/prod.env), redis is kept on
 # disk with a memory cap, and there is no port on the host.
 
 name: spirit-twenty-prod
@@ -16,10 +17,19 @@ x-production: &production
   <<: *logging
   environment:
     PG_DATABASE_URL: ${PG_DATABASE_URL:?TWENTY_PG_DATABASE_URL must be set in secrets/prod.env}
+    SERVER_URL: ${SERVER_URL:?TWENTY_SERVER_URL must be set in secrets/prod.env}
+    SPIRIT_HUB_ORIGIN: ${SPIRIT_HUB_ORIGIN:?TWENTY_SPIRIT_HUB_ORIGIN must be set in secrets/prod.env}
+    SPIRIT_HUB_LOGIN_URL: ${SPIRIT_HUB_LOGIN_URL:?TWENTY_SPIRIT_HUB_LOGIN_URL must be set in secrets/prod.env}
+    EMAIL_DRIVER: SMTP
+    EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:?TWENTY_EMAIL_SMTP_HOST must be set in secrets/prod.env}
+    EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:?TWENTY_EMAIL_SMTP_PORT must be set in secrets/prod.env}
+    EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:?TWENTY_EMAIL_SMTP_USER must be set in secrets/prod.env}
+    EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD:?TWENTY_EMAIL_SMTP_PASSWORD must be set in secrets/prod.env}
+    EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:?TWENTY_EMAIL_FROM_ADDRESS must be set in secrets/prod.env}
     STORAGE_TYPE: S_3
-    STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:?STORAGE_S3_ENDPOINT must be set in twenty/.env for production}
-    STORAGE_S3_REGION: ${STORAGE_S3_REGION:?STORAGE_S3_REGION must be set in twenty/.env for production}
-    STORAGE_S3_NAME: ${STORAGE_S3_NAME:?STORAGE_S3_NAME must be set in twenty/.env for production}
+    STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:?TWENTY_STORAGE_S3_ENDPOINT must be set in secrets/prod.env}
+    STORAGE_S3_REGION: ${STORAGE_S3_REGION:?TWENTY_STORAGE_S3_REGION must be set in secrets/prod.env}
+    STORAGE_S3_NAME: ${STORAGE_S3_NAME:?TWENTY_STORAGE_S3_NAME must be set in secrets/prod.env}
     STORAGE_S3_ACCESS_KEY_ID: ${STORAGE_S3_ACCESS_KEY_ID:?TWENTY_STORAGE_S3_ACCESS_KEY_ID must be set in secrets/prod.env}
     STORAGE_S3_SECRET_ACCESS_KEY: ${STORAGE_S3_SECRET_ACCESS_KEY:?TWENTY_STORAGE_S3_SECRET_ACCESS_KEY must be set in secrets/prod.env}
     AWS_REQUEST_CHECKSUM_CALCULATION: when_required

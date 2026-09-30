@@ -73,6 +73,38 @@ namespace SpiritAI.Database.Migrations
                     b.ToTable("user_role", "spirit");
                 });
 
+            modelBuilder.Entity("SpiritAI.Hub.LinkedUser", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("App")
+                        .HasColumnType("text")
+                        .HasColumnName("app");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("external_id");
+
+                    b.Property<bool>("Ready")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("ready");
+
+                    b.HasKey("UserId", "App");
+
+                    b.HasIndex("App", "ExternalId")
+                        .IsUnique();
+
+                    b.ToTable("linked_user", "spirit", t =>
+                        {
+                            t.HasCheckConstraint("ck_linked_user_app", "app IN ('desk', 'crm')");
+                        });
+                });
+
             modelBuilder.Entity("SpiritAI.Access.UserRole", b =>
                 {
                     b.HasOne("SpiritAI.Access.Role", null)
@@ -81,6 +113,15 @@ namespace SpiritAI.Database.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("SpiritAI.Access.NeonUserStub", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SpiritAI.Hub.LinkedUser", b =>
+                {
                     b.HasOne("SpiritAI.Access.NeonUserStub", null)
                         .WithMany()
                         .HasForeignKey("UserId")

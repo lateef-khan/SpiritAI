@@ -1,0 +1,16 @@
+{
+  "account_id": null,
+  "available_name": "Lateef Khan",
+  "avatar_url": "",
+  "confirmed": true,
+  "display_name": null,
+  "message_signature": null,
+  "email": "lateef.khan@spiritfitness.test",
+  "id": 4,
+  "name": "Lateef Khan",
+  "provider": "email",
+  "role": null,
+  "ui_settings": {},
+  "uid": "lateef.khan@spiritfitness.test",
+  "accounts": []
+}

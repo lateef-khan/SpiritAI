@@ -25,6 +25,8 @@ export default defineConfig({
         index: resolve(__dirname, "index.html"),
         widget: resolve(__dirname, "widget.html"),
         login: resolve(__dirname, "login.html"),
+        hub: resolve(__dirname, "hub.html"),
+        settings: resolve(__dirname, "settings.html"),
       },
     },
   },

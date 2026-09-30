@@ -1,7 +1,7 @@
-# Self-hosted Chatwoot for local development. Settings come from chatwoot/.env; `just env`
-# makes it from .env.example. Secrets come from .secrets.env, which every recipe writes from the
-# CHATWOOT_* keys in secrets/<env>.env. The database is Chatwoot's own on the shared server in
-# postgres/, which `just up` starts.
+# Self-hosted Chatwoot for local development. Every setting and secret comes from
+# .secrets.env, which each recipe writes from the CHATWOOT_* keys in secrets/<env>.env. A setting
+# with a local default is written ${NAME:-default} below, so a near-empty dev.env works. The
+# database is Chatwoot's own on the shared server in postgres/, which `just up` starts.
 
 name: spirit-chatwoot
 
@@ -9,9 +9,7 @@ x-chatwoot: &chatwoot
   build: .
   image: spirit-chatwoot:local
   env_file:
-    - .env
-    - path: .secrets.env
-      required: false
+    - .secrets.env
   environment:
     NODE_ENV: production
     RAILS_ENV: production
@@ -19,6 +17,24 @@ x-chatwoot: &chatwoot
     PRESENCE_DURATION: "60"
     # The same default as postgres/justfile.
     DATABASE_URL: ${DATABASE_URL:-postgres://chatwoot:chatwoot@postgres:5432/chatwoot}
+    FRONTEND_URL: ${FRONTEND_URL:-http://desk.spirit.localhost:53000}
+    FORCE_SSL: ${FORCE_SSL:-false}
+    # initializers/spirit_hub.rb: the Hub's origin, and where a signed-out visit to /app/login goes.
+    SPIRIT_HUB_ORIGIN: ${SPIRIT_HUB_ORIGIN:-http://hub.spirit.localhost:5299}
+    SPIRIT_HUB_LOGIN_URL: ${SPIRIT_HUB_LOGIN_URL:-http://hub.spirit.localhost:5299/chat/login.html?app=desk}
+    # Chatwoot's own setting: where it sends a visitor after they sign out of the dashboard.
+    LOGOUT_REDIRECT_LINK: ${LOGOUT_REDIRECT_LINK:-http://hub.spirit.localhost:5299/chat/login.html?app=desk}
+    ENABLE_ACCOUNT_SIGNUP: ${ENABLE_ACCOUNT_SIGNUP:-false}
+    REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+    MAILER_SENDER_EMAIL: ${MAILER_SENDER_EMAIL:-Spirit <support@localhost>}
+    SMTP_ADDRESS: ${SMTP_ADDRESS:-mailpit}
+    SMTP_PORT: ${SMTP_PORT:-1025}
+    SMTP_DOMAIN: ${SMTP_DOMAIN:-localhost}
+    SMTP_ENABLE_STARTTLS_AUTO: ${SMTP_ENABLE_STARTTLS_AUTO:-false}
+    ACTIVE_STORAGE_SERVICE: ${ACTIVE_STORAGE_SERVICE:-local}
+    SAFE_FETCH_ALLOW_PRIVATE_NETWORK: ${SAFE_FETCH_ALLOW_PRIVATE_NETWORK:-false}
+    RAILS_LOG_TO_STDOUT: ${RAILS_LOG_TO_STDOUT:-true}
+    LOG_LEVEL: ${LOG_LEVEL:-info}
   volumes:
     - storage:/app/storage
   # db reaches the shared server as postgres:5432. default keeps redis in reach.
@@ -44,7 +60,7 @@ services:
     entrypoint: docker/entrypoints/rails.sh
     command: ["bundle", "exec", "rails", "s", "-p", "3000", "-b", "0.0.0.0"]
     ports:
-      - "127.0.0.1:${CHATWOOT_PORT:-53000}:3000"
+      - "127.0.0.1:${HOST_PORT:-53000}:3000"
     # The tunnel reaches web on the shared network as http://chatwoot:3000.
     networks:
       default:
@@ -76,7 +92,7 @@ services:
       retries: 30
     restart: unless-stopped
 
-  # Catches every email Chatwoot sends (invites, password resets). Inbox at the MAILPIT_PORT.
+  # Catches every email Chatwoot sends (invites, password resets). Inbox at the MAILPIT_PORT (CHATWOOT_MAILPIT_PORT in secrets/dev.env).
   mailpit:
     image: axllent/mailpit:latest
     ports:

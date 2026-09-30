@@ -38,8 +38,11 @@ merge. One Fly app serves both the UI and the API; its settings are in `fly.toml
 ## Company server apps
 
 Chatwoot, Twenty, their PostgreSQL server, and the Cloudflare tunnel run on the company server. Each app is a folder
-with its own `compose.yaml`, `.env`, `justfile`, and `README.md`. An app's settings are in
-its own `.env`. Its secrets are in `secrets/prod.env` (see `secrets/README.md`).
+with its own `compose.yaml`, `justfile`, and `README.md`. An app's settings and secrets are in
+`secrets/prod.env` (see `secrets/README.md`).
+
+The Hub is served by the Spirit host itself, not a company server app: staff sign in once at
+`hub.<domain>` and get tiles onto Desk, CRM, and Settings, which creates the Desk and CRM users.
 
 ```bash
 just stack-up       # start every app

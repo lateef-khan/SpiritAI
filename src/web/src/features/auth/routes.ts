@@ -13,3 +13,8 @@ export const APP_URL = "/chat/";
 export function appUrlAbsolute(): string {
   return new URL(APP_URL, window.location.origin).toString();
 }
+
+/** The login page, told where to send a Person back to once they are signed in. */
+export function loginUrlWithReturnTo(returnTo: string): string {
+  return `${LOGIN_URL}?returnTo=${encodeURIComponent(returnTo)}`;
+}
