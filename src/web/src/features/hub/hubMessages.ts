@@ -5,8 +5,7 @@
 export type HubAppId = "desk" | "crm";
 
 export type HubMessage =
-  | { type: "hub:needs-sign-in"; app: HubAppId }
-  | { type: "hub:signed-out"; app: HubAppId };
+  { type: "hub:needs-sign-in"; app: HubAppId } | { type: "hub:signed-out"; app: HubAppId };
 
 const APP_IDS: readonly HubAppId[] = ["desk", "crm"];
 
