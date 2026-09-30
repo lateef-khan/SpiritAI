@@ -18,15 +18,18 @@ paths := "justfile src/justfile spirit-srv-030 postgres chatwoot cloudflared sec
 default:
     @just --list
 
-# ssh -t lets sudo ask for the password. Skips the install when just is already there.
+# Ubuntu's apt has just 1.21, too old for `mod` (1.31+), so it installs the release that matches
+# this laptop's just into /usr/local/bin. ssh -t lets sudo ask for the password. Skips the
+# install when the server already has that version.
 # One time: install just on the server, make the folder, and ship the code.
 setup ref="HEAD":
     #!/usr/bin/env bash
     set -euo pipefail
-    if ssh {{host}} 'command -v just >/dev/null'; then
-        echo "just is already on {{host}}."
+    version="$(just --version | cut -d' ' -f2)"
+    if [ "$(ssh {{host}} 'just --version 2>/dev/null' | cut -d' ' -f2)" = "$version" ]; then
+        echo "just $version is already on {{host}}."
     else
-        ssh -t {{host}} 'sudo apt install -y just'
+        ssh -t {{host}} "curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | sudo bash -s -- --tag $version --to /usr/local/bin"
     fi
     just sync {{ref}}
     echo "Next: just spirit-srv-030 secrets. The order is in spirit-srv-030/README.md."
