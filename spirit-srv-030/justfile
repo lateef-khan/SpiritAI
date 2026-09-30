@@ -2,7 +2,7 @@
 # `just spirit-srv-030 <recipe>`. Nothing here runs on the server itself.
 #
 # Only committed code ships, with `git archive`. The server never needs GitHub. A deploy never
-# touches the files that live only on the server: each app's .env and .secrets.env,
+# touches the files that live only on the server: each app's .secrets.env,
 # secrets/prod.env (only `just spirit-srv-030 secrets` writes it), and the Docker volumes.
 
 # The ssh alias of the server, from ~/.ssh/config. Another server is a change to this line.

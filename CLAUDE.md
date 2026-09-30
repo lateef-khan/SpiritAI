@@ -35,4 +35,4 @@ Read `.claude/reference/reuse-before-you-build.md` first.
 - `spirit-srv-030/` — sets up and updates the company server apps on SPIRITSRV-030 over ssh.
   Has a `README.md` and a `justfile`.
 - `secrets/`, `chatwoot/`, `twenty/`, `postgres/`, `cloudflared/` — the company server apps and
-  their secrets. Each folder has a `README.md` and a `justfile`.
+  their settings and secrets (`secrets/<env>.env`, no `.env` per app). Each folder has a `README.md` and a `justfile`.

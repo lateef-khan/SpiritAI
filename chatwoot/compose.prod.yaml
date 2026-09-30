@@ -1,6 +1,7 @@
 # Production layer on top of compose.yaml. Use it through `just prod-*`, never alone.
-# Differences from local dev: the database URL and the S3 bucket are required, redis is kept on
-# disk with a memory cap, there is no mailpit, and no port on the host.
+# Differences from local dev: the public URLs, the Hub addresses, the email server, the database
+# URL and the S3 bucket are required with no default (set them in secrets/prod.env), redis is kept
+# on disk with a memory cap, there is no mailpit, and no port on the host.
 
 name: spirit-chatwoot-prod
 
@@ -16,10 +17,19 @@ x-production: &production
   <<: *logging
   environment:
     DATABASE_URL: ${DATABASE_URL:?CHATWOOT_DATABASE_URL must be set in secrets/prod.env}
+    FRONTEND_URL: ${FRONTEND_URL:?CHATWOOT_FRONTEND_URL must be set in secrets/prod.env}
+    SPIRIT_HUB_ORIGIN: ${SPIRIT_HUB_ORIGIN:?CHATWOOT_SPIRIT_HUB_ORIGIN must be set in secrets/prod.env}
+    SPIRIT_HUB_LOGIN_URL: ${SPIRIT_HUB_LOGIN_URL:?CHATWOOT_SPIRIT_HUB_LOGIN_URL must be set in secrets/prod.env}
+    LOGOUT_REDIRECT_LINK: ${LOGOUT_REDIRECT_LINK:?CHATWOOT_LOGOUT_REDIRECT_LINK must be set in secrets/prod.env}
+    MAILER_SENDER_EMAIL: ${MAILER_SENDER_EMAIL:?CHATWOOT_MAILER_SENDER_EMAIL must be set in secrets/prod.env}
+    SMTP_ADDRESS: ${SMTP_ADDRESS:?CHATWOOT_SMTP_ADDRESS must be set in secrets/prod.env}
+    SMTP_PORT: ${SMTP_PORT:?CHATWOOT_SMTP_PORT must be set in secrets/prod.env}
+    SMTP_DOMAIN: ${SMTP_DOMAIN:?CHATWOOT_SMTP_DOMAIN must be set in secrets/prod.env}
+    SMTP_ENABLE_STARTTLS_AUTO: ${SMTP_ENABLE_STARTTLS_AUTO:?CHATWOOT_SMTP_ENABLE_STARTTLS_AUTO must be set in secrets/prod.env}
     ACTIVE_STORAGE_SERVICE: s3_compatible
-    STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:?STORAGE_ENDPOINT must be set in chatwoot/.env for production}
-    STORAGE_REGION: ${STORAGE_REGION:?STORAGE_REGION must be set in chatwoot/.env for production}
-    STORAGE_BUCKET_NAME: ${STORAGE_BUCKET_NAME:?STORAGE_BUCKET_NAME must be set in chatwoot/.env for production}
+    STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:?CHATWOOT_STORAGE_ENDPOINT must be set in secrets/prod.env}
+    STORAGE_REGION: ${STORAGE_REGION:?CHATWOOT_STORAGE_REGION must be set in secrets/prod.env}
+    STORAGE_BUCKET_NAME: ${STORAGE_BUCKET_NAME:?CHATWOOT_STORAGE_BUCKET_NAME must be set in secrets/prod.env}
     STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:?CHATWOOT_STORAGE_ACCESS_KEY_ID must be set in secrets/prod.env}
     STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:?CHATWOOT_STORAGE_SECRET_ACCESS_KEY must be set in secrets/prod.env}
     AWS_REQUEST_CHECKSUM_CALCULATION: when_required

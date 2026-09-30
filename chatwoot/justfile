@@ -4,31 +4,20 @@
 # Local dev and production use different compose projects, so `down` can never touch the
 # production volumes.
 
-# Each command first writes this app's secrets from secrets/<env>.env into .secrets.env.
-dev := "../secrets/export.sh dev CHATWOOT_ .secrets.env CHATWOOT_ADMIN_TOKEN && docker compose --file compose.yaml --env-file .env --env-file .secrets.env"
-prod := "../secrets/export.sh prod CHATWOOT_ .secrets.env CHATWOOT_ADMIN_TOKEN && docker compose --file compose.yaml --file compose.prod.yaml --env-file .env --env-file .secrets.env"
+# Each command first writes this app's settings and secrets from secrets/<env>.env into .secrets.env.
+dev := "../secrets/export.sh dev CHATWOOT_ .secrets.env CHATWOOT_ADMIN_TOKEN && docker compose --file compose.yaml --env-file .secrets.env"
+prod := "../secrets/export.sh prod CHATWOOT_ .secrets.env CHATWOOT_ADMIN_TOKEN && docker compose --file compose.yaml --file compose.prod.yaml --env-file .secrets.env"
 
 # List the recipes.
 default:
     @just --list
 
-# Make .env from .env.example. Never overwrites. The secrets are in secrets/<env>.env.
-env:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [ -f .env ]; then
-        echo "chatwoot/.env already exists; leaving it alone."
-        exit 0
-    fi
-    cp .env.example .env
-    echo "Wrote chatwoot/.env."
-
 # Local dev: start the shared database server, then Chatwoot, and wait.
-up: env _edge
+up: _edge
     cd ../postgres && just up
     {{dev}} up --detach --build
     just _wait "{{dev}}"
-    echo "Chatwoot is ready on http://localhost:$(grep -oP '^CHATWOOT_PORT=\K.+' .env || echo 53000)."
+    echo "Chatwoot is ready on http://localhost:$(grep -oP '^HOST_PORT=\K.+' .secrets.env || echo 53000)."
 
 # Local dev: stop and delete everything local: redis, uploads, and Chatwoot's database on the
 # shared server. Twenty's database and the server keep running.

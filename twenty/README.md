@@ -6,7 +6,7 @@ our fork of Twenty's source in `source/`. GitHub builds it and stores it on ghcr
 
 | Folder | Holds |
 | --- | --- |
-| `.` | How we run Twenty: compose files, `.env`, recipes |
+| `.` | How we run Twenty: compose files, recipes |
 | `source/` | Git submodule: our fork of Twenty, branch `spirit`. See [Source code](#source-code) |
 | `apps/` | Our extension apps, one folder each. See [apps/README.md](apps/README.md) |
 
@@ -16,20 +16,23 @@ server, run `just <recipe>` inside this folder.
 ## Local development
 
 ```bash
-just twenty up      # makes .env on first run, starts, waits (the first start takes minutes)
+just twenty up      # starts, waits (the first start takes minutes)
 just twenty down    # stops and deletes everything local
 ```
 
-- Twenty: http://crm.spirit.localhost:53001 (the first visit asks you to make the admin user). A
-  `.env` made before the Hub still says `SERVER_URL=http://localhost:53001`; the Hub needs the
-  `crm.spirit.localhost` one (see [The Hub](#the-hub))
-- Emails: `EMAIL_DRIVER=LOGGER` prints them in `just twenty logs`
+- Twenty: http://crm.spirit.localhost:53001 (the first visit asks you to make the admin user). The Hub
+  needs the `crm.spirit.localhost` address, which is the default; a `TWENTY_SERVER_URL` in
+  `secrets/dev.env` that says `localhost` overrides it (see [The Hub](#the-hub))
+- Emails: the default `EMAIL_DRIVER=LOGGER` prints them in `just twenty logs`
 
 `just twenty up source` builds the image from `source/` on your PC instead of pulling it. Use
 it to check a change before a release. It takes 10 to 20 minutes and about 8 GB of RAM. For
 daily coding, run Twenty's own dev mode in `source/` instead.
 
-Secrets are the `TWENTY_*` keys in `secrets/dev.env` (`just secrets init dev`). `up` starts
+Settings and secrets live in `secrets/<env>.env` with the app prefix `TWENTY_`
+(`just secrets init dev` makes the file). Twenty has no `.env` of its own. Every setting has a
+local default in `compose.yaml`, so a fresh `dev.env` works as it is. Add `TWENTY_<NAME>=value`
+to change one; `TWENTY_HOST_PORT` moves the port. `secrets/example.env` lists every key. `up` starts
 the shared database server in `postgres/` first, the same as production. Nothing is kept: `down`
 deletes redis, uploads, and Twenty's database, so every `up` starts clean.
 
@@ -42,8 +45,8 @@ deletes redis, uploads, and Twenty's database, so every `up` starts clean.
 | --- | --- | --- |
 | Postgres | Throwaway container | Database `twenty` on the shared server in `postgres/`, required |
 | Redis | Memory only | Append-only file on the `redis` volume, 512 MB cap, 1 GB container cap, `noeviction` |
-| Uploads | Deleted by `down` | S3-compatible bucket (Backblaze B2), `STORAGE_S3_*`, required |
-| Email | Printed in the logs | `EMAIL_*` in `.env` (Resend example in `.env.example`) |
+| Uploads | Deleted by `down` | S3-compatible bucket (Backblaze B2), `TWENTY_STORAGE_S3_*`, required |
+| Email | Printed in the logs | `TWENTY_EMAIL_*` in `secrets/prod.env` (Resend example in `secrets/example.env`), required |
 | Container logs | Not capped | 3 files of 10 MB for each container |
 | Host port | `127.0.0.1:53001` | None. Only the tunnel reaches the server, as `http://twenty:3000` |
 
@@ -56,13 +59,14 @@ First setup on the server:
 2. Start the database server: `just postgres prod-up` (see `postgres/README.md`). It makes Twenty's
    own database, `twenty`, from `TWENTY_PG_DATABASE_URL`. Twenty makes many schemas in it
    (`core`, one `workspace_*` per workspace).
-3. `just env`, then edit `.env`: `SERVER_URL` (the public HTTPS address), the `STORAGE_S3_*`
-   bucket place, and the `EMAIL_*` values. In `secrets/prod.env`: the `TWENTY_STORAGE_S3_*` keys
-   and `TWENTY_EMAIL_SMTP_PASSWORD`.
+3. In `secrets/prod.env`, set `TWENTY_SERVER_URL` (the public HTTPS address), the
+   `TWENTY_STORAGE_S3_*` bucket place and keys, the `TWENTY_EMAIL_*` values and
+   `TWENTY_SPIRIT_HUB_*`. Production has no defaults: a missing required key stops `prod-up` and
+   names the key.
 4. Keep a copy of `TWENTY_ENCRYPTION_KEY` outside the server. Without it, the secrets in the
    database cannot be read.
 5. `just prod-up`.
-6. Open `SERVER_URL` and make the admin user. The first user is the server admin.
+6. Open `TWENTY_SERVER_URL` and make the admin user. The first user is the server admin.
 
 | Recipe | Does |
 | --- | --- |
@@ -136,13 +140,13 @@ lets the Spirit Hub sign people in to the CRM, make their CRM users, and hold th
   to `SPIRIT_HUB_ORIGIN`. Like Desk's, it is a plain `GET`: any link to it signs the current CRM
   session out, which is an acceptable trade.
 
-Settings: `SPIRIT_HUB_ORIGIN` and `SPIRIT_HUB_LOGIN_URL` in `.env` (production:
+Settings: `TWENTY_SPIRIT_HUB_ORIGIN` and `TWENTY_SPIRIT_HUB_LOGIN_URL` in `secrets/<env>.env` (production:
 `https://hub.spiritfitnessapps.com` and `https://hub.spiritfitnessapps.com/chat/login.html?app=crm`),
-and `TWENTY_SPIRIT_HUB_SECRET` in `secrets/<env>.env`, equal to Spirit's `Twenty__HubSecret`.
+and `TWENTY_SPIRIT_HUB_SECRET` in the same file, equal to Spirit's `Twenty__HubSecret`.
 Without the secret, both `/auth/spirit` endpoints answer 401. Without the origin, there is no
 sign-out page and only the CRM itself may frame the CRM.
 
-The origin of Spirit's `Hub__CrmUrl` must equal `SERVER_URL`'s origin, and `SPIRIT_HUB_ORIGIN`
+The origin of Spirit's `Hub__CrmUrl` must equal `TWENTY_SERVER_URL`'s origin, and `TWENTY_SPIRIT_HUB_ORIGIN`
 must be the Hub's origin. The Hub and the CRM must be the same site for the session cookie to
 reach the frame:
 `hub.spiritfitnessapps.com` and `crm.spiritfitnessapps.com`, or `hub.spirit.localhost` and
@@ -185,8 +189,9 @@ first time something needs them.
 | Version | `compose.yaml`, `x-twenty` → `image` |
 | How the image is built | `source/.github/workflows/spirit-image.yaml` |
 | Build from source locally | `compose.source.yaml` |
-| Settings | `.env` (git-ignored), `.env.example` (documented defaults) |
+| Settings and secrets | `TWENTY_*` in `secrets/<env>.env`; see `secrets/README.md` |
+| Local defaults | `compose.yaml`, as `${NAME:-default}` |
 | Production differences | `compose.prod.yaml` |
-| Settings that are not in `.env` | Twenty's admin panel (`IS_CONFIG_VARIABLES_IN_DB_ENABLED`, on by default) |
+| Settings that are not in `secrets/<env>.env` | Twenty's admin panel (`IS_CONFIG_VARIABLES_IN_DB_ENABLED`, on by default) |
 | Changes to Twenty's own code | `source/`, branch `spirit` |
 | Extension apps | `apps/<app>/` |

@@ -18,7 +18,7 @@ The server has no GitHub login. `sync` sends the committed code with `git archiv
 - Only committed code ships. `sync` refuses when those paths have uncommitted changes.
 - `~/spirit/DEPLOYED` says which commit is on the server.
 - These files live only on the server, and a deploy never writes or deletes them: each app's
-  `.env` and `.secrets.env`, `secrets/prod.env`, and the Docker volumes. Only the `secrets`
+  `.secrets.env`, `secrets/prod.env`, and the Docker volumes. Only the `secrets`
   recipe writes `secrets/prod.env`.
 - A file you delete from the repo stays on the server until you delete it there.
 
@@ -29,15 +29,12 @@ The server has no GitHub login. `sync` sends the committed code with `git archiv
 2. `just spirit-srv-030 setup`. It installs `just` on the server with `ssh -t`, so `sudo` asks
    for the password in your terminal. Then it ships the code.
 3. `just spirit-srv-030 secrets`. It copies `secrets/prod.env` to the server.
-4. For each app, make its `.env` and edit it on the server, as its README says:
-   `just spirit-srv-030 run chatwoot env`, then `ssh -t spiritsrv-030 nano spirit/chatwoot/.env`.
-   Do the same for `twenty`. Postgres and the tunnel have no `.env`.
-5. `just spirit-srv-030 run postgres prod-up`. See [postgres/README.md](../postgres/README.md).
-6. `just spirit-srv-030 run chatwoot prod-up`, then its setup steps. See
+4. `just spirit-srv-030 run postgres prod-up`. See [postgres/README.md](../postgres/README.md).
+5. `just spirit-srv-030 run chatwoot prod-up`, then its setup steps. See
    [chatwoot/README.md](../chatwoot/README.md).
-7. `just spirit-srv-030 run twenty prod-up`. See [twenty/README.md](../twenty/README.md). Make the
+6. `just spirit-srv-030 run twenty prod-up`. See [twenty/README.md](../twenty/README.md). Make the
    first admin at `https://crm.spiritfitnessapps.com/welcome?local=1`.
-8. `just spirit-srv-030 run cloudflared up`, then the public hostnames. See
+7. `just spirit-srv-030 run cloudflared up`, then the public hostnames. See
    [cloudflared/README.md](../cloudflared/README.md).
 
 After the first setup, `just spirit-srv-030 stack-up` starts everything in order.

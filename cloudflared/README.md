@@ -25,8 +25,8 @@ On the server, run `just <recipe>` inside this folder.
 | `crm.<domain>` | `http://twenty:3000` (Twenty) | Staff only |
 | `hub.<domain>` | `http://host.docker.internal:5299` (Spirit, if it runs on the host — same target as `chat.`) | Staff only |
 
-After step 6, set Chatwoot's `FRONTEND_URL` to `https://desk.<domain>` and run
-`just chatwoot prod-update`. Set Twenty's `SERVER_URL` to `https://crm.<domain>` and run
+After step 6, set `CHATWOOT_FRONTEND_URL` in `secrets/prod.env` to `https://desk.<domain>` and run
+`just chatwoot prod-update`. Set `TWENTY_SERVER_URL` to `https://crm.<domain>` and run
 `just twenty prod-update`.
 
 ## How the tunnel reaches an app
