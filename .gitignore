@@ -506,5 +506,6 @@ secrets/*
 !secrets/justfile
 !secrets/export.sh
 !secrets/set.sh
+!secrets/tidy.sh
 # One app's settings and secrets, written from secrets/<env>.env by secrets/export.sh before each compose command.
 .secrets.env

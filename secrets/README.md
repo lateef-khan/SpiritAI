@@ -11,9 +11,13 @@ Both are git-ignored. `example.env` lists every key, with what it is and where t
 just secrets init dev    # make dev.env and generate the values that are random
 just secrets init prod   # the same for prod.env
 just secrets push        # send Spirit's keys in prod.env to GitHub
+just secrets tidy dev    # put dev.env back in example.env's layout (backup: dev.env.bak)
 ```
 
 Edit the file, then run the app again. Nothing else needs a copy.
+
+`tidy` regroups a file to match `example.env` and keeps every value as it is. Keys `example.env`
+does not list go last under `# --- Not in example.env ---`; a repeated key keeps its first value.
 
 ## Who reads what
 
