@@ -21,9 +21,10 @@ On the server, run `just <recipe>` inside this folder.
 | Hostname | Service | Public? |
 | --- | --- | --- |
 | `desk.<domain>` | `http://chatwoot:3000` (Chatwoot) | Staff only |
-| `chat.<domain>` | `http://host.docker.internal:5299` (Spirit, if it runs on the host) | Yes |
 | `crm.<domain>` | `http://twenty:3000` (Twenty) | Staff only |
-| `hub.<domain>` | `http://host.docker.internal:5299` (Spirit, if it runs on the host — same target as `chat.`) | Staff only |
+
+`chat.<domain>` and `hub.<domain>` are not tunnel rows. Spirit runs on Fly; they are DNS records
+that point at `spiritai.fly.dev`.
 
 After step 6, set `CHATWOOT_FRONTEND_URL` in `secrets/prod.env` to `https://desk.<domain>` and run
 `just chatwoot prod-update`. Set `TWENTY_SERVER_URL` to `https://crm.<domain>` and run
