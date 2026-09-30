@@ -60,7 +60,7 @@ sync ref="HEAD":
 secrets:
     #!/usr/bin/env bash
     set -euo pipefail
-    file="{{justfile_directory()}}/../secrets/prod.env"
+    file="$(git rev-parse --show-toplevel)/secrets/prod.env"
     if [ ! -f "$file" ]; then
         echo "secrets/prod.env is missing. Run: just secrets init prod" >&2
         exit 1
