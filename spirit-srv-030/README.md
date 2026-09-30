@@ -55,6 +55,7 @@ Back up first for Twenty and Postgres: `just spirit-srv-030 run postgres backup`
 | `setup [ref]` | One time. Installs this laptop's `just` version on the server if it is missing or different, makes `~/spirit`, ships the code |
 | `sync [ref]` | Ships the committed code. `ref` is a branch, tag, or commit; the default is `HEAD` |
 | `secrets` | Copies `secrets/prod.env` to the server, mode 600. Overwrites the server's copy. Prints no values |
+| `secrets-pull` | Copies the server's `secrets/prod.env` back to the laptop (the old copy becomes `prod.env.bak`). Run it after `run chatwoot setup prod` |
 | `deploy <app> [ref]` | `sync`, then the app's update recipe: `prod-update`, or `update` for `cloudflared` |
 | `run <app> <recipe...>` | Runs any recipe of an app on the server, e.g. `run twenty prod-up` |
 | `status` | Shows the shipped commit and the containers of every app |

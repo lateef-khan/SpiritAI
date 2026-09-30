@@ -56,6 +56,26 @@ sync ref="HEAD":
     } | ssh {{host}} 'cat > {{dir}}/DEPLOYED'
     echo "Shipped $(git log -1 --format='%h %s' "$commit") to {{host}}:~/{{dir}}."
 
+# `just chatwoot setup prod` runs on the server and writes its tokens into the server's copy, so
+# pull it back before the next `secrets`, or that run overwrites them. Keeps the laptop's old copy
+# as secrets/prod.env.bak. Prints no values.
+# Copy the server's secrets/prod.env back to this laptop.
+secrets-pull:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    file="$(git rev-parse --show-toplevel)/secrets/prod.env"
+    umask 077
+    ssh {{host}} 'cat {{dir}}/secrets/prod.env' > "$file.pulled"
+    if [ ! -s "$file.pulled" ]; then
+        rm -f "$file.pulled"
+        echo "The server has no secrets/prod.env." >&2
+        exit 1
+    fi
+    [ -f "$file" ] && cp -p "$file" "$file.bak"
+    mv "$file.pulled" "$file"
+    chmod 600 "$file"
+    echo "Copied secrets/prod.env from {{host}}. The old copy is secrets/prod.env.bak."
+
 # Overwrites secrets/prod.env on the server with the laptop's copy (mode 600). Prints no values.
 secrets:
     #!/usr/bin/env bash
