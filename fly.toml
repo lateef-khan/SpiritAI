@@ -26,7 +26,9 @@ ProxyHeaders__Enabled = "true"
 Widget__AllowedOrigins__0 = "https://www.spiritfitness.com"
 
 
-Goto__WebhookBaseUrl = "https://spiritai.fly.dev"
+# The public name, not spiritai.fly.dev. chat. must answer on Fly before this deploys: GoTo checks
+# the address when the channel is made.
+Goto__WebhookBaseUrl = "https://chat.spiritfitnessapps.com"
 Goto__ChannelNickname = "spirit-prod"
 
 # The Hub (docs/superpowers/specs/2026-09-27-hub-single-sign-in-design.md). Hub__CrmUrl's origin
