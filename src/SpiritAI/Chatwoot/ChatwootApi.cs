@@ -7,11 +7,13 @@ using Microsoft.Extensions.Options;
 namespace SpiritAI.Chatwoot;
 
 /// <summary>
-/// The wire under every Chatwoot class: the account's routes, the token each call goes out with,
-/// and Chatwoot's own words when it refuses.
+/// The wire under every Chatwoot class.
 /// </summary>
 public sealed class ChatwootApi(HttpClient http, IOptions<ChatwootOptions> options)
 {
+    /// <summary>How many messages Chatwoot puts on one page.</summary>
+    public const int MessagePageSize = 20;
+
     private const string TokenHeader = "api_access_token";
 
     /// <summary>The settings, read on each use.</summary>

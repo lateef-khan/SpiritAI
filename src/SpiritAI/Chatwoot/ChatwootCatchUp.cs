@@ -10,9 +10,6 @@ namespace SpiritAI.Chatwoot;
 /// </summary>
 public sealed class ChatwootCatchUp(ChatwootClient chatwoot, IConversations conversations)
 {
-    /// <summary>How many messages Chatwoot puts on one page.</summary>
-    public const int PageSize = 20;
-
     /// <summary>How many pages are read back when the copy has no bookmark.</summary>
     public const int PagesWithNoBookmark = 2;
 
@@ -121,7 +118,7 @@ public sealed class ChatwootCatchUp(ChatwootClient chatwoot, IConversations conv
         var page = newestPage;
         var pages = 1;
 
-        while (page.Count >= PageSize
+        while (page.Count >= ChatwootApi.MessagePageSize
             && (through is { } bookmark ? page.Min(m => m.Id) > bookmark : pages < PagesWithNoBookmark))
         {
             page = await chatwoot

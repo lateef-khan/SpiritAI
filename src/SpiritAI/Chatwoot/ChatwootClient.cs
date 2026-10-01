@@ -12,6 +12,9 @@ namespace SpiritAI.Chatwoot;
 /// </summary>
 public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> options)
 {
+    /// <summary>A stop for a conversation that never runs out: 500 pages is 10,000 messages.</summary>
+    private const int MaxMessagePages = 500;
+
     private readonly ChatwootApi api = new(http, options);
 
     private ChatwootOptions Settings => api.Settings;
@@ -29,20 +32,6 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
     public async Task PostMessageAsync(int conversationId, string content, bool fromVisitor, CancellationToken cancellationToken)
     {
         var body = new JsonObject { ["content"] = content, ["message_type"] = fromVisitor ? "incoming" : "outgoing" };
-
-        using var response = await api.SendAsync(HttpMethod.Post, $"{ConversationUrl(conversationId)}/messages", body, cancellationToken)
-            .ConfigureAwait(false);
-
-        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>Posts a private note, which only staff see.</summary>
-    /// <param name="conversationId">The conversation's display id.</param>
-    /// <param name="content">The note.</param>
-    /// <param name="cancellationToken">Cancels the call.</param>
-    public async Task PostNoteAsync(int conversationId, string content, CancellationToken cancellationToken)
-    {
-        var body = new JsonObject { ["content"] = content, ["message_type"] = "outgoing", ["private"] = true };
 
         using var response = await api.SendAsync(HttpMethod.Post, $"{ConversationUrl(conversationId)}/messages", body, cancellationToken)
             .ConfigureAwait(false);
@@ -147,23 +136,6 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
             a.GetProperty("id").GetInt32(),
             a.GetProperty("name").GetString() ?? string.Empty,
             a.GetProperty("email").GetString() ?? string.Empty))];
-    }
-
-    /// <summary>
-    /// The contacts whose phone number is exactly <paramref name="e164"/>, as the service user.
-    /// Chatwoot's search also matches part of a number, so the answer is filtered here.
-    /// </summary>
-    /// <param name="e164">The number in E.164 form, as <c>request_human</c> saves it.</param>
-    /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The contact ids; empty when nobody has the number.</returns>
-    public async Task<IReadOnlyList<int>> FindContactsByPhoneAsync(string e164, CancellationToken cancellationToken)
-    {
-        var found = await api.GetAsServiceAsync($"{Account}/contacts/search?q={Uri.EscapeDataString(e164)}", cancellationToken)
-            .ConfigureAwait(false);
-
-        return [.. found.GetProperty("payload").EnumerateArray()
-            .Where(c => c.TryGetProperty("phone_number", out var phone) && phone.GetString() == e164)
-            .Select(c => c.GetProperty("id").GetInt32())];
     }
 
     /// <summary>
@@ -292,10 +264,214 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
             [.. inbox.GetProperty("working_hours").EnumerateArray().Select(ChatwootWorkingDay.Read)]);
     }
 
+    /// <summary>The contact whose phone number is exactly <paramref name="e164"/>. Chatwoot allows one.</summary>
+    /// <param name="e164">The number in E.164.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The contact, or null when nobody has the number.</returns>
+    public async Task<ChatwootPhoneContact?> FindPhoneContactAsync(string e164, CancellationToken cancellationToken)
+    {
+        var found = await api.GetAsServiceAsync($"{Account}/contacts/search?q={Uri.EscapeDataString(e164)}", cancellationToken)
+            .ConfigureAwait(false);
+
+        // Chatwoot's search also matches part of a number, so only the exact one counts.
+        return found.GetProperty("payload").EnumerateArray()
+            .Where(c => c.TryGetProperty("phone_number", out var phone) && phone.GetString() == e164)
+            .Select(c => new ChatwootPhoneContact(c.GetProperty("id").GetInt32(), SourceIdIn(c)))
+            .FirstOrDefault();
+    }
+
+    /// <summary>Creates a contact with a phone number, in the Spirit inbox.</summary>
+    /// <param name="name">The contact's name.</param>
+    /// <param name="e164">The number in E.164.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>
+    /// The new contact; or, when Chatwoot answers that the number is taken, the contact that has it, made
+    /// a moment ago by another copy or a person.
+    /// </returns>
+    public async Task<ChatwootPhoneContact> CreatePhoneContactAsync(string name, string e164, CancellationToken cancellationToken)
+    {
+        var body = new JsonObject { ["name"] = name, ["phone_number"] = e164, ["inbox_id"] = Settings.InboxId };
+
+        using var response = await api.SendAsync(HttpMethod.Post, $"{Account}/contacts", body, cancellationToken, Settings.ServiceToken)
+            .ConfigureAwait(false);
+
+        if (response.StatusCode == HttpStatusCode.UnprocessableEntity
+            && await FindPhoneContactAsync(e164, cancellationToken).ConfigureAwait(false) is { } taken)
+        {
+            return taken;
+        }
+
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+
+        var created = (await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false)).GetProperty("payload");
+
+        return new ChatwootPhoneContact(
+            created.GetProperty("contact").GetProperty("id").GetInt32(),
+            created.TryGetProperty("contact_inbox", out var inbox) && inbox.ValueKind == JsonValueKind.Object
+                ? inbox.GetProperty("source_id").GetString()
+                : null);
+    }
+
+    /// <summary>Gives a contact a place in the Spirit inbox.</summary>
+    /// <param name="contactId">The contact's id.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The contact's key in the inbox.</returns>
+    public async Task<string> AddContactToInboxAsync(int contactId, CancellationToken cancellationToken)
+    {
+        var added = await api.ReadAsync(
+                HttpMethod.Post, string.Create(CultureInfo.InvariantCulture, $"{Account}/contacts/{contactId}/contact_inboxes"), new JsonObject { ["inbox_id"] = Settings.InboxId }, cancellationToken, Settings.ServiceToken)
+            .ConfigureAwait(false);
+
+        return added.GetProperty("source_id").GetString()!;
+    }
+
+    /// <summary>
+    /// The contact's newest conversation in the Spirit inbox. With "Reopen same conversation" on,
+    /// a contact has one.
+    /// </summary>
+    /// <param name="contactId">The contact's id.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The conversation's display id, or null when it has none there.</returns>
+    public async Task<int?> FindInboxConversationAsync(int contactId, CancellationToken cancellationToken)
+    {
+        var listed = await api.GetAsServiceAsync(string.Create(CultureInfo.InvariantCulture, $"{Account}/contacts/{contactId}/conversations"), cancellationToken).ConfigureAwait(false);
+
+        return listed.GetProperty("payload").EnumerateArray()
+            .Where(c => c.GetProperty("inbox_id").GetInt32() == Settings.InboxId)
+            .Select(c => (int?)c.GetProperty("id").GetInt32())
+            .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Starts a conversation in the Spirit inbox, as the service user. While a bot is connected to
+    /// the inbox Chatwoot makes it pending whatever status is asked for (probe, 2026-10-01), so
+    /// <see cref="ResolveConversationAsync"/> closes it.
+    /// </summary>
+    /// <param name="contactId">The contact's id.</param>
+    /// <param name="sourceId">The contact's key in the Spirit inbox.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The conversation's display id, and whether it is new: only a conversation with no messages is.</returns>
+    public async Task<ChatwootCreatedConversation> CreateConversationAsync(int contactId, string sourceId, CancellationToken cancellationToken)
+    {
+        var body = new JsonObject { ["source_id"] = sourceId, ["inbox_id"] = Settings.InboxId, ["contact_id"] = contactId };
+
+        var created = await api.ReadAsync(HttpMethod.Post, $"{Account}/conversations", body, cancellationToken, Settings.ServiceToken)
+            .ConfigureAwait(false);
+
+        var fresh = created.TryGetProperty("messages", out var messages)
+            && messages.ValueKind == JsonValueKind.Array && messages.GetArrayLength() == 0
+            && (!created.TryGetProperty("last_non_activity_message", out var last) || last.ValueKind == JsonValueKind.Null);
+
+        return new ChatwootCreatedConversation(created.GetProperty("id").GetInt32(), fresh);
+    }
+
+    /// <summary>Resolves a conversation, as the service user, so it waits in nobody's queue.</summary>
+    /// <param name="conversationId">The conversation's display id.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    public async Task ResolveConversationAsync(int conversationId, CancellationToken cancellationToken)
+    {
+        using var response = await api.SendAsync(
+                HttpMethod.Post, $"{ConversationUrl(conversationId)}/toggle_status", new JsonObject { ["status"] = "resolved" }, cancellationToken, Settings.ServiceToken)
+            .ConfigureAwait(false);
+
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Whether a conversation already holds a note: one whose <c>source_id</c> is
+    /// <paramref name="sourceId"/>, or whose text holds <paramref name="marker"/>. Reads newest
+    /// first, a page at a time, and stops at the first page that reaches back past
+    /// <paramref name="notBefore"/>.
+    /// </summary>
+    /// <param name="conversationId">The conversation's display id.</param>
+    /// <param name="sourceId">The note's source id.</param>
+    /// <param name="marker">A line only that note has.</param>
+    /// <param name="notBefore">The note cannot be older than this, so older messages are not read.</param>
+    /// <param name="cancellationToken">Cancels the calls.</param>
+    /// <returns>Whether it is there.</returns>
+    public async Task<bool> HasNoteAsync(
+        int conversationId, string sourceId, string marker, DateTimeOffset notBefore, CancellationToken cancellationToken)
+    {
+        int? before = null;
+
+        for (var page = 0; page < MaxMessagePages; page++)
+        {
+            var url = $"{ConversationUrl(conversationId)}/messages"
+                + (before is { } oldest ? string.Create(CultureInfo.InvariantCulture, $"?before={oldest}") : string.Empty);
+
+            var messages = (await api.GetAsServiceAsync(url, cancellationToken).ConfigureAwait(false))
+                .GetProperty("payload").EnumerateArray().ToList();
+
+            if (messages.Any(m => TextOf(m, "source_id") == sourceId || (TextOf(m, "content")?.Contains(marker, StringComparison.Ordinal) ?? false)))
+            {
+                return true;
+            }
+
+            if (messages.Count < ChatwootApi.MessagePageSize
+                || messages.Min(m => m.GetProperty("created_at").GetInt64()) < notBefore.ToUnixTimeSeconds())
+            {
+                return false;
+            }
+
+            before = messages.Min(m => m.GetProperty("id").GetInt32());
+        }
+
+        throw new InvalidOperationException($"Conversation {conversationId} has more than {MaxMessagePages} pages of messages.");
+    }
+
+    /// <summary>
+    /// Whether Chatwoot's message search finds a note in the Spirit inbox that holds
+    /// <paramref name="marker"/>, private notes included. One request, but the search can miss: an
+    /// index lag, or a note older than its horizon. <see cref="HasNoteAsync"/> is the sure check.
+    /// </summary>
+    /// <param name="marker">A line only that note has.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>Whether it is there.</returns>
+    public async Task<bool> HasCallNoteAsync(string marker, CancellationToken cancellationToken)
+    {
+        var found = await api.GetAsServiceAsync($"{Account}/search/messages?q={Uri.EscapeDataString(marker)}", cancellationToken)
+            .ConfigureAwait(false);
+
+        return found.GetProperty("payload").GetProperty("messages").EnumerateArray()
+            .Any(m => m.GetProperty("inbox_id").GetInt32() == Settings.InboxId
+                && (TextOf(m, "content")?.Contains(marker, StringComparison.Ordinal) ?? false));
+    }
+
+    /// <summary>Posts a private note, which only staff see, as the bot.</summary>
+    /// <param name="conversationId">The conversation's display id.</param>
+    /// <param name="content">The note.</param>
+    /// <param name="sourceId">The id <see cref="HasNoteAsync"/> finds it by, or <see langword="null"/> for a note nobody looks up.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    public async Task PostNoteAsync(int conversationId, string content, string? sourceId, CancellationToken cancellationToken)
+    {
+        var body = new JsonObject { ["content"] = content, ["message_type"] = "outgoing", ["private"] = true };
+
+        if (sourceId is not null)
+        {
+            body["source_id"] = sourceId;
+        }
+
+        using var response = await api.SendAsync(HttpMethod.Post, $"{ConversationUrl(conversationId)}/messages", body, cancellationToken)
+            .ConfigureAwait(false);
+
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+    }
+
     private static ChatwootTeam ReadTeam(JsonElement team) => new(
         team.GetProperty("id").GetInt32(),
         team.GetProperty("name").GetString() ?? string.Empty,
         team.GetProperty("description").GetString() ?? string.Empty);
+
+    private string? SourceIdIn(JsonElement contact)
+        => contact.TryGetProperty("contact_inboxes", out var inboxes) && inboxes.ValueKind == JsonValueKind.Array
+            ? inboxes.EnumerateArray()
+                .Where(i => i.GetProperty("inbox").GetProperty("id").GetInt32() == Settings.InboxId)
+                .Select(i => i.GetProperty("source_id").GetString())
+                .FirstOrDefault()
+            : null;
+
+    private static string? TextOf(JsonElement message, string name)
+        => message.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
     private string ConversationUrl(int conversationId) => api.ConversationUrl(conversationId);
 
