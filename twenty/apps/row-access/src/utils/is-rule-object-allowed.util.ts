@@ -8,17 +8,19 @@ const AUDITED_STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS = new Set<string>([
 ]);
 
 // The same definition as the server validator (design D32, D41): a rule may
-// sit on company, opportunity, task, or an object of the workspace's own
-// custom application. Objects of other installed apps, other standard objects
-// and every system object are refused by the server, so the page does not
-// offer them. Without a known custom application only the audited standard
-// objects are offered.
+// sit on company, opportunity, task, an object of the workspace's own custom
+// application, or an object of one of our own apps. Objects of other
+// installed apps, other standard objects and every system object are refused
+// by the server, so the page does not offer them. Without a known custom
+// application only the audited standard objects and our own apps' objects
+// are offered.
 export const isRuleObjectAllowed = (
   object: Pick<
     MetadataObject,
     'universalIdentifier' | 'isSystem' | 'applicationId'
   >,
   workspaceCustomApplicationId: string | undefined,
+  ownApplicationIds: string[] = [],
 ): boolean => {
   if (
     object.isSystem ||
@@ -29,6 +31,10 @@ export const isRuleObjectAllowed = (
   }
 
   if (AUDITED_STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.has(object.universalIdentifier)) {
+    return true;
+  }
+
+  if (ownApplicationIds.includes(object.applicationId)) {
     return true;
   }
 

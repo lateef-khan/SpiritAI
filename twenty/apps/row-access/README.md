@@ -13,8 +13,10 @@ only stores and edits its config. Design:
   nothing.
 - `src/default-role.ts`: the app role, `APPLICATIONS` + `ROLES`, no record access.
 - `src/front-components/`: the page under Settings → Applications → Row access → Settings. It
-  offers Company, Opportunity, Task and the workspace's own custom objects that have an owner
-  field (a relation to a workspace member), and the roles that see every row. Admin always
+  offers Company, Opportunity, Task, the workspace's own custom objects and the objects of our
+  own apps (`src/constants/own-application-universal-identifiers.constant.ts`: the Spirit app's
+  Lead) that have an owner field (a relation to a workspace member), and the roles that see
+  every row. Admin always
   sees every row.
 - `src/utils/`: the page's config logic, unit tested with vitest.
 

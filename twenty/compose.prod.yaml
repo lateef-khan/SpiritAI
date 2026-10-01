@@ -1,7 +1,8 @@
 # Production layer on top of compose.yaml. Use it through `just prod-*`, never alone.
-# Differences from local dev: the public URL, the Hub addresses, the email server, the database URL
-# and the S3 bucket are required with no default (set them in secrets/prod.env), redis is kept on
-# disk with a memory cap, and there is no port on the host.
+# Differences from local dev: the public URL, the Hub addresses, the email server, the database URL,
+# the S3 bucket and the logic function driver are required with no default (set them in
+# secrets/prod.env), redis is kept on disk with a memory cap, the server listens on 3000, and there
+# is no port on the host.
 
 name: spirit-twenty-prod
 
@@ -18,6 +19,9 @@ x-production: &production
   environment:
     PG_DATABASE_URL: ${PG_DATABASE_URL:?TWENTY_PG_DATABASE_URL must be set in secrets/prod.env}
     SERVER_URL: ${SERVER_URL:?TWENTY_SERVER_URL must be set in secrets/prod.env}
+    # The tunnel reaches the server as http://twenty:3000.
+    NODE_PORT: "3000"
+    LOGIC_FUNCTION_TYPE: ${LOGIC_FUNCTION_TYPE:?TWENTY_LOGIC_FUNCTION_TYPE must be set in secrets/prod.env (LOCAL)}
     SPIRIT_HUB_ORIGIN: ${SPIRIT_HUB_ORIGIN:?TWENTY_SPIRIT_HUB_ORIGIN must be set in secrets/prod.env}
     SPIRIT_HUB_LOGIN_URL: ${SPIRIT_HUB_LOGIN_URL:?TWENTY_SPIRIT_HUB_LOGIN_URL must be set in secrets/prod.env}
     EMAIL_DRIVER: SMTP
