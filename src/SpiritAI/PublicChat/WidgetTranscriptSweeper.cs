@@ -87,7 +87,7 @@ public sealed class WidgetTranscriptSweeper(
                 logger.LogInformation("Swept {Count} stale widget transcript(s).", deleted);
             }
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(exception, "The widget transcript sweep failed; trying again next tick.");
         }

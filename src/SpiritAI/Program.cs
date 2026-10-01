@@ -2,6 +2,7 @@ using AgentCore.AspNetCore.Endpoints;
 using AgentCore.Hosting;
 using SpiritAI.Access;
 using SpiritAI.Auth;
+using SpiritAI.CallLog;
 using SpiritAI.Caching;
 using SpiritAI.Chatwoot;
 using SpiritAI.Database;
@@ -34,6 +35,8 @@ builder.Services.AddHub(builder.Configuration);
 builder.Services.AddGoTo(builder.Configuration);
 
 builder.Services.AddHandoffs();
+
+builder.Services.AddCallLog(builder.Configuration);
 
 builder.Services.AddUnitLookup();
 

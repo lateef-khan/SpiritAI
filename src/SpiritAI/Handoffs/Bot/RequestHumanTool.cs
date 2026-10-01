@@ -77,7 +77,7 @@ public sealed class RequestHumanTool(
             HandoffNote.Line(request.Email, reach.Email, emailUpdate),
             request.Summary);
 
-        await chatwoot.PostNoteAsync(code, note, cancellationToken).ConfigureAwait(false);
+        await chatwoot.PostNoteAsync(code, note, sourceId: null, cancellationToken).ConfigureAwait(false);
         await chatwoot.HandToStaffAsync(code, cancellationToken).ConfigureAwait(false);
 
         return new RequestHumanAnswer(Promise(request.Phone, reach.Phone, code));
