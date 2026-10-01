@@ -71,7 +71,7 @@ public sealed class CallRingAlert(
             var mentions = await MentionsAsync(lines, conversation, cancellationToken).ConfigureAwait(false);
             var note = CallRingNote.Write(call.Outbound, VisitorPhone.Display(number), conversation.Id, mentions);
 
-            await chatwoot.PostNoteAsync(conversation.Id, note, cancellationToken).ConfigureAwait(false);
+            await chatwoot.PostNoteAsync(conversation.Id, note, sourceId: null, cancellationToken).ConfigureAwait(false);
 
             logger.LogInformation(
                 "Posted the ring note for call {ConversationSpaceId} in conversation {ConversationId} with {Mentions} mentions.",
@@ -88,23 +88,17 @@ public sealed class CallRingAlert(
 
     private static string SeenKey(GoToCall call, GoToCallLine line) => $"goto:rang:{call.Id}:{line.LineId}";
 
-    /// <summary>The newest open conversation of any contact with the number.</summary>
+    /// <summary>The newest open conversation of the contact with the number.</summary>
     private async Task<ChatwootContactConversation?> FindOpenConversationAsync(string e164, CancellationToken cancellationToken)
     {
-        ChatwootContactConversation? newest = null;
-
-        foreach (var contactId in await chatwoot.FindContactsByPhoneAsync(e164, cancellationToken).ConfigureAwait(false))
+        if (await chatwoot.FindPhoneContactAsync(e164, cancellationToken).ConfigureAwait(false) is not { } contact)
         {
-            foreach (var conversation in await chatwoot.ListContactConversationsAsync(contactId, cancellationToken).ConfigureAwait(false))
-            {
-                if (conversation.Open && (newest is null || conversation.LastActivityAt > newest.LastActivityAt))
-                {
-                    newest = conversation;
-                }
-            }
+            return null;
         }
 
-        return newest;
+        return (await chatwoot.ListContactConversationsAsync(contact.Id, cancellationToken).ConfigureAwait(false))
+            .Where(c => c.Open)
+            .MaxBy(c => c.LastActivityAt);
     }
 
     /// <summary>

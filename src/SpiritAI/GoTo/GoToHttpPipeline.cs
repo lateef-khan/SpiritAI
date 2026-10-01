@@ -6,8 +6,7 @@ using Polly;
 namespace SpiritAI.GoTo;
 
 /// <summary>
-/// Registers the GoTo token provider, the request signer, and the channel, call-events, and
-/// directory clients.
+/// Registers the GoTo token provider, the request signer, and <see cref="GoToClient"/>.
 /// </summary>
 public static class GoToHttpPipeline
 {
@@ -36,17 +35,8 @@ public static class GoToHttpPipeline
 
         services.AddTransient<IGoToRequestAuthorizer, GoToRequestAuthorizer>();
 
-        services.AddHttpClient<IGoToNotificationChannelApiClient, GoToNotificationChannelApiClient>(
-                client => client.BaseAddress = ApiHost)
-            .AddResilienceHandler("goto-channels", RetrySafeMethods);
-
-        services.AddHttpClient<IGoToCallEventsApiClient, GoToCallEventsApiClient>(
-                client => client.BaseAddress = ApiHost)
-            .AddResilienceHandler("goto-call-events", RetrySafeMethods);
-
-        services.AddHttpClient<IGoToDirectoryApiClient, GoToDirectoryApiClient>(
-                client => client.BaseAddress = ApiHost)
-            .AddResilienceHandler("goto-directory", RetrySafeMethods);
+        services.AddHttpClient<GoToClient>(client => client.BaseAddress = ApiHost)
+            .AddResilienceHandler("goto", RetrySafeMethods);
 
         return services;
     }

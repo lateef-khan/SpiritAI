@@ -6,7 +6,7 @@ namespace SpiritAI.GoTo;
 /// Finds the email of the person who owns a phone line. The whole account is read at once and
 /// kept in this server's memory for an hour, so a line added since is unknown until then.
 /// </summary>
-public sealed class GoToStaffDirectory(IGoToDirectoryApiClient directory, HybridCache cache)
+public sealed class GoToStaffDirectory(GoToClient goTo, HybridCache cache)
 {
     private const string CacheKey = "goto:line-emails";
 
@@ -32,8 +32,8 @@ public sealed class GoToStaffDirectory(IGoToDirectoryApiClient directory, Hybrid
 
     private async ValueTask<Dictionary<string, string>> ReadAsync(CancellationToken cancellationToken)
     {
-        var owners = await directory.ListLineOwnersAsync(cancellationToken).ConfigureAwait(false);
-        var emails = await directory.ListUserEmailsAsync(cancellationToken).ConfigureAwait(false);
+        var owners = await goTo.ListLineOwnersAsync(cancellationToken).ConfigureAwait(false);
+        var emails = await goTo.ListUserEmailsAsync(cancellationToken).ConfigureAwait(false);
 
         return owners
             .Where(o => emails.ContainsKey(o.UserKey))

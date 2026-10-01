@@ -1,0 +1,11 @@
+{
+  "source_id": "5f0c6c2e-0000-4000-8000-000000000007",
+  "inbox": {
+    "id": 1,
+    "avatar_url": "",
+    "channel_id": 1,
+    "name": "Spirit Chat/Phone",
+    "channel_type": "Channel::Api",
+    "provider": null
+  }
+}

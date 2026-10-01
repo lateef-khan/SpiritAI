@@ -24,6 +24,9 @@ just twenty down    # stops and deletes everything local
   needs the `crm.spirit.localhost` address, which is the default; a `TWENTY_SERVER_URL` in
   `secrets/dev.env` that says `localhost` overrides it (see [The Hub](#the-hub))
 - Emails: the default `EMAIL_DRIVER=LOGGER` prints them in `just twenty logs`
+- App code (logic functions) runs in the server and worker and calls the API at `SERVER_URL`.
+  Inside Docker, the server answers to `crm.spirit.localhost` on port 53001 for that; in
+  production the call goes out to the public address and back through the tunnel
 
 `just twenty up source` builds the image from `source/` on your PC instead of pulling it. Use
 it to check a change before a release. It takes 10 to 20 minutes and about 8 GB of RAM. For
@@ -49,6 +52,7 @@ deletes redis, uploads, and Twenty's database, so every `up` starts clean.
 | Email | Printed in the logs | `TWENTY_EMAIL_*` in `secrets/prod.env` (Resend example in `secrets/example.env`), required |
 | Container logs | Not capped | 3 files of 10 MB for each container |
 | Host port | `127.0.0.1:53001` | None. Only the tunnel reaches the server, as `http://twenty:3000` |
+| Logic functions (app code) | `LOCAL` by default | `TWENTY_LOGIC_FUNCTION_TYPE=LOCAL`, required |
 
 Redis must use `noeviction`. Twenty keeps its job queues in redis, and an evicted key is a
 lost job.
@@ -60,9 +64,9 @@ First setup on the server:
    own database, `twenty`, from `TWENTY_PG_DATABASE_URL`. Twenty makes many schemas in it
    (`core`, one `workspace_*` per workspace).
 3. In `secrets/prod.env`, set `TWENTY_SERVER_URL` (the public HTTPS address), the
-   `TWENTY_STORAGE_S3_*` bucket place and keys, the `TWENTY_EMAIL_*` values and
-   `TWENTY_SPIRIT_HUB_*`. Production has no defaults: a missing required key stops `prod-up` and
-   names the key.
+   `TWENTY_STORAGE_S3_*` bucket place and keys, the `TWENTY_EMAIL_*` values,
+   `TWENTY_SPIRIT_HUB_*` and `TWENTY_LOGIC_FUNCTION_TYPE=LOCAL`. Production has no defaults: a
+   missing required key stops `prod-up` and names the key.
 4. Keep a copy of `TWENTY_ENCRYPTION_KEY` outside the server. Without it, the secrets in the
    database cannot be read.
 5. `just prod-up`.

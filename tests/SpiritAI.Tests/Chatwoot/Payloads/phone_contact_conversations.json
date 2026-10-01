@@ -1,0 +1,62 @@
+{
+  "payload": [
+    {
+      "meta": {
+        "sender": {
+          "additional_attributes": {},
+          "availability_status": "offline",
+          "email": null,
+          "id": 7,
+          "name": "+1 201-555-0100",
+          "phone_number": "+12015550100",
+          "blocked": false,
+          "identifier": null,
+          "thumbnail": "",
+          "custom_attributes": {},
+          "created_at": 1790836302
+        },
+        "channel": "Channel::Api",
+        "assignee": {
+          "id": 1,
+          "name": "Spirit AI",
+          "description": "Posts the Spirit AI answers into the Spirit inbox.",
+          "thumbnail": "",
+          "outgoing_url": null,
+          "bot_type": "webhook"
+        },
+        "assignee_type": "AgentBot",
+        "hmac_verified": false
+      },
+      "id": 31,
+      "messages": [],
+      "account_id": 2,
+      "uuid": "402582f3-ec77-4e55-a856-2e5d395eb170",
+      "additional_attributes": {},
+      "agent_last_seen_at": 0,
+      "assignee_last_seen_at": 0,
+      "can_reply": true,
+      "contact_info_request": {
+        "available": false,
+        "reason": null,
+        "delivery_mode": null
+      },
+      "contact_last_seen_at": 0,
+      "custom_attributes": {},
+      "inbox_id": 1,
+      "labels": [],
+      "muted": false,
+      "snoozed_until": null,
+      "status": "pending",
+      "created_at": 1790836303,
+      "updated_at": 1790836303.527339,
+      "timestamp": 1790836303,
+      "first_reply_created_at": 0,
+      "unread_count": 0,
+      "last_non_activity_message": null,
+      "last_activity_at": 1790836303,
+      "priority": null,
+      "waiting_since": 1790836303,
+      "sla_policy_id": null
+    }
+  ]
+}

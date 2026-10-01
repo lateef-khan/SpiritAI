@@ -1,0 +1,107 @@
+{
+  "pageSize": 3,
+  "items": [
+    {
+      "conversationSpaceId": "91f717b0-e95b-3be7-8f10-cd7c00462961",
+      "accountKey": "1234567890123456789",
+      "callCreated": "2026-09-30T15:02:32.990Z",
+      "callEnded": "2026-09-30T15:02:33.379Z",
+      "callInitiator": "DIRECT",
+      "direction": "OUTBOUND",
+      "caller": {
+        "name": "Test Person 8636",
+        "number": "8636",
+        "legId": "fa49d397-415b-40df-bf1b-a9aa823a90d9",
+        "type": {
+          "value": "LINE",
+          "lineId": "a2c48187-2679-4275-8394-99469986dfe1",
+          "userId": "58413458-b49b-4dcf-8db9-63a24e41c38f",
+          "userKey": "6668490078437595967"
+        }
+      },
+      "callerOutcome": "MISSED",
+      "participants": []
+    },
+    {
+      "conversationSpaceId": "2597f380-a5b5-3023-9a3c-10eea86df80f",
+      "accountKey": "1234567890123456789",
+      "callCreated": "2026-09-30T15:02:04.920Z",
+      "callAnswered": "2026-09-30T15:02:05.267Z",
+      "callEnded": "2026-09-30T15:34:03.053Z",
+      "callInitiator": "DIRECT",
+      "direction": "INBOUND",
+      "caller": {
+        "name": "PROBE CALLER",
+        "number": "+12015550100",
+        "legId": "446e79c5-8b1c-4a21-91a0-5eb106327867",
+        "type": {
+          "value": "PHONE_NUMBER",
+          "phoneNumberId": "2af0a7bd-7bbd-4ce6-a3a8-95565f8dc90c",
+          "number": "+18002588511",
+          "name": "+18002588511",
+          "callProvider": "PSTN"
+        }
+      },
+      "callerOutcome": "LEFT_DIAL_PLAN",
+      "participants": [
+        {
+          "name": "Test Person 8613",
+          "number": "8613",
+          "legId": "65f3c2ec-10cd-4f3e-8182-78ad83b65224",
+          "type": {
+            "value": "LINE",
+            "lineId": "5bccc93d-4ede-4850-abc5-99e25fb0256a",
+            "userId": "0d5dc670-f3eb-419b-8d2b-96f3f7d391f2",
+            "userKey": "6554653264637761734"
+          }
+        }
+      ]
+    },
+    {
+      "conversationSpaceId": "310d5126-4983-3288-b054-a5412f03b37b",
+      "accountKey": "1234567890123456789",
+      "callCreated": "2026-09-30T15:01:14.563Z",
+      "callAnswered": "2026-09-30T15:01:14.719Z",
+      "callEnded": "2026-09-30T15:05:56.375Z",
+      "callInitiator": "DIRECT",
+      "direction": "INBOUND",
+      "caller": {
+        "name": "PROBE CALLER",
+        "number": "+12015550101",
+        "legId": "73855170-c364-45a1-aea3-10318f7312c0",
+        "type": {
+          "value": "PHONE_NUMBER",
+          "phoneNumberId": "2af0a7bd-7bbd-4ce6-a3a8-95565f8dc90c",
+          "number": "+18002588511",
+          "name": "+18002588511",
+          "callProvider": "PSTN"
+        }
+      },
+      "callerOutcome": "NORMAL",
+      "participants": [
+        {
+          "name": "Test Person 8613",
+          "number": "8613",
+          "legId": "daa76f25-14df-43b0-96e0-e77215035430",
+          "type": {
+            "value": "LINE",
+            "lineId": "5bccc93d-4ede-4850-abc5-99e25fb0256a",
+            "userId": "0d5dc670-f3eb-419b-8d2b-96f3f7d391f2",
+            "userKey": "6554653264637761734"
+          }
+        },
+        {
+          "name": "Test Person 8636",
+          "number": "8636",
+          "legId": "fa49d397-415b-40df-bf1b-a9aa823a90d9",
+          "type": {
+            "value": "LINE",
+            "lineId": "a2c48187-2679-4275-8394-99469986dfe1",
+            "userId": "58413458-b49b-4dcf-8db9-63a24e41c38f",
+            "userKey": "6668490078437595967"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,402 @@
+{
+  "meta": {
+    "labels": [],
+    "additional_attributes": {},
+    "contact": {
+      "additional_attributes": {},
+      "custom_attributes": {},
+      "email": null,
+      "id": 7,
+      "identifier": null,
+      "name": "+1 201-555-0100",
+      "phone_number": "+12015550100",
+      "thumbnail": "",
+      "blocked": false,
+      "type": "contact"
+    },
+    "agent_last_seen_at": null,
+    "assignee_last_seen_at": null
+  },
+  "payload": [
+    {
+      "id": 2,
+      "content": "filler 1",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836360,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 3,
+      "content": "filler 2",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836360,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 4,
+      "content": "filler 3",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836360,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 5,
+      "content": "filler 4",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836360,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 6,
+      "content": "filler 5",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836360,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 7,
+      "content": "filler 6",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836360,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 8,
+      "content": "filler 7",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836361,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 9,
+      "content": "filler 8",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836361,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 10,
+      "content": "filler 9",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836361,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 11,
+      "content": "filler 10",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836361,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 12,
+      "content": "filler 11",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836361,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 13,
+      "content": "filler 12",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836361,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 14,
+      "content": "filler 13",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836361,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 15,
+      "content": "filler 14",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836361,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 16,
+      "content": "filler 15",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836361,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 17,
+      "content": "filler 16",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836361,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 18,
+      "content": "filler 17",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836361,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 19,
+      "content": "filler 18",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836361,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 20,
+      "content": "filler 19",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836362,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    },
+    {
+      "id": 21,
+      "content": "filler 20",
+      "inbox_id": 1,
+      "conversation_id": 31,
+      "message_type": 1,
+      "content_type": "text",
+      "status": "sent",
+      "content_attributes": {},
+      "created_at": 1790836362,
+      "private": true,
+      "source_id": null,
+      "sender": {
+        "id": 1,
+        "name": "Spirit AI",
+        "avatar_url": "",
+        "type": "agent_bot"
+      }
+    }
+  ]
+}

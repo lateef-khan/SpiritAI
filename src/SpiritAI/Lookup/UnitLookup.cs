@@ -230,7 +230,7 @@ public sealed class UnitLookup(ToolInvoker invoke)
         {
             return DabEnvelope.RowsOf(await _invoke(toolId, arguments, cancellationToken).ConfigureAwait(false));
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
             // A tool that throws is a section that cannot be drawn, never a request that fails. The
             // caller names the section instead, and the rest of the panel still renders.

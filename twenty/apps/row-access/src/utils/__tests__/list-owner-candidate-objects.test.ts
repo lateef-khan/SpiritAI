@@ -172,6 +172,30 @@ describe('listOwnerCandidateObjects: audited objects only', () => {
     ).toEqual(['company', 'opportunity', 'rocket', 'task']);
   });
 
+  it("offers an object of our own app, and not the same object when its app is not one of ours", () => {
+    const objects = [
+      withOwner('task', STANDARD_OBJECT.task.universalIdentifier, 'Task'),
+      withOwner(
+        'lead',
+        'spirit-lead-universal-identifier',
+        'Lead',
+        false,
+        'spirit-application',
+      ),
+    ];
+
+    expect(
+      listOwnerCandidateObjects(objects, CUSTOM_APPLICATION_ID, [
+        'spirit-application',
+      ]).map((candidate) => candidate.objectMetadataId),
+    ).toEqual(['lead', 'task']);
+    expect(
+      listOwnerCandidateObjects(objects, CUSTOM_APPLICATION_ID, [
+        'another-application',
+      ]).map((candidate) => candidate.objectMetadataId),
+    ).toEqual(['task']);
+  });
+
   it('offers only the audited standard objects when the workspace custom application is unknown', () => {
     expect(
       listOwnerCandidateObjects([

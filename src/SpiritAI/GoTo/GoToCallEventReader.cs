@@ -4,7 +4,8 @@ namespace SpiritAI.GoTo;
 
 /// <summary>
 /// Takes each call event off the <see cref="GoToCallEventQueue"/>, logs which call it is about, and
-/// hands a call with staff lines in it to every <see cref="IGoToCallHandler"/>.
+/// hands a call with staff lines in it to every <see cref="IGoToCallHandler"/>, and a call-report
+/// event to every <see cref="IGoToCallReportHandler"/>.
 /// </summary>
 public sealed class GoToCallEventReader(
     GoToCallEventQueue queue,
@@ -29,6 +30,12 @@ public sealed class GoToCallEventReader(
 
     private async Task ReadOnceAsync(JsonElement callEvent, CancellationToken cancellationToken)
     {
+        if (GoToReportEvent.CallIdOf(callEvent) is { } reportedCall)
+        {
+            await HandleReportAsync(reportedCall, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         var call = GoToCall.Read(callEvent);
 
         // An event also carries phone numbers and names. Only kinds and ids go in the log.
@@ -51,9 +58,28 @@ public sealed class GoToCallEventReader(
             {
                 await handler.HandleAsync(call, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception exception) when (exception is not OperationCanceledException)
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
                 logger.LogWarning(exception, "{Handler} failed on call {ConversationSpaceId}.", handler.GetType().Name, call.Id);
+            }
+        }
+    }
+
+    private async Task HandleReportAsync(string callId, CancellationToken cancellationToken)
+    {
+        logger.LogInformation("GoTo report event for call {ConversationSpaceId}.", callId);
+
+        await using var scope = scopes.CreateAsyncScope();
+
+        foreach (var handler in scope.ServiceProvider.GetServices<IGoToCallReportHandler>())
+        {
+            try
+            {
+                await handler.HandleAsync(callId, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning(exception, "{Handler} failed on report of call {ConversationSpaceId}.", handler.GetType().Name, callId);
             }
         }
     }

@@ -20,6 +20,8 @@ public static class GoToServiceCollectionExtensions
 
         services.AddTransient<GoToStaffDirectory>();
 
+        services.AddTransient<GoToCompanyLines>();
+
         services.AddSingleton<GoToCallEventQueue>();
 
         services.AddHostedService<GoToCallEventReader>();

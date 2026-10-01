@@ -10,31 +10,42 @@ const WORKSPACE_MEMBER_NAME_SINGULAR = 'workspaceMember';
 export const listRuleObjects = (
   objects: MetadataObject[],
   workspaceCustomApplicationId: string | undefined,
+  ownApplicationIds: string[] = [],
 ): RuleObject[] =>
   objects
     .filter(
       (object) =>
         object.isActive &&
-        isRuleObjectAllowed(object, workspaceCustomApplicationId),
+        isRuleObjectAllowed(
+          object,
+          workspaceCustomApplicationId,
+          ownApplicationIds,
+        ),
     )
     .map((object) => ({
       objectMetadataId: object.id,
       label: object.labelSingular,
     }));
 
-// Objects the admin may protect: active, audited (company, opportunity, task
-// or a workspace custom object; never a system object), with at least one active
+// Objects the admin may protect: active, audited (company, opportunity, task,
+// a workspace custom object or an object of our own apps; never a system
+// object), with at least one active
 // MANY_TO_ONE relation to workspaceMember. The server checks the same before
 // it applies a rule.
 export const listOwnerCandidateObjects = (
   objects: MetadataObject[],
   workspaceCustomApplicationId: string | undefined,
+  ownApplicationIds: string[] = [],
 ): OwnerCandidateObject[] =>
   objects
     .filter(
       (object) =>
         object.isActive &&
-        isRuleObjectAllowed(object, workspaceCustomApplicationId),
+        isRuleObjectAllowed(
+          object,
+          workspaceCustomApplicationId,
+          ownApplicationIds,
+        ),
     )
     .map((object) => ({
       objectMetadataId: object.id,

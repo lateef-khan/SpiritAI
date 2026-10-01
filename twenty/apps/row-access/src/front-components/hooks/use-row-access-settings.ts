@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MetadataApiClient } from 'twenty-client-sdk/metadata';
 import { useFrontComponentId } from 'twenty-sdk/front-component';
 
+import { OWN_APPLICATION_UNIVERSAL_IDENTIFIERS } from 'src/constants/own-application-universal-identifiers.constant';
 import { ROW_ACCESS_CONFIG_VARIABLE_KEY } from 'src/constants/row-access-config-variable-key.constant';
 import {
   type MetadataObject,
@@ -32,12 +33,33 @@ export type RowAccessSettingsState =
   | { kind: 'error'; message: string }
   | { kind: 'ready'; data: RowAccessSettingsData };
 
+// An app that is not installed has no id here, and its objects do not exist.
+const findOwnApplicationIds = async (
+  client: MetadataApiClient,
+): Promise<string[]> => {
+  const ids = await Promise.all(
+    OWN_APPLICATION_UNIVERSAL_IDENTIFIERS.map(async (universalIdentifier) => {
+      try {
+        const result = await client.query({
+          findOneApplication: { __args: { universalIdentifier }, id: true },
+        });
+
+        return result.findOneApplication?.id;
+      } catch {
+        return undefined;
+      }
+    }),
+  );
+
+  return ids.filter((id): id is string => typeof id === 'string');
+};
+
 const LOAD_ERROR_MESSAGE =
   'Could not load the row access settings. You need the Applications and Roles permissions.';
 
 // Each call runs with the signed-in user's role intersected with the app role:
-// frontComponent and currentWorkspace (any user), findOneApplication and
-// updateOneApplicationVariable (APPLICATIONS), getRoles (ROLES), objects
+// frontComponent and currentWorkspace (any user), findOneApplication (also
+// for our own apps' ids) and updateOneApplicationVariable (APPLICATIONS), getRoles (ROLES), objects
 // (metadata read).
 const loadRowAccessSettings = async (
   frontComponentId: string,
@@ -54,8 +76,13 @@ const loadRowAccessSettings = async (
     throw new Error('No application id');
   }
 
-  const [applicationResult, objectsResult, rolesResult, workspaceResult] =
-    await Promise.all([
+  const [
+    applicationResult,
+    objectsResult,
+    rolesResult,
+    workspaceResult,
+    ownApplicationIds,
+  ] = await Promise.all([
       client.query({
         findOneApplication: {
           __args: { id: applicationId },
@@ -93,6 +120,7 @@ const loadRowAccessSettings = async (
       client.query({
         currentWorkspace: { workspaceCustomApplicationId: true },
       }),
+      findOwnApplicationIds(client),
     ]);
 
   const storedValue =
@@ -116,8 +144,13 @@ const loadRowAccessSettings = async (
     candidateObjects: listOwnerCandidateObjects(
       objects,
       workspaceCustomApplicationId,
+      ownApplicationIds,
     ),
-    ruleObjects: listRuleObjects(objects, workspaceCustomApplicationId),
+    ruleObjects: listRuleObjects(
+      objects,
+      workspaceCustomApplicationId,
+      ownApplicationIds,
+    ),
     roles: (rolesResult.getRoles ?? []).map((role) => ({
       id: role.id,
       label: role.label,
