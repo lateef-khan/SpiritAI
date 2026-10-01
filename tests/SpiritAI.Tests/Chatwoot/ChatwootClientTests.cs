@@ -74,21 +74,6 @@ public sealed class ChatwootClientTests
     }
 
     [Fact]
-    public async Task AContactIsFoundByItsExactPhoneNumber()
-    {
-        var wire = new ReplayingHandler(["contacts_found", "contacts_found"]);
-        var client = Client(wire);
-
-        Assert.Equal([1], await client.FindContactsByPhoneAsync("+12015550123", Cancel));
-
-        // Chatwoot's search matches part of a number; the answer holds +12015550123 only.
-        Assert.Empty(await client.FindContactsByPhoneAsync("+1201555012", Cancel));
-
-        Assert.Equal("http://chatwoot.test/api/v1/accounts/2/contacts/search?q=%2B12015550123", wire.Requests[0].Url);
-        Assert.Equal("service-token", wire.Requests[0].Token);
-    }
-
-    [Fact]
     public async Task AContactsConversationsAreListedWithTheirTeam()
     {
         var wire = new ReplayingHandler("contact_conversations");

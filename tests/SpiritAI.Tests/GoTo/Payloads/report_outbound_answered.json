@@ -1,0 +1,314 @@
+{
+  "conversationSpaceId": "02085621-dc03-3ebe-99d2-01f363be5dd4",
+  "callCreated": "2026-09-30T18:07:38.891Z",
+  "callEnded": "2026-09-30T18:12:16.841Z",
+  "callInitiator": "DIRECT",
+  "direction": "OUTBOUND",
+  "accountKey": "1234567890123456789",
+  "participants": [
+    {
+      "id": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+      "originator": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+      "legId": "37b1c740-6b8c-4596-86d2-01188e203101",
+      "recordings": [],
+      "liveTranscripts": [],
+      "transcripts": [],
+      "type": {
+        "value": "LINE",
+        "lineId": "441f7242-d9c4-4e77-a15a-3c4289f3c078",
+        "deviceId": "6859f999-c204-4c02-bad7-2d6135c95bc2",
+        "extensionNumber": "0019",
+        "name": "Test Person 0019",
+        "userId": "5eaada87-af20-4f88-bea5-b5dffcea2ed6",
+        "userKey": "1083664824639253719"
+      }
+    },
+    {
+      "id": "a219faa5-e598-5851-b79d-3d3516f83c44",
+      "originator": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+      "legId": "f9233f89-c633-4595-b743-a55733fa938b",
+      "recordings": [],
+      "liveTranscripts": [],
+      "transcripts": [],
+      "type": {
+        "value": "PHONE_NUMBER",
+        "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+        "number": "+18709351107",
+        "name": "+18709351107",
+        "callee": {
+          "name": "",
+          "number": "+12015550100"
+        },
+        "callProvider": "PSTN"
+      }
+    }
+  ],
+  "interactiveVoiceResponseSystems": [],
+  "associatedConversations": [],
+  "hangupOriginatorId": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+  "callStates": [
+    {
+      "id": "79ae12af-0fe5-54ce-ab1b-7d1901f3de65",
+      "type": "STARTING",
+      "sequenceNumber": 1,
+      "timestamp": "2026-09-30T18:07:38.891Z",
+      "participants": [
+        {
+          "id": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "legId": "37b1c740-6b8c-4596-86d2-01188e203101",
+          "originator": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "type": {
+            "lineId": "441f7242-d9c4-4e77-a15a-3c4289f3c078",
+            "deviceId": "6859f999-c204-4c02-bad7-2d6135c95bc2",
+            "extensionNumber": "0019",
+            "device": {
+              "id": "6859f999-c204-4c02-bad7-2d6135c95bc2",
+              "model": "goto.clients",
+              "user": {
+                "id": "5eaada87-af20-4f88-bea5-b5dffcea2ed6"
+              }
+            },
+            "name": "Test Person 0019",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "94d620f1-9234-51cd-8874-b267f6c57db9",
+      "type": "STARTING",
+      "sequenceNumber": 2,
+      "timestamp": "2026-09-30T18:07:39.325Z",
+      "participants": [
+        {
+          "id": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "legId": "37b1c740-6b8c-4596-86d2-01188e203101",
+          "originator": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "type": {
+            "lineId": "441f7242-d9c4-4e77-a15a-3c4289f3c078",
+            "deviceId": "6859f999-c204-4c02-bad7-2d6135c95bc2",
+            "extensionNumber": "0019",
+            "device": {
+              "id": "6859f999-c204-4c02-bad7-2d6135c95bc2",
+              "model": "goto.clients",
+              "user": {
+                "id": "5eaada87-af20-4f88-bea5-b5dffcea2ed6"
+              }
+            },
+            "name": "Test Person 0019",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        },
+        {
+          "id": "a219faa5-e598-5851-b79d-3d3516f83c44",
+          "legId": "f9233f89-c633-4595-b743-a55733fa938b",
+          "originator": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "callee": {
+              "name": "",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "b94981b9-77a1-5979-bfd8-be7acb4322f6",
+      "type": "ACTIVE",
+      "sequenceNumber": 3,
+      "timestamp": "2026-09-30T18:07:59.311Z",
+      "participants": [
+        {
+          "id": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "legId": "37b1c740-6b8c-4596-86d2-01188e203101",
+          "originator": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "type": {
+            "lineId": "441f7242-d9c4-4e77-a15a-3c4289f3c078",
+            "deviceId": "6859f999-c204-4c02-bad7-2d6135c95bc2",
+            "extensionNumber": "0019",
+            "device": {
+              "id": "6859f999-c204-4c02-bad7-2d6135c95bc2",
+              "model": "goto.clients",
+              "user": {
+                "id": "5eaada87-af20-4f88-bea5-b5dffcea2ed6"
+              }
+            },
+            "name": "Test Person 0019",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        },
+        {
+          "id": "a219faa5-e598-5851-b79d-3d3516f83c44",
+          "legId": "f9233f89-c633-4595-b743-a55733fa938b",
+          "originator": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "callee": {
+              "name": "",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "6e2e36b9-050c-5330-976d-62bea3be7932",
+      "type": "ACTIVE",
+      "sequenceNumber": 4,
+      "timestamp": "2026-09-30T18:07:59.311Z",
+      "participants": [
+        {
+          "id": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "legId": "37b1c740-6b8c-4596-86d2-01188e203101",
+          "originator": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "type": {
+            "lineId": "441f7242-d9c4-4e77-a15a-3c4289f3c078",
+            "deviceId": "6859f999-c204-4c02-bad7-2d6135c95bc2",
+            "extensionNumber": "0019",
+            "device": {
+              "id": "6859f999-c204-4c02-bad7-2d6135c95bc2",
+              "model": "goto.clients",
+              "user": {
+                "id": "5eaada87-af20-4f88-bea5-b5dffcea2ed6"
+              }
+            },
+            "name": "Test Person 0019",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        },
+        {
+          "id": "a219faa5-e598-5851-b79d-3d3516f83c44",
+          "legId": "f9233f89-c633-4595-b743-a55733fa938b",
+          "originator": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "callee": {
+              "name": "",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3293b18f-aa36-52fa-96bd-4e7212cac34d",
+      "type": "ACTIVE",
+      "sequenceNumber": 5,
+      "timestamp": "2026-09-30T18:12:16.791Z",
+      "participants": [
+        {
+          "id": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "legId": "37b1c740-6b8c-4596-86d2-01188e203101",
+          "originator": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "type": {
+            "lineId": "441f7242-d9c4-4e77-a15a-3c4289f3c078",
+            "deviceId": "6859f999-c204-4c02-bad7-2d6135c95bc2",
+            "extensionNumber": "0019",
+            "device": {
+              "id": "6859f999-c204-4c02-bad7-2d6135c95bc2",
+              "model": "goto.clients",
+              "user": {
+                "id": "5eaada87-af20-4f88-bea5-b5dffcea2ed6"
+              }
+            },
+            "name": "Test Person 0019",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        },
+        {
+          "id": "a219faa5-e598-5851-b79d-3d3516f83c44",
+          "legId": "f9233f89-c633-4595-b743-a55733fa938b",
+          "originator": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "callee": {
+              "name": "",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "DISCONNECTING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "01eefdfe-85ca-5730-84ce-db729ed46d13",
+      "type": "ACTIVE",
+      "sequenceNumber": 6,
+      "timestamp": "2026-09-30T18:12:16.841Z",
+      "participants": [
+        {
+          "id": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "legId": "37b1c740-6b8c-4596-86d2-01188e203101",
+          "originator": "eaf9c86a-3ab8-5c97-9815-34bc8412793f",
+          "type": {
+            "lineId": "441f7242-d9c4-4e77-a15a-3c4289f3c078",
+            "deviceId": "6859f999-c204-4c02-bad7-2d6135c95bc2",
+            "extensionNumber": "0019",
+            "device": {
+              "id": "6859f999-c204-4c02-bad7-2d6135c95bc2",
+              "model": "goto.clients",
+              "user": {
+                "id": "5eaada87-af20-4f88-bea5-b5dffcea2ed6"
+              }
+            },
+            "name": "Test Person 0019",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "DISCONNECTING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "b45016fb-0ae2-5e13-a034-d8ee0e1268a5",
+      "type": "ENDING",
+      "sequenceNumber": 7,
+      "timestamp": "2026-09-30T18:12:16.841Z",
+      "participants": []
+    }
+  ]
+}

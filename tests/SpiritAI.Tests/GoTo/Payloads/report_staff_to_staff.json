@@ -1,0 +1,324 @@
+{
+  "conversationSpaceId": "aa7325f1-710a-3c53-9ef7-e4bbd7b9adfe",
+  "callCreated": "2026-09-17T13:51:08.772Z",
+  "callEnded": "2026-09-17T13:55:14.998Z",
+  "callInitiator": "DIRECT",
+  "direction": "OUTBOUND",
+  "accountKey": "1234567890123456789",
+  "participants": [
+    {
+      "id": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+      "originator": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+      "legId": "f970f0dc-920c-47b2-9c57-c4380e60952e",
+      "recordings": [],
+      "liveTranscripts": [],
+      "transcripts": [],
+      "type": {
+        "value": "LINE",
+        "lineId": "cf94a5dd-b7b0-47c4-911d-3d1cdbc618e8",
+        "deviceId": "8959c732-87f8-4c88-8e9d-171e86618fad",
+        "extensionNumber": "8639",
+        "name": "Test Person 8639",
+        "userId": "98fd84cd-dfff-495e-a6dc-6be2e7ae81a1",
+        "userKey": "8083822117204838980"
+      }
+    },
+    {
+      "id": "613f2c6d-a3e0-5ca1-b5bf-cc28dc33fe8a",
+      "originator": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+      "legId": "56ecd43b-fb24-4312-bd3f-d3508e41fbe9",
+      "recordings": [],
+      "liveTranscripts": [],
+      "transcripts": [],
+      "type": {
+        "value": "LINE",
+        "lineId": "d3d10a08-2269-4872-a904-261c68494270",
+        "deviceId": "85966f93-a7e1-48fa-98ba-c01221a0e21b",
+        "extensionNumber": "8625",
+        "name": "Test Person 8625",
+        "userId": "ce0b3ec9-5faf-408e-9ff6-d0014a3f48bd",
+        "userKey": "2029402004371069196"
+      }
+    }
+  ],
+  "interactiveVoiceResponseSystems": [],
+  "associatedConversations": [],
+  "hangupOriginatorId": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+  "callStates": [
+    {
+      "id": "a3509bc8-cad2-597d-a331-0e980131f4f9",
+      "type": "STARTING",
+      "sequenceNumber": 1,
+      "timestamp": "2026-09-17T13:51:08.772Z",
+      "participants": [
+        {
+          "id": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "legId": "f970f0dc-920c-47b2-9c57-c4380e60952e",
+          "originator": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "type": {
+            "lineId": "cf94a5dd-b7b0-47c4-911d-3d1cdbc618e8",
+            "deviceId": "8959c732-87f8-4c88-8e9d-171e86618fad",
+            "extensionNumber": "8639",
+            "device": {
+              "id": "8959c732-87f8-4c88-8e9d-171e86618fad",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "98fd84cd-dfff-495e-a6dc-6be2e7ae81a1"
+              }
+            },
+            "name": "Test Person 8639",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "10bc0318-dfce-5116-99c4-385aaa7085b2",
+      "type": "STARTING",
+      "sequenceNumber": 2,
+      "timestamp": "2026-09-17T13:51:08.827Z",
+      "participants": [
+        {
+          "id": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "legId": "f970f0dc-920c-47b2-9c57-c4380e60952e",
+          "originator": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "type": {
+            "lineId": "cf94a5dd-b7b0-47c4-911d-3d1cdbc618e8",
+            "deviceId": "8959c732-87f8-4c88-8e9d-171e86618fad",
+            "extensionNumber": "8639",
+            "device": {
+              "id": "8959c732-87f8-4c88-8e9d-171e86618fad",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "98fd84cd-dfff-495e-a6dc-6be2e7ae81a1"
+              }
+            },
+            "name": "Test Person 8639",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        },
+        {
+          "id": "613f2c6d-a3e0-5ca1-b5bf-cc28dc33fe8a",
+          "legId": "56ecd43b-fb24-4312-bd3f-d3508e41fbe9",
+          "originator": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "type": {
+            "lineId": "d3d10a08-2269-4872-a904-261c68494270",
+            "deviceId": "85966f93-a7e1-48fa-98ba-c01221a0e21b",
+            "extensionNumber": "8625",
+            "device": {
+              "id": "85966f93-a7e1-48fa-98ba-c01221a0e21b",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "ce0b3ec9-5faf-408e-9ff6-d0014a3f48bd"
+              }
+            },
+            "name": "Test Person 8625",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "b2e5e8a8-4b08-598d-a129-13e9bdf95e25",
+      "type": "ACTIVE",
+      "sequenceNumber": 3,
+      "timestamp": "2026-09-17T13:51:14.160Z",
+      "participants": [
+        {
+          "id": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "legId": "f970f0dc-920c-47b2-9c57-c4380e60952e",
+          "originator": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "type": {
+            "lineId": "cf94a5dd-b7b0-47c4-911d-3d1cdbc618e8",
+            "deviceId": "8959c732-87f8-4c88-8e9d-171e86618fad",
+            "extensionNumber": "8639",
+            "device": {
+              "id": "8959c732-87f8-4c88-8e9d-171e86618fad",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "98fd84cd-dfff-495e-a6dc-6be2e7ae81a1"
+              }
+            },
+            "name": "Test Person 8639",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        },
+        {
+          "id": "613f2c6d-a3e0-5ca1-b5bf-cc28dc33fe8a",
+          "legId": "56ecd43b-fb24-4312-bd3f-d3508e41fbe9",
+          "originator": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "type": {
+            "lineId": "d3d10a08-2269-4872-a904-261c68494270",
+            "deviceId": "85966f93-a7e1-48fa-98ba-c01221a0e21b",
+            "extensionNumber": "8625",
+            "device": {
+              "id": "85966f93-a7e1-48fa-98ba-c01221a0e21b",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "ce0b3ec9-5faf-408e-9ff6-d0014a3f48bd"
+              }
+            },
+            "name": "Test Person 8625",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "aa292b6d-7638-573a-bbf3-f195b8e81b87",
+      "type": "ACTIVE",
+      "sequenceNumber": 4,
+      "timestamp": "2026-09-17T13:51:14.160Z",
+      "participants": [
+        {
+          "id": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "legId": "f970f0dc-920c-47b2-9c57-c4380e60952e",
+          "originator": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "type": {
+            "lineId": "cf94a5dd-b7b0-47c4-911d-3d1cdbc618e8",
+            "deviceId": "8959c732-87f8-4c88-8e9d-171e86618fad",
+            "extensionNumber": "8639",
+            "device": {
+              "id": "8959c732-87f8-4c88-8e9d-171e86618fad",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "98fd84cd-dfff-495e-a6dc-6be2e7ae81a1"
+              }
+            },
+            "name": "Test Person 8639",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        },
+        {
+          "id": "613f2c6d-a3e0-5ca1-b5bf-cc28dc33fe8a",
+          "legId": "56ecd43b-fb24-4312-bd3f-d3508e41fbe9",
+          "originator": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "type": {
+            "lineId": "d3d10a08-2269-4872-a904-261c68494270",
+            "deviceId": "85966f93-a7e1-48fa-98ba-c01221a0e21b",
+            "extensionNumber": "8625",
+            "device": {
+              "id": "85966f93-a7e1-48fa-98ba-c01221a0e21b",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "ce0b3ec9-5faf-408e-9ff6-d0014a3f48bd"
+              }
+            },
+            "name": "Test Person 8625",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "da79663f-f251-52e2-89eb-bd7aeec85e88",
+      "type": "ACTIVE",
+      "sequenceNumber": 5,
+      "timestamp": "2026-09-17T13:55:14.950Z",
+      "participants": [
+        {
+          "id": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "legId": "f970f0dc-920c-47b2-9c57-c4380e60952e",
+          "originator": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "type": {
+            "lineId": "cf94a5dd-b7b0-47c4-911d-3d1cdbc618e8",
+            "deviceId": "8959c732-87f8-4c88-8e9d-171e86618fad",
+            "extensionNumber": "8639",
+            "device": {
+              "id": "8959c732-87f8-4c88-8e9d-171e86618fad",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "98fd84cd-dfff-495e-a6dc-6be2e7ae81a1"
+              }
+            },
+            "name": "Test Person 8639",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        },
+        {
+          "id": "613f2c6d-a3e0-5ca1-b5bf-cc28dc33fe8a",
+          "legId": "56ecd43b-fb24-4312-bd3f-d3508e41fbe9",
+          "originator": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "type": {
+            "lineId": "d3d10a08-2269-4872-a904-261c68494270",
+            "deviceId": "85966f93-a7e1-48fa-98ba-c01221a0e21b",
+            "extensionNumber": "8625",
+            "device": {
+              "id": "85966f93-a7e1-48fa-98ba-c01221a0e21b",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "ce0b3ec9-5faf-408e-9ff6-d0014a3f48bd"
+              }
+            },
+            "name": "Test Person 8625",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "DISCONNECTING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3a27308b-f413-56b8-8d0b-0d11c4c6b408",
+      "type": "ACTIVE",
+      "sequenceNumber": 6,
+      "timestamp": "2026-09-17T13:55:14.998Z",
+      "participants": [
+        {
+          "id": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "legId": "f970f0dc-920c-47b2-9c57-c4380e60952e",
+          "originator": "8a7e655e-cdac-5c3b-8314-91ae03ddc090",
+          "type": {
+            "lineId": "cf94a5dd-b7b0-47c4-911d-3d1cdbc618e8",
+            "deviceId": "8959c732-87f8-4c88-8e9d-171e86618fad",
+            "extensionNumber": "8639",
+            "device": {
+              "id": "8959c732-87f8-4c88-8e9d-171e86618fad",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "98fd84cd-dfff-495e-a6dc-6be2e7ae81a1"
+              }
+            },
+            "name": "Test Person 8639",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "DISCONNECTING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "dcb09b27-a0a1-5e28-b7fc-6a91edf0a325",
+      "type": "ENDING",
+      "sequenceNumber": 7,
+      "timestamp": "2026-09-17T13:55:14.998Z",
+      "participants": []
+    }
+  ]
+}

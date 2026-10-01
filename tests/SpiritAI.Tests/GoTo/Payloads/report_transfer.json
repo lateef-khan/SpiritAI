@@ -1,0 +1,2315 @@
+{
+  "conversationSpaceId": "d51fe878-4589-3812-b625-6895cdbd83be",
+  "callCreated": "2026-09-30T18:38:14.189Z",
+  "callEnded": "2026-09-30T18:44:34.805Z",
+  "callInitiator": "DIRECT",
+  "direction": "INBOUND",
+  "accountKey": "1234567890123456789",
+  "participants": [
+    {
+      "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+      "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+      "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+      "recordings": [],
+      "liveTranscripts": [],
+      "transcripts": [],
+      "type": {
+        "value": "PHONE_NUMBER",
+        "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+        "number": "+18002584555",
+        "name": "+18002584555",
+        "caller": {
+          "name": "GRAND PR     TX",
+          "number": "+12015550100"
+        },
+        "callProvider": "PSTN"
+      }
+    },
+    {
+      "id": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+      "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+      "legId": "19cea720-7c79-4085-a9fd-98da1e00eeca",
+      "recordings": [],
+      "liveTranscripts": [],
+      "transcripts": [],
+      "type": {
+        "value": "LINE",
+        "lineId": "3bc90b46-4f76-45d6-a33f-990786b5e966",
+        "deviceId": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+        "extensionNumber": "8648",
+        "name": "Test Person 8648",
+        "userId": "43bc4438-4124-403d-9f4f-9339adf54f90",
+        "userKey": "432586782714958659"
+      }
+    },
+    {
+      "id": "a056aca2-33ac-58fc-93c5-25a63f006254",
+      "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+      "legId": "0954b263-e275-4c7c-a243-6b898019b318",
+      "recordings": [],
+      "liveTranscripts": [],
+      "transcripts": [],
+      "type": {
+        "value": "LINE",
+        "lineId": "3c11ed8f-f268-4524-b762-9f9186a8105a",
+        "deviceId": "781bb0b0-ce65-4ee6-9054-540cb75aacdd",
+        "extensionNumber": "8621",
+        "name": "Test Person 8621",
+        "userId": "6e192f97-f2de-4560-b786-a17111e07c08",
+        "userKey": "1620218763729396726"
+      }
+    },
+    {
+      "id": "a487b190-1085-5057-a0e1-e51b1f800ba1",
+      "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+      "legId": "9f257dca-6c1d-4d2f-8313-106c82284c43",
+      "recordings": [],
+      "liveTranscripts": [],
+      "transcripts": [],
+      "type": {
+        "value": "AGENT",
+        "lineId": "e276dfed-832c-484f-b288-c9e90738b346",
+        "deviceId": "80f339b3-e6ac-47a5-b494-4aef4ee716fa",
+        "extensionNumber": "8614",
+        "name": "Test Person 8614",
+        "userId": "da2d7beb-80ef-4a27-b18a-2be7ad30675f",
+        "userKey": "447319164320293394",
+        "wrapUpDuration": 7812,
+        "interactiveVoiceResponseSystemId": "a1344015-6fa1-543a-9dc3-607382a010ee",
+        "skills": [],
+        "matchedSkills": []
+      }
+    }
+  ],
+  "interactiveVoiceResponseSystems": [
+    {
+      "id": "a1344015-6fa1-543a-9dc3-607382a010ee",
+      "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+      "type": {
+        "value": "CALL_QUEUE",
+        "queueId": "9eece6f7-0cfb-4861-a559-58e1833fb128",
+        "queueName": "Service - Problems",
+        "queueType": "BASIC",
+        "extensionNumber": "1102",
+        "leftQueueReason": "ANSWERED",
+        "callbackOffered": false,
+        "intents": [],
+        "configuredWrapUpDuration": 90,
+        "callerWaitDuration": 3432
+      }
+    }
+  ],
+  "associatedConversations": [],
+  "hangupOriginatorId": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+  "callStates": [
+    {
+      "id": "e01f68ae-d877-5157-b1a8-178e30e0b144",
+      "type": "STARTING",
+      "sequenceNumber": 1,
+      "timestamp": "2026-09-30T18:38:14.189Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3cf1451e-b83a-5e58-a0d0-8ede58712d7e",
+      "type": "ACTIVE",
+      "sequenceNumber": 2,
+      "timestamp": "2026-09-30T18:38:14.522Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "type": "ModifyCallerIdNode"
+            },
+            "previousNode": {
+              "id": "",
+              "connector": ""
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "f6a9f47c-38e9-5a33-a5cc-e5193dda812c",
+      "type": "ACTIVE",
+      "sequenceNumber": 3,
+      "timestamp": "2026-09-30T18:38:14.524Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "type": "ModifyCallerIdNode",
+              "result": "CONTINUE"
+            },
+            "previousNode": {
+              "id": "",
+              "connector": ""
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "46a96f05-71c9-54e0-a270-b86e4e20884f",
+      "type": "ACTIVE",
+      "sequenceNumber": 4,
+      "timestamp": "2026-09-30T18:38:14.621Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3a3f170f-7089-59b2-ba92-a8dfa9b2757e",
+      "type": "ACTIVE",
+      "sequenceNumber": 5,
+      "timestamp": "2026-09-30T18:38:15.125Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "ScheduleNode_1471",
+              "type": "ScheduleNode"
+            },
+            "previousNode": {
+              "id": "",
+              "connector": ""
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "07ec3af6-b14b-5c6b-b3cf-32869b0f5081",
+      "type": "ACTIVE",
+      "sequenceNumber": 6,
+      "timestamp": "2026-09-30T18:38:15.132Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "ScheduleNode_1471",
+              "type": "ScheduleNode",
+              "result": "OPEN_SCHEDULE"
+            },
+            "previousNode": {
+              "id": "",
+              "connector": ""
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "4a63de15-f69f-5124-a722-213e838908ee",
+      "type": "ACTIVE",
+      "sequenceNumber": 7,
+      "timestamp": "2026-09-30T18:38:15.226Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "AttendantPromptNode_1004",
+              "type": "AttendantPromptNode"
+            },
+            "previousNode": {
+              "id": "ScheduleNode_1471",
+              "connector": "onOpen"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "76f3271c-84d2-5a6a-89c7-4d19b4380aba",
+      "type": "ACTIVE",
+      "sequenceNumber": 8,
+      "timestamp": "2026-09-30T18:38:23.165Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "AttendantPromptNode_1004",
+              "type": "AttendantPromptNode",
+              "option": "3",
+              "result": "DIALED_OPTION"
+            },
+            "previousNode": {
+              "id": "ScheduleNode_1471",
+              "connector": "onOpen"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "4b6cd20f-f7df-550d-92f8-70a3d89ed3f6",
+      "type": "ACTIVE",
+      "sequenceNumber": 9,
+      "timestamp": "2026-09-30T18:38:23.166Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "PlaySoundClipNode_1162",
+              "type": "PlaySoundClipNode"
+            },
+            "previousNode": {
+              "id": "AttendantPromptNode_1004",
+              "connector": "option_3"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "fe67f56d-a677-53fa-83ea-4dbbfcc50a17",
+      "type": "ACTIVE",
+      "sequenceNumber": 10,
+      "timestamp": "2026-09-30T18:38:27.675Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "PlaySoundClipNode_1162",
+              "type": "PlaySoundClipNode",
+              "result": "CONTINUE"
+            },
+            "previousNode": {
+              "id": "AttendantPromptNode_1004",
+              "connector": "option_3"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "51b469c9-3655-5838-8111-851190e57a92",
+      "type": "ACTIVE",
+      "sequenceNumber": 11,
+      "timestamp": "2026-09-30T18:38:27.676Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "PlaySoundClipNode_1340",
+              "type": "PlaySoundClipNode"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1162",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "8621859e-2b5c-5a84-b13f-830f8c938aa9",
+      "type": "ACTIVE",
+      "sequenceNumber": 12,
+      "timestamp": "2026-09-30T18:38:36.185Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "PlaySoundClipNode_1340",
+              "type": "PlaySoundClipNode",
+              "result": "CONTINUE"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1162",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "97648622-87cc-57c9-9310-fd9cdfd244fb",
+      "type": "ACTIVE",
+      "sequenceNumber": 13,
+      "timestamp": "2026-09-30T18:38:36.185Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "SimpleDialNode_1428",
+              "type": "SimpleDialNode"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1340",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "feb3f1b9-e236-5d1f-9966-ad30eaf99236",
+      "type": "ACTIVE",
+      "sequenceNumber": 14,
+      "timestamp": "2026-09-30T18:38:36.213Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        },
+        {
+          "id": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+          "legId": "19cea720-7c79-4085-a9fd-98da1e00eeca",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "3bc90b46-4f76-45d6-a33f-990786b5e966",
+            "deviceId": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+            "extensionNumber": "8648",
+            "device": {
+              "id": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+              "model": "yealink.sip.t48s",
+              "user": {
+                "id": "43bc4438-4124-403d-9f4f-9339adf54f90"
+              }
+            },
+            "name": "Test Person 8648",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "SimpleDialNode_1428",
+              "type": "SimpleDialNode"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1340",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "b57ced4f-49d9-5d07-902e-392d42356d2b",
+      "type": "ACTIVE",
+      "sequenceNumber": 15,
+      "timestamp": "2026-09-30T18:38:36.217Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        },
+        {
+          "id": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+          "legId": "19cea720-7c79-4085-a9fd-98da1e00eeca",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "3bc90b46-4f76-45d6-a33f-990786b5e966",
+            "deviceId": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+            "extensionNumber": "8648",
+            "device": {
+              "id": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+              "model": "yealink.sip.t48s",
+              "user": {
+                "id": "43bc4438-4124-403d-9f4f-9339adf54f90"
+              }
+            },
+            "name": "Test Person 8648",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        },
+        {
+          "id": "a056aca2-33ac-58fc-93c5-25a63f006254",
+          "legId": "0954b263-e275-4c7c-a243-6b898019b318",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "3c11ed8f-f268-4524-b762-9f9186a8105a",
+            "deviceId": "781bb0b0-ce65-4ee6-9054-540cb75aacdd",
+            "extensionNumber": "8621",
+            "device": {
+              "id": "781bb0b0-ce65-4ee6-9054-540cb75aacdd",
+              "model": "yealink.sip.t46g",
+              "user": {
+                "id": "6e192f97-f2de-4560-b786-a17111e07c08"
+              }
+            },
+            "name": "Test Person 8621",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "SimpleDialNode_1428",
+              "type": "SimpleDialNode"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1340",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ee196f3e-74cc-538a-99fc-3a72cf27fb53",
+      "type": "ACTIVE",
+      "sequenceNumber": 16,
+      "timestamp": "2026-09-30T18:38:43.967Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        },
+        {
+          "id": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+          "legId": "19cea720-7c79-4085-a9fd-98da1e00eeca",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "3bc90b46-4f76-45d6-a33f-990786b5e966",
+            "deviceId": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+            "extensionNumber": "8648",
+            "device": {
+              "id": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+              "model": "yealink.sip.t48s",
+              "user": {
+                "id": "43bc4438-4124-403d-9f4f-9339adf54f90"
+              }
+            },
+            "name": "Test Person 8648",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        },
+        {
+          "id": "a056aca2-33ac-58fc-93c5-25a63f006254",
+          "legId": "0954b263-e275-4c7c-a243-6b898019b318",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "3c11ed8f-f268-4524-b762-9f9186a8105a",
+            "deviceId": "781bb0b0-ce65-4ee6-9054-540cb75aacdd",
+            "extensionNumber": "8621",
+            "device": {
+              "id": "781bb0b0-ce65-4ee6-9054-540cb75aacdd",
+              "model": "yealink.sip.t46g",
+              "user": {
+                "id": "6e192f97-f2de-4560-b786-a17111e07c08"
+              }
+            },
+            "name": "Test Person 8621",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "DISCONNECTING"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "SimpleDialNode_1428",
+              "type": "SimpleDialNode"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1340",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "2021d5a2-1f9c-5eb9-94df-f893ee1162cc",
+      "type": "ACTIVE",
+      "sequenceNumber": 17,
+      "timestamp": "2026-09-30T18:38:43.969Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        },
+        {
+          "id": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+          "legId": "19cea720-7c79-4085-a9fd-98da1e00eeca",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "3bc90b46-4f76-45d6-a33f-990786b5e966",
+            "deviceId": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+            "extensionNumber": "8648",
+            "device": {
+              "id": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+              "model": "yealink.sip.t48s",
+              "user": {
+                "id": "43bc4438-4124-403d-9f4f-9339adf54f90"
+              }
+            },
+            "name": "Test Person 8648",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "SimpleDialNode_1428",
+              "type": "SimpleDialNode"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1340",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "f670d09a-8092-56dc-baae-282f2895ee6d",
+      "type": "ACTIVE",
+      "sequenceNumber": 18,
+      "timestamp": "2026-09-30T18:38:43.969Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        },
+        {
+          "id": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+          "legId": "19cea720-7c79-4085-a9fd-98da1e00eeca",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "3bc90b46-4f76-45d6-a33f-990786b5e966",
+            "deviceId": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+            "extensionNumber": "8648",
+            "device": {
+              "id": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+              "model": "yealink.sip.t48s",
+              "user": {
+                "id": "43bc4438-4124-403d-9f4f-9339adf54f90"
+              }
+            },
+            "name": "Test Person 8648",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "SimpleDialNode_1428",
+              "type": "SimpleDialNode"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1340",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "49335525-7e47-5953-be87-def9fa7aefb8",
+      "type": "ACTIVE",
+      "sequenceNumber": 19,
+      "timestamp": "2026-09-30T18:39:22.202Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "ON_HOLD",
+            "initiator": {
+              "participantId": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75"
+            }
+          }
+        },
+        {
+          "id": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+          "legId": "19cea720-7c79-4085-a9fd-98da1e00eeca",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "3bc90b46-4f76-45d6-a33f-990786b5e966",
+            "deviceId": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+            "extensionNumber": "8648",
+            "device": {
+              "id": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+              "model": "yealink.sip.t48s",
+              "user": {
+                "id": "43bc4438-4124-403d-9f4f-9339adf54f90"
+              }
+            },
+            "name": "Test Person 8648",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "SimpleDialNode_1428",
+              "type": "SimpleDialNode"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1340",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "72b71a17-7934-5f17-847d-08b0f5f4dd01",
+      "type": "ACTIVE",
+      "sequenceNumber": 20,
+      "timestamp": "2026-09-30T18:39:25.189Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        },
+        {
+          "id": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+          "legId": "19cea720-7c79-4085-a9fd-98da1e00eeca",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "3bc90b46-4f76-45d6-a33f-990786b5e966",
+            "deviceId": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+            "extensionNumber": "8648",
+            "device": {
+              "id": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+              "model": "yealink.sip.t48s",
+              "user": {
+                "id": "43bc4438-4124-403d-9f4f-9339adf54f90"
+              }
+            },
+            "name": "Test Person 8648",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "SimpleDialNode_1428",
+              "type": "SimpleDialNode"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1340",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a01ac5d1-2252-5467-a9f4-dcd035660e38",
+      "type": "ACTIVE",
+      "sequenceNumber": 21,
+      "timestamp": "2026-09-30T18:39:25.191Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "initiator": {
+              "participantId": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+              "conversationSpaceId": "d51fe878-4589-3812-b625-6895cdbd83be",
+              "extensionNumber": "8648",
+              "name": "Test Person 8648"
+            },
+            "destination": {
+              "number": "1102"
+            },
+            "value": "IN_DIRECT_TRANSFER"
+          }
+        },
+        {
+          "id": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+          "legId": "19cea720-7c79-4085-a9fd-98da1e00eeca",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "3bc90b46-4f76-45d6-a33f-990786b5e966",
+            "deviceId": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+            "extensionNumber": "8648",
+            "device": {
+              "id": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+              "model": "yealink.sip.t48s",
+              "user": {
+                "id": "43bc4438-4124-403d-9f4f-9339adf54f90"
+              }
+            },
+            "name": "Test Person 8648",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "SimpleDialNode_1428",
+              "type": "SimpleDialNode"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1340",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "36792c22-d4cd-549b-9113-5c968100a066",
+      "type": "ACTIVE",
+      "sequenceNumber": 22,
+      "timestamp": "2026-09-30T18:39:25.191Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "initiator": {
+              "participantId": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+              "conversationSpaceId": "d51fe878-4589-3812-b625-6895cdbd83be",
+              "extensionNumber": "8648",
+              "name": "Test Person 8648"
+            },
+            "destination": {
+              "number": "1102"
+            },
+            "value": "IN_DIRECT_TRANSFER"
+          }
+        },
+        {
+          "id": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+          "legId": "19cea720-7c79-4085-a9fd-98da1e00eeca",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "3bc90b46-4f76-45d6-a33f-990786b5e966",
+            "deviceId": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+            "extensionNumber": "8648",
+            "device": {
+              "id": "071eb62b-cb88-43e4-832d-ec65d656d4ca",
+              "model": "yealink.sip.t48s",
+              "user": {
+                "id": "43bc4438-4124-403d-9f4f-9339adf54f90"
+              }
+            },
+            "name": "Test Person 8648",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "DISCONNECTING"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "SimpleDialNode_1428",
+              "type": "SimpleDialNode"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1340",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "2b753b8c-d36b-5b0a-b05d-0afc0db027c9",
+      "type": "ACTIVE",
+      "sequenceNumber": 23,
+      "timestamp": "2026-09-30T18:39:25.236Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "initiator": {
+              "participantId": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+              "conversationSpaceId": "d51fe878-4589-3812-b625-6895cdbd83be",
+              "extensionNumber": "8648",
+              "name": "Test Person 8648"
+            },
+            "destination": {
+              "number": "1102"
+            },
+            "value": "IN_DIRECT_TRANSFER"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "10ffdc45-8fb5-57ef-a41f-e9ea1924cfb9",
+          "status": {
+            "value": "DISCONNECTING"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "bce2015f-e61b-4c08-9352-8aa377c9d755",
+            "currentNode": {
+              "id": "SimpleDialNode_1428",
+              "type": "SimpleDialNode",
+              "result": "COMPLETED"
+            },
+            "previousNode": {
+              "id": "PlaySoundClipNode_1340",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "93dd39bb-89da-5369-b469-5f95eaa4a6d9",
+      "type": "ACTIVE",
+      "sequenceNumber": 24,
+      "timestamp": "2026-09-30T18:39:25.250Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "initiator": {
+              "participantId": "b2c3e633-7989-5429-b4fe-d1c1f0a06d75",
+              "conversationSpaceId": "d51fe878-4589-3812-b625-6895cdbd83be",
+              "extensionNumber": "8648",
+              "name": "Test Person 8648"
+            },
+            "destination": {
+              "number": "1102"
+            },
+            "value": "IN_DIRECT_TRANSFER"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "fa7c0fd3-7092-5cc5-8ac6-620288af50bd",
+          "status": {
+            "value": "DISCONNECTING"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "75135638-0f77-491c-8b1c-8056c57d086c",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode",
+              "result": "COMPLETED"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "c5b5d8dc-be93-514e-b200-7d131b3c3b98",
+      "type": "ACTIVE",
+      "sequenceNumber": 25,
+      "timestamp": "2026-09-30T18:39:25.364Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "a1344015-6fa1-543a-9dc3-607382a010ee",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "queueId": "9eece6f7-0cfb-4861-a559-58e1833fb128",
+            "queueName": "Service - Problems",
+            "queueType": "BASIC",
+            "configuredWrapUpDuration": 90,
+            "value": "CALL_QUEUE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "9e0bddd7-b59c-50e2-9294-17209d876a6f",
+      "type": "ACTIVE",
+      "sequenceNumber": 26,
+      "timestamp": "2026-09-30T18:39:25.665Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        },
+        {
+          "id": "a487b190-1085-5057-a0e1-e51b1f800ba1",
+          "legId": "9f257dca-6c1d-4d2f-8313-106c82284c43",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "e276dfed-832c-484f-b288-c9e90738b346",
+            "deviceId": "80f339b3-e6ac-47a5-b494-4aef4ee716fa",
+            "extensionNumber": "8614",
+            "device": {
+              "id": "80f339b3-e6ac-47a5-b494-4aef4ee716fa",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "da2d7beb-80ef-4a27-b18a-2be7ad30675f"
+              }
+            },
+            "name": "Test Person 8614",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "a1344015-6fa1-543a-9dc3-607382a010ee",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "queueId": "9eece6f7-0cfb-4861-a559-58e1833fb128",
+            "queueName": "Service - Problems",
+            "queueType": "BASIC",
+            "configuredWrapUpDuration": 90,
+            "value": "CALL_QUEUE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "f6acb6bb-06bb-5fc6-ad08-70e68f560dc5",
+      "type": "ACTIVE",
+      "sequenceNumber": 27,
+      "timestamp": "2026-09-30T18:39:28.780Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        },
+        {
+          "id": "a487b190-1085-5057-a0e1-e51b1f800ba1",
+          "legId": "9f257dca-6c1d-4d2f-8313-106c82284c43",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "e276dfed-832c-484f-b288-c9e90738b346",
+            "deviceId": "80f339b3-e6ac-47a5-b494-4aef4ee716fa",
+            "extensionNumber": "8614",
+            "device": {
+              "id": "80f339b3-e6ac-47a5-b494-4aef4ee716fa",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "da2d7beb-80ef-4a27-b18a-2be7ad30675f"
+              }
+            },
+            "name": "Test Person 8614",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "a1344015-6fa1-543a-9dc3-607382a010ee",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "queueId": "9eece6f7-0cfb-4861-a559-58e1833fb128",
+            "queueName": "Service - Problems",
+            "queueType": "BASIC",
+            "configuredWrapUpDuration": 90,
+            "value": "CALL_QUEUE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "7c9166c4-92fe-58c7-84fe-afd749c76f49",
+      "type": "ACTIVE",
+      "sequenceNumber": 28,
+      "timestamp": "2026-09-30T18:39:28.780Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        },
+        {
+          "id": "a487b190-1085-5057-a0e1-e51b1f800ba1",
+          "legId": "9f257dca-6c1d-4d2f-8313-106c82284c43",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "e276dfed-832c-484f-b288-c9e90738b346",
+            "deviceId": "80f339b3-e6ac-47a5-b494-4aef4ee716fa",
+            "extensionNumber": "8614",
+            "device": {
+              "id": "80f339b3-e6ac-47a5-b494-4aef4ee716fa",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "da2d7beb-80ef-4a27-b18a-2be7ad30675f"
+              }
+            },
+            "name": "Test Person 8614",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "a1344015-6fa1-543a-9dc3-607382a010ee",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "queueId": "9eece6f7-0cfb-4861-a559-58e1833fb128",
+            "queueName": "Service - Problems",
+            "queueType": "BASIC",
+            "configuredWrapUpDuration": 90,
+            "value": "CALL_QUEUE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "59a60de6-63fe-5c4e-b9dd-62ff2bca9d78",
+      "type": "ACTIVE",
+      "sequenceNumber": 29,
+      "timestamp": "2026-09-30T18:44:34.753Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        },
+        {
+          "id": "a487b190-1085-5057-a0e1-e51b1f800ba1",
+          "legId": "9f257dca-6c1d-4d2f-8313-106c82284c43",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "e276dfed-832c-484f-b288-c9e90738b346",
+            "deviceId": "80f339b3-e6ac-47a5-b494-4aef4ee716fa",
+            "extensionNumber": "8614",
+            "device": {
+              "id": "80f339b3-e6ac-47a5-b494-4aef4ee716fa",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "da2d7beb-80ef-4a27-b18a-2be7ad30675f"
+              }
+            },
+            "name": "Test Person 8614",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "a1344015-6fa1-543a-9dc3-607382a010ee",
+          "status": {
+            "value": "DISCONNECTING"
+          },
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "queueId": "9eece6f7-0cfb-4861-a559-58e1833fb128",
+            "queueName": "Service - Problems",
+            "queueType": "BASIC",
+            "configuredWrapUpDuration": 90,
+            "value": "CALL_QUEUE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "57cca122-f5d5-5eb4-b7a7-4c599ee54cbf",
+      "type": "ACTIVE",
+      "sequenceNumber": 30,
+      "timestamp": "2026-09-30T18:44:34.753Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "CONNECTED"
+          }
+        },
+        {
+          "id": "a487b190-1085-5057-a0e1-e51b1f800ba1",
+          "legId": "9f257dca-6c1d-4d2f-8313-106c82284c43",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "lineId": "e276dfed-832c-484f-b288-c9e90738b346",
+            "deviceId": "80f339b3-e6ac-47a5-b494-4aef4ee716fa",
+            "extensionNumber": "8614",
+            "device": {
+              "id": "80f339b3-e6ac-47a5-b494-4aef4ee716fa",
+              "model": "yealink.sip.t46s",
+              "user": {
+                "id": "da2d7beb-80ef-4a27-b18a-2be7ad30675f"
+              }
+            },
+            "name": "Test Person 8614",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "DISCONNECTING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "40e94a66-3a56-5f4f-8a2c-81371ba205f7",
+      "type": "ACTIVE",
+      "sequenceNumber": 31,
+      "timestamp": "2026-09-30T18:44:34.805Z",
+      "participants": [
+        {
+          "id": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "legId": "0554b225-e5b2-469f-af0f-3d52393e9d13",
+          "originator": "187eb55b-b7b9-5fdd-8bab-95dda5bd578c",
+          "type": {
+            "phoneNumberId": "e0ed8772-4f8e-4843-a83c-a5bdc4c8b211",
+            "name": "+18002584555",
+            "number": "+18002584555",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "GRAND PR     TX",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "DISCONNECTING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "8b01c94a-ab16-572e-bce7-d16f8e49ba67",
+      "type": "ENDING",
+      "sequenceNumber": 32,
+      "timestamp": "2026-09-30T18:44:34.805Z",
+      "participants": []
+    }
+  ]
+}

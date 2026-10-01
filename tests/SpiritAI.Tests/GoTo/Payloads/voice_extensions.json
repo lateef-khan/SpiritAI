@@ -1,0 +1,174 @@
+{
+  "items": [
+    {
+      "id": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+      "accountKey": "1234567890123456789",
+      "number": "0000",
+      "name": "Spirit Start",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "b2eac8b8-79ad-4acd-92e4-ee087def8cca",
+      "accountKey": "1234567890123456789",
+      "number": "0001",
+      "name": "Sole Start",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "35364002-3c7e-406a-b099-e5b33dc2aba7",
+      "accountKey": "1234567890123456789",
+      "number": "0002",
+      "name": "Xterra Start",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "4f487eda-cc46-4a60-9fa9-d8fbb1899a83",
+      "accountKey": "1234567890123456789",
+      "number": "0003",
+      "name": "iMover Start",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "cec171b8-9e22-4601-885a-b5746ee630f8",
+      "accountKey": "1234567890123456789",
+      "number": "0004",
+      "name": "All Brands Inbound",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "524f64a0-5291-4778-8957-d09642b1253e",
+      "accountKey": "1234567890123456789",
+      "number": "0005",
+      "name": "Cikada Start",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "5892aa59-9bcc-4b7c-ac9c-9bd5026c0338",
+      "accountKey": "1234567890123456789",
+      "number": "0006",
+      "name": "Philips Start",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "64f75fea-f623-46cd-b902-b5a16e6030bc",
+      "accountKey": "1234567890123456789",
+      "number": "0010",
+      "name": "Cikada Inbound Call (copy)",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "169098f8-77c2-40da-9d6f-c504a9146561",
+      "accountKey": "1234567890123456789",
+      "number": "0011",
+      "name": "Cikada Sales",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "9602229b-db61-4873-aec3-12107f7b0097",
+      "accountKey": "1234567890123456789",
+      "number": "0015",
+      "name": "XTERRA - Accounting",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "4466ad07-7937-4e26-8220-4860265e0176",
+      "accountKey": "1234567890123456789",
+      "number": "0016",
+      "name": "XTERRA - Customer Service",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "3a33f52c-abc2-4dde-8858-cd900b06966b",
+      "accountKey": "1234567890123456789",
+      "number": "0017",
+      "name": "XTERRA - Returns",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+      "accountKey": "1234567890123456789",
+      "number": "1000",
+      "name": "Inbound Call",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "d397a0f3-4ae6-4430-ba23-07939fa8cc60",
+      "accountKey": "1234567890123456789",
+      "number": "1001",
+      "name": "Sole Inbound Call",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "c2885dde-dcf9-4d62-af0c-88cc5d8a4937",
+      "accountKey": "1234567890123456789",
+      "number": "1002",
+      "name": "Xterra Inbound Call",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "e9fc6155-6932-4201-af10-c0ffbd91fadd",
+      "accountKey": "1234567890123456789",
+      "number": "1003",
+      "name": "iMover Inbound Call",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    },
+    {
+      "id": "4058fd6e-bf74-43f5-ad34-c52aed6dec80",
+      "accountKey": "1234567890123456789",
+      "number": "1004",
+      "name": "Philips Inbound Call",
+      "omitFromDirectories": true,
+      "omitFromAutoAttendants": false,
+      "organizationId": "8937f155-fd2c-408d-a39d-073ccafa96c1",
+      "type": "DIAL_PLAN"
+    }
+  ]
+}

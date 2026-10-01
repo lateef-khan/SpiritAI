@@ -12,7 +12,7 @@ namespace SpiritAI.Tests.GoTo;
 /// The subscription calls, sent through the host's own GoTo registration. The replies are the ones
 /// GoTo sent on 2026-09-24, kept in <c>Payloads</c> with the account key replaced.
 /// </summary>
-public sealed class GoToCallEventsApiClientTests
+public sealed class GoToClientSubscriptionTests
 {
     [Fact]
     public async Task AMultiStatusSubscriptionIsASuccess()
@@ -53,8 +53,49 @@ public sealed class GoToCallEventsApiClientTests
         Assert.Empty(accounts);
     }
 
+    [Fact]
+    public async Task AReportSubscriptionGoToConfirmsIsASuccess()
+    {
+        var wire = new ReplayingHandler("report_subscription_created") { Folder = "GoTo" };
+
+        await Client(wire).SubscribeToCallReportsAsync("Webhook.ad561afd-52d4-44af-a905-fd14c637184b", Cancel);
+
+        Assert.Equal("https://api.goto.com/call-events-report/v1/subscriptions", Assert.Single(wire.Requests).Url);
+    }
+
+    [Fact]
+    public async Task AReportSubscriptionGoToAnswersWithNoItemsIsRefused()
+    {
+        var wire = new AnsweringHandler("""{"items":[]}""");
+
+        var exception = await Assert.ThrowsAsync<HttpRequestException>(
+            () => Client(wire).SubscribeToCallReportsAsync("Webhook.ad561afd-52d4-44af-a905-fd14c637184b", Cancel));
+
+        Assert.Contains("""{"items":[]}""", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AReportSubscriptionAnsweredWithNoJsonIsRefusedWithGoTosBody()
+    {
+        var wire = new AnsweringHandler("not json");
+
+        var exception = await Assert.ThrowsAsync<HttpRequestException>(
+            () => Client(wire).SubscribeToCallReportsAsync("Webhook.ad561afd-52d4-44af-a905-fd14c637184b", Cancel));
+
+        Assert.Contains("not json", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AReportSubscriptionAnsweredWithAnEmptyBodyIsRefused()
+    {
+        var wire = new AnsweringHandler(string.Empty);
+
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => Client(wire).SubscribeToCallReportsAsync("Webhook.ad561afd-52d4-44af-a905-fd14c637184b", Cancel));
+    }
+
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
-    private static IGoToCallEventsApiClient Client(ReplayingHandler wire)
-        => GoToTestServices.Build(wire).GetRequiredService<IGoToCallEventsApiClient>();
+    private static GoToClient Client(HttpMessageHandler wire)
+        => GoToTestServices.Build(wire).GetRequiredService<GoToClient>();
 }

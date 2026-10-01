@@ -1,0 +1,1186 @@
+{
+  "conversationSpaceId": "2c0be098-e3ea-3416-a589-4c0c4ccc4477",
+  "callCreated": "2026-09-28T16:29:17.137Z",
+  "callEnded": "2026-09-28T16:29:55.354Z",
+  "callInitiator": "DIRECT",
+  "direction": "INBOUND",
+  "accountKey": "1234567890123456789",
+  "participants": [
+    {
+      "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+      "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+      "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+      "recordings": [],
+      "liveTranscripts": [],
+      "transcripts": [],
+      "type": {
+        "value": "PHONE_NUMBER",
+        "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+        "number": "+18709351107",
+        "name": "+18709351107",
+        "caller": {
+          "name": "PROBE CALLER",
+          "number": "+12015550100"
+        },
+        "callProvider": "PSTN"
+      }
+    },
+    {
+      "id": "3d555721-62bc-5e9e-902f-f92f435af259",
+      "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+      "legId": "8addd286-c751-4c4f-81f3-4fe42a4aeeeb",
+      "recordings": [],
+      "liveTranscripts": [],
+      "transcripts": [],
+      "type": {
+        "value": "LINE",
+        "lineId": "5a0ad776-c8f8-49ec-9b96-c130e77d816e",
+        "deviceId": "b4f12f1f-2b17-413b-9ff1-0f9cf1f46a1c",
+        "extensionNumber": "8615",
+        "name": "Test Person 8615",
+        "userId": "1ab61051-8c56-4b91-ae51-c1e0b3028c2c",
+        "userKey": "5291767339434893061"
+      }
+    },
+    {
+      "id": "f80d1b0a-97ea-5859-bb88-3d7ffb76cb51",
+      "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+      "legId": "939bc69a-6f4b-48fb-85fd-9a5c500698c7",
+      "recordings": [],
+      "liveTranscripts": [],
+      "transcripts": [],
+      "type": {
+        "value": "LINE",
+        "lineId": "5a0ad776-c8f8-49ec-9b96-c130e77d816e",
+        "deviceId": "3ca7d439-d303-4b08-8980-4fd2e54c4996",
+        "extensionNumber": "8615",
+        "name": "Test Person 8615",
+        "userId": "1ab61051-8c56-4b91-ae51-c1e0b3028c2c",
+        "userKey": "5291767339434893061"
+      }
+    }
+  ],
+  "interactiveVoiceResponseSystems": [
+    {
+      "id": "55ac5ed3-3aa2-54bd-a88c-93a4a3bc0bb2",
+      "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+      "type": {
+        "value": "VOICEMAIL",
+        "voicemailBoxId": "4984863e-c798-410a-be0d-ad5bf0102445",
+        "number": "+18709351107",
+        "voicemailStatus": "FAILED"
+      }
+    }
+  ],
+  "associatedConversations": [],
+  "callStates": [
+    {
+      "id": "db857bad-64b1-5567-85fc-d564cb9237d8",
+      "type": "STARTING",
+      "sequenceNumber": 1,
+      "timestamp": "2026-09-28T16:29:17.137Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "f8e862e0-aa2b-5481-9ac8-864becaf2107",
+      "type": "ACTIVE",
+      "sequenceNumber": 2,
+      "timestamp": "2026-09-28T16:29:17.415Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "type": "ModifyCallerIdNode"
+            },
+            "previousNode": {
+              "id": "",
+              "connector": ""
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ce4337e2-1374-5828-a86f-03b78ecae1d6",
+      "type": "ACTIVE",
+      "sequenceNumber": 3,
+      "timestamp": "2026-09-28T16:29:17.418Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "type": "ModifyCallerIdNode",
+              "result": "CONTINUE"
+            },
+            "previousNode": {
+              "id": "",
+              "connector": ""
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "e51d5ea6-ce2e-58ad-b536-ded839398109",
+      "type": "ACTIVE",
+      "sequenceNumber": 4,
+      "timestamp": "2026-09-28T16:29:17.516Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "6571f4cb-1152-5da3-832d-99e328edafdb",
+      "type": "ACTIVE",
+      "sequenceNumber": 5,
+      "timestamp": "2026-09-28T16:29:18.031Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "93ebd6a3-f4ce-58d7-bfd7-cf573c49c40e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "f2edd137-8a13-4835-8aa9-ba8fb19756ae",
+            "currentNode": {
+              "id": "ScheduleNode_1471",
+              "type": "ScheduleNode"
+            },
+            "previousNode": {
+              "id": "",
+              "connector": ""
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "e103f296-6c2e-5aea-9345-5ecbfe33672f",
+      "type": "ACTIVE",
+      "sequenceNumber": 6,
+      "timestamp": "2026-09-28T16:29:18.034Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "93ebd6a3-f4ce-58d7-bfd7-cf573c49c40e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "f2edd137-8a13-4835-8aa9-ba8fb19756ae",
+            "currentNode": {
+              "id": "ScheduleNode_1471",
+              "type": "ScheduleNode",
+              "result": "OPEN_SCHEDULE"
+            },
+            "previousNode": {
+              "id": "",
+              "connector": ""
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "0e443f0c-e437-5d10-a686-d107eeb758a4",
+      "type": "ACTIVE",
+      "sequenceNumber": 7,
+      "timestamp": "2026-09-28T16:29:18.158Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "93ebd6a3-f4ce-58d7-bfd7-cf573c49c40e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "f2edd137-8a13-4835-8aa9-ba8fb19756ae",
+            "currentNode": {
+              "id": "AttendantPromptNode_1004",
+              "type": "AttendantPromptNode"
+            },
+            "previousNode": {
+              "id": "ScheduleNode_1471",
+              "connector": "onOpen"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "449f99a3-1c68-5212-9456-80a82234aab5",
+      "type": "ACTIVE",
+      "sequenceNumber": 8,
+      "timestamp": "2026-09-28T16:29:29.642Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        },
+        {
+          "id": "3d555721-62bc-5e9e-902f-f92f435af259",
+          "legId": "8addd286-c751-4c4f-81f3-4fe42a4aeeeb",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "lineId": "5a0ad776-c8f8-49ec-9b96-c130e77d816e",
+            "deviceId": "b4f12f1f-2b17-413b-9ff1-0f9cf1f46a1c",
+            "extensionNumber": "8615",
+            "device": {
+              "id": "b4f12f1f-2b17-413b-9ff1-0f9cf1f46a1c",
+              "model": "yealink.sip.t48s",
+              "user": {
+                "id": "1ab61051-8c56-4b91-ae51-c1e0b3028c2c"
+              }
+            },
+            "name": "Test Person 8615",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "93ebd6a3-f4ce-58d7-bfd7-cf573c49c40e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "f2edd137-8a13-4835-8aa9-ba8fb19756ae",
+            "currentNode": {
+              "id": "AttendantPromptNode_1004",
+              "type": "AttendantPromptNode"
+            },
+            "previousNode": {
+              "id": "ScheduleNode_1471",
+              "connector": "onOpen"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "f89a5d0f-d8ce-5a24-9e98-5e81981e0f78",
+      "type": "ACTIVE",
+      "sequenceNumber": 9,
+      "timestamp": "2026-09-28T16:29:29.646Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        },
+        {
+          "id": "3d555721-62bc-5e9e-902f-f92f435af259",
+          "legId": "8addd286-c751-4c4f-81f3-4fe42a4aeeeb",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "lineId": "5a0ad776-c8f8-49ec-9b96-c130e77d816e",
+            "deviceId": "b4f12f1f-2b17-413b-9ff1-0f9cf1f46a1c",
+            "extensionNumber": "8615",
+            "device": {
+              "id": "b4f12f1f-2b17-413b-9ff1-0f9cf1f46a1c",
+              "model": "yealink.sip.t48s",
+              "user": {
+                "id": "1ab61051-8c56-4b91-ae51-c1e0b3028c2c"
+              }
+            },
+            "name": "Test Person 8615",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        },
+        {
+          "id": "f80d1b0a-97ea-5859-bb88-3d7ffb76cb51",
+          "legId": "939bc69a-6f4b-48fb-85fd-9a5c500698c7",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "lineId": "5a0ad776-c8f8-49ec-9b96-c130e77d816e",
+            "deviceId": "3ca7d439-d303-4b08-8980-4fd2e54c4996",
+            "extensionNumber": "8615",
+            "device": {
+              "id": "3ca7d439-d303-4b08-8980-4fd2e54c4996",
+              "model": "goto.clients",
+              "user": {
+                "id": "1ab61051-8c56-4b91-ae51-c1e0b3028c2c"
+              }
+            },
+            "name": "Test Person 8615",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "93ebd6a3-f4ce-58d7-bfd7-cf573c49c40e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "f2edd137-8a13-4835-8aa9-ba8fb19756ae",
+            "currentNode": {
+              "id": "AttendantPromptNode_1004",
+              "type": "AttendantPromptNode"
+            },
+            "previousNode": {
+              "id": "ScheduleNode_1471",
+              "connector": "onOpen"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "89bf54c8-6416-5328-9424-bc504544b035",
+      "type": "ACTIVE",
+      "sequenceNumber": 10,
+      "timestamp": "2026-09-28T16:29:49.646Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        },
+        {
+          "id": "3d555721-62bc-5e9e-902f-f92f435af259",
+          "legId": "8addd286-c751-4c4f-81f3-4fe42a4aeeeb",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "lineId": "5a0ad776-c8f8-49ec-9b96-c130e77d816e",
+            "deviceId": "b4f12f1f-2b17-413b-9ff1-0f9cf1f46a1c",
+            "extensionNumber": "8615",
+            "device": {
+              "id": "b4f12f1f-2b17-413b-9ff1-0f9cf1f46a1c",
+              "model": "yealink.sip.t48s",
+              "user": {
+                "id": "1ab61051-8c56-4b91-ae51-c1e0b3028c2c"
+              }
+            },
+            "name": "Test Person 8615",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "DISCONNECTING"
+          }
+        },
+        {
+          "id": "f80d1b0a-97ea-5859-bb88-3d7ffb76cb51",
+          "legId": "939bc69a-6f4b-48fb-85fd-9a5c500698c7",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "lineId": "5a0ad776-c8f8-49ec-9b96-c130e77d816e",
+            "deviceId": "3ca7d439-d303-4b08-8980-4fd2e54c4996",
+            "extensionNumber": "8615",
+            "device": {
+              "id": "3ca7d439-d303-4b08-8980-4fd2e54c4996",
+              "model": "goto.clients",
+              "user": {
+                "id": "1ab61051-8c56-4b91-ae51-c1e0b3028c2c"
+              }
+            },
+            "name": "Test Person 8615",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "RINGING"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "93ebd6a3-f4ce-58d7-bfd7-cf573c49c40e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "f2edd137-8a13-4835-8aa9-ba8fb19756ae",
+            "currentNode": {
+              "id": "AttendantPromptNode_1004",
+              "type": "AttendantPromptNode"
+            },
+            "previousNode": {
+              "id": "ScheduleNode_1471",
+              "connector": "onOpen"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "649be23a-6607-5a31-b156-78a0727b8c20",
+      "type": "ACTIVE",
+      "sequenceNumber": 11,
+      "timestamp": "2026-09-28T16:29:49.646Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        },
+        {
+          "id": "f80d1b0a-97ea-5859-bb88-3d7ffb76cb51",
+          "legId": "939bc69a-6f4b-48fb-85fd-9a5c500698c7",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "lineId": "5a0ad776-c8f8-49ec-9b96-c130e77d816e",
+            "deviceId": "3ca7d439-d303-4b08-8980-4fd2e54c4996",
+            "extensionNumber": "8615",
+            "device": {
+              "id": "3ca7d439-d303-4b08-8980-4fd2e54c4996",
+              "model": "goto.clients",
+              "user": {
+                "id": "1ab61051-8c56-4b91-ae51-c1e0b3028c2c"
+              }
+            },
+            "name": "Test Person 8615",
+            "value": "LINE"
+          },
+          "status": {
+            "value": "DISCONNECTING"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "93ebd6a3-f4ce-58d7-bfd7-cf573c49c40e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "f2edd137-8a13-4835-8aa9-ba8fb19756ae",
+            "currentNode": {
+              "id": "AttendantPromptNode_1004",
+              "type": "AttendantPromptNode"
+            },
+            "previousNode": {
+              "id": "ScheduleNode_1471",
+              "connector": "onOpen"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "10360358-e649-520d-8500-8522b71970f6",
+      "type": "ACTIVE",
+      "sequenceNumber": 12,
+      "timestamp": "2026-09-28T16:29:49.664Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "93ebd6a3-f4ce-58d7-bfd7-cf573c49c40e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "f2edd137-8a13-4835-8aa9-ba8fb19756ae",
+            "currentNode": {
+              "id": "AttendantPromptNode_1004",
+              "type": "AttendantPromptNode"
+            },
+            "previousNode": {
+              "id": "ScheduleNode_1471",
+              "connector": "onOpen"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "55ac5ed3-3aa2-54bd-a88c-93a4a3bc0bb2",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "voicemailBoxId": "4984863e-c798-410a-be0d-ad5bf0102445",
+            "number": "+18709351107",
+            "value": "VOICEMAIL"
+          }
+        }
+      ]
+    },
+    {
+      "id": "6c2cdbde-2fe9-5382-a29d-e4a8c931a08b",
+      "type": "ACTIVE",
+      "sequenceNumber": 13,
+      "timestamp": "2026-09-28T16:29:55.306Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "93ebd6a3-f4ce-58d7-bfd7-cf573c49c40e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "f2edd137-8a13-4835-8aa9-ba8fb19756ae",
+            "currentNode": {
+              "id": "AttendantPromptNode_1004",
+              "type": "AttendantPromptNode"
+            },
+            "previousNode": {
+              "id": "ScheduleNode_1471",
+              "connector": "onOpen"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "55ac5ed3-3aa2-54bd-a88c-93a4a3bc0bb2",
+          "status": {
+            "value": "DISCONNECTING"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "voicemailBoxId": "4984863e-c798-410a-be0d-ad5bf0102445",
+            "number": "+18709351107",
+            "voicemailStatus": "FAILED",
+            "value": "VOICEMAIL"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a1b41d87-db5e-5ce8-96d0-79c4c657bad3",
+      "type": "ACTIVE",
+      "sequenceNumber": 14,
+      "timestamp": "2026-09-28T16:29:55.348Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "CONNECTED"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        },
+        {
+          "id": "93ebd6a3-f4ce-58d7-bfd7-cf573c49c40e",
+          "status": {
+            "value": "DISCONNECTING"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "fc086814-9c00-4ddc-aa99-11b7f723233d",
+            "executionId": "f2edd137-8a13-4835-8aa9-ba8fb19756ae",
+            "currentNode": {
+              "id": "AttendantPromptNode_1004",
+              "type": "AttendantPromptNode",
+              "result": "DIALED_EXTENSION"
+            },
+            "previousNode": {
+              "id": "ScheduleNode_1471",
+              "connector": "onOpen"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "5de1fe17-9f4f-58cc-9ea4-944bd7bf9875",
+      "type": "ACTIVE",
+      "sequenceNumber": 15,
+      "timestamp": "2026-09-28T16:29:55.348Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "IN_INTERACTIVE_VOICE_RESPONSE"
+          }
+        }
+      ],
+      "interactiveVoiceResponseSystems": [
+        {
+          "id": "bd72a5c9-63eb-5d90-bfae-0f5c2278a08e",
+          "status": {
+            "value": "DISCONNECTING"
+          },
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "dialPlanId": "bf6b6a54-6582-4080-b8a0-b8212dddf168",
+            "executionId": "dd36d93c-40b3-48bf-a699-64358ce2f5ff",
+            "currentNode": {
+              "id": "JumpToDialPlanNode_1005",
+              "type": "JumpToDialPlanNode",
+              "result": "COMPLETED"
+            },
+            "previousNode": {
+              "id": "ModifyCallerIdNode_1003",
+              "connector": "nextNode"
+            },
+            "value": "DIAL_PLAN"
+          }
+        }
+      ]
+    },
+    {
+      "id": "7682b60e-f109-5d94-b6e0-e8af3eb6be70",
+      "type": "ACTIVE",
+      "sequenceNumber": 16,
+      "timestamp": "2026-09-28T16:29:55.354Z",
+      "participants": [
+        {
+          "id": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "legId": "6a014db7-a2af-4a85-9ae6-5dd8b7571c8f",
+          "originator": "5d6e3708-098a-5cd5-97b4-2e44d2b37b95",
+          "type": {
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "name": "+18709351107",
+            "number": "+18709351107",
+            "callProvider": "PSTN",
+            "caller": {
+              "name": "PROBE CALLER",
+              "number": "+12015550100"
+            },
+            "value": "PHONE_NUMBER"
+          },
+          "status": {
+            "value": "DISCONNECTING"
+          }
+        }
+      ]
+    },
+    {
+      "id": "521804be-a566-58ef-95d5-8f320bf0593a",
+      "type": "ENDING",
+      "sequenceNumber": 17,
+      "timestamp": "2026-09-28T16:29:55.354Z",
+      "participants": []
+    }
+  ]
+}

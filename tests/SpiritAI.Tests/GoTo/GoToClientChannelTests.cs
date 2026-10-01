@@ -12,7 +12,7 @@ namespace SpiritAI.Tests.GoTo;
 /// The channel calls, sent through the host's own GoTo registration. The replies are the ones GoTo
 /// sent on 2026-09-24, kept in <c>Payloads</c> with ids, URLs and secrets replaced.
 /// </summary>
-public sealed class GoToNotificationChannelApiClientTests
+public sealed class GoToClientChannelTests
 {
     [Fact]
     public async Task AWebhookChannelIsMadeWithTheBodyGoToDocuments()
@@ -93,6 +93,6 @@ public sealed class GoToNotificationChannelApiClientTests
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
-    private static IGoToNotificationChannelApiClient Client(ReplayingHandler wire)
-        => GoToTestServices.Build(wire).GetRequiredService<IGoToNotificationChannelApiClient>();
+    private static GoToClient Client(ReplayingHandler wire)
+        => GoToTestServices.Build(wire).GetRequiredService<GoToClient>();
 }

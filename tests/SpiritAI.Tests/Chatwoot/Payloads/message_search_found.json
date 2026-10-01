@@ -1,0 +1,25 @@
+{
+    "payload": {
+        "messages": [
+            {
+                "id": 1,
+                "content": "📞 probe\nGoTo call 84dcee04-ba4d-33c5-b00b-c0e57599fa69",
+                "inbox_id": 1,
+                "conversation_id": 31,
+                "message_type": 1,
+                "content_type": "text",
+                "status": "sent",
+                "content_attributes": {},
+                "created_at": 1790836303,
+                "private": true,
+                "source_id": "goto:84dcee04-ba4d-33c5-b00b-c0e57599fa69",
+                "sender": {
+                    "id": 1,
+                    "name": "Spirit AI",
+                    "avatar_url": "",
+                    "type": "agent_bot"
+                }
+            }
+        ]
+    }
+}

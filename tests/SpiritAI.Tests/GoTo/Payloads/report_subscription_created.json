@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "id": "615f1118-6f21-419b-9c74-38b1c46427d5",
+      "channelId": "Webhook.ad561afd-52d4-44af-a905-fd14c637184b",
+      "value": "1234567890123456789",
+      "eventTypes": [
+        "REPORT_SUMMARY"
+      ]
+    }
+  ]
+}

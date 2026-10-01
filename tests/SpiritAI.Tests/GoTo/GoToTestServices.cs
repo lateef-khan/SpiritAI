@@ -17,17 +17,18 @@ internal static class GoToTestServices
         ["Goto:ChannelNickname"] = "spiritprobe",
     };
 
-    public static ServiceProvider Build(ReplayingHandler wire)
+    /// <param name="wire">Stands in for GoTo.</param>
+    /// <param name="clock">The clock the retry waits on, or null for the system's.</param>
+    public static ServiceProvider Build(HttpMessageHandler wire, TimeProvider? clock = null)
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(Settings).Build();
 
-        var services = new ServiceCollection().AddGoToHttpClients(configuration);
+        var services = new ServiceCollection().AddSingleton(clock ?? TimeProvider.System).AddGoToHttpClients(configuration);
 
-        services.AddHttpClient(nameof(IGoToNotificationChannelApiClient)).ConfigurePrimaryHttpMessageHandler(() => wire);
-        services.AddHttpClient(nameof(IGoToCallEventsApiClient)).ConfigurePrimaryHttpMessageHandler(() => wire);
-        services.AddHttpClient(nameof(IGoToDirectoryApiClient)).ConfigurePrimaryHttpMessageHandler(() => wire);
+        services.AddHttpClient(nameof(GoToClient)).ConfigurePrimaryHttpMessageHandler(() => wire);
         services.AddSingleton(TestHybridCache.Create());
         services.AddTransient<GoToStaffDirectory>();
+        services.AddTransient<GoToCompanyLines>();
         services.AddSingleton<IGoToAuthTokenProvider>(new FixedToken());
         services.AddLogging();
 

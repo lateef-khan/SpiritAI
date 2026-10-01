@@ -1,0 +1,122 @@
+{
+  "pageSize": 3,
+  "nextPageMarker": "page-2",
+  "items": [
+    {
+      "conversationSpaceId": "702e4d82-c7e6-30a0-90f0-ce7eaf8f9b4f",
+      "accountKey": "1234567890123456789",
+      "callCreated": "2026-09-30T15:04:30.185Z",
+      "callAnswered": "2026-09-30T15:04:30.484Z",
+      "callEnded": "2026-09-30T15:09:10.933Z",
+      "callInitiator": "DIRECT",
+      "direction": "INBOUND",
+      "caller": {
+        "name": "PROBE CALLER",
+        "number": "+12015550100",
+        "legId": "7ac3230e-f72b-4856-9dda-75b6f506d264",
+        "type": {
+          "value": "PHONE_NUMBER",
+          "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+          "number": "+18709351107",
+          "name": "+18709351107",
+          "callProvider": "PSTN"
+        }
+      },
+      "callerOutcome": "LEFT_DIAL_PLAN",
+      "participants": [
+        {
+          "name": "Test Person 8625",
+          "number": "8625",
+          "legId": "6c1c8986-3161-4312-b953-1a6f042a6638",
+          "type": {
+            "value": "LINE",
+            "lineId": "d3d10a08-2269-4872-a904-261c68494270",
+            "userId": "ce0b3ec9-5faf-408e-9ff6-d0014a3f48bd",
+            "userKey": "2029402004371069196"
+          }
+        }
+      ]
+    },
+    {
+      "conversationSpaceId": "c877ee77-0a08-37cf-873a-7ea644e35398",
+      "accountKey": "1234567890123456789",
+      "callCreated": "2026-09-30T15:04:16.846Z",
+      "callAnswered": "2026-09-30T15:04:17.149Z",
+      "callEnded": "2026-09-30T15:12:53.632Z",
+      "callInitiator": "DIRECT",
+      "direction": "INBOUND",
+      "caller": {
+        "name": "WIRELESS CALLER",
+        "number": "+12015550101",
+        "legId": "3ce04192-f6e6-4ce6-9903-2931d2070539",
+        "type": {
+          "value": "PHONE_NUMBER",
+          "phoneNumberId": "2af0a7bd-7bbd-4ce6-a3a8-95565f8dc90c",
+          "number": "+18002588511",
+          "name": "+18002588511",
+          "callProvider": "PSTN"
+        }
+      },
+      "callerOutcome": "LEFT_DIAL_PLAN",
+      "participants": [
+        {
+          "name": "Test Person 8629",
+          "number": "8629",
+          "legId": "912874da-d507-4f27-ad15-7b8f8488522b",
+          "type": {
+            "value": "LINE",
+            "lineId": "4fb32349-70e5-49f7-b0de-a6543749e307",
+            "userId": "307cb432-09e2-458e-bc14-01d89fc25bc8",
+            "userKey": "2612277307685512974"
+          }
+        },
+        {
+          "name": "Test Person 8631",
+          "number": "8631",
+          "legId": "6c126278-875e-41a6-8d00-2d8a64dc52f6",
+          "type": {
+            "value": "LINE",
+            "lineId": "53b50c34-8469-4bfa-b658-ca98e5df3ad5",
+            "userId": "94c7d5f2-ac33-4a91-93e7-a5ba734985bd",
+            "userKey": "6474417496431071250"
+          }
+        }
+      ]
+    },
+    {
+      "conversationSpaceId": "371a4e39-5919-3ff1-9ccd-12c647413bd7",
+      "accountKey": "1234567890123456789",
+      "callCreated": "2026-09-30T15:03:03.876Z",
+      "callAnswered": "2026-09-30T15:03:14.223Z",
+      "callEnded": "2026-09-30T15:03:32.212Z",
+      "callInitiator": "DIRECT",
+      "direction": "OUTBOUND",
+      "caller": {
+        "name": "Test Person 0008",
+        "number": "0008",
+        "legId": "7b4d0e07-fab2-498b-8e76-f28ae7bddfa1",
+        "type": {
+          "value": "LINE",
+          "lineId": "7fb3dfa1-f439-42b3-9dd3-40301c2f6050",
+          "userId": "d1f352b1-a58f-4504-88f5-6c3f0ac8cbc3",
+          "userKey": "3523216141771349889"
+        }
+      },
+      "callerOutcome": "NORMAL",
+      "participants": [
+        {
+          "name": "",
+          "number": "+12015550102",
+          "legId": "84d8b1bb-e562-4f70-a63c-b431dd5a9f94",
+          "type": {
+            "value": "PHONE_NUMBER",
+            "phoneNumberId": "5ee2ed92-34e7-4bc4-b441-c5777c2344fc",
+            "number": "+18709351107",
+            "name": "+18709351107",
+            "callProvider": "PSTN"
+          }
+        }
+      ]
+    }
+  ]
+}

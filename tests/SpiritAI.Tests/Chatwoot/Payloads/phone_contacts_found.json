@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "count": 1,
+    "current_page": 1,
+    "has_more": false
+  },
+  "payload": [
+    {
+      "additional_attributes": {},
+      "availability_status": "offline",
+      "email": null,
+      "id": 7,
+      "name": "+1 201-555-0100",
+      "phone_number": "+12015550100",
+      "blocked": false,
+      "identifier": null,
+      "thumbnail": "",
+      "custom_attributes": {},
+      "created_at": 1790836302,
+      "contact_inboxes": [
+        {
+          "source_id": "5f0c6c2e-0000-4000-8000-000000000007",
+          "inbox": {
+            "id": 1,
+            "avatar_url": "",
+            "channel_id": 1,
+            "name": "Spirit Chat/Phone",
+            "channel_type": "Channel::Api",
+            "provider": null
+          }
+        }
+      ]
+    }
+  ]
+}

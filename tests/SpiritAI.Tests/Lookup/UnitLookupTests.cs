@@ -399,6 +399,35 @@ public sealed class UnitLookupTests
         Assert.Null(await lookup.ReadOrderAsync("1-1", TestContext.Current.CancellationToken));
     }
 
+    [Fact]
+    public async Task AToolThatTimesOutIsASectionThatCannotBeDrawnAndTheRestRenders()
+    {
+        var lookup = new UnitLookup((toolId, _, _) => toolId == "read_records"
+            ? throw new TaskCanceledException("The HTTP request timed out.")
+            : ValueTask.FromResult(Json(toolId == "search_parts" ? PartsJson : HistoryJson)));
+
+        var unit = await lookup.ReadUnitAsync(Serial, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(unit);
+        Assert.Equal([UnitSection.Warranty], unit.Unavailable);
+        Assert.Equal(2, unit.History!.Count);
+        Assert.Equal("J99A0002", Assert.Single(unit.Parts!).SpNo);
+    }
+
+    [Fact]
+    public async Task ACancelledCallerStopsTheLookup()
+    {
+        using var source = new CancellationTokenSource();
+        var lookup = new UnitLookup((_, _, token) =>
+        {
+            source.Cancel();
+            token.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(Json(HistoryJson));
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => lookup.ReadUnitAsync(Serial, source.Token));
+    }
+
     /// <summary>A lookup whose tools answer canned payloads.</summary>
     /// <param name="history">What <c>get_service_history_by_sn</c> answers.</param>
     /// <param name="parts">What <c>search_parts</c> answers.</param>

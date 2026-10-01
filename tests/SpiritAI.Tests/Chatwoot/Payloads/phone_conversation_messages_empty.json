@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "labels": [],
+    "additional_attributes": {},
+    "contact": {
+      "additional_attributes": {},
+      "custom_attributes": {},
+      "email": null,
+      "id": 7,
+      "identifier": null,
+      "name": "+1 201-555-0100",
+      "phone_number": "+12015550100",
+      "thumbnail": "",
+      "blocked": false,
+      "type": "contact"
+    },
+    "agent_last_seen_at": null,
+    "assignee_last_seen_at": null
+  },
+  "payload": []
+}

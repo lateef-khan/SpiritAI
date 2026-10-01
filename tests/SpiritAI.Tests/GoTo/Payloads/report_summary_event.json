@@ -1,0 +1,7 @@
+{
+  "source": "call-events-report",
+  "type": "REPORT_SUMMARY",
+  "content": {
+    "conversationSpaceId": "84dcee04-ba4d-33c5-b00b-c0e57599fa69"
+  }
+}

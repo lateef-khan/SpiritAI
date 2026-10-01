@@ -30,6 +30,10 @@ Widget__AllowedOrigins__0 = "https://www.spiritfitness.com"
 # the address when the channel is made.
 Goto__WebhookBaseUrl = "https://chat.spiritfitnessapps.com"
 Goto__ChannelNickname = "spirit-prod"
+CallLog__Enabled = "true"
+
+"Logging__LogLevel__System.Net.Http.HttpClient" = "Warning"
+"Logging__LogLevel__Polly" = "Warning"
 
 # The Hub (docs/superpowers/specs/2026-09-27-hub-single-sign-in-design.md). Hub__CrmUrl's origin
 # must equal TWENTY_SERVER_URL in secrets/prod.env, and TWENTY_SPIRIT_HUB_ORIGIN must be https://<Hub__Host>.
