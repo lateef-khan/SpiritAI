@@ -1,6 +1,16 @@
-import { useState } from 'react';
-import { enqueueSnackbar } from 'twenty-sdk/front-component';
+import 'twenty-ui/style.css';
 
+import { useState } from 'react';
+import { enqueueSnackbar, useColorScheme } from 'twenty-sdk/front-component';
+import { Callout } from 'twenty-ui/primitives/feedback';
+import { Button } from 'twenty-ui/primitives/input';
+import { Section } from 'twenty-ui/primitives/layout';
+import { Card, CardContent } from 'twenty-ui/primitives/surfaces';
+import { H2Title } from 'twenty-ui/primitives/typography';
+import { ThemeProvider } from 'twenty-ui/theme-constants';
+
+import { getRowAccessSettingsStyles } from 'src/constants/row-access-settings-styles.constant';
+import { OwnerFieldSelect } from 'src/front-components/components/OwnerFieldSelect';
 import {
   type RowAccessSettingsData,
   saveRowAccessConfig,
@@ -19,13 +29,6 @@ import {
 
 const ADMIN_ROLE_LABEL = 'Admin';
 
-const sectionStyle = {
-  display: 'flex',
-  flexDirection: 'column' as const,
-  gap: '8px',
-  marginBottom: '24px',
-};
-
 const WARNING_TEXT: Record<RowAccessRuleWarning['reason'], string> = {
   'object-unavailable':
     'its object was deleted, deactivated, or cannot hold a rule',
@@ -39,6 +42,8 @@ const RowAccessSettingsForm = ({ data }: { data: RowAccessSettingsData }) => {
     data.savedConfig,
   );
   const [isSaving, setIsSaving] = useState(false);
+  const styles = getRowAccessSettingsStyles();
+  const colorScheme = useColorScheme();
 
   const ruleWarnings = listRowAccessRuleWarnings({
     config: draftConfig,
@@ -68,35 +73,40 @@ const RowAccessSettingsForm = ({ data }: { data: RowAccessSettingsData }) => {
   };
 
   return (
-    <div>
+    <div style={{ ...styles.page, colorScheme }}>
       {data.savedConfigProblem !== undefined && (
-        <p>
-          {data.savedConfigProblem} Until you save a valid config, members see
-          no rows of any owner object.
-        </p>
+        <Callout
+          variant="warning"
+          title="The saved row access config is invalid"
+          description={`${data.savedConfigProblem} Until you save a valid config, members see no rows of any owner object.`}
+        />
       )}
       {ruleWarnings.length > 0 && (
-        <section style={sectionStyle}>
-          <h3>Rules that need attention</h3>
-          <p>
-            Save keeps these rules. An enabled rule whose custom owner field is
-            broken hides every row of every owner object from members until you
-            fix it. A hidden standard owner field, such as Account Owner, keeps
-            working on the server: rows stay filtered by it. Pick a new owner
-            field, or remove the rule if the object should be visible to
-            everyone.
-          </p>
-          <ul>
+        <Section>
+          <H2Title
+            title="Rules that need attention"
+            description="Save keeps these rules. An enabled rule whose custom owner field is broken hides every row of every owner object from members until you fix it. A hidden standard owner field, such as Account Owner, keeps working on the server: rows stay filtered by it. Pick a new owner field, or remove the rule if the object should be visible to everyone."
+          />
+          <Card rounded>
             {ruleWarnings.map((warning, index) => (
-              <li key={`${warning.objectMetadataId}-${index}`}>
-                {data.ruleObjects.find(
-                  (object) =>
-                    object.objectMetadataId === warning.objectMetadataId,
-                )?.label ?? `Object ${warning.objectMetadataId}`}
-                {warning.isEnabled ? ' (on)' : ' (off)'}:{' '}
-                {WARNING_TEXT[warning.reason]}.{' '}
-                <button
+              <CardContent
+                key={`${warning.objectMetadataId}-${index}`}
+                divider={index < ruleWarnings.length - 1}
+                style={styles.row}
+              >
+                <span style={styles.rowLabel}>
+                  {data.ruleObjects.find(
+                    (object) =>
+                      object.objectMetadataId === warning.objectMetadataId,
+                  )?.label ?? `Object ${warning.objectMetadataId}`}
+                  {warning.isEnabled ? ' (on)' : ' (off)'}:{' '}
+                  {WARNING_TEXT[warning.reason]}.
+                </span>
+                <Button
                   type="button"
+                  size="sm"
+                  variant="outline"
+                  color="danger"
                   onClick={() =>
                     setDraftConfig(
                       removeRule(draftConfig, warning.objectMetadataId),
@@ -104,130 +114,158 @@ const RowAccessSettingsForm = ({ data }: { data: RowAccessSettingsData }) => {
                   }
                 >
                   Remove rule
-                </button>
-              </li>
+                </Button>
+              </CardContent>
             ))}
-          </ul>
-        </section>
+          </Card>
+        </Section>
       )}
-      <section style={sectionStyle}>
-        <h3>Owner-only objects</h3>
-        <p>
-          A member sees a row of a checked object only when the owner field
-          points at them. Rows with no owner are hidden from members.
-        </p>
-        <table>
-          <tbody>
-            {data.candidateObjects.map((object) => {
-              const rule = draftConfig.rules.find(
-                (candidate) =>
-                  candidate.objectMetadataId === object.objectMetadataId,
+      <Section>
+        <H2Title
+          title="Owner-only objects"
+          description="A member sees a row of a checked object only when the owner field points at them. Rows with no owner are hidden from members."
+        />
+        <Card rounded>
+          {data.candidateObjects.map((object, index) => {
+            const rule = draftConfig.rules.find(
+              (candidate) =>
+                candidate.objectMetadataId === object.objectMetadataId,
+            );
+            const isOwnerFieldValid =
+              rule === undefined ||
+              object.ownerFields.some(
+                (field) => field.fieldMetadataId === rule.ownerFieldMetadataId,
               );
-              const isOwnerFieldValid =
-                rule === undefined ||
-                object.ownerFields.some(
-                  (field) =>
-                    field.fieldMetadataId === rule.ownerFieldMetadataId,
-                );
 
-              return (
-                <tr key={object.objectMetadataId}>
-                  <td>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={rule?.isEnabled === true}
-                        onChange={(event) =>
-                          setDraftConfig(
-                            setRuleEnabled(
-                              draftConfig,
-                              object,
-                              event.target.checked,
-                            ),
-                          )
-                        }
-                      />
-                      {object.label}
-                    </label>
-                  </td>
-                  <td>
-                    <select
-                      value={
-                        rule?.ownerFieldMetadataId ??
-                        object.ownerFields[0]?.fieldMetadataId
-                      }
-                      disabled={rule === undefined}
-                      onChange={(event) =>
-                        setDraftConfig(
-                          setRuleOwnerField(
-                            draftConfig,
-                            object.objectMetadataId,
-                            event.target.value,
-                          ),
-                        )
-                      }
+            return (
+              <CardContent
+                key={object.objectMetadataId}
+                divider={index < data.candidateObjects.length - 1}
+                style={styles.row}
+              >
+                <label style={styles.rowLabel}>
+                  <input
+                    type="checkbox"
+                    style={styles.checkbox}
+                    checked={rule?.isEnabled === true}
+                    onChange={(event) =>
+                      setDraftConfig(
+                        setRuleEnabled(
+                          draftConfig,
+                          object,
+                          event.target.checked,
+                        ),
+                      )
+                    }
+                  />
+                  {object.label}
+                </label>
+                <OwnerFieldSelect
+                  aria-label={`Owner field of ${object.label}`}
+                  value={
+                    rule?.ownerFieldMetadataId ??
+                    object.ownerFields[0]?.fieldMetadataId
+                  }
+                  disabled={rule === undefined}
+                  onChange={(event) =>
+                    setDraftConfig(
+                      setRuleOwnerField(
+                        draftConfig,
+                        object.objectMetadataId,
+                        event.target.value,
+                      ),
+                    )
+                  }
+                >
+                  {!isOwnerFieldValid && (
+                    <option value={rule?.ownerFieldMetadataId}>
+                      Pick an owner field
+                    </option>
+                  )}
+                  {object.ownerFields.map((field) => (
+                    <option
+                      key={field.fieldMetadataId}
+                      value={field.fieldMetadataId}
                     >
-                      {!isOwnerFieldValid && (
-                        <option value={rule?.ownerFieldMetadataId}>
-                          Pick an owner field
-                        </option>
-                      )}
-                      {object.ownerFields.map((field) => (
-                        <option
-                          key={field.fieldMetadataId}
-                          value={field.fieldMetadataId}
-                        >
-                          {field.label}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </section>
-      <section style={sectionStyle}>
-        <h3>Roles that see every row</h3>
-        {data.roles.map((role) => {
-          const isAdmin = role.label === ADMIN_ROLE_LABEL;
+                      {field.label}
+                    </option>
+                  ))}
+                </OwnerFieldSelect>
+              </CardContent>
+            );
+          })}
+        </Card>
+      </Section>
+      <Section>
+        <H2Title title="Roles that see every row" />
+        <Card rounded>
+          {data.roles.map((role, index) => {
+            const isAdmin = role.label === ADMIN_ROLE_LABEL;
 
-          return (
-            <label key={role.id}>
-              <input
-                type="checkbox"
-                checked={isAdmin || draftConfig.seeAllRoleIds.includes(role.id)}
-                disabled={isAdmin}
-                onChange={(event) =>
-                  setDraftConfig(
-                    setSeeAllRole(draftConfig, role.id, event.target.checked),
-                  )
-                }
-              />
-              {role.label}
-              {isAdmin ? ' (always)' : ''}
-            </label>
-          );
-        })}
-      </section>
-      <button type="button" disabled={isSaving} onClick={handleSave}>
-        {isSaving ? 'Saving…' : 'Save'}
-      </button>
+            return (
+              <CardContent
+                key={role.id}
+                divider={index < data.roles.length - 1}
+                style={styles.row}
+              >
+                <label style={styles.rowLabel}>
+                  <input
+                    type="checkbox"
+                    style={styles.checkbox}
+                    checked={
+                      isAdmin || draftConfig.seeAllRoleIds.includes(role.id)
+                    }
+                    disabled={isAdmin}
+                    onChange={(event) =>
+                      setDraftConfig(
+                        setSeeAllRole(draftConfig, role.id, event.target.checked),
+                      )
+                    }
+                  />
+                  {role.label}
+                </label>
+                {isAdmin && <span style={styles.mutedText}>Always</span>}
+              </CardContent>
+            );
+          })}
+        </Card>
+      </Section>
+      <div>
+        <Button
+          type="button"
+          variant="solid"
+          color="accent"
+          disabled={isSaving}
+          onClick={handleSave}
+        >
+          {isSaving ? 'Saving…' : 'Save'}
+        </Button>
+      </div>
     </div>
   );
 };
 
-export const RowAccessSettings = () => {
+const RowAccessSettingsContent = () => {
   const state = useRowAccessSettings();
+  const styles = getRowAccessSettingsStyles();
 
   if (state.kind === 'loading') {
-    return <p>Loading row access…</p>;
+    return <p style={styles.mutedText}>Loading row access…</p>;
   }
 
   if (state.kind === 'error') {
-    return <p>{state.message}</p>;
+    return <p style={styles.mutedText}>{state.message}</p>;
   }
 
   return <RowAccessSettingsForm data={state.data} />;
+};
+
+export const RowAccessSettings = () => {
+  const colorScheme = useColorScheme();
+
+  return (
+    <ThemeProvider colorScheme={colorScheme}>
+      <RowAccessSettingsContent />
+    </ThemeProvider>
+  );
 };
