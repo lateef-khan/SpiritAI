@@ -1,5 +1,7 @@
 using System.Text.Json;
 
+using static SpiritAI.GoTo.GoToJson;
+
 namespace SpiritAI.GoTo;
 
 /// <summary>
@@ -56,22 +58,4 @@ public sealed record GoToCall(string Id, string State, bool Outbound, string? Ou
 
         return new GoToCall(id, Text(state, "type") ?? string.Empty, outbound, outside, lines);
     }
-
-    private static bool TryGet(JsonElement element, out JsonElement found, params string[] path)
-    {
-        found = element;
-
-        foreach (var name in path)
-        {
-            if (found.ValueKind != JsonValueKind.Object || !found.TryGetProperty(name, out found))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static string? Text(JsonElement element, params string[] path)
-        => TryGet(element, out var found, path) && found.ValueKind == JsonValueKind.String ? found.GetString() : null;
 }

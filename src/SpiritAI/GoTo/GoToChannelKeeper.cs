@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 namespace SpiritAI.GoTo;
 
 /// <summary>
-/// Keeps Spirit's GoTo webhook channel and its call-events subscription alive.
+/// Keeps Spirit's GoTo webhook channel and its call-events and call-report subscriptions alive.
 /// </summary>
 public sealed class GoToChannelKeeper(
     IServiceScopeFactory scopes,
@@ -17,7 +17,7 @@ public sealed class GoToChannelKeeper(
 
     /// <summary>
     /// Deletes each channel with Spirit's nickname and another URL, makes the channel when none is
-    /// left, and subscribes it when its subscription does not show the account.
+    /// left, and subscribes it to calls and to reports when a subscription does not show the account.
     /// </summary>
     /// <param name="cancellationToken">Stops the run between calls.</param>
     public async Task KeepOnceAsync(CancellationToken cancellationToken)
@@ -30,10 +30,9 @@ public sealed class GoToChannelKeeper(
         }
 
         await using var scope = scopes.CreateAsyncScope();
-        var channels = scope.ServiceProvider.GetRequiredService<IGoToNotificationChannelApiClient>();
-        var callEvents = scope.ServiceProvider.GetRequiredService<IGoToCallEventsApiClient>();
+        var goTo = scope.ServiceProvider.GetRequiredService<GoToClient>();
 
-        var ours = (await channels.ListChannelsAsync(cancellationToken).ConfigureAwait(false))
+        var ours = (await goTo.ListChannelsAsync(cancellationToken).ConfigureAwait(false))
             .Where(c => c.Nickname == settings.ChannelNickname)
             .ToList();
 
@@ -41,28 +40,24 @@ public sealed class GoToChannelKeeper(
 
         foreach (var stale in ours.Where(c => !ReferenceEquals(c, kept)))
         {
-            await DeleteAndLogAsync(channels, stale, cancellationToken).ConfigureAwait(false);
+            await DeleteAndLogAsync(goTo, stale, cancellationToken).ConfigureAwait(false);
         }
 
         if (kept is null)
         {
-            kept = await channels.CreateWebhookChannelAsync(settings.ChannelNickname, webhookUrl, cancellationToken)
+            kept = await goTo.CreateWebhookChannelAsync(settings.ChannelNickname, webhookUrl, cancellationToken)
                 .ConfigureAwait(false);
 
             logger.LogInformation("Made GoTo channel {ChannelId} ({Nickname}).", kept.ChannelId, kept.Nickname);
         }
 
-        // Read before subscribing, never after: GoTo's read lags a subscribe by a second or two.
-        var accounts = await callEvents.ReadSubscribedAccountKeysAsync(kept.ChannelId, cancellationToken).ConfigureAwait(false);
+        var channelId = kept.ChannelId;
 
-        if (accounts.Contains(settings.AccountKey))
-        {
-            return;
-        }
+        await KeepSubscriptionAsync("call-events", channelId, () => KeepCallEventsAsync(goTo, channelId, settings.AccountKey, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
 
-        logger.LogWarning("GoTo channel {ChannelId} has no call-events subscription for the account; subscribing.", kept.ChannelId);
-
-        await callEvents.SubscribeToCallEventsAsync(kept.ChannelId, cancellationToken).ConfigureAwait(false);
+        await KeepSubscriptionAsync("call-report", channelId, () => KeepCallReportsAsync(goTo, channelId, settings.AccountKey, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -110,23 +105,61 @@ public sealed class GoToChannelKeeper(
         {
             await KeepOnceAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(exception, "The GoTo channel job failed; trying again next tick.");
         }
     }
 
-    /// <summary>One failed delete does not stop the others, or the create after them.</summary>
-    private async Task DeleteAndLogAsync(
-        IGoToNotificationChannelApiClient channels, GoToChannel stale, CancellationToken cancellationToken)
+    /// <summary>One subscription that fails to read or subscribe is logged and does not stop the other.</summary>
+    private async Task KeepSubscriptionAsync(string subscription, string channelId, Func<Task> keep, CancellationToken cancellationToken)
     {
         try
         {
-            await channels.DeleteChannelAsync(stale.Nickname, stale.ChannelId, cancellationToken).ConfigureAwait(false);
+            await keep().ConfigureAwait(false);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(exception, "Could not keep the {Subscription} subscription of GoTo channel {ChannelId}.", subscription, channelId);
+        }
+    }
+
+    private async Task KeepCallEventsAsync(GoToClient goTo, string channelId, string accountKey, CancellationToken cancellationToken)
+    {
+        // Read before subscribing, never after: GoTo's read lags a subscribe by a second or two.
+        var accounts = await goTo.ReadSubscribedAccountKeysAsync(channelId, cancellationToken).ConfigureAwait(false);
+
+        if (!accounts.Contains(accountKey))
+        {
+            logger.LogWarning("GoTo channel {ChannelId} has no call-events subscription for the account; subscribing.", channelId);
+
+            await goTo.SubscribeToCallEventsAsync(channelId, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task KeepCallReportsAsync(GoToClient goTo, string channelId, string accountKey, CancellationToken cancellationToken)
+    {
+        var accounts = await goTo.ReadReportSubscribedAccountKeysAsync(channelId, cancellationToken).ConfigureAwait(false);
+
+        if (!accounts.Contains(accountKey))
+        {
+            logger.LogWarning("GoTo channel {ChannelId} has no call-report subscription for the account; subscribing.", channelId);
+
+            await goTo.SubscribeToCallReportsAsync(channelId, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>One failed delete does not stop the others, or the create after them.</summary>
+    private async Task DeleteAndLogAsync(
+        GoToClient goTo, GoToChannel stale, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await goTo.DeleteChannelAsync(stale.Nickname, stale.ChannelId, cancellationToken).ConfigureAwait(false);
 
             logger.LogInformation("Deleted stale GoTo channel {ChannelId} ({Nickname}).", stale.ChannelId, stale.Nickname);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(exception, "Could not delete stale GoTo channel {ChannelId}.", stale.ChannelId);
         }
