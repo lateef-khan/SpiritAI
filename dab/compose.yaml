@@ -9,9 +9,10 @@ services:
     volumes:
       - ./dab-config.json:/App/dab-config.json:ro
       - ./dab-config.sage.json:/App/dab-config.sage.json:ro
-    # DAB answers /health once its runtime has loaded the config and reached SQL.
+    # DAB answers / once it has started. /health is the full report, which production mode
+    # gives only to configured roles, so an anonymous probe there always gets 403.
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:5000/health || wget -qO- http://localhost:5000/health"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5000/ || wget -qO- http://localhost:5000/"]
       interval: 10s
       retries: 30
     networks:
