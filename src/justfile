@@ -129,6 +129,23 @@ blob-up:
 blob-ls:
     docker exec {{blob_container}} mc ls --recursive local/{{blob_bucket}}
 
+# Open the two SQL Servers on 127.0.0.1:1433 (CustService) and :1434 (Sage) through Cloudflare
+# Access, for the agent's shell in `just spirit run`. Uses the cloudflared version the Fly image pins.
+sql-tunnels:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version="$(grep -oP '^ARG CLOUDFLARED_VERSION=\K.+' ../Dockerfile)"
+    id="$(grep -oP '^CF_ACCESS_CLIENT_ID=\K.+' ../secrets/dev.env)"
+    secret="$(grep -oP '^CF_ACCESS_CLIENT_SECRET=\K.+' ../secrets/dev.env)"
+    for pair in sql-custservice:1433 sql-sage:1434; do
+        name="${pair%%:*}" port="${pair#*:}"
+        docker rm --force "spirit-$name" >/dev/null 2>&1 || true
+        docker run --detach --name "spirit-$name" --network host --restart unless-stopped \
+            -e TUNNEL_SERVICE_TOKEN_ID="$id" -e TUNNEL_SERVICE_TOKEN_SECRET="$secret" \
+            "cloudflare/cloudflared:$version" access tcp --hostname "$name.spiritfitnessapps.com" --url "127.0.0.1:$port" >/dev/null
+    done
+    echo "CustService on 127.0.0.1,1433 and Sage on 127.0.0.1,1434."
+
 # Write config/spirit.local.yaml with blobs: pointed at MinIO.
 local-config:
     #!/usr/bin/env bash
@@ -170,5 +187,5 @@ run: db-up blob-up local-config
 
 # Remove PostgreSQL and MinIO, and everything in them.
 down:
-    @docker rm --force --volumes {{container}} {{blob_container}} >/dev/null 2>&1 || true
-    @echo "{{container}} and {{blob_container}} are gone."
+    @docker rm --force --volumes {{container}} {{blob_container}} spirit-sql-custservice spirit-sql-sage >/dev/null 2>&1 || true
+    @echo "{{container}}, {{blob_container}} and the SQL tunnels are gone."

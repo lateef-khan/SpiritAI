@@ -1,0 +1,30 @@
+name: spirit-dab
+
+services:
+  dab:
+    image: mcr.microsoft.com/azure-databases/data-api-builder:2.0.11
+    environment:
+      CUSTSERVICE_SQL_PASSWORD: ${CUSTSERVICE_SQL_PASSWORD:?DAB_CUSTSERVICE_SQL_PASSWORD must be set in secrets/prod.env}
+      SAGE_SQL_PASSWORD: ${SAGE_SQL_PASSWORD:?DAB_SAGE_SQL_PASSWORD must be set in secrets/prod.env}
+    volumes:
+      - ./dab-config.json:/App/dab-config.json:ro
+      - ./dab-config.sage.json:/App/dab-config.sage.json:ro
+    # DAB answers /health once its runtime has loaded the config and reached SQL.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5000/health || wget -qO- http://localhost:5000/health"]
+      interval: 10s
+      retries: 30
+    networks:
+      edge:
+        aliases: [dab]
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    restart: unless-stopped
+
+networks:
+  edge:
+    external: true
+    name: spirit-edge

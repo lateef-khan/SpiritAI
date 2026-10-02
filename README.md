@@ -27,9 +27,9 @@ tests, creates the Fly app if needed, syncs secrets and deploys. Nothing to run 
 
 `just secrets push` sends them from `secrets/prod.env`. The repository secrets it needs: `FLY_API_TOKEN`, `OPENAI_API_KEY`, `OPENCODE_GO_API_KEY`, `QDRANT_API_KEY`,
 `POSTGRES_CONNECTION_STRING`, `TS_AUTHKEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
-(the Backblaze B2 keyID and applicationKey), `CUSTSERVICE_SQL_PASSWORD` (the
-`SpiritReadOnlyUser` password the analytics desk's shell reads; the same value DAB holds as
-`DAB_SQL_PASSWORD` on SPIRITSRV-024). `GRAFANA_CLOUD_INSTANCE_ID` and
+(the Backblaze B2 keyID and applicationKey), `CUSTSERVICE_SQL_MANAGER_PASSWORD`, `CUSTSERVICE_SQL_ADMIN_PASSWORD`, `SAGE_SQL_MANAGER_PASSWORD`
+`SAGE_SQL_ADMIN_PASSWORD` (the manager and admin agents' shell logins on CustService and
+Sage; see `sql/README.md`), and `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET`. `GRAFANA_CLOUD_INSTANCE_ID` and
 `GRAFANA_CLOUD_API_TOKEN` are optional, and optional together.
 
 `./tailscale-setup.sh` walks you through the Tailscale side and proves it works before you

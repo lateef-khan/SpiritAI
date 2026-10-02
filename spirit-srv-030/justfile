@@ -12,7 +12,7 @@ host := "spiritsrv-030"
 dir := "spirit"
 
 # The paths the server needs. The root justfile names spirit-srv-030, so it must parse there. twenty/source (the fork's code) and twenty/apps stay on the laptop.
-paths := "justfile src/justfile spirit-srv-030 postgres chatwoot cloudflared secrets twenty ':(exclude)twenty/source' ':(exclude)twenty/apps'"
+paths := "justfile src/justfile spirit-srv-030 postgres chatwoot cloudflared dab secrets twenty ':(exclude)twenty/source' ':(exclude)twenty/apps'"
 
 # List the recipes.
 default:
@@ -94,8 +94,8 @@ deploy app ref="HEAD": (sync ref)
     set -euo pipefail
     case "{{app}}" in
         postgres|chatwoot|twenty) recipe=prod-update ;;
-        cloudflared) recipe=update ;;
-        *) echo "Use one of: postgres chatwoot twenty cloudflared" >&2; exit 1 ;;
+        cloudflared|dab) recipe=update ;;
+        *) echo "Use one of: postgres chatwoot twenty dab cloudflared" >&2; exit 1 ;;
     esac
     ssh -t {{host}} 'cd {{dir}} && just {{app}} '"$recipe"
 
@@ -113,8 +113,8 @@ logs app:
     set -euo pipefail
     case "{{app}}" in
         postgres|chatwoot|twenty) recipe=prod-logs ;;
-        cloudflared) recipe=logs ;;
-        *) echo "Use one of: postgres chatwoot twenty cloudflared" >&2; exit 1 ;;
+        cloudflared|dab) recipe=logs ;;
+        *) echo "Use one of: postgres chatwoot twenty dab cloudflared" >&2; exit 1 ;;
     esac
     ssh -t {{host}} 'cd {{dir}} && just {{app}} '"$recipe"
 

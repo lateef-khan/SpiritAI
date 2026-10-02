@@ -34,8 +34,9 @@ public sealed class CachedUnitLookupTests
     """;
 
     private const string WarrantyJson = """
-    { "entity": "ModelWarranty", "result": { "value": [
-      { "ModelNo": "580888", "Version": 2, "LaborPeriod": 730 }
+    { "status": "success", "value": { "value": [
+      { "SerialNo": "5808881004036047", "WarrantyType": "RES", "Term": "Labor", "Days": 730,
+        "Lifetime": false, "Expires": "2012-10-22T00:00:00", "InWarranty": false }
     ] } }
     """;
 

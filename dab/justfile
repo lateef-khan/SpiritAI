@@ -1,0 +1,49 @@
+# DAB recipes. From the repo root: `just dab <recipe>`. On the server: `just <recipe>` inside this
+# folder. Recipes run here either way.
+
+# Each command first writes DAB's secrets from secrets/prod.env into .secrets.env.
+compose := "../secrets/export.sh prod DAB_ .secrets.env && docker compose --file compose.yaml --env-file .secrets.env"
+
+# The names the root `just stack-*` recipes call on every app.
+alias prod-up := up
+alias prod-down := down
+alias prod-status := status
+
+# List the recipes.
+default:
+    @just --list
+
+# Start DAB and wait until it is healthy.
+up: _edge
+    {{compose}} up --detach --wait --wait-timeout 300
+    @echo "DAB is up on spirit-edge as http://dab:5000."
+
+# Stop DAB.
+down:
+    {{compose}} down
+
+# Show the container.
+status:
+    {{compose}} ps
+
+# Pull the pinned image again and restart. Run after a dab-config.json change too.
+update: _edge
+    {{compose}} up --detach --wait --wait-timeout 300 --pull always --force-recreate
+
+# Follow the logs.
+logs:
+    {{compose}} logs --follow --tail=100
+
+# Check the config against the databases without touching the running container.
+validate:
+    {{compose}} run --rm --no-deps --entrypoint dotnet dab Microsoft.DataApiBuilder.dll validate --config /App/dab-config.json
+
+# List the MCP tools from inside spirit-edge.
+probe:
+    docker run --rm --network spirit-edge curlimages/curl:8.10.1 -s http://dab:5000/mcp \
+        -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+        -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | grep -o '"name":"[a-z_]*"' | sort -u
+
+# The network the tunnel shares with every app.
+_edge:
+    @docker network inspect spirit-edge >/dev/null 2>&1 || docker network create spirit-edge

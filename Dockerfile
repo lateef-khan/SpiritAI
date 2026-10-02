@@ -45,9 +45,8 @@ RUN dotnet publish src/SpiritAI/SpiritAI.csproj \
 # ------------------------------------------------------------- runtime ----
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 
-# Tailscale. The DAB MCP server in config/spirit.yaml lives at
-# http://100.98.168.6:5000/mcp, a tailnet address that is unreachable from the
-# public internet, so this machine has to join the tailnet itself.
+# Tailscale. It is installed and started with the app, but nothing in
+# config/spirit.yaml uses the tailnet any more. It is removed in a later step.
 #
 # ${ID} matters: the aspnet:10.0 image is UBUNTU (noble), not Debian, and
 # pkgs.tailscale.com/stable/debian/noble.noarmor.gpg is a 404. Reading ID from
@@ -63,6 +62,16 @@ RUN apt-get update \
  && apt-get update \
  && apt-get install -y --no-install-recommends tailscale \
  && rm -rf /var/lib/apt/lists/*
+
+# cloudflared opens the two SQL Servers on 127.0.0.1 for the agent's shell, through Cloudflare
+# Access (cloudflared/README.md). Pinned: from 2026.6.0, `access tcp` ignores the service token
+# (cloudflared issue #1673). Re-run probe P1 (docs/superpowers/plans/2026-10-01-dab-on-030.md,
+# Task 1) before changing this version.
+ARG CLOUDFLARED_VERSION=2026.5.1
+RUN curl -fsSL "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64" \
+      -o /usr/local/bin/cloudflared \
+ && chmod +x /usr/local/bin/cloudflared \
+ && cloudflared --version
 
 # Shell tools the agent can use,
 RUN apt-get update \

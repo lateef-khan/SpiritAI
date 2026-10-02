@@ -22,6 +22,9 @@ On the server, run `just <recipe>` inside this folder.
 | --- | --- | --- |
 | `desk.<domain>` | `http://chatwoot:3000` (Chatwoot) | Staff only |
 | `crm.<domain>` | `http://twenty:3000` (Twenty) | Staff only |
+| `dab.<domain>` | `http://dab:5000` (DAB) | `spiritai` service token only |
+| `sql-custservice.<domain>` | `tcp://172.16.2.24:1433` (CustService SQL) | `spiritai` service token only |
+| `sql-sage.<domain>` | `tcp://172.16.2.21:1433` (Sage SQL) | `spiritai` service token only |
 
 `chat.<domain>` and `hub.<domain>` are not tunnel rows. Spirit runs on Fly; they are DNS records
 that point at `spiritai.fly.dev`.
@@ -66,6 +69,7 @@ networks:
 - **Staff-only hostnames:** put them behind Cloudflare Access, except `desk.`, `crm.` and `hub.`:
   the Hub frames Desk and CRM and Spirit's server calls them. Leave the public chat and the
   Chatwoot widget paths open, or customers cannot use them.
+- **Service-token hostnames:** `dab.` and the two `sql-` hostnames use the Access apps `spiritai-dab` and `spiritai-sql`, each with one Service Auth policy for the `spiritai` service token. The token expires after one year: make a new one, put it in `secrets/<env>.env`, run `just secrets push` and the Fly sync workflow, then delete the old token.
 
 | Recipe | Does |
 | --- | --- |

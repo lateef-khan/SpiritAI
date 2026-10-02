@@ -5,18 +5,9 @@ namespace SpiritAI.Lookup;
 /// <summary>
 /// Reads the rows out of whatever a DAB tool wrapped them in.
 /// </summary>
-/// <remarks>
-/// Every reader of these tools meets the same three envelopes, so the unwrapping lives once here
-/// rather than in each of them.
-/// </remarks>
 internal static class DabEnvelope
 {
     /// <summary>Finds the rows in whichever envelope a DAB tool wrapped them in.</summary>
-    /// <remarks>
-    /// A stored procedure answers <c>{ status, value: { value: [...] } }</c> and
-    /// <c>read_records</c> answers <c>{ result: { value: [...] } }</c>. A refusal answers
-    /// <c>{ status: "error", error: { ... } }</c> and is read here as nothing.
-    /// </remarks>
     /// <param name="payload">What the tool answered.</param>
     /// <returns>The rows, or <see langword="null"/> when the payload holds none.</returns>
     internal static IReadOnlyList<JsonElement>? RowsOf(JsonElement payload)
@@ -50,11 +41,6 @@ internal static class DabEnvelope
     }
 
     /// <summary>Digs the JSON body out of whatever the tool layer handed back.</summary>
-    /// <remarks>
-    /// An MCP tool answers with content parts, and the part carrying the rows is a string of JSON.
-    /// Depending on how the conversation was made, that arrives already parsed, as that string, or still
-    /// inside its <c>content</c> array. All three are the same body.
-    /// </remarks>
     /// <param name="payload">What the tool answered.</param>
     /// <returns>The body, parsed.</returns>
     internal static JsonElement Unwrap(JsonElement payload)
