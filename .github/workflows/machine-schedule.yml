@@ -1,7 +1,7 @@
 name: Machine schedule
 
 # Keep the Machine warm through the working day and stopped overnight. A cold
-# start here is slow -- tailscaled has to rejoin the tailnet and the knowledge
+# start here is slow -- the cloudflared listeners have to reconnect and the knowledge
 # store re-proves its schema against Qdrant -- so the point of this workflow is
 # that nobody pays that wait during the hours people actually use the chat.
 #

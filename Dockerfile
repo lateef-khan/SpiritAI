@@ -45,24 +45,6 @@ RUN dotnet publish src/SpiritAI/SpiritAI.csproj \
 # ------------------------------------------------------------- runtime ----
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 
-# Tailscale. It is installed and started with the app, but nothing in
-# config/spirit.yaml uses the tailnet any more. It is removed in a later step.
-#
-# ${ID} matters: the aspnet:10.0 image is UBUNTU (noble), not Debian, and
-# pkgs.tailscale.com/stable/debian/noble.noarmor.gpg is a 404. Reading ID from
-# os-release rather than hard-coding a distro keeps this working if the base
-# image changes underneath us.
-RUN apt-get update \
- && apt-get install -y --no-install-recommends curl ca-certificates gnupg iproute2 iptables \
- && . /etc/os-release \
- && curl -fsSL "https://pkgs.tailscale.com/stable/${ID}/${VERSION_CODENAME}.noarmor.gpg" \
-      -o /usr/share/keyrings/tailscale-archive-keyring.gpg \
- && curl -fsSL "https://pkgs.tailscale.com/stable/${ID}/${VERSION_CODENAME}.tailscale-keyring.list" \
-      -o /etc/apt/sources.list.d/tailscale.list \
- && apt-get update \
- && apt-get install -y --no-install-recommends tailscale \
- && rm -rf /var/lib/apt/lists/*
-
 # cloudflared opens the two SQL Servers on 127.0.0.1 for the agent's shell, through Cloudflare
 # Access (cloudflared/README.md). Pinned: from 2026.6.0, `access tcp` ignores the service token
 # (cloudflared issue #1673). Re-run probe P1 (docs/superpowers/plans/2026-10-01-dab-on-030.md,
@@ -75,7 +57,7 @@ RUN curl -fsSL "https://github.com/cloudflare/cloudflared/releases/download/${CL
 
 # Shell tools the agent can use,
 RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 python3-venv unixodbc \
+ && apt-get install -y --no-install-recommends curl ca-certificates gnupg python3 python3-venv unixodbc \
  && . /etc/os-release \
  && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
       | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
