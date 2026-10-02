@@ -1,0 +1,132 @@
+{
+  "$schema": "https://github.com/Azure/data-api-builder/releases/download/v2.0.11/dab.draft.schema.json",
+  "data-source": {
+    "database-type": "mssql",
+    "connection-string": "Server=172.16.2.21;Database=MAS_SFC;User Id=spiritai_dab;Password=@env('SAGE_SQL_PASSWORD');TrustServerCertificate=True",
+    "options": {
+      "set-session-context": false
+    }
+  },
+  "entities": {
+    "GetInvoice": {
+      "description": "Sage 100 invoices WITHOUT who was billed: by invoice number, sales order number, customer PO, or serial number. Parameters: exactly one of @InvoiceNo, @SalesOrderNo, @CustomerPONo, @SerialNo. Returns the newest 20 invoices, one row per line and one per package: RowKind ('line' or 'tracking'), InvoiceNo, HeaderSeqNo, InvoiceDate, InvoiceType, SalesOrderNo, ShipDate, ShipVia, SalesAmt, FreightAmt, SalesTaxAmt, DiscountAmt, InvoiceTotal, then on a 'line' row LineSeq, ItemCode, ItemCodeDesc, QuantityShipped, UnitPrice, ExtensionAmt, SerialCount, HasSerial; on a 'tracking' row TrackingID and Carrier. The customer PO finds an invoice but is not returned. No names, addresses, customer numbers, emails or phones. Comment and miscellaneous lines (an ItemCode starting with '/') are left out. ItemCode for a machine is its six-digit model number. InvoiceTotal is the whole invoice; never add the lines yourself. A serial number finds the invoice that shipped that machine, often a dealer's invoice for many machines; HasSerial 1 marks the line that holds it. An invoice or sales order number given without its leading zeros is padded to seven digits. Returns at most 500 rows, newest invoice first; an invoice with very many lines can fill them. Error: 51200 pass exactly one handle, not none and not several.",
+      "source": {
+        "object": "agent.get_invoice",
+        "type": "stored-procedure",
+        "parameters": [
+          {
+            "name": "InvoiceNo",
+            "description": "Sage invoice number",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "SalesOrderNo",
+            "description": "Sage sales order number",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "CustomerPONo",
+            "description": "The customer's purchase order number",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "SerialNo",
+            "description": "Exact serial number of a machine on the invoice",
+            "required": false,
+            "default": null
+          }
+        ]
+      },
+      "graphql": {
+        "enabled": false,
+        "operation": "mutation",
+        "type": {
+          "singular": "GetInvoice",
+          "plural": "GetInvoices"
+        }
+      },
+      "rest": {
+        "enabled": false,
+        "methods": [
+          "post"
+        ]
+      },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [
+            {
+              "action": "execute"
+            }
+          ]
+        }
+      ],
+      "mcp": {
+        "custom-tool": true
+      }
+    },
+    "GetInvoiceFull": {
+      "description": "Sage 100 invoices WITH who was billed and where it went: by invoice number, sales order number, customer PO, or serial number. Parameters: exactly one of @InvoiceNo, @SalesOrderNo, @CustomerPONo, @SerialNo. Returns the newest 20 invoices, one row per line and one per package: RowKind ('line' or 'tracking'), InvoiceNo, HeaderSeqNo, InvoiceDate, InvoiceType, SalesOrderNo, CustomerPONo, ShipDate, ShipVia, SalesAmt, FreightAmt, SalesTaxAmt, DiscountAmt, InvoiceTotal, ARDivisionNo, CustomerNo, BillToName, BillToAddress1, BillToAddress2, BillToAddress3, BillToCity, BillToState, BillToZipCode, ShipToName, ShipToAddress1, ShipToAddress2, ShipToAddress3, ShipToCity, ShipToState, ShipToZipCode, EmailAddress, TelephoneNo, then on a 'line' row LineSeq, ItemCode, ItemCodeDesc, QuantityShipped, UnitPrice, ExtensionAmt, SerialCount, HasSerial; on a 'tracking' row TrackingID and Carrier. Every detail line is included. ItemCode for a machine is its six-digit model number. InvoiceTotal is the whole invoice; never add the lines yourself. A serial number finds the invoice that shipped that machine, often a dealer's invoice for many machines; HasSerial 1 marks the line that holds it. An invoice or sales order number given without its leading zeros is padded to seven digits. Returns at most 500 rows, newest invoice first; an invoice with very many lines can fill them. Error: 51200 pass exactly one handle, not none and not several.",
+      "source": {
+        "object": "agent.get_invoice_full",
+        "type": "stored-procedure",
+        "parameters": [
+          {
+            "name": "InvoiceNo",
+            "description": "Sage invoice number",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "SalesOrderNo",
+            "description": "Sage sales order number",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "CustomerPONo",
+            "description": "The customer's purchase order number",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "SerialNo",
+            "description": "Exact serial number of a machine on the invoice",
+            "required": false,
+            "default": null
+          }
+        ]
+      },
+      "graphql": {
+        "enabled": false,
+        "operation": "mutation",
+        "type": {
+          "singular": "GetInvoiceFull",
+          "plural": "GetInvoiceFulls"
+        }
+      },
+      "rest": {
+        "enabled": false,
+        "methods": [
+          "post"
+        ]
+      },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [
+            {
+              "action": "execute"
+            }
+          ]
+        }
+      ],
+      "mcp": {
+        "custom-tool": true
+      }
+    }
+  }
+}

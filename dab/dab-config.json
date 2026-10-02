@@ -1,0 +1,768 @@
+{
+  "$schema": "https://github.com/Azure/data-api-builder/releases/download/v2.0.11/dab.draft.schema.json",
+  "data-source": {
+    "database-type": "mssql",
+    "connection-string": "Server=172.16.2.24;Database=CustService;User Id=spiritai_dab;Password=@env('CUSTSERVICE_SQL_PASSWORD');TrustServerCertificate=True",
+    "options": {
+      "set-session-context": false
+    }
+  },
+  "runtime": {
+    "rest": {
+      "enabled": false,
+      "path": "/api",
+      "request-body-strict": true
+    },
+    "graphql": {
+      "enabled": false,
+      "path": "/graphql",
+      "allow-introspection": false
+    },
+    "mcp": {
+      "enabled": true,
+      "path": "/mcp",
+      "dml-tools": {
+        "describe-entities": false,
+        "create-record": false,
+        "read-records": false,
+        "update-record": false,
+        "delete-record": false,
+        "execute-entity": false,
+        "aggregate-records": false
+      },
+      "description": "Read-only lookups over Spirit's service records (CustService) and Sage 100 invoices. Every tool is a purpose-built procedure that returns only what its audience may see; there is no raw table access. A serial number's first 6 characters are its model number and characters 7 to 10 are the build month as YYMM. Warranty dates come from check_unit, get_unit or my_unit; never add days to a date yourself."
+    },
+    "host": {
+      "cors": {
+        "origins": [],
+        "allow-credentials": false
+      },
+      "authentication": {
+        "provider": "AppService"
+      },
+      "mode": "production"
+    },
+    "telemetry": {
+      "log-level": {
+        "default": "information"
+      }
+    }
+  },
+  "autoentities": {},
+  "entities": {
+    "GetWorkOrders": {
+      "description": "Work orders, by whichever handle you have: order numbers, one serial number, a product name or model number, a date range, status, ISP, tech, dealer or order type. At least one filter is REQUIRED. Parameters: @OrderNumbers (comma separated 'ServiceId-OrderId', for example '845435-1', max 100); @SerialNo (exact); @Name (product name such as CT900) OR @ModelNo (exact), not both; @OrderDateFrom and @OrderDateTo (plain dates, both inclusive); @CaseStatus ('Pending' or 'Closed'); @ISPName, @Tech, @DealerNo and @OrderType (partial match; OrderType is 'Warranty', 'Part Purchase' and the like); @Top (default 20, max 100); @Skip; @IncludeParts (adds PartNo, PartDesc, ItemShipped, IsReturned, Source per part line, one row per line); @IncludeDetail (adds Notes, Feedback, ISPStatus, Freight, LaborFee, TripFee, OrderTableID). Returns ServiceId, OrderId, OrderNumber, SerialNo, ModelNo, ModelName, OrderDate, AppointDate, Shippeddate, ClosedDate, CaseStatus ('True' is closed), OrderType, Locked, ISPName, Tech, DealerNo, Trackno and TotalRows on every row. TotalRows counts orders before @Top, never part lines; report it. Newest first. Errors: 51001 no filter, 51002 bad @CaseStatus, 51003 no valid order number, 51004 both @Name and @ModelNo, 51005 no model matches.",
+      "source": {
+        "object": "agent.get_work_orders",
+        "type": "stored-procedure",
+        "parameters": [
+          {
+            "name": "OrderNumbers",
+            "description": "Comma separated ServiceId-OrderId such as 845435-1",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "SerialNo",
+            "description": "Exact 16-digit serial number",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "Name",
+            "description": "Product name such as CT900; not with ModelNo",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "ModelNo",
+            "description": "Exact 6-digit model number; not with Name",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "OrderDateFrom",
+            "description": "Start of the order-date range (inclusive), a plain date",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "OrderDateTo",
+            "description": "End of the order-date range (inclusive), a plain date",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "CaseStatus",
+            "description": "Pending or Closed",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "ISPName",
+            "description": "Service provider name, partial match",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "Tech",
+            "description": "Technician, partial match",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "DealerNo",
+            "description": "Dealer, partial match",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "OrderType",
+            "description": "Warranty or Part Purchase and the like, partial match",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "Top",
+            "description": "Rows to return, 1 to 100",
+            "required": false,
+            "default": "20"
+          },
+          {
+            "name": "Skip",
+            "description": "Rows to skip for paging",
+            "required": false,
+            "default": "0"
+          },
+          {
+            "name": "IncludeParts",
+            "description": "true adds one row per part line",
+            "required": false,
+            "default": "False"
+          },
+          {
+            "name": "IncludeDetail",
+            "description": "true adds notes, feedback and fees",
+            "required": false,
+            "default": "False"
+          }
+        ]
+      },
+      "fields": [],
+      "graphql": {
+        "enabled": false,
+        "operation": "mutation",
+        "type": {
+          "singular": "GetWorkOrders",
+          "plural": "GetWorkOrders"
+        }
+      },
+      "rest": {
+        "enabled": false,
+        "methods": [
+          "post"
+        ]
+      },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [
+            {
+              "action": "execute"
+            }
+          ]
+        }
+      ],
+      "mcp": {
+        "custom-tool": true
+      }
+    },
+    "GetServiceHistoryBySn": {
+      "description": "Past service calls for one machine, by serial number, with its product facts, the owner's contact record and the proof-of-purchase flag. Parameters: @SerialNo (REQUIRED); @Top (default 20, max 100); @Skip; @IncludeDetail. Returns SerialNo, ModelNo, ModelName, Sole, FG, ModelVersion, MfgDate, PurchasedDate, SetupDate, SetupBy, IsPopConfirming, CustomerName, Address, City, State, Zip, Phone, Phone2, Email, DealerNo, ServiceId, CallDate, ByUser, ServiceDate, ServiceRep, Description, Solution, ServiceStatus, ZenTicketId, OrderId, CaseStatus, TotalRows. Description and Solution are cut to 200 characters and SetupBy is masked to null unless @IncludeDetail=1. A machine with no service history still returns one row, with the history columns empty. A machine's history can return more rows than it has service calls, because one call can match several problem or order records; TotalRows counts rows, not calls. Report TotalRows. Errors: 51040 no serial given, 51041 no purchase record exists for that serial number.",
+      "source": {
+        "object": "agent.get_service_history_by_sn",
+        "type": "stored-procedure",
+        "parameters": [
+          {
+            "name": "SerialNo",
+            "default": ""
+          },
+          {
+            "name": "Top",
+            "default": "20"
+          },
+          {
+            "name": "Skip",
+            "default": "0"
+          },
+          {
+            "name": "IncludeDetail",
+            "default": "False"
+          }
+        ]
+      },
+      "graphql": {
+        "enabled": false,
+        "operation": "mutation",
+        "type": {
+          "singular": "GetServiceHistoryBySn",
+          "plural": "GetServiceHistoryBySns"
+        }
+      },
+      "rest": {
+        "enabled": false,
+        "methods": [
+          "post"
+        ]
+      },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [
+            {
+              "action": "execute"
+            }
+          ]
+        }
+      ],
+      "mcp": {
+        "custom-tool": true
+      }
+    },
+    "FindModel": {
+      "description": "Turns a PRODUCT NAME into model numbers, or reads one model number's record. START HERE when the person names a machine - 'CT900', 'XT385', 'CU800' - instead of giving a number. Parameters: exactly one of @Name (product name) and @ModelNo (exact model number), REQUIRED; @Top (default 20, max 100). Returns ModelNo, LatestVersion, ModelName, ModelDesc, Brand, Category, Commercial, Sole, FirstProduced, SnBegin, SnEnd, UpdatedAt, MatchBand, TotalRows. One row per model number at its latest version. MatchBand says how the name matched: A exact (a year suffix is allowed), B a prefix, C a substring; only one band comes back. A product name can match several model numbers; that is normal and usually means several years of the same machine. The digits of a model number do not encode its year. Error 51050 if both or neither of @Name and @ModelNo were passed.",
+      "source": {
+        "object": "agent.find_model",
+        "type": "stored-procedure",
+        "parameters": [
+          {
+            "name": "Name",
+            "description": "Product name such as CT900; not with ModelNo",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "ModelNo",
+            "description": "Exact 6-digit model number; not with Name",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "Top",
+            "description": "Rows to return, 1 to 100",
+            "required": false,
+            "default": "20"
+          }
+        ]
+      },
+      "graphql": {
+        "enabled": false,
+        "operation": "mutation",
+        "type": {
+          "singular": "FindModel",
+          "plural": "FindModels"
+        }
+      },
+      "rest": {
+        "enabled": false,
+        "methods": [
+          "post"
+        ]
+      },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [
+            {
+              "action": "execute"
+            }
+          ]
+        }
+      ],
+      "mcp": {
+        "custom-tool": true
+      }
+    },
+    "FindUnits": {
+      "description": "Finds a customer's machines from their name, email or phone number. Use this when the person describes WHO owns the unit instead of giving a serial number. Parameters: at least one of @Name, @Email and @Phone, REQUIRED, each 3 characters or more; @State and @ModelNo narrow only and cannot search on their own; @Top (default 20, max 100); @Skip. Pass @ModelNo when the person also named their machine, so one email that owns three units returns the one they mean. @Phone is taken in any format - dashes, dots, brackets or bare digits all work. Returns SerialNo, ModelNo, ModelName, PurchasedDate, SetupDate, OpenOrders, TotalOrders, CustomerName, Address, City, State, Zip, Phone, Phone2, Email, DealerNo, TotalRows. TotalRows is the true total before @Top, not the count of rows you were sent. The contact record on file comes back on every row so you can confirm who the caller is and read back what is on file. Take a SerialNo from here into get_unit, get_work_orders or get_service_history_by_sn. Errors: 51060 if no search term was given, 51061 if a term is shorter than 3 characters.",
+      "source": {
+        "object": "agent.find_units",
+        "type": "stored-procedure",
+        "parameters": [
+          {
+            "name": "Name",
+            "description": "Customer name, partial match",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "Email",
+            "description": "Email address, partial match",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "Phone",
+            "description": "Phone number in any format",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "State",
+            "description": "US state or province code such as TX; narrows only",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "ModelNo",
+            "description": "Exact 6-digit model number; narrows only",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "Top",
+            "description": "Rows to return, 1 to 100",
+            "required": false,
+            "default": "20"
+          },
+          {
+            "name": "Skip",
+            "description": "Rows to skip for paging",
+            "required": false,
+            "default": "0"
+          }
+        ]
+      },
+      "graphql": {
+        "enabled": false,
+        "operation": "mutation",
+        "type": {
+          "singular": "FindUnits",
+          "plural": "FindUnits"
+        }
+      },
+      "rest": {
+        "enabled": false,
+        "methods": [
+          "post"
+        ]
+      },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [
+            {
+              "action": "execute"
+            }
+          ]
+        }
+      ],
+      "mcp": {
+        "custom-tool": true
+      }
+    },
+    "SearchParts": {
+      "description": "The parts list for a machine, and the way to find ONE part in it. START HERE for any parts question. Parameters: exactly one of @SerialNo, @ModelNo and @Name (product name), REQUIRED; @Version; @Search; @Top (default 20, max 100); @Skip; @IncludeDetail. Returns ModelNo, ModelVersion, ModelName, Seq, DyacoNo (the drawing number), SpNo (the number to order), Description, Qty, RetailPrice, OtherModelNos, TotalRows. A full parts list runs to 421 lines, so this returns 20 by default and never more than 100. USE @Search: it matches the description, the spare part number and the drawing number, so 'belt' gives a handful of rows instead of hundreds. TotalRows is the real total, so say '20 of 421'. When @Name covers several models this uses one of them and names the rest in OtherModelNos; offer those rather than mixing their parts, because a part number can differ between two versions of the same machine. @IncludeDetail=1 adds internal workflow flags almost no answer needs. @Version picks one version of the model's parts list (a whole number); leave it out for the latest, and it is ignored when @SerialNo is given. Errors: 51070 identifier, 51071 malformed serial, 51072 no model version covers that serial, 51073 no model matches that name, 51074 no such model number. RetailPrice is the list price a customer pays for the part.",
+      "source": {
+        "object": "agent.search_parts",
+        "type": "stored-procedure",
+        "parameters": [
+          {
+            "name": "SerialNo",
+            "default": ""
+          },
+          {
+            "name": "ModelNo",
+            "default": ""
+          },
+          {
+            "name": "Name",
+            "default": ""
+          },
+          {
+            "name": "Version",
+            "description": "Version of the model's parts list, a whole number; leave out for the latest",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "Search",
+            "default": ""
+          },
+          {
+            "name": "Top",
+            "default": "20"
+          },
+          {
+            "name": "Skip",
+            "default": "0"
+          },
+          {
+            "name": "IncludeDetail",
+            "default": "False"
+          }
+        ]
+      },
+      "graphql": {
+        "enabled": false,
+        "operation": "mutation",
+        "type": {
+          "singular": "SearchParts",
+          "plural": "SearchParts"
+        }
+      },
+      "rest": {
+        "enabled": false,
+        "methods": [
+          "post"
+        ]
+      },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [
+            {
+              "action": "execute"
+            }
+          ]
+        }
+      ],
+      "mcp": {
+        "custom-tool": true
+      }
+    },
+    "CountUnits": {
+      "description": "Counts registered machines (PURCHASE rows) per group in ONE call: units by brand, by category, by model, by state, by dealer or by purchase year, with any filters. Use it whenever the grouping or a filter is a product fact (brand, category, model name), because PURCHASE cannot be joined to MODEL any other way. Parameters: @GroupBy (REQUIRED) one of Brand, Category, Model, State, Dealer, Year; @Name (product name such as CT900) OR @ModelNo (exact), not both; @Brand and @Category exact, case-insensitive; @State exact; @DealerNo partial; @PurchasedFrom (inclusive) and @PurchasedTo (EXCLUSIVE) plain dates; @Top groups (default 100, max 100). Returns GroupValue, GroupLabel (the model name when grouped by Model, else null), Units, TotalUnits, TotalGroups. Groups come largest first. TotalUnits and TotalGroups cover ALL groups even past @Top, so report those, never the sum of the rows you were sent. A null GroupValue is a real group: units whose model record is missing. Category values are as stored and include a few dirty ones such as TREADMIL. Errors: 51080 bad @GroupBy, 51081 both @Name and @ModelNo, 51082 @PurchasedTo not after @PurchasedFrom, 51083 no model matches @Name.",
+      "source": {
+        "object": "agent.count_units",
+        "type": "stored-procedure",
+        "parameters": [
+          {
+            "name": "GroupBy",
+            "description": "One of Brand, Category, Model, State, Dealer, Year",
+            "required": true,
+            "default": ""
+          },
+          {
+            "name": "Name",
+            "description": "Product name such as CT900; not with ModelNo",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "ModelNo",
+            "description": "Exact 6-digit model number; not with Name",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "Brand",
+            "description": "SOLE, SPIRIT, XTERRA or CIKADA",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "Category",
+            "description": "TREADMILL, ELLIPTICAL, BIKE, ROWER, STEPPER, STRENGTH",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "State",
+            "description": "US state or province code such as TX",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "DealerNo",
+            "description": "Partial retailer name such as costco",
+            "required": false,
+            "default": ""
+          },
+          {
+            "name": "PurchasedFrom",
+            "description": "Start of the purchase-date range (inclusive), a plain date such as 2025-01-01",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "PurchasedTo",
+            "description": "End of the purchase-date range (EXCLUSIVE), a plain date. A whole year is From Jan 1, To the next Jan 1",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "Top",
+            "description": "Groups to return, 1 to 100",
+            "required": false,
+            "default": "100"
+          }
+        ]
+      },
+      "graphql": {
+        "enabled": false,
+        "operation": "mutation",
+        "type": {
+          "singular": "CountUnits",
+          "plural": "CountUnits"
+        }
+      },
+      "rest": {
+        "enabled": false,
+        "methods": [
+          "post"
+        ]
+      },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [
+            {
+              "action": "execute"
+            }
+          ]
+        }
+      ],
+      "mcp": {
+        "custom-tool": true
+      }
+    },
+    "GetUnit": {
+      "description": "One machine in one call: what it is, who owns it, how many service calls and orders it has had, and every warranty term with the date it runs out. START HERE for 'is it under warranty' and 'who owns this'. Parameters: @SerialNo (REQUIRED, exact). Returns one row PER WARRANTY TERM, with the unit's own columns repeated on every row: SerialNo, ModelNo, ModelName, Brand, Category, Commercial, ModelVersion, MfgDate, PurchasedDate, SetupDate, CustomerName, Address, City, State, Zip, Phone, Phone2, Email, DealerNo, ServiceCalls, OpenOrders, TotalOrders, then WarrantyType, Term, Days, Lifetime, Expires, InWarranty, TotalRows. Term is Labor, Parts, Wear parts, Frame, Deck, Motor, Electronics, Console, Brake or Flywheel. Lifetime 1 means it never expires and Expires is null. InWarranty is 1 or 0 as of today, and null when there is no purchase date to count from. WarrantyType is the customer class the terms were written for, such as RES or COM; a model can carry more than one set and nothing on the unit says which applies, so show both and do not pick. A unit with no warranty terms on file still returns one row with the warranty columns null. Never add days to a date yourself; read Expires and InWarranty. Errors: 51090 no serial given, 51091 no purchase record for that serial.",
+      "source": {
+        "object": "agent.get_unit",
+        "type": "stored-procedure",
+        "parameters": [
+          {
+            "name": "SerialNo",
+            "description": "Exact 16-digit serial number",
+            "required": true,
+            "default": ""
+          }
+        ]
+      },
+      "graphql": {
+        "enabled": false,
+        "operation": "mutation",
+        "type": {
+          "singular": "GetUnit",
+          "plural": "GetUnits"
+        }
+      },
+      "rest": {
+        "enabled": false,
+        "methods": [
+          "post"
+        ]
+      },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [
+            {
+              "action": "execute"
+            }
+          ]
+        }
+      ],
+      "mcp": {
+        "custom-tool": true
+      }
+    },
+    "CheckUnit": {
+      "description": "One machine by its serial number, with NO owner details: what it is, whether it is registered, and every warranty term with the day it runs out and the days left. START HERE for 'is it under warranty'. Parameters: @SerialNo (REQUIRED, exact). Returns one row PER WARRANTY TERM, with the machine's columns repeated on every row: SerialNo, ModelNo, ModelName, Brand, Category, Commercial, ModelVersion, MfgDate, PurchasedDate, Registered, then WarrantyType, Term, Days, Lifetime, Expires, InWarranty, DaysLeft, TotalRows. Registered 0 means nobody registered the machine: its model facts stand and the warranty columns are null, because there is no purchase date to count from. Term is Labor, Parts, Wear parts, Frame, Deck, Motor, Electronics, Console, Brake or Flywheel. Lifetime 1 means it never runs out and Expires is null. InWarranty is 1 or 0 as of today. DaysLeft is negative once a term has run out. WarrantyType is the customer class the terms were written for, such as RES or COM; a model can carry more than one set and nothing on the machine says which applies, so show both and do not pick. No rows means Spirit knows no machine by that number. Error: 51100 no serial given.",
+      "source": {
+        "object": "agent.check_unit",
+        "type": "stored-procedure",
+        "parameters": [
+          {
+            "name": "SerialNo",
+            "description": "Exact 16-digit serial number",
+            "required": true,
+            "default": ""
+          }
+        ]
+      },
+      "graphql": {
+        "enabled": false,
+        "operation": "mutation",
+        "type": {
+          "singular": "CheckUnit",
+          "plural": "CheckUnits"
+        }
+      },
+      "rest": {
+        "enabled": false,
+        "methods": [
+          "post"
+        ]
+      },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [
+            {
+              "action": "execute"
+            }
+          ]
+        }
+      ],
+      "mcp": {
+        "custom-tool": true
+      }
+    },
+    "MyUnit": {
+      "description": "The person's OWN machine, only when they prove it is theirs: pass the serial number AND the phone number or the email it was registered under. On a match it returns the machine, the owner on file, each warranty term, and the machine's newest 20 orders with tracking and what was charged. It returns NO rows when the proof does not match, and also when the serial number cannot be confirmed as theirs for any other reason. Treat no rows as 'no match' and never say or guess why: say you could not pull it up and ask for another phone number or email it could be under; after two tries with no rows, offer to connect the person with a human. Parameters: @SerialNo (REQUIRED, exact), and at least one of @Phone (any common format) and @Email. Returns RowKind, then: on the 'unit' row SerialNo, ModelNo, ModelName, PurchasedDate, CustomerName, Address, City, State, Zip, Phone, Phone2, Email; on 'warranty' rows WarrantyType, Term, Days, Lifetime, Expires, InWarranty, DaysLeft; on 'order' rows OrderNumber, OrderDate, OrderType, Status, ShippedDate, Carrier, TrackingNo, Freight, HandlingFee, Tax, PartsAmount. Errors: 51110 no serial given, 51111 neither a phone nor an email given.",
+      "source": {
+        "object": "agent.my_unit",
+        "type": "stored-procedure",
+        "parameters": [
+          {
+            "name": "SerialNo",
+            "description": "Exact 16-digit serial number",
+            "required": true,
+            "default": ""
+          },
+          {
+            "name": "Phone",
+            "description": "The phone number the machine was registered under in any common format",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "Email",
+            "description": "The email the machine was registered under",
+            "required": false,
+            "default": null
+          }
+        ]
+      },
+      "graphql": {
+        "enabled": false,
+        "operation": "mutation",
+        "type": {
+          "singular": "MyUnit",
+          "plural": "MyUnits"
+        }
+      },
+      "rest": {
+        "enabled": false,
+        "methods": [
+          "post"
+        ]
+      },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [
+            {
+              "action": "execute"
+            }
+          ]
+        }
+      ],
+      "mcp": {
+        "custom-tool": true
+      }
+    },
+    "DealerPrices": {
+      "description": "Dealer and retail prices for parts by part number. Parameters: @PartNos (REQUIRED): the SpNo values from search_parts, comma separated, at most 50. Returns one row per part number asked for: SpNo, Description, RetailPrice, DealerPrice, Found. Found 0 means the catalogue has no part with that number and the other columns are null. Errors: 51130 no part number given, 51131 more than 50 part numbers: ask again in batches of 50 or fewer.",
+      "source": {
+        "object": "agent.dealer_prices",
+        "type": "stored-procedure",
+        "parameters": [
+          {
+            "name": "PartNos",
+            "description": "Part numbers (SpNo) separated by commas; at most 50",
+            "required": true,
+            "default": ""
+          }
+        ]
+      },
+      "graphql": {
+        "enabled": false,
+        "operation": "mutation",
+        "type": {
+          "singular": "DealerPrices",
+          "plural": "DealerPricess"
+        }
+      },
+      "rest": {
+        "enabled": false,
+        "methods": [
+          "post"
+        ]
+      },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [
+            {
+              "action": "execute"
+            }
+          ]
+        }
+      ],
+      "mcp": {
+        "custom-tool": true
+      }
+    },
+    "OrderStatus": {
+      "description": "Where an order is, with NO money and NO owner details: one order by its number, or the orders on one serial number. Parameters: exactly one of @OrderNumber ('ServiceId-OrderId', for example 845435-1) and @SerialNo (exact); @Top, orders on a serial, 1 to 20, default 10, newest first. Returns one row per part line: OrderNumber, OrderDate, OrderType, Status (Open or Closed), ShippedDate, Carrier, TrackingNo, PartNo, PartDesc, Qty, Source (Shipped or Backordered). An order with no part lines still returns one row with the part columns null. Errors: 51120 pass exactly one of @OrderNumber and @SerialNo, not both and not neither; 51121 the order number is not ServiceId-OrderId with a number on each side of the dash: a bare number with no dash is incomplete, and so is one that ends in a dash.",
+      "source": {
+        "object": "agent.order_status",
+        "type": "stored-procedure",
+        "parameters": [
+          {
+            "name": "OrderNumber",
+            "description": "The order number as ServiceId-OrderId such as 845435-1",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "SerialNo",
+            "description": "Exact 16-digit serial number",
+            "required": false,
+            "default": null
+          },
+          {
+            "name": "Top",
+            "description": "Orders on a serial from 1 to 20; default 10",
+            "required": false,
+            "default": null
+          }
+        ]
+      },
+      "graphql": {
+        "enabled": false,
+        "operation": "mutation",
+        "type": {
+          "singular": "OrderStatus",
+          "plural": "OrderStatuss"
+        }
+      },
+      "rest": {
+        "enabled": false,
+        "methods": [
+          "post"
+        ]
+      },
+      "permissions": [
+        {
+          "role": "anonymous",
+          "actions": [
+            {
+              "action": "execute"
+            }
+          ]
+        }
+      ],
+      "mcp": {
+        "custom-tool": true
+      }
+    }
+  },
+  "data-source-files": [
+    "dab-config.sage.json"
+  ]
+}

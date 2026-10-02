@@ -11,7 +11,7 @@ namespace SpiritAI.Tests.Lookup;
 /// </summary>
 /// <remarks>
 /// Every payload here is the shape production answered with, trimmed. A stored procedure wraps its
-/// rows in <c>value.value</c> and <c>read_records</c> wraps them in <c>result.value</c>; getting
+/// rows in <c>value.value</c>, and <c>get_unit</c> is one of them; getting
 /// that wrong reads as a section that is simply empty, which is the failure these tests exist to
 /// make loud.
 /// </remarks>
@@ -64,10 +64,17 @@ public sealed class UnitLookupTests
 
     private const string WarrantyJson = """
     {
-      "entity": "ModelWarranty",
-      "result": { "value": [
-        { "ModelNo": "580888", "Version": 1, "LaborPeriod": 365, "Part2Period": 1000, "Motor": 36500 },
-        { "ModelNo": "580888", "Version": 2, "LaborPeriod": 730, "Part2Period": 1825, "Motor": 36500 }
+      "entity": "GetUnit",
+      "status": "success",
+      "value": { "value": [
+        {
+          "SerialNo": "5808881004036047", "WarrantyType": "RES", "Term": "Labor", "Days": 730,
+          "Lifetime": false, "Expires": "2012-10-22T00:00:00", "InWarranty": false
+        },
+        {
+          "SerialNo": "5808881004036047", "WarrantyType": "RES", "Term": "Motor", "Days": 36500,
+          "Lifetime": true, "Expires": null, "InWarranty": true
+        }
       ] }
     }
     """;
@@ -177,16 +184,20 @@ public sealed class UnitLookupTests
     }
 
     [Fact]
-    public async Task WarrantyCountsForwardFromThePurchaseDateOfTheRightVersion()
+    public async Task WarrantyIsReadOffTheGetUnitRows()
     {
         var unit = await Lookup().ReadUnitAsync(Serial, TestContext.Current.CancellationToken);
 
         var labor = Assert.Single(unit!.Warranty!, term => term.Category == "Labor");
 
-        // Version 2 of this model carries 730 days, not version 1's 365.
         Assert.Equal(730, labor.Days);
         Assert.Equal(new DateTimeOffset(2012, 10, 22, 0, 0, 0, TimeSpan.Zero), labor.ExpiresOn);
         Assert.False(labor.IsCovered);
+
+        var motor = Assert.Single(unit.Warranty!, term => term.Category == "Motor");
+
+        Assert.Null(motor.ExpiresOn);
+        Assert.True(motor.IsCovered);
     }
 
     [Fact]
@@ -402,7 +413,7 @@ public sealed class UnitLookupTests
     [Fact]
     public async Task AToolThatTimesOutIsASectionThatCannotBeDrawnAndTheRestRenders()
     {
-        var lookup = new UnitLookup((toolId, _, _) => toolId == "read_records"
+        var lookup = new UnitLookup((toolId, _, _) => toolId == "get_unit"
             ? throw new TaskCanceledException("The HTTP request timed out.")
             : ValueTask.FromResult(Json(toolId == "search_parts" ? PartsJson : HistoryJson)));
 
@@ -431,7 +442,7 @@ public sealed class UnitLookupTests
     /// <summary>A lookup whose tools answer canned payloads.</summary>
     /// <param name="history">What <c>get_service_history_by_sn</c> answers.</param>
     /// <param name="parts">What <c>search_parts</c> answers.</param>
-    /// <param name="warranty">What <c>read_records</c> answers.</param>
+    /// <param name="warranty">What <c>get_unit</c> answers.</param>
     /// <returns>The lookup under test.</returns>
     private static UnitLookup Lookup(string? history = null, string? parts = null, string? warranty = null)
         => new((toolId, _, _) => ValueTask.FromResult(Json(toolId switch

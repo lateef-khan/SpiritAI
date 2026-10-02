@@ -11,6 +11,9 @@ mod chatwoot
 # Cloudflare Tunnel recipes: `just cloudflared <recipe>`. See cloudflared/README.md.
 mod cloudflared
 
+# Data API Builder, the MCP server over CustService and Sage: `just dab <recipe>`. See dab/README.md.
+mod dab
+
 # The PostgreSQL server Chatwoot and Twenty share: `just postgres <recipe>`. See postgres/README.md.
 mod postgres
 
@@ -29,7 +32,7 @@ default:
 
 # The apps on the company server, in start order. Each is a folder with its own justfile.
 # stack-down stops them in the reverse order, so the database stops last.
-stack_apps := "postgres chatwoot twenty cloudflared"
+stack_apps := "postgres chatwoot twenty dab cloudflared"
 
 # Production: start every app. An app that fails does not stop the others.
 stack-up: (_stack "prod-up")

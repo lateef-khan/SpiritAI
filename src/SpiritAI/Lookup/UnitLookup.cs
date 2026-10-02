@@ -6,17 +6,6 @@ namespace SpiritAI.Lookup;
 /// <summary>
 /// Reads one machine, or one work order, straight from the tools the agent uses.
 /// </summary>
-/// <remarks>
-/// <para>
-/// No model is in the loop. The panel this feeds is fixed, so nothing here has to be decided by
-/// one — and a lookup that cannot invent a value is the whole reason the panel is worth having
-/// beside an agent that can.
-/// </para>
-/// <para>
-/// The tools are called at once and shaped afterwards. One failing does not empty the panel: the
-/// section it fed is named in <see cref="UnitDocument.Unavailable" /> and the rest still render.
-/// </para>
-/// </remarks>
 /// <param name="invoke">How a tool is called.</param>
 public sealed class UnitLookup(ToolInvoker invoke)
 {
@@ -76,14 +65,7 @@ public sealed class UnitLookup(ToolInvoker invoke)
 
         var parts = ReadPartsAsync(serial, cancellationToken);
 
-        var warranty = ReadAsync(
-            "read_records",
-            new()
-            {
-                ["entity"] = "ModelWarranty",
-                ["filter"] = $"ModelNo eq '{modelNo}'",
-            },
-            cancellationToken);
+        var warranty = ReadAsync("get_unit", new() { ["SerialNo"] = serial }, cancellationToken);
 
         await Task.WhenAll(history, parts, warranty).ConfigureAwait(false);
 
@@ -121,7 +103,7 @@ public sealed class UnitLookup(ToolInvoker invoke)
         }
 
         var jobs = conversations?.Select(JobOf).OrderByDescending(job => job.CalledOn).ToList();
-        var covered = WarrantyTerms.Of(terms, header?.ModelVersion, header?.PurchasedOn);
+        var covered = WarrantyTerms.Of(terms);
 
         if (covered is null)
         {
@@ -179,11 +161,6 @@ public sealed class UnitLookup(ToolInvoker invoke)
     }
 
     /// <summary>Reads the whole parts list, a page at a time.</summary>
-    /// <remarks>
-    /// The panel is a screen, not a prompt, so nothing here has to fit a context window: it reads
-    /// until <c>TotalRows</c> says there is no more. A page that fails makes the whole section
-    /// unavailable, because a list that is quietly short reads as a machine with fewer parts.
-    /// </remarks>
     /// <param name="serial">The machine.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
     /// <returns>Every row, or <see langword="null"/> when any page could not be read.</returns>

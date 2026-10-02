@@ -1,17 +1,19 @@
 #!/bin/sh
 # Bring the Machine onto the tailnet, then hand off to the app.
 #
+# Nothing in config/spirit.yaml uses the tailnet any more; Tailscale is still installed and
+# started here, and is removed in a later step.
+#
 # A Fly Machine is a Firecracker microVM, not a shared-kernel container, so a real
-# TUN device works here and no SOCKS proxy is needed: 100.98.168.6 becomes an
-# ordinary route and HttpClient reaches it with no code change. If Tailscale ever
-# fails to bring the interface up on Fly, the fallback is
+# TUN device works here and no SOCKS proxy is needed. If Tailscale ever fails to bring the
+# interface up on Fly, the fallback is
 # `tailscaled --tun=userspace-networking --socks5-server=localhost:1055` plus
 # ALL_PROXY, which also needs a NO_PROXY list for OpenAI, Qdrant and Neon.
 #
 # Horizontal scaling: this runs once per Machine, and every Machine is its own
 # tailnet node. The hostname carries FLY_MACHINE_ID so two Machines never collide
 # (Tailscale would otherwise silently rename the second one to <name>-1), and the
-# tag is what the ACL on the DAB server should grant, rather than a node name that
+# tag is what a tailnet ACL should grant, rather than a node name that
 # changes on every deploy.
 set -e
 
@@ -43,5 +45,28 @@ tailscale up \
 
 echo "tailscale: up as ${TS_HOSTNAME:-spiritai}-${FLY_MACHINE_ID:-local}"
 tailscale status || true
+
+# The agent's shell reaches the two SQL Servers on 127.0.0.1 through Cloudflare Access. Each
+# listener runs in a loop, so a listener that dies comes back instead of leaving the shell with
+# "connection refused" until the Machine restarts.
+if [ -n "${CF_ACCESS_CLIENT_ID}" ] && [ -n "${CF_ACCESS_CLIENT_SECRET}" ]; then
+    export TUNNEL_SERVICE_TOKEN_ID="${CF_ACCESS_CLIENT_ID}"
+    export TUNNEL_SERVICE_TOKEN_SECRET="${CF_ACCESS_CLIENT_SECRET}"
+    for pair in sql-custservice:1433 sql-sage:1434; do
+        name="${pair%%:*}" port="${pair#*:}"
+        (
+            # The entrypoint runs under set -e; without this a listener's non-zero exit ends the loop.
+            set +e
+            while true; do
+                cloudflared access tcp --hostname "${name}.spiritfitnessapps.com" --url "127.0.0.1:${port}"
+                echo "cloudflared: ${name} listener exited; restarting in 5s" >&2
+                sleep 5
+            done
+        ) &
+    done
+    echo "cloudflared: SQL listeners on 127.0.0.1:1433 (CustService) and 127.0.0.1:1434 (Sage)"
+else
+    echo "cloudflared: CF_ACCESS_CLIENT_ID or CF_ACCESS_CLIENT_SECRET is not set; no SQL listeners" >&2
+fi
 
 exec "$@"

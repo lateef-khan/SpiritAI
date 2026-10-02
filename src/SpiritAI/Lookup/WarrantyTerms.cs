@@ -3,64 +3,39 @@ using System.Text.Json;
 namespace SpiritAI.Lookup;
 
 /// <summary>
-/// Turns a model's warranty row into the terms the panel lists.
+/// Turns the warranty rows of <c>get_unit</c> into the terms the panel lists.
 /// </summary>
 internal static class WarrantyTerms
 {
-    /// <summary>Counts each of the model's warranty periods forward from the purchase date.</summary>
-    /// <remarks>
-    /// The periods are held in days, one column per category, and a model carries a row per version.
-    /// A machine with no purchase date still lists what it is entitled to; it just cannot say when
-    /// any of it runs out.
-    /// </remarks>
-    /// <param name="rows">The <c>ModelWarranty</c> rows for this model, or nothing.</param>
-    /// <param name="version">Which revision this serial falls in.</param>
-    /// <param name="purchased">When the machine was bought.</param>
-    /// <returns>The terms, or <see langword="null"/> when the table could not be read.</returns>
-    internal static IReadOnlyList<WarrantyTerm>? Of(
-        IReadOnlyList<JsonElement>? rows,
-        int? version,
-        DateTimeOffset? purchased)
+    /// <summary>Reads each warranty term the database worked out for one machine.</summary>
+    /// <param name="rows">The <c>get_unit</c> rows, or nothing.</param>
+    /// <returns>The terms, or <see langword="null"/> when the tool could not be read.</returns>
+    internal static IReadOnlyList<WarrantyTerm>? Of(IReadOnlyList<JsonElement>? rows)
     {
         if (rows is null)
         {
             return null;
         }
 
-        var row = rows.FirstOrDefault(r => version is null || DabRow.Number(r, "Version") == version);
+        var terms = rows
+            .Where(row => DabRow.Text(row, "Term") is not null && DabRow.Number(row, "Days") is not null)
+            .ToList();
 
-        if (row.ValueKind != JsonValueKind.Object)
-        {
-            row = rows.Count > 0 ? rows[^1] : default;
-        }
-
-        if (row.ValueKind != JsonValueKind.Object)
-        {
-            return [];
-        }
-
-        var today = DateTimeOffset.UtcNow;
+        var typed = terms.Select(row => DabRow.Text(row, "WarrantyType")).Distinct().Count() > 1;
 
         return
         [
-            .. new[]
+            .. terms.Select(row =>
             {
-                ("Labor", "LaborPeriod"),
-                ("Parts", "Part2Period"),
-                ("Wear parts", "Part1Period"),
-                ("Frame", "Part3Period"),
-                ("Deck", "Deck"),
-                ("Motor", "Motor"),
-                ("Electronics", "Electronics"),
-                ("Console", "Console"),
-            }
-            .Select(term => (term.Item1, Days: DabRow.Number(row, term.Item2)))
-            .Where(term => term.Days is > 0)
-            .Select(term =>
-            {
-                var expires = purchased?.AddDays(term.Days!.Value);
+                var term = DabRow.Text(row, "Term")!;
+                var type = DabRow.Text(row, "WarrantyType");
+                var lifetime = DabRow.Flag(row, "Lifetime") is true;
 
-                return new WarrantyTerm(term.Item1, term.Days!.Value, expires, expires is { } end ? end > today : null);
+                return new WarrantyTerm(
+                    typed && type is not null ? $"{term} ({type})" : term,
+                    DabRow.Number(row, "Days")!.Value,
+                    lifetime ? null : DabRow.Moment(row, "Expires"),
+                    DabRow.Flag(row, "InWarranty"));
             }),
         ];
     }
