@@ -45,16 +45,6 @@ RUN dotnet publish src/SpiritAI/SpiritAI.csproj \
 # ------------------------------------------------------------- runtime ----
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 
-# cloudflared opens the two SQL Servers on 127.0.0.1 for the agent's shell, through Cloudflare
-# Access (cloudflared/README.md). Pinned: from 2026.6.0, `access tcp` ignores the service token
-# (cloudflared issue #1673). Re-run probe P1 (docs/superpowers/plans/2026-10-01-dab-on-030.md,
-# Task 1) before changing this version.
-ARG CLOUDFLARED_VERSION=2026.5.1
-RUN curl -fsSL "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64" \
-      -o /usr/local/bin/cloudflared \
- && chmod +x /usr/local/bin/cloudflared \
- && cloudflared --version
-
 # Shell tools the agent can use,
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl ca-certificates gnupg python3 python3-venv unixodbc \
@@ -71,6 +61,16 @@ RUN apt-get update \
       pandas matplotlib reportlab openpyxl pyodbc \
  && rm -rf /var/lib/apt/lists/*
 ENV PATH="/opt/venv/bin:${PATH}"
+
+# cloudflared opens the two SQL Servers on 127.0.0.1 for the agent's shell, through Cloudflare
+# Access (cloudflared/README.md). Pinned: from 2026.6.0, `access tcp` ignores the service token
+# (cloudflared issue #1673). Re-run probe P1 (docs/superpowers/plans/2026-10-01-dab-on-030.md,
+# Task 1) before changing this version.
+ARG CLOUDFLARED_VERSION=2026.5.1
+RUN curl -fsSL "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64" \
+      -o /usr/local/bin/cloudflared \
+ && chmod +x /usr/local/bin/cloudflared \
+ && cloudflared --version
 
 WORKDIR /app
 COPY --from=build /app/publish ./
