@@ -38,11 +38,22 @@ logs:
 validate:
     {{compose}} run --rm --no-deps --entrypoint dotnet dab Microsoft.DataApiBuilder.dll validate --config /App/dab-config.json
 
-# List the MCP tools from inside spirit-edge.
+# List the MCP tools from inside spirit-edge. DAB keeps MCP sessions, so the probe opens one with
+# initialize and sends its Mcp-Session-Id with tools/list.
 probe:
-    docker run --rm --network spirit-edge curlimages/curl:8.10.1 -s http://dab:5000/mcp \
-        -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
-        -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | grep -o '"name":"[a-z_]*"' | sort -u
+    #!/usr/bin/env bash
+    set -euo pipefail
+    docker run --rm -i --network spirit-edge --entrypoint sh curlimages/curl:8.10.1 -s <<'EOF'
+    set -eu
+    u=http://dab:5000/mcp
+    h='-H Content-Type:application/json -H Accept:application/json,text/event-stream'
+    sid=$(curl -s -D - -o /dev/null $h $u -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"1"}}}' \
+        | tr -d '\r' | awk -F': ' 'tolower($1)=="mcp-session-id"{print $2}')
+    [ -n "$sid" ] || { echo "DAB opened no MCP session" >&2; exit 1; }
+    curl -s -o /dev/null $h -H "Mcp-Session-Id: $sid" $u -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+    curl -s $h -H "Mcp-Session-Id: $sid" $u -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+        | grep -o '"name":"[A-Za-z_]*"' | sort -u
+    EOF
 
 # The network the tunnel shares with every app.
 _edge:
