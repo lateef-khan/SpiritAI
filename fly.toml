@@ -12,13 +12,6 @@ ASPNETCORE_HTTP_PORTS = "8080"
 # Required.
 AgentCore__ConfigurationPath = "config/spirit.yaml"
 
-# The Machine id is appended per Machine by docker-entrypoint.sh.
-TS_HOSTNAME = "spiritai"
-# Grant this tag access to the DAB server in the Tailscale ACL. Node names
-# change on every deploy; the tag does not.
-TS_TAGS = "tag:spiritai"
-
-
 Auth__Neon__BaseUrl = "https://ep-late-violet-axh7nydj.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth"
 
 ProxyHeaders__Enabled = "true"

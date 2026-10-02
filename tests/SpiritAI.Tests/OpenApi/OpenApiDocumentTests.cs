@@ -34,7 +34,7 @@ namespace SpiritAI.Tests.OpenApi;
 /// The document is built here rather than by <c>Microsoft.Extensions.ApiDescription.Server</c> at
 /// build time. That tool runs the real <c>Program</c>, and this host's startup reads
 /// <c>config/spirit.yaml</c>, demands <c>OPENAI_API_KEY</c> and <c>Auth:Neon:BaseUrl</c>, and opens
-/// the DAB MCP server over Tailscale. A build machine has none of those, so the document would be
+/// the DAB MCP server. A build machine has none of those, so the document would be
 /// unbuildable in exactly the place it is needed most.
 /// </para>
 /// <para>
