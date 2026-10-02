@@ -25,8 +25,9 @@ Goto__WebhookBaseUrl = "https://chat.spiritfitnessapps.com"
 Goto__ChannelNickname = "spirit-prod"
 CallLog__Enabled = "true"
 
-"Logging__LogLevel__System.Net.Http.HttpClient" = "Warning"
-"Logging__LogLevel__Polly" = "Warning"
+# Log levels live in src/SpiritAI/appsettings.json. docker-entrypoint.sh runs under /bin/sh, which
+# drops an env var with a dot in its name, so Logging__LogLevel__System.Net.Http.HttpClient never
+# reaches the app.
 
 # The Hub (docs/superpowers/specs/2026-09-27-hub-single-sign-in-design.md). Hub__CrmUrl's origin
 # must equal TWENTY_SERVER_URL in secrets/prod.env, and TWENTY_SPIRIT_HUB_ORIGIN must be https://<Hub__Host>.
