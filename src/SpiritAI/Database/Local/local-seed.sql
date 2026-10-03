@@ -1,5 +1,5 @@
--- Made-up users for the throwaway database only, one per access group. Never run this on Neon.
--- Their roles come from the seed script, pointed at the local database.
+-- Made-up users for the throwaway database only, one per old access group. Never run this on Neon.
+-- Their roles come from local-roles.sql.
 INSERT INTO neon_auth."user" (id, name, email, "emailVerified") VALUES
     ('00000000-0000-4000-8000-000000000001', 'Local Guest',                   'guest@local.test',                   true),
     ('00000000-0000-4000-8000-000000000002', 'Local Dealer',                  'dealer@local.test',                  true),

@@ -17,11 +17,12 @@ public sealed class CrmUsers(HttpClient http, IOptions<TwentyOptions> twenty, IO
     /// <exception cref="CrmUnavailableException">
     /// Twenty could not be reached or timed out, answered with anything other than success or with
     /// a success that is not the fork's <c>{"id"}</c> (a sign-in page in front of it), or
-    /// <see cref="TwentyOptions.BaseUrl"/> is empty — which would otherwise fail as a relative URI.
+    /// <see cref="TwentyOptions.BaseUrl"/> is empty, which the message says apart.
     /// </exception>
     public async Task<string> CreateUserAsync(string name, string email, CancellationToken cancellationToken)
     {
         var space = name.IndexOf(' ', StringComparison.Ordinal);
+        
         var body = new JsonObject
         {
             ["email"] = email,
@@ -29,22 +30,7 @@ public sealed class CrmUsers(HttpClient http, IOptions<TwentyOptions> twenty, IO
             ["lastName"] = space < 0 ? string.Empty : name[(space + 1)..],
         };
 
-        HttpResponseMessage response;
-        try
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Post, $"{twenty.Value.BaseUrl.TrimEnd('/')}/auth/spirit/users")
-            {
-                Content = JsonContent.Create(body),
-            };
-            request.Headers.Authorization = new("Bearer", twenty.Value.HubSecret);
-
-            response = await http.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException
-            || (ex is TaskCanceledException && !cancellationToken.IsCancellationRequested))
-        {
-            throw new CrmUnavailableException(ex);
-        }
+        var response = await SendAsync(HttpMethod.Post, "/auth/spirit/users", body, cancellationToken).ConfigureAwait(false);
 
         using (response)
         {
@@ -67,6 +53,51 @@ public sealed class CrmUsers(HttpClient http, IOptions<TwentyOptions> twenty, IO
         }
     }
 
+    /// <summary>Removes the member from the workspace. Their records keep existing with no owner.</summary>
+    /// <exception cref="CrmRefusedException">The member is the workspace's last admin.</exception>
+    /// <exception cref="CrmUnavailableException">Twenty could not be reached or answered with an error.</exception>
+    public async Task DeleteUserAsync(string twentyUserId, CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(HttpMethod.Delete, $"/auth/spirit/users/{Uri.EscapeDataString(twentyUserId)}", body: null, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (response.StatusCode is System.Net.HttpStatusCode.Conflict)
+        {
+            throw new CrmRefusedException();
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new CrmUnavailableException();
+        }
+    }
+
     public string SignInUrl(string twentyUserId)
         => $"{hub.Value.CrmUrl.TrimEnd('/')}/auth/spirit?note={Uri.EscapeDataString(HubNote.ForCrm(twentyUserId, twenty.Value.HubSecret, clock))}";
+
+    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, JsonObject? body, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(twenty.Value.BaseUrl))
+        {
+            throw CrmUnavailableException.NotSetUp();
+        }
+
+        try
+        {
+            using var request = new HttpRequestMessage(method, $"{twenty.Value.BaseUrl.TrimEnd('/')}{path}");
+            if (body is not null)
+            {
+                request.Content = JsonContent.Create(body);
+            }
+
+            request.Headers.Authorization = new("Bearer", twenty.Value.HubSecret);
+
+            return await http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException
+            || (ex is TaskCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            throw new CrmUnavailableException(ex);
+        }
+    }
 }

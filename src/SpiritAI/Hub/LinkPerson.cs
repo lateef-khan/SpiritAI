@@ -30,7 +30,7 @@ public sealed class LinkPerson(SpiritDbContext db, DeskUsers deskUsers, CrmUsers
             _ => throw new ArgumentOutOfRangeException(nameof(app), app, "unknown Hub app."),
         };
 
-    /// <summary>Desk create order (hub spec, section 5.3): resumes at whichever step did not finish.</summary>
+    /// <summary>Desk create order: resumes at whichever step did not finish.</summary>
     private async Task<LinkState> DeskAsync(Guid personId, CancellationToken cancellationToken)
     {
         var link = await db.LinkedUsers
@@ -44,6 +44,36 @@ public sealed class LinkPerson(SpiritDbContext db, DeskUsers deskUsers, CrmUsers
 
         link ??= await CreateDeskUserAsync(personId, cancellationToken).ConfigureAwait(false);
 
+        await FinishDeskAsync(link, cancellationToken).ConfigureAwait(false);
+
+        return LinkState.Ready;
+    }
+
+    /// <summary>
+    /// Puts a Person whose Desk link already exists back in the account and inbox. Unlike
+    /// <see cref="RunAsync"/> it never makes a Chatwoot user or a link, so a link dropped meanwhile stays dropped.
+    /// </summary>
+    /// <param name="personId">The Person's id in <c>neon_auth."user"</c>.</param>
+    /// <param name="cancellationToken">Cancels the wait.</param>
+    /// <returns><see langword="false"/> when the Person has no Desk link.</returns>
+    public async Task<bool> RejoinDeskAsync(Guid personId, CancellationToken cancellationToken)
+    {
+        var link = await db.LinkedUsers
+            .SingleOrDefaultAsync(l => l.UserId == personId && l.App == HubApps.Desk, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (link is null)
+        {
+            return false;
+        }
+
+        await FinishDeskAsync(link, cancellationToken).ConfigureAwait(false);
+
+        return true;
+    }
+
+    private async Task FinishDeskAsync(LinkedUser link, CancellationToken cancellationToken)
+    {
         var externalId = int.Parse(link.ExternalId);
         if (!await deskUsers.IsInAccountAsync(externalId, cancellationToken).ConfigureAwait(false))
         {
@@ -54,8 +84,6 @@ public sealed class LinkPerson(SpiritDbContext db, DeskUsers deskUsers, CrmUsers
 
         link.Ready = true;
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        return LinkState.Ready;
     }
 
     /// <summary>

@@ -21,6 +21,7 @@
     <None Include="Chatwoot/Payloads/*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="GoTo/Payloads/*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Hub/Payloads/*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Neon/Payloads/*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/SpiritAI/Database/Local/neon-auth.sql" Link="Database/neon-auth.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

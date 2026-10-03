@@ -27,6 +27,36 @@ public sealed class CrmUsersTests
     }
 
     [Fact]
+    public async Task DeletingAUser_AsksTheFork_WithTheSecret()
+    {
+        var wire = new ReplayingHandler(payload: null, HttpStatusCode.NoContent) { Folder = "Hub" };
+
+        await Users(wire).DeleteUserAsync("b3b3aae7-1714-4fd6-9002-093eab25e3bd", Cancel);
+
+        var request = Assert.Single(wire.Requests);
+        Assert.Equal("DELETE", request.Method);
+        Assert.Equal("http://twenty.test/auth/spirit/users/b3b3aae7-1714-4fd6-9002-093eab25e3bd", request.Url);
+        Assert.Equal("Bearer hub-secret", request.Authorization);
+    }
+
+    [Fact]
+    public async Task TheLastAdmin_IsCrmRefused()
+    {
+        var wire = new ReplayingHandler(payload: null, HttpStatusCode.Conflict) { Folder = "Hub" };
+
+        var refused = await Assert.ThrowsAsync<CrmRefusedException>(() => Users(wire).DeleteUserAsync("u1", Cancel));
+        Assert.Equal("CRM will not remove its last admin. Make another CRM admin first.", refused.Message);
+    }
+
+    [Fact]
+    public async Task AFailedDelete_IsCrmUnavailable()
+    {
+        var wire = new ReplayingHandler(payload: null, HttpStatusCode.BadGateway) { Folder = "Hub" };
+
+        await Assert.ThrowsAsync<CrmUnavailableException>(() => Users(wire).DeleteUserAsync("u1", Cancel));
+    }
+
+    [Fact]
     public void TheSignInUrl_GoesToTheForkOnTheCrmAddress_WithANote()
     {
         var url = new Uri(Users(new ReplayingHandler(payload: null)).SignInUrl("3b7c1d52"));
@@ -57,7 +87,7 @@ public sealed class CrmUsersTests
 
         var refused = await Assert.ThrowsAsync<CrmUnavailableException>(
             () => Users(wire).CreateUserAsync("Ann Lee", "ann.lee@spiritfitness.test", Cancel));
-        Assert.Equal("CRM is not set up yet.", refused.Message);
+        Assert.Equal("CRM did not answer.", refused.Message);
     }
 
     [Fact]
@@ -81,7 +111,7 @@ public sealed class CrmUsersTests
 
         var refused = await Assert.ThrowsAsync<CrmUnavailableException>(
             () => Users(wire).CreateUserAsync("Ann Lee", "ann.lee@spiritfitness.test", Cancel));
-        Assert.Equal("CRM is not set up yet.", refused.Message);
+        Assert.Equal("CRM did not answer.", refused.Message);
     }
 
     [Fact]
@@ -95,7 +125,7 @@ public sealed class CrmUsersTests
 
         var refused = await Assert.ThrowsAsync<CrmUnavailableException>(
             () => users.CreateUserAsync("Ann Lee", "ann.lee@spiritfitness.test", Cancel));
-        Assert.Equal("CRM is not set up yet.", refused.Message);
+        Assert.Equal("CRM did not answer.", refused.Message);
     }
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;

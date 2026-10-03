@@ -35,6 +35,10 @@ export default defineConfig({
     environment: "happy-dom",
     include: ["src/**/*.test.{ts,tsx}"],
     setupFiles: ["src/test/setup.ts"],
+    // The Hub's iframes point at made-up hosts; loading them would only print network errors.
+    environmentOptions: {
+      happyDOM: { settings: { navigation: { disableChildFrameNavigation: true } } },
+    },
     env: {
       VITE_NEON_AUTH_URL: "https://auth.invalid/neondb/auth",
     },

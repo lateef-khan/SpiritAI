@@ -9,16 +9,20 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
+using SpiritAI.Access;
 using SpiritAI.Chatwoot;
 using SpiritAI.Database;
 using SpiritAI.Hosting;
 using SpiritAI.Hub;
 using SpiritAI.Lookup;
+using SpiritAI.Neon;
 using SpiritAI.PublicChat;
+using SpiritAI.Settings;
 using SpiritAI.Threads;
 using SpiritAI.Twenty;
 
@@ -51,6 +55,7 @@ public sealed class OpenApiDocumentTests
     /// <summary>The operations the browser expects to find a function for.</summary>
     private static readonly string[] Expected =
     [
+        "getMe",
         "listThreads",
         "createThread",
         "getThread",
@@ -63,7 +68,18 @@ public sealed class OpenApiDocumentTests
         "listHubApps",
         "openHubApp",
         "listPeople",
+        "listPermissions",
+        "listRoles",
+        "createRole",
+        "updateRole",
+        "deleteRole",
         "linkPerson",
+        "unlinkPerson",
+        "addPerson",
+        "setPersonRoles",
+        "banPerson",
+        "unbanPerson",
+        "deletePerson",
     ];
 
     /// <summary>
@@ -184,9 +200,21 @@ public sealed class OpenApiDocumentTests
                     services.AddSingleton(Options.Create(new TwentyOptions()));
                     services.AddSingleton(Options.Create(new ChatwootOptions()));
                     services.AddSingleton(TimeProvider.System);
+                    services.AddLogging();
                     services.AddHttpClient<DeskUsers>();
                     services.AddHttpClient<CrmUsers>();
                     services.AddScoped<LinkPerson>();
+                    services.AddScoped<People>();
+                    services.AddScoped<Roles>();
+                    services.AddScoped<PersonRemoval>();
+                    services.AddSingleton(Options.Create(new NeonOptions()));
+                    services.AddHttpClient<NeonUsers>();
+                    services.AddScoped<PersonAdding>();
+                    services.AddScoped<AccessWriter>();
+                    services.AddScoped<BanDesk>();
+                    services.AddSingleton<AccessCache>();
+                    services.AddSingleton<HybridCache>(PassThroughHybridCache.Instance);
+                    services.AddScoped<IAccessResolver>(_ => null!);
                     services.AddDbContext<SpiritDbContext>(options =>
                         options.UseSpiritNpgsql("Host=localhost;Database=openapi-doc-gen;Username=x;Password=x"));
                 })
@@ -195,6 +223,7 @@ public sealed class OpenApiDocumentTests
                     app.UseRouting();
                     app.UseEndpoints(endpoints =>
                     {
+                        endpoints.MapMe();
                         endpoints.MapThreads();
                         endpoints.MapLookup();
                         endpoints.MapWidgetSettings();

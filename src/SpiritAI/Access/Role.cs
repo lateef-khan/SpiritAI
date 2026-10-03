@@ -1,13 +1,18 @@
 namespace SpiritAI.Access;
 
-/// <summary>A job role from the access sheet, and the access group it grants.</summary>
+/// <summary>A named set of permissions that people are given.</summary>
 public sealed class Role
 {
-    /// <summary>The role's name, as the sheet spells it.</summary>
+    public Guid Id { get; set; }
+
+    /// <summary>Unique without regard to case.</summary>
     public required string Name { get; set; }
 
+    public string? Description { get; set; }
+
     /// <summary>
-    /// The <see cref="AccessGroup"/> name, or <see langword="null"/> when the role gives no agent.
+    /// <see langword="true"/> for <see cref="AdminRole"/> alone. It holds every permission in
+    /// <see cref="Permissions.All"/>, none of them stored, and cannot be renamed, edited or deleted.
     /// </summary>
-    public string? AccessGroup { get; set; }
+    public bool BuiltIn { get; set; }
 }

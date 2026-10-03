@@ -69,12 +69,12 @@ public static class LookupEndpointRouteBuilderExtensions
         endpoints.MapGet(UnitPattern, UnitAsync)
             .WithName("getUnit")
             .WithTags("Lookup")
-            .RequireAuthorization(AccessPolicies.Staff);
+            .RequirePermission(Permission.LookupUnits);
 
         endpoints.MapGet(OrderPattern, OrderAsync)
             .WithName("getOrder")
             .WithTags("Lookup")
-            .RequireAuthorization(AccessPolicies.Staff);
+            .RequirePermission(Permission.LookupOrders);
 
         return endpoints;
     }

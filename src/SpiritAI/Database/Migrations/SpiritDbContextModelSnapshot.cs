@@ -38,22 +38,70 @@ namespace SpiritAI.Database.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SpiritAI.Access.PersonBan", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTimeOffset>("BannedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("banned_at");
+
+                    b.Property<Guid?>("BannedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("banned_by");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("person_ban", "spirit");
+                });
+
             modelBuilder.Entity("SpiritAI.Access.Role", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("BuiltIn")
+                        .HasColumnType("boolean")
+                        .HasColumnName("built_in");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
                     b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("name");
 
-                    b.Property<string>("AccessGroup")
+                    b.HasKey("Id");
+
+                    b.HasIndex("BuiltIn")
+                        .IsUnique()
+                        .HasFilter("built_in");
+
+                    b.ToTable("role", "spirit");
+                });
+
+            modelBuilder.Entity("SpiritAI.Access.RolePermission", b =>
+                {
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
+
+                    b.Property<string>("Key")
                         .HasColumnType("text")
-                        .HasColumnName("access_group");
+                        .HasColumnName("permission");
 
-                    b.HasKey("Name");
+                    b.HasKey("RoleId", "Key");
 
-                    b.ToTable("role", "spirit", t =>
-                        {
-                            t.HasCheckConstraint("role_access_group_check", "access_group IN ('Guest', 'Dealer', 'TechService', 'InsideSales', 'InsideSalesSupervisor', 'TechServiceManager', 'InsideSalesManager', 'Admin')");
-                        });
+                    b.ToTable("role_permission", "spirit");
                 });
 
             modelBuilder.Entity("SpiritAI.Access.UserRole", b =>
@@ -62,13 +110,13 @@ namespace SpiritAI.Database.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.Property<string>("Role")
-                        .HasColumnType("text")
-                        .HasColumnName("role");
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
 
-                    b.HasKey("UserId", "Role");
+                    b.HasKey("UserId", "RoleId");
 
-                    b.HasIndex("Role");
+                    b.HasIndex("RoleId");
 
                     b.ToTable("user_role", "spirit");
                 });
@@ -105,12 +153,30 @@ namespace SpiritAI.Database.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SpiritAI.Access.PersonBan", b =>
+                {
+                    b.HasOne("SpiritAI.Access.NeonUserStub", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SpiritAI.Access.RolePermission", b =>
+                {
+                    b.HasOne("SpiritAI.Access.Role", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SpiritAI.Access.UserRole", b =>
                 {
                     b.HasOne("SpiritAI.Access.Role", null)
                         .WithMany()
-                        .HasForeignKey("Role")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("SpiritAI.Access.NeonUserStub", null)

@@ -46,6 +46,20 @@ public sealed class DeskUsersTests
     }
 
     [Fact]
+    public async Task LeavingTheAccount_DeletesTheAccountUser_WithThePlatformToken()
+    {
+        var wire = new ReplayingHandler(payload: null) { Folder = "Hub" };
+
+        await Users(wire).LeaveAccountAsync(7, Cancel);
+
+        var request = Assert.Single(wire.Requests);
+        Assert.Equal("DELETE", request.Method);
+        Assert.Equal("http://chatwoot.test/platform/api/v1/accounts/2/account_users", request.Url);
+        Assert.Equal("""{"user_id":7}""", request.Body);
+        Assert.Equal("platform-token", request.Token);
+    }
+
+    [Fact]
     public async Task JoiningTheAccount_AsksForTheAgentRole()
     {
         var wire = new ReplayingHandler("account_user_created") { Folder = "Hub" };

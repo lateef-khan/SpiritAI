@@ -47,7 +47,7 @@ public static class HubEndpoints
             .WithTags("Hub")
             .Produces(StatusCodes.Status401Unauthorized);
 
-    /// <summary>The tiles this caller's group and links earn them.</summary>
+    /// <summary>The tiles this caller earns: Chat and Settings from their permissions, Desk and CRM from a ready link alone.</summary>
     private static async Task<IResult> ListAsync(
         HttpContext http, IOptions<HubOptions> hub, SpiritDbContext db, CancellationToken cancellationToken)
     {
@@ -56,13 +56,7 @@ public static class HubEndpoints
             return TypedResults.Unauthorized();
         }
 
-        var groups = AccessGroups.Of(http.User);
-
-        // No group at all means no route this Person could reach would answer anyway.
-        if (groups.Count == 0)
-        {
-            return TypedResults.Ok(new HubAppList([]));
-        }
+        var held = Permissions.Of(http.User);
 
         var readyApps = await db.LinkedUsers
             .Where(link => link.UserId == userId && link.Ready)
@@ -70,7 +64,12 @@ public static class HubEndpoints
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        List<HubTile> tiles = [new("chat", "Spirit AI", "/chat/")];
+        List<HubTile> tiles = [];
+
+        if (Permissions.AgentOf(held) is not null)
+        {
+            tiles.Add(new HubTile("chat", "Spirit AI", "/chat/"));
+        }
 
         if (readyApps.Contains(HubApps.Desk))
         {
@@ -82,7 +81,7 @@ public static class HubEndpoints
             tiles.Add(new HubTile("crm", "CRM", $"{hub.Value.CrmUrl.TrimEnd('/')}/"));
         }
 
-        if (AccessGroups.Highest(groups) == AccessGroup.Admin)
+        if (held.Contains(Permission.SettingsPeople) || held.Contains(Permission.SettingsRoles))
         {
             tiles.Add(new HubTile("settings", "Settings", "/chat/settings.html"));
         }
@@ -105,13 +104,6 @@ public static class HubEndpoints
         }
 
         if (app != HubApps.Desk && app != HubApps.Crm)
-        {
-            return TypedResults.NotFound();
-        }
-
-        // A Person with no access group could not reach a link's tile in the first place (Ruling
-        // R6): losing every role must end access here too, before any lookup runs.
-        if (AccessGroups.Of(http.User).Count == 0)
         {
             return TypedResults.NotFound();
         }

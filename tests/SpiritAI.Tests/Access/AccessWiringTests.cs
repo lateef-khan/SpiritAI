@@ -27,10 +27,9 @@ namespace SpiritAI.Tests.Access;
 /// </summary>
 public sealed class AccessWiringTests
 {
-    private const string StaffRoute = "/v1/staff-only";
     private const string ChatRoute = "/v1/chat/responses";
 
-    /// <summary>A document that declares every entry a group runs, so the start-up check passes.</summary>
+    /// <summary>A document that declares every entry a chat agent runs, so the start-up check passes.</summary>
     private const string Document = """
         apiVersion: agentcore/v1
         agents:
@@ -44,42 +43,50 @@ public sealed class AccessWiringTests
           admin: { agent: spirit }
         """;
 
+    public static TheoryData<Permission> Every => [.. Permissions.All.Select(info => info.Key)];
+
     [Theory]
-    [InlineData("/v1/units/1234567890123456")]
-    [InlineData("/v1/orders/12345")]
-    public async Task AGuest_IsRefusedTheLookup(string route)
+    [MemberData(nameof(Every))]
+    public async Task EachPermission_OpensItsOwnGate_AndNoOther(Permission held)
     {
-        await using var world = await World.StartAsync(AccessGroup.Guest);
+        await using var world = await World.StartAsync(held);
+
+        foreach (var info in Permissions.All)
+        {
+            var response = await world.GetAsync($"/v1/gate/{Permissions.KeyOf(info.Key)}");
+            Assert.Equal(info.Key == held ? HttpStatusCode.OK : HttpStatusCode.Forbidden, response.StatusCode);
+        }
+    }
+
+    [Theory]
+    [InlineData("/v1/units/1234567890123456", Permission.LookupOrders)]
+    [InlineData("/v1/orders/12345", Permission.LookupUnits)]
+    public async Task EachLookup_IsRefusedWithoutItsOwnPermission(string route, Permission other)
+    {
+        await using var world = await World.StartAsync(Permission.ChatAgentStaff, other);
 
         var response = await world.GetAsync(route);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    [Fact]
-    public async Task TechService_IsLetIntoAStaffRoute()
+    [Theory]
+    [InlineData(new[] { Permission.ChatAgentDealer }, "dealer")]
+    [InlineData(new[] { Permission.ChatAgentGuest }, "main")]
+    [InlineData(new[] { Permission.ChatAgentDealer, Permission.ChatAgentManager }, "manager")]
+    public async Task TheStrongestAgentHeld_PicksTheEntry(Permission[] held, string entry)
     {
-        await using var world = await World.StartAsync(AccessGroup.TechService);
-
-        var response = await world.GetAsync(StaffRoute);
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task ADealer_RunsTheDealerEntry()
-    {
-        await using var world = await World.StartAsync(AccessGroup.Dealer);
+        await using var world = await World.StartAsync(held);
 
         var response = await world.GetAsync(ChatRoute);
 
-        Assert.Equal("dealer", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(entry, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
-    public async Task ACallerWithNoGroup_RunsNoEntry()
+    public async Task ACallerWithNoAgent_RunsNoEntry()
     {
-        await using var world = await World.StartAsync();
+        await using var world = await World.StartAsync(Permission.LookupUnits);
 
         var response = await world.GetAsync(ChatRoute);
 
@@ -90,7 +97,7 @@ public sealed class AccessWiringTests
     {
         private readonly HttpClient _client = app.GetTestClient();
 
-        public static async Task<World> StartAsync(params AccessGroup[] groups)
+        public static async Task<World> StartAsync(params Permission[] held)
         {
             var kit = new NeonAuthTestKit();
             var builder = WebApplication.CreateSlimBuilder();
@@ -107,7 +114,7 @@ public sealed class AccessWiringTests
                     .Build());
             builder.Services.AddSingleton(kit.Validator());
             builder.Services.AddAccess();
-            builder.Services.AddScoped<IUserAccess>(_ => new FixedAccess(groups));
+            builder.Services.AddScoped<IAccessResolver>(_ => new FixedAccess(held));
 
             // The lookup's own reader, never reached: every lookup test here is refused first.
             builder.Services.AddSingleton(provider => new CachedUnitLookup(
@@ -119,11 +126,15 @@ public sealed class AccessWiringTests
             app.UseNeonAuthOnApi();
             app.UseAuthorization();
 
-            app.MapGet(StaffRoute, () => "ok").RequireAuthorization(AccessPolicies.Staff);
+            foreach (var info in Permissions.All)
+            {
+                app.MapGet($"/v1/gate/{Permissions.KeyOf(info.Key)}", () => "ok").RequirePermission(info.Key);
+            }
+
             app.MapLookup();
             app.MapGet(ChatRoute, async (HttpContext http) =>
                 await AgentCoreEntries.ResolveAsync(http, http.RequestAborted) ?? "refused")
-                .SelectEntry<GroupEntrySelector>();
+                .SelectEntry<AgentEntrySelector>();
 
             await app.StartAsync(TestContext.Current.CancellationToken);
 
@@ -142,11 +153,5 @@ public sealed class AccessWiringTests
             _client.Dispose();
             await app.DisposeAsync();
         }
-    }
-
-    private sealed class FixedAccess(AccessGroup[] groups) : IUserAccess
-    {
-        public ValueTask<IReadOnlyList<AccessGroup>> GroupsOfAsync(Guid userId, CancellationToken cancellationToken = default)
-            => ValueTask.FromResult<IReadOnlyList<AccessGroup>>(groups);
     }
 }

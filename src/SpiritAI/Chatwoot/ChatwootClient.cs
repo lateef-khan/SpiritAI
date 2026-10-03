@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace SpiritAI.Chatwoot;
 
 /// <summary>
-/// The Chatwoot calls Spirit makes.
+/// The Chatwoot client.
 /// </summary>
 public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> options)
 {
@@ -89,7 +89,7 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
 
     /// <summary>Gives a conversation to one member of staff, as the bot.</summary>
     /// <param name="conversationId">The conversation's display id.</param>
-    /// <param name="agentId">The agent, from <see cref="ListAgentsAsync"/>.</param>
+    /// <param name="agentId">The agent's Chatwoot user id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public async Task AssignAgentAsync(int conversationId, int agentId, CancellationToken cancellationToken)
     {
@@ -123,19 +123,6 @@ public sealed class ChatwootClient(HttpClient http, IOptions<ChatwootOptions> op
             f.GetProperty("attribute_display_name").GetString() ?? string.Empty,
             f.GetProperty("attribute_display_type").GetString() ?? string.Empty,
             f.GetProperty("attribute_description").GetString() ?? string.Empty))];
-    }
-
-    /// <summary>Every member of staff in the account, as the service user: the bot token cannot list them.</summary>
-    /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>Each agent's id, name, and email.</returns>
-    public async Task<IReadOnlyList<ChatwootAgent>> ListAgentsAsync(CancellationToken cancellationToken)
-    {
-        var agents = await api.GetAsServiceAsync($"{Account}/agents", cancellationToken).ConfigureAwait(false);
-
-        return [.. agents.EnumerateArray().Select(a => new ChatwootAgent(
-            a.GetProperty("id").GetInt32(),
-            a.GetProperty("name").GetString() ?? string.Empty,
-            a.GetProperty("email").GetString() ?? string.Empty))];
     }
 
     /// <summary>

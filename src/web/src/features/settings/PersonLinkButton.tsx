@@ -1,38 +1,38 @@
-/**
- * One app cell in the People table: a "Linked" badge once the app has a ready user, otherwise the
- * button that creates or resumes one.
- *
- * A `pendingRef` guards the call rather than only `mutation.isPending`: two clicks fired back to
- * back, before React has had a chance to re-render the disabled button, must still reach the
- * server once.
- */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { LoaderIcon } from "lucide-react";
+import { XIcon } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { linkPerson } from "@/api/sdk.gen";
-import type { LinkState } from "@/api/types.gen";
+import type { LinkState, PersonRow } from "@/api/types.gen";
+import { PendingButton } from "@/components/PendingButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { HostRefusedError } from "@/lib/apiClient";
 
 import { PEOPLE_QUERY_KEY } from "./peopleQueryKey";
+import { UnlinkDialog } from "./UnlinkDialog";
 
 export function PersonLinkButton({
-  personId,
+  person,
   app,
   state,
+  disabled = false,
+  isYou = false,
 }: {
-  personId: string;
+  person: PersonRow;
   app: "desk" | "crm";
   state: LinkState;
+  disabled?: boolean;
+  isYou?: boolean;
 }) {
   const queryClient = useQueryClient();
   const pendingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  const [unlinking, setUnlinking] = useState(false);
 
   const mutation = useMutation({
-    mutationFn: () => linkPerson({ throwOnError: true, path: { id: personId, app } }),
+    mutationFn: () => linkPerson({ throwOnError: true, path: { id: person.id, app } }),
     onSuccess: () => {
       setError(null);
       void queryClient.invalidateQueries({ queryKey: PEOPLE_QUERY_KEY });
@@ -47,7 +47,28 @@ export function PersonLinkButton({
   });
 
   if (state === "ready") {
-    return <Badge variant="secondary">Linked</Badge>;
+    return (
+      <div className="flex items-center gap-1">
+        <Badge variant="secondary">Linked</Badge>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              disabled={disabled || isYou}
+              aria-label={app === "desk" ? "Unlink Desk" : "Unlink CRM"}
+              onClick={() => setUnlinking(true)}
+            >
+              <XIcon />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Unlink</TooltipContent>
+        </Tooltip>
+        {unlinking ? (
+          <UnlinkDialog person={person} app={app} open onOpenChange={setUnlinking} />
+        ) : null}
+      </div>
+    );
   }
 
   function handleClick() {
@@ -63,10 +84,15 @@ export function PersonLinkButton({
 
   return (
     <div className="flex flex-col items-start gap-1">
-      <Button size="sm" variant="outline" disabled={mutation.isPending} onClick={handleClick}>
-        {mutation.isPending ? <LoaderIcon className="animate-spin" /> : null}
+      <PendingButton
+        size="sm"
+        variant="outline"
+        pending={mutation.isPending}
+        disabled={disabled}
+        onClick={handleClick}
+      >
         {state === "unfinished" ? "Finish" : "Create"}
-      </Button>
+      </PendingButton>
       {error ? (
         <p role="alert" className="text-destructive text-xs">
           {error}

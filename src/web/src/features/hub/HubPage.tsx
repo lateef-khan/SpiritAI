@@ -24,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 
 import { useSession } from "../auth/authClient";
+import { useMe } from "../auth/useMe";
 import { AppIcon } from "./HubAppIcon";
 import { HubDrawer } from "./HubDrawer";
 import { HubFrame } from "./HubFrame";
@@ -32,6 +33,7 @@ import { useHubFrames } from "./useHubFrames";
 
 export function HubPage() {
   const hub = useHubFrames();
+  const me = useMe();
   const currentTile = hub.tiles.find((tile) => tile.id === hub.current) ?? null;
   const drawerOpen = hub.current === null;
 
@@ -46,39 +48,55 @@ export function HubPage() {
         />
 
         <main className="relative min-h-0 flex-1">
-          {hub.tiles
-            .filter((tile) => hub.opened.has(tile.id))
-            .map((tile) => (
-              <HubFrame
-                key={tile.id}
-                name={tile.name}
-                src={hub.frameSrc[tile.id]}
-                active={hub.current === tile.id}
-                loaded={hub.firstLoaded.has(tile.id)}
-                onLoad={() => hub.markLoaded(tile.id)}
-                failed={isHubAppId(tile.id) && hub.failed.has(tile.id)}
-                onRetry={() => {
-                  if (isHubAppId(tile.id)) hub.retry(tile.id);
-                }}
-              />
-            ))}
+          {me.data?.banned ? (
+            <AccessRemoved onSignOut={hub.signOut} />
+          ) : (
+            <>
+              {hub.tiles
+                .filter((tile) => hub.opened.has(tile.id))
+                .map((tile) => (
+                  <HubFrame
+                    key={tile.id}
+                    name={tile.name}
+                    src={hub.frameSrc[tile.id]}
+                    active={hub.current === tile.id}
+                    loaded={hub.firstLoaded.has(tile.id)}
+                    onLoad={() => hub.markLoaded(tile.id)}
+                    failed={isHubAppId(tile.id) && hub.failed.has(tile.id)}
+                    onRetry={() => {
+                      if (isHubAppId(tile.id)) hub.retry(tile.id);
+                    }}
+                  />
+                ))}
 
-          {drawerOpen ? (
-            hub.loadFailed ? (
-              <HubLoadError onRetry={hub.retryLoadingApps} />
-            ) : (
-              <HubDrawer
-                tiles={hub.tiles}
-                opened={hub.opened}
-                onOpenTile={hub.openTile}
-                showDeskHint={hub.showDeskHint}
-                onDismissDeskHint={hub.dismissDeskHint}
-              />
-            )
-          ) : null}
+              {drawerOpen ? (
+                hub.loadFailed ? (
+                  <HubLoadError onRetry={hub.retryLoadingApps} />
+                ) : (
+                  <HubDrawer
+                    tiles={hub.tiles}
+                    opened={hub.opened}
+                    onOpenTile={hub.openTile}
+                    showDeskHint={hub.showDeskHint}
+                    onDismissDeskHint={hub.dismissDeskHint}
+                  />
+                )
+              ) : null}
+            </>
+          )}
         </main>
       </div>
     </TooltipProvider>
+  );
+}
+
+function AccessRemoved({ onSignOut }: { onSignOut: () => void }) {
+  return (
+    <section className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+      <p className="font-medium">Your access has been removed.</p>
+      <p className="text-sm text-muted-foreground">Ask a Spirit admin if this is a mistake.</p>
+      <Button onClick={onSignOut}>Sign out</Button>
+    </section>
   );
 }
 

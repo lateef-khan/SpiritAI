@@ -89,9 +89,7 @@ public static class NeonAuthApplicationBuilderExtensions
 
         app.Use(async (context, next) =>
         {
-            // Open wins over protected, so one route may be carved out of a guarded prefix.
-            if (Matches(context.Request.Path, options.OpenPathPrefixes)
-                || !Matches(context.Request.Path, options.ProtectedPathPrefixes))
+            if (!IsGuarded(context.Request.Path, options))
             {
                 await next().ConfigureAwait(false);
                 return;
@@ -111,6 +109,10 @@ public static class NeonAuthApplicationBuilderExtensions
 
         return app;
     }
+
+    /// <summary>Whether <paramref name="path"/> needs a valid token. Open wins over protected, so one route may be carved out of a guarded prefix.</summary>
+    internal static bool IsGuarded(PathString path, NeonAuthOptions options)
+        => !Matches(path, options.OpenPathPrefixes) && Matches(path, options.ProtectedPathPrefixes);
 
     private static bool Matches(PathString path, string[] prefixes)
     {
