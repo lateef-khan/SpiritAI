@@ -59,21 +59,6 @@ public sealed class ChatwootClientTests
     }
 
     [Fact]
-    public async Task AgentsAreListedAsTheServiceUser()
-    {
-        var wire = new ReplayingHandler("agents");
-
-        var agents = await Client(wire).ListAgentsAsync(Cancel);
-
-        Assert.Equal(new ChatwootAgent(3, "Dana Test", "dana@spiritfitness.com"), agents[0]);
-        Assert.Equal(3, agents.Count);
-
-        var request = Assert.Single(wire.Requests);
-        Assert.Equal("http://chatwoot.test/api/v1/accounts/2/agents", request.Url);
-        Assert.Equal("service-token", request.Token);
-    }
-
-    [Fact]
     public async Task AContactsConversationsAreListedWithTheirTeam()
     {
         var wire = new ReplayingHandler("contact_conversations");

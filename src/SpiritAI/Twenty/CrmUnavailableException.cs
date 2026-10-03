@@ -1,8 +1,20 @@
 namespace SpiritAI.Twenty;
 
 /// <summary>
-/// A CRM create failed: connection refused, a timeout, a 404, a reply that is not the fork's, or
-/// <see cref="TwentyOptions.BaseUrl"/> left empty.
+/// A CRM call failed: connection refused, a timeout, an error status, or a reply that is not the
+/// fork's. <see cref="NotSetUp"/> makes the one case where <see cref="TwentyOptions.BaseUrl"/> is empty.
 /// </summary>
-public sealed class CrmUnavailableException(Exception? inner = null)
-    : Exception("CRM is not set up yet.", inner);
+public sealed class CrmUnavailableException : Exception
+{
+    public CrmUnavailableException(Exception? inner = null)
+        : base("CRM did not answer.", inner)
+    {
+    }
+
+    private CrmUnavailableException(string message)
+        : base(message)
+    {
+    }
+
+    public static CrmUnavailableException NotSetUp() => new("CRM is not set up yet.");
+}

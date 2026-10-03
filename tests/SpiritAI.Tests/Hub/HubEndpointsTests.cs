@@ -15,6 +15,7 @@ using SpiritAI.Access;
 using SpiritAI.Auth;
 using SpiritAI.Chatwoot;
 using SpiritAI.Hub;
+using SpiritAI.Tests.Access;
 using SpiritAI.Tests.Auth;
 using SpiritAI.Tests.Database;
 using SpiritAI.Twenty;
@@ -34,7 +35,7 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
     public async Task APersonWithNoLinks_SeesOnlyTheChat()
     {
         var userId = await AddPersonAsync();
-        await using var world = await World.StartAsync(fixture, userId, AccessGroup.TechService);
+        await using var world = await World.StartAsync(fixture, userId, Permission.ChatAgentStaff);
 
         var apps = await world.AppsAsync();
 
@@ -47,7 +48,7 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
         var userId = await AddPersonAsync();
         await AddLinkAsync(userId, HubApps.Desk, Unique(), ready: true);
         await AddLinkAsync(userId, HubApps.Crm, Unique(), ready: false);
-        await using var world = await World.StartAsync(fixture, userId, AccessGroup.TechService);
+        await using var world = await World.StartAsync(fixture, userId, Permission.ChatAgentStaff);
 
         var apps = await world.AppsAsync();
 
@@ -62,7 +63,7 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
         await AddLinkAsync(userId, HubApps.Desk, Unique(), ready: true);
         await AddLinkAsync(userId, HubApps.Crm, Unique(), ready: true);
         await using var world = await World.StartAsync(
-            fixture, userId, "http://desk.spirit.test/", "http://crm.spirit.test/", AccessGroup.TechService);
+            fixture, userId, "http://desk.spirit.test/", "http://crm.spirit.test/", Permission.ChatAgentStaff);
 
         var apps = await world.AppsAsync();
 
@@ -74,7 +75,7 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
     public async Task AnAdmin_SeesSettings()
     {
         var userId = await AddPersonAsync();
-        await using var world = await World.StartAsync(fixture, userId, AccessGroup.Admin);
+        await using var world = await World.StartAsync(fixture, userId, Permission.SettingsPeople);
 
         var apps = await world.AppsAsync();
 
@@ -88,7 +89,7 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
         var userId = await AddPersonAsync();
         var externalId = Random.Shared.Next(1, int.MaxValue);
         await AddLinkAsync(userId, HubApps.Desk, externalId.ToString(), ready: true);
-        await using var world = await World.StartAsync(fixture, userId, AccessGroup.TechService);
+        await using var world = await World.StartAsync(fixture, userId, Permission.ChatAgentStaff);
 
         var response = await world.SignInAsync(HubApps.Desk);
 
@@ -105,7 +106,7 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
     public async Task ASignInWithNoReadyLink_Is404_AndCallsNoApp()
     {
         var userId = await AddPersonAsync();
-        await using var world = await World.StartAsync(fixture, userId, AccessGroup.TechService);
+        await using var world = await World.StartAsync(fixture, userId, Permission.ChatAgentStaff);
 
         var response = await world.SignInAsync(HubApps.Crm);
 
@@ -119,7 +120,7 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
         var owner = await AddPersonAsync();
         await AddLinkAsync(owner, HubApps.Desk, Unique(), ready: true);
         var userId = await AddPersonAsync();
-        await using var world = await World.StartAsync(fixture, userId, AccessGroup.TechService);
+        await using var world = await World.StartAsync(fixture, userId, Permission.ChatAgentStaff);
 
         var response = await world.SignInAsync(HubApps.Desk);
 
@@ -131,7 +132,7 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
     public async Task AnUnknownApp_Is404()
     {
         var userId = await AddPersonAsync();
-        await using var world = await World.StartAsync(fixture, userId, AccessGroup.TechService);
+        await using var world = await World.StartAsync(fixture, userId, Permission.ChatAgentStaff);
 
         var response = await world.SignInAsync("mail");
 
@@ -139,7 +140,7 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task APersonWithNoAccessGroup_SeesNoTiles()
+    public async Task APersonWithNoPermission_SeesNoTiles()
     {
         var userId = await AddPersonAsync();
         await using var world = await World.StartAsync(fixture, userId);
@@ -150,16 +151,51 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task APersonWithAReadyLinkButNoAccessGroup_Is404_AndCallsNoApp()
+    public async Task ACrmSignIn_WithAReadyDeskLinkButNoReadyCrmLink_Is404_AndCallsNoApp()
     {
         var userId = await AddPersonAsync();
         await AddLinkAsync(userId, HubApps.Desk, Unique(), ready: true);
-        await using var world = await World.StartAsync(fixture, userId);
+        await AddLinkAsync(userId, HubApps.Crm, Unique(), ready: false);
+        await using var world = await World.StartAsync(fixture, userId, Permission.ChatAgentStaff);
 
-        var response = await world.SignInAsync(HubApps.Desk);
+        var response = await world.SignInAsync(HubApps.Crm);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Empty(world.CrmWire.Requests);
         Assert.Empty(world.DeskWire.Requests);
+    }
+
+    [Fact]
+    public async Task AReadyCrmLink_ShowsCrm()
+    {
+        var userId = await AddPersonAsync();
+        await AddLinkAsync(userId, HubApps.Crm, Unique(), ready: true);
+        await using var world = await World.StartAsync(fixture, userId, Permission.ChatAgentGuest);
+
+        Assert.Equal(["chat", "crm"], (await world.AppsAsync()).Tiles.Select(tile => tile.Id));
+    }
+
+    [Fact]
+    public async Task NoPermissionAtAll_ButReadyLinks_ShowsDeskAndCrm_AndDeskSignsIn()
+    {
+        var userId = await AddPersonAsync();
+        await AddLinkAsync(userId, HubApps.Desk, Random.Shared.Next(1, int.MaxValue).ToString(System.Globalization.CultureInfo.InvariantCulture), ready: true);
+        await AddLinkAsync(userId, HubApps.Crm, Unique(), ready: true);
+        await using var world = await World.StartAsync(fixture, userId);
+
+        Assert.Equal(["desk", "crm"], (await world.AppsAsync()).Tiles.Select(tile => tile.Id));
+        Assert.Equal(HttpStatusCode.OK, (await world.SignInAsync(HubApps.Desk)).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(Permission.SettingsPeople)]
+    [InlineData(Permission.SettingsRoles)]
+    public async Task EitherSettingsPermission_ShowsSettings(Permission settings)
+    {
+        var userId = await AddPersonAsync();
+        await using var world = await World.StartAsync(fixture, userId, settings);
+
+        Assert.Contains("settings", (await world.AppsAsync()).Tiles.Select(tile => tile.Id));
     }
 
     /// <summary>Adds a Neon user made for this test alone, so tests never share a row.</summary>
@@ -184,7 +220,7 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
 
     private static string Unique() => Guid.NewGuid().ToString("N");
 
-    /// <summary>A document that declares every entry a group runs, so the start-up check passes.</summary>
+    /// <summary>A document that declares every entry a chat agent runs, so the start-up check passes.</summary>
     private const string Document = """
         apiVersion: agentcore/v1
         agents:
@@ -207,14 +243,14 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
 
         public ReplayingHandler CrmWire { get; } = crmWire;
 
-        public static Task<World> StartAsync(PostgresFixture fixture, Guid userId, params AccessGroup[] groups)
-            => StartAsync(fixture, userId, "http://desk.spirit.test", "http://crm.spirit.test", groups);
+        public static Task<World> StartAsync(PostgresFixture fixture, Guid userId, params Permission[] held)
+            => StartAsync(fixture, userId, "http://desk.spirit.test", "http://crm.spirit.test", held);
 
         /// <summary>Starts a Hub whose <see cref="HubOptions.DeskUrl"/> and <see cref="HubOptions.CrmUrl"/>
         /// are exactly <paramref name="deskUrl"/> and <paramref name="crmUrl"/>, unmodified — so a test can
         /// carry a trailing <c>/</c> through to the tile URL it asserts on.</summary>
         public static async Task<World> StartAsync(
-            PostgresFixture fixture, Guid userId, string deskUrl, string crmUrl, params AccessGroup[] groups)
+            PostgresFixture fixture, Guid userId, string deskUrl, string crmUrl, params Permission[] held)
         {
             var kit = new NeonAuthTestKit();
             var deskWire = new ReplayingHandler("sso_link") { Folder = "Hub" };
@@ -241,7 +277,7 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
             builder.Services.AddNeonAuth(configuration);
             builder.Services.AddSingleton(kit.Validator());
             builder.Services.AddAccess();
-            builder.Services.AddScoped<IUserAccess>(_ => new FixedAccess(groups));
+            builder.Services.AddScoped<IAccessResolver>(_ => new FixedAccess(held));
 
             builder.Services.Configure<ChatwootOptions>(configuration.GetSection(ChatwootOptions.SectionName));
             builder.Services.AddScoped(_ => fixture.Open());
@@ -287,11 +323,5 @@ public sealed class HubEndpointsTests(PostgresFixture fixture)
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             return _client.SendAsync(request, TestContext.Current.CancellationToken);
         }
-    }
-
-    private sealed class FixedAccess(AccessGroup[] groups) : IUserAccess
-    {
-        public ValueTask<IReadOnlyList<AccessGroup>> GroupsOfAsync(Guid userId, CancellationToken cancellationToken = default)
-            => ValueTask.FromResult<IReadOnlyList<AccessGroup>>(groups);
     }
 }

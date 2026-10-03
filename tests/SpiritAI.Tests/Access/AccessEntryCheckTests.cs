@@ -9,7 +9,7 @@ using Xunit;
 
 namespace SpiritAI.Tests.Access;
 
-/// <summary>The start fails when an access group runs an entry the document does not declare.</summary>
+/// <summary>The start fails when a chat agent runs an entry the document does not declare.</summary>
 public sealed class AccessEntryCheckTests
 {
     [Fact]

@@ -1,21 +1,41 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { queryWrapper } from "@/test/query";
+
 /**
  * The generated client is mocked rather than the network under it, the same way `UnitPanel.test.tsx`
  * mocks `@/api/sdk.gen`. `authClient` is mocked so a sign-out can be watched without a real Neon
  * project, with a fixed signed-in user for the banner's account menu.
  */
-vi.mock("@/api/sdk.gen", () => ({ listHubApps: vi.fn(), openHubApp: vi.fn() }));
+vi.mock("@/api/sdk.gen", () => ({ listHubApps: vi.fn(), openHubApp: vi.fn(), getMe: vi.fn() }));
 vi.mock("../auth/authClient", () => ({
   authClient: { signOut: vi.fn() },
   useSession: () => ({ data: { user: { name: "Ada Lovelace", email: "ada@spirit.test" } } }),
 }));
 
-const { listHubApps, openHubApp } = await import("@/api/sdk.gen");
+const { listHubApps, openHubApp, getMe } = await import("@/api/sdk.gen");
 const { authClient } = await import("../auth/authClient");
 
 const { HubPage } = await import("./HubPage");
+
+function renderHub() {
+  const { wrapper } = queryWrapper();
+  return render(<HubPage />, { wrapper });
+}
+
+function serveMe(banned = false) {
+  vi.mocked(getMe).mockResolvedValue({
+    data: {
+      id: "u-1",
+      name: "Ada",
+      email: "ada@spirit.test",
+      banned,
+      permissions: banned ? [] : ["chat.agent.staff"],
+      agent: null,
+    },
+  } as never);
+}
 
 type Tile = { id: string; name: string; url: string };
 
@@ -63,6 +83,7 @@ async function openAccountMenuAndSignOut() {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  serveMe();
   vi.mocked(authClient.signOut).mockResolvedValue(undefined as never);
   window.history.replaceState(null, "", "/");
   window.localStorage.clear();
@@ -75,9 +96,20 @@ afterEach(() => {
 });
 
 describe("HubPage", () => {
+  test("tells a banned person their access has been removed, and offers Sign out", async () => {
+    serveMe(true);
+    serveTiles([]);
+    renderHub();
+
+    expect(await screen.findByText("Your access has been removed.")).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Apps" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    await waitFor(() => expect(authClient.signOut).toHaveBeenCalled());
+  });
+
   test("names the signed-in person in the account menu", async () => {
     serveTiles(tiles("chat"));
-    render(<HubPage />);
+    renderHub();
 
     fireEvent.keyDown(screen.getByRole("button", { name: "Account" }), { key: "Enter" });
 
@@ -88,7 +120,7 @@ describe("HubPage", () => {
   test("draws only the tiles the server returns", async () => {
     serveTiles(tiles("chat", "desk"));
 
-    render(<HubPage />);
+    renderHub();
 
     expect(await screen.findByText("Desk")).toBeTruthy();
     expect(screen.getByText("Chat")).toBeTruthy();
@@ -99,7 +131,7 @@ describe("HubPage", () => {
   test("preloads the Desk frame at start so its alerts work before it is opened", async () => {
     serveTiles(tiles("chat", "desk"));
 
-    render(<HubPage />);
+    renderHub();
 
     const frame = (await screen.findByTitle("Desk")) as HTMLIFrameElement;
     expect(frame.src).toBe("https://desk.spirit.test/app");
@@ -110,7 +142,7 @@ describe("HubPage", () => {
 
   test("opens Desk at its home page, not a sign-in link", async () => {
     serveTiles(tiles("chat", "desk"));
-    render(<HubPage />);
+    renderHub();
 
     await openTile("Desk");
 
@@ -124,7 +156,7 @@ describe("HubPage", () => {
     vi.mocked(openHubApp).mockResolvedValue({
       data: { url: "https://desk.spirit.test/sign-in/tok-1" },
     } as never);
-    render(<HubPage />);
+    renderHub();
     await openTile("Desk");
     await screen.findByTitle("Desk");
 
@@ -141,7 +173,7 @@ describe("HubPage", () => {
 
   test("ignores sign-in requests from another origin", async () => {
     serveTiles(tiles("chat", "desk"));
-    render(<HubPage />);
+    renderHub();
     await openTile("Desk");
     await screen.findByTitle("Desk");
 
@@ -159,7 +191,7 @@ describe("HubPage", () => {
         resolveLink = resolve;
       }) as never,
     );
-    render(<HubPage />);
+    renderHub();
     await openTile("Desk");
     await screen.findByTitle("Desk");
 
@@ -182,7 +214,7 @@ describe("HubPage", () => {
     } as never);
     const now = vi.spyOn(Date, "now").mockReturnValue(0);
 
-    render(<HubPage />);
+    renderHub();
     await openTile("Desk");
     await screen.findByTitle("Desk");
 
@@ -205,7 +237,7 @@ describe("HubPage", () => {
     } as never);
     const now = vi.spyOn(Date, "now").mockReturnValue(0);
 
-    render(<HubPage />);
+    renderHub();
     await openTile("Desk");
     await screen.findByTitle("Desk");
 
@@ -232,7 +264,7 @@ describe("HubPage", () => {
   test("signs out of each open app before Spirit, then returns to the Hub", async () => {
     const replace = stubNavigation();
     serveTiles(tiles("chat", "desk"));
-    render(<HubPage />);
+    renderHub();
     await openTile("Desk");
     await screen.findByTitle("Desk");
 
@@ -253,7 +285,7 @@ describe("HubPage", () => {
   test("signs out of Spirit after 3 s even if an app never answers", async () => {
     stubNavigation();
     serveTiles(tiles("chat", "desk"));
-    render(<HubPage />);
+    renderHub();
     await openTile("Desk");
     await screen.findByTitle("Desk");
     fireEvent.keyDown(screen.getByRole("button", { name: "Account" }), { key: "Enter" });
@@ -271,7 +303,7 @@ describe("HubPage", () => {
   test("ignores hub:signed-out from the wrong origin, and still ends by the 3 s timer", async () => {
     stubNavigation();
     serveTiles(tiles("chat", "desk"));
-    render(<HubPage />);
+    renderHub();
     await openTile("Desk");
     await screen.findByTitle("Desk");
     fireEvent.keyDown(screen.getByRole("button", { name: "Account" }), { key: "Enter" });
@@ -304,7 +336,7 @@ describe("HubPage", () => {
     vi.mocked(authClient.signOut).mockRejectedValueOnce(new Error("network"));
     vi.spyOn(console, "error").mockImplementation(() => {});
     serveTiles(tiles("chat"));
-    render(<HubPage />);
+    renderHub();
     await screen.findByText("Chat");
 
     await openAccountMenuAndSignOut();
@@ -314,7 +346,7 @@ describe("HubPage", () => {
 
   test("Escape closes the drawer back to the app that was open", async () => {
     serveTiles(tiles("chat", "desk"));
-    render(<HubPage />);
+    renderHub();
     await openTile("Desk");
     await screen.findByTitle("Desk");
 
@@ -328,7 +360,7 @@ describe("HubPage", () => {
 
   test("keeps the last app in the address while the drawer is open, for F5 to return to it", async () => {
     serveTiles(tiles("chat", "desk"));
-    render(<HubPage />);
+    renderHub();
     await openTile("Desk");
     await screen.findByTitle("Desk");
 
@@ -341,7 +373,7 @@ describe("HubPage", () => {
     window.history.replaceState(null, "", "/#crm");
     serveTiles(tiles("chat", "desk"));
 
-    render(<HubPage />);
+    renderHub();
 
     expect(await screen.findByText("Chat")).toBeTruthy();
     expect(screen.getByText("Desk")).toBeTruthy();
@@ -350,7 +382,7 @@ describe("HubPage", () => {
 
   test("dismisses the Desk alert hint once Desk is opened in a new tab", async () => {
     serveTiles(tiles("chat", "desk"));
-    render(<HubPage />);
+    renderHub();
 
     const link = await screen.findByRole("link", { name: /open desk/i });
     fireEvent.click(link);
@@ -361,7 +393,7 @@ describe("HubPage", () => {
   test("shows a retry when the tile list fails to load", async () => {
     vi.mocked(listHubApps).mockRejectedValueOnce(new Error("network"));
 
-    render(<HubPage />);
+    renderHub();
 
     expect(await screen.findByText("Could not load your apps.")).toBeTruthy();
 

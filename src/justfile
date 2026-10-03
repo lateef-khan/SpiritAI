@@ -11,10 +11,10 @@ password := "spirit"
 database := "spirit"
 pg_conn := "Host=localhost;Port=" + port + ";Database=" + database + ";Username=" + user + ";Password=" + password
 
-# Neon creates neon_auth."user"; the local database gets this copy so the spirit.user_role key has
-# a table to point at, then a few made-up users.
+# Neon creates neon_auth."user"; the local database gets this copy so the spirit tables' keys have a table to point at, then a few made-up users, and, once the app has migrated, their roles.
 neon_auth_sql := "SpiritAI/Database/Local/neon-auth.sql"
 local_seed_sql := "SpiritAI/Database/Local/local-seed.sql"
+local_roles_sql := "SpiritAI/Database/Local/local-roles.sql"
 
 # Dashed, not POSTGRES_CONNECTION_STRING: secrets/dev.env sets that one to Neon, and AgentCore reads
 # this dashed setting before the capitals, so the local database wins.
@@ -50,7 +50,7 @@ db-up:
 
     if [ -n "$(docker ps --quiet --filter 'name=^{{container}}$')" ]; then
         docker exec --interactive {{container}} psql --quiet -v ON_ERROR_STOP=1 \
-            --username={{user}} --dbname={{database}} < <(cat {{neon_auth_sql}} {{local_seed_sql}})
+            --username={{user}} --dbname={{database}} < <(cat {{neon_auth_sql}} {{local_seed_sql}} {{local_roles_sql}})
         echo "{{container}} is already up on port {{port}}."
         exit 0
     fi
@@ -68,7 +68,7 @@ db-up:
         # Over TCP: the image's first-boot server listens on the socket alone, then restarts.
         if docker exec {{container}} pg_isready --host=127.0.0.1 --username={{user}} --dbname={{database}} >/dev/null 2>&1; then
             docker exec --interactive {{container}} psql --quiet -v ON_ERROR_STOP=1 \
-                --username={{user}} --dbname={{database}} < <(cat {{neon_auth_sql}} {{local_seed_sql}})
+                --username={{user}} --dbname={{database}} < <(cat {{neon_auth_sql}} {{local_seed_sql}} {{local_roles_sql}})
             echo "{{container}} is ready on port {{port}}."
             exit 0
         fi
@@ -82,15 +82,11 @@ db-up:
 db-url:
     @echo '{{pg_conn}}'
 
-# Fill spirit.role and spirit.user_role from the access sheet, and make missing Neon Auth users.
-# A dry run unless you pass --apply. Needs NEON_ADMIN_COOKIE in secrets/dev.env.
-seed-access *args:
-    uv run SpiritAI/Database/Seed/seed_access.py {{args}}
-
-# The same roles in the throwaway database, and one local role for each made-up user. Run it after
-# `just spirit run` has migrated the database once.
-seed-access-local:
-    uv run SpiritAI/Database/Seed/seed_access.py --local '{{pg_conn}}'
+# Give the made-up local users their roles. `db-up` does this too once the app has migrated; run it
+# right after the first `just spirit run` so the first boot has them.
+seed-local:
+    docker exec --interactive {{container}} psql --quiet -v ON_ERROR_STOP=1 \
+        --username={{user}} --dbname={{database}} < {{local_roles_sql}}
 
 # Open psql.
 db-shell:

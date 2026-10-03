@@ -8,6 +8,7 @@ using SpiritAI.Chatwoot;
 using SpiritAI.GoTo;
 using SpiritAI.Handoffs.Bot;
 using SpiritAI.Handoffs.Callback;
+using SpiritAI.Tests.Database;
 using SpiritAI.Tests.GoTo;
 
 using Xunit;
@@ -19,19 +20,26 @@ namespace SpiritAI.Tests.Handoffs.Callback;
 /// a live Chatwoot the number is contact 1's, whose open conversation 1 is given to team
 /// <c>service</c>, and Dana is agent 3.
 /// </summary>
+[Collection(PostgresCollection.Name)]
 public sealed class CallRingAlertTests : IAsyncDisposable
 {
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     private readonly ReplayingHandler _goto = new(["users", "admin_users"]) { Folder = "GoTo" };
     private readonly ServiceProvider _gotoServices;
+    private readonly PostgresFixture _fixture;
 
-    public CallRingAlertTests() => _gotoServices = GoToTestServices.Build(_goto);
+    public CallRingAlertTests(PostgresFixture fixture)
+    {
+        _fixture = fixture;
+        _gotoServices = GoToTestServices.Build(_goto);
+    }
 
     [Fact]
     public async Task ARingPostsOneNoteThatMentionsWhoseLineItIs()
     {
-        var chatwoot = new ReplayingHandler(["contacts_found", "contact_conversations", "agents", null]);
+        await DeskStaffSeed.DanaAsync(_fixture);
+        var chatwoot = new ReplayingHandler(["contacts_found", "contact_conversations", null]);
         var alert = Alert(chatwoot);
         var ring = GoToCallTests.Read("call_ringing");
 
@@ -42,7 +50,6 @@ public sealed class CallRingAlertTests : IAsyncDisposable
             [
                 "GET http://chatwoot.test/api/v1/accounts/2/contacts/search?q=%2B12015550123",
                 "GET http://chatwoot.test/api/v1/accounts/2/contacts/1/conversations",
-                "GET http://chatwoot.test/api/v1/accounts/2/agents",
                 "POST http://chatwoot.test/api/v1/accounts/2/conversations/1/messages",
             ],
             chatwoot.Requests.Select(r => $"{r.Method} {r.Url}"));
@@ -58,7 +65,8 @@ public sealed class CallRingAlertTests : IAsyncDisposable
     [Fact]
     public async Task ALineNoMemberOfStaffOwnsMentionsTheConversationsTeam()
     {
-        var chatwoot = new ReplayingHandler(["contacts_found", "contact_conversations", "agents_no_match", null]);
+        await DeskStaffSeed.NoDanaAsync(_fixture);
+        var chatwoot = new ReplayingHandler(["contacts_found", "contact_conversations", null]);
 
         await Alert(chatwoot).HandleAsync(GoToCallTests.Read("call_ringing"), Cancel);
 
@@ -96,7 +104,7 @@ public sealed class CallRingAlertTests : IAsyncDisposable
 
         return new(
             client,
-            new CallStaff(client, _gotoServices.GetRequiredService<GoToStaffDirectory>(), TestHybridCache.Create()),
+            new CallStaff(_fixture.Open(), _gotoServices.GetRequiredService<GoToStaffDirectory>()),
             TestHybridCache.Create(),
             Options.Create(new CallbackOptions()),
             NullLogger<CallRingAlert>.Instance);

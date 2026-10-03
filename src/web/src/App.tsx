@@ -12,6 +12,7 @@ import {
 } from "./features/threads/AgentCoreThreadListAdapter";
 import { useThreadListOlderMessages } from "./features/threads/useThreadListOlderMessages";
 import { authFetch } from "@/features/auth/authFetch";
+import { useCan } from "@/features/auth/useMe";
 import { ThreadContextPanel } from "@/features/unit/ThreadContextPanel";
 import {
   ResizableHandle,
@@ -81,21 +82,25 @@ function ChatThread() {
  * to drag.
  */
 function ChatAndUnitSheet() {
+  const canLookUp = useCan("lookup.units");
+
   return (
     <>
       <div className="relative min-w-0 flex-1 overflow-hidden">
         <ChatThread />
       </div>
-      <Sheet>
-        <SheetTrigger className="absolute end-3 top-3 z-10 rounded-md border bg-background p-1.5">
-          <PanelRightIcon className="size-4" />
-          <span className="sr-only">Show the unit</span>
-        </SheetTrigger>
-        <SheetContent side="right" className="w-80 p-0">
-          <SheetTitle className="sr-only">Unit</SheetTitle>
-          <ThreadContextPanel className="border-l-0" />
-        </SheetContent>
-      </Sheet>
+      {canLookUp ? (
+        <Sheet>
+          <SheetTrigger className="absolute end-3 top-3 z-10 rounded-md border bg-background p-1.5">
+            <PanelRightIcon className="size-4" />
+            <span className="sr-only">Show the unit</span>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-80 p-0">
+            <SheetTitle className="sr-only">Unit</SheetTitle>
+            <ThreadContextPanel className="border-l-0" />
+          </SheetContent>
+        </Sheet>
+      ) : null}
     </>
   );
 }
@@ -125,6 +130,7 @@ export function App() {
 /** The sidebar, the chat, and the unit rail beside it. */
 function Shell() {
   const isMobile = useIsMobile();
+  const canLookUp = useCan("lookup.units");
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: "spirit-shell" });
 
   return (
@@ -142,16 +148,20 @@ function Shell() {
           <ResizablePanel id="main" minSize="24rem">
             <ChatThread />
           </ResizablePanel>
-          <ResizableHandle />
-          <ResizablePanel
-            id="context"
-            defaultSize="20rem"
-            minSize="16rem"
-            maxSize="40rem"
-            groupResizeBehavior="preserve-pixel-size"
-          >
-            <ThreadContextPanel className="border-l-0" />
-          </ResizablePanel>
+          {canLookUp ? (
+            <>
+              <ResizableHandle />
+              <ResizablePanel
+                id="context"
+                defaultSize="20rem"
+                minSize="16rem"
+                maxSize="40rem"
+                groupResizeBehavior="preserve-pixel-size"
+              >
+                <ThreadContextPanel className="border-l-0" />
+              </ResizablePanel>
+            </>
+          ) : null}
         </ResizablePanelGroup>
       )}
     </div>

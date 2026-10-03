@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using SpiritAI.Chatwoot;
 using SpiritAI.GoTo;
 using SpiritAI.Handoffs.Callback;
+using SpiritAI.Tests.Database;
 using SpiritAI.Tests.GoTo;
 
 using Xunit;
@@ -20,6 +21,7 @@ namespace SpiritAI.Tests.Handoffs.Callback;
 /// (<c>call_outbound</c>) has no owner; in a live Chatwoot, conversation 1 waits for a call back
 /// with labels <c>sales</c> and <c>callback</c>, and Dana is agent 3.
 /// </summary>
+[Collection(PostgresCollection.Name)]
 public sealed class CallbackCalledTests : IAsyncDisposable
 {
     private const string Account = "http://chatwoot.test/api/v1/accounts/2";
@@ -31,19 +33,24 @@ public sealed class CallbackCalledTests : IAsyncDisposable
 
     private readonly ReplayingHandler _goto = new(["users", "admin_users"]) { Folder = "GoTo" };
     private readonly ServiceProvider _gotoServices;
+    private readonly PostgresFixture _fixture;
 
-    public CallbackCalledTests() => _gotoServices = GoToTestServices.Build(_goto);
+    public CallbackCalledTests(PostgresFixture fixture)
+    {
+        _fixture = fixture;
+        _gotoServices = GoToTestServices.Build(_goto);
+    }
 
     [Fact]
     public async Task DialingAWaitingNumberGivesTheChatToWhoeverDialedAndKeepsItInTheQueue()
     {
-        var chatwoot = new ReplayingHandler(["agents", "conversations_waiting", null]);
+        await DeskStaffSeed.DanaAsync(_fixture);
+        var chatwoot = new ReplayingHandler(["conversations_waiting", null]);
 
         await Handler(chatwoot).HandleAsync(FromDana, Cancel);
 
         Assert.Equal(
             [
-                $"GET {Account}/agents service-token",
                 $"POST {Account}/conversations/filter?page=1 service-token",
                 $"POST {Account}/conversations/1/assignments bot-token",
             ],
@@ -51,36 +58,39 @@ public sealed class CallbackCalledTests : IAsyncDisposable
 
         Assert.Equal(
             """{"payload":[{"attribute_key":"callback_phone","filter_operator":"equal_to","values":["+12015550123"],"query_operator":"and"},{"attribute_key":"labels","filter_operator":"equal_to","values":["callback"],"query_operator":null}]}""",
-            Plain(chatwoot.Requests[1].Body));
-        Assert.Equal("""{"assignee_id":3}""", chatwoot.Requests[2].Body);
+            Plain(chatwoot.Requests[0].Body));
+        Assert.Equal("""{"assignee_id":3}""", chatwoot.Requests[1].Body);
     }
 
     [Fact]
     public async Task TheNextEventOfTheSameCallChangesNothing()
     {
-        var chatwoot = new ReplayingHandler(["agents", "conversations_waiting", null]);
+        await DeskStaffSeed.DanaAsync(_fixture);
+        var chatwoot = new ReplayingHandler(["conversations_waiting", null]);
         var handler = Handler(chatwoot);
 
         await handler.HandleAsync(FromDana, Cancel);
         await handler.HandleAsync(FromDana with { State = "ENDING" }, Cancel);
 
-        Assert.Equal(3, chatwoot.Requests.Count);
+        Assert.Equal(2, chatwoot.Requests.Count);
     }
 
     [Fact]
-    public async Task ALineWithNoChatwootAccountChangesNothing()
+    public async Task ALineWhoseOwnerIsNoSpiritPerson_ChangesNothing()
     {
-        var chatwoot = new ReplayingHandler("agents");
+        await DeskStaffSeed.NoDanaAsync(_fixture);
+        var chatwoot = new ReplayingHandler("conversations_waiting");
 
         await Handler(chatwoot).HandleAsync(GoToCallTests.Read("call_outbound"), Cancel);
 
-        Assert.Equal($"{Account}/agents", Assert.Single(chatwoot.Requests).Url);
+        Assert.Empty(chatwoot.Requests);
     }
 
     [Fact]
     public async Task DialingANumberNobodyLeftChangesNothing()
     {
-        var chatwoot = new ReplayingHandler(["agents", "conversations_waiting_none"]);
+        await DeskStaffSeed.DanaAsync(_fixture);
+        var chatwoot = new ReplayingHandler(["conversations_waiting_none"]);
 
         await Handler(chatwoot).HandleAsync(FromDana, Cancel);
 
@@ -117,7 +127,7 @@ public sealed class CallbackCalledTests : IAsyncDisposable
         return new CallbackCalled(
             client,
             new ChatwootConversationTags(new HttpClient(chatwoot), options),
-            new CallStaff(client, _gotoServices.GetRequiredService<GoToStaffDirectory>(), TestHybridCache.Create()),
+            new CallStaff(_fixture.Open(), _gotoServices.GetRequiredService<GoToStaffDirectory>()),
             TestHybridCache.Create(),
             NullLogger<CallbackCalled>.Instance);
     }

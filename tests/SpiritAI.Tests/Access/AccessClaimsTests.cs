@@ -14,84 +14,79 @@ namespace SpiritAI.Tests.Access;
 public sealed class AccessClaimsTests
 {
     [Fact]
-    public async Task TheUsersGroups_BecomeTheCallersGroups()
+    public async Task ThePersonsPermissions_BecomeTheCallersPermissions()
     {
-        var access = new FakeUserAccess([AccessGroup.TechService]);
-        using var services = Build(access);
-        var userId = Guid.NewGuid();
+        using var services = Build(new FixedAccess(Permission.ChatAgentStaff, Permission.LookupUnits));
 
-        var user = await Transform(services, AccessTestUsers.SignedIn(userId));
+        var user = await Transform(services, AccessTestUsers.SignedIn(Guid.NewGuid()));
 
-        Assert.Equal([AccessGroup.TechService], AccessGroups.Of(user));
+        Assert.Equal([Permission.ChatAgentStaff, Permission.LookupUnits], Permissions.Of(user).Order());
     }
 
     [Fact]
-    public async Task TransformingTwice_AddsTheGroupsOnce()
+    public async Task ABannedPerson_GetsTheBannedClaim_AndNoPermission()
     {
-        using var services = Build(new FakeUserAccess([AccessGroup.Admin]));
+        using var services = Build(new FixedAccess(Permission.SettingsPeople) { Banned = true });
+
+        var user = await Transform(services, AccessTestUsers.SignedIn(Guid.NewGuid()));
+
+        Assert.True(user.HasClaim(Permissions.BannedClaimType, "true"));
+        Assert.Empty(Permissions.Of(user));
+    }
+
+    [Fact]
+    public async Task TransformingTwice_AddsTheIdentityOnce()
+    {
+        using var services = Build(new FixedAccess(Permission.LookupOrders));
         var user = AccessTestUsers.SignedIn(Guid.NewGuid());
 
         await Transform(services, user);
         await Transform(services, user);
 
-        Assert.Single(user.Identities, identity => identity.AuthenticationType == AccessGroups.IdentityType);
+        Assert.Single(user.Identities, identity => identity.AuthenticationType == Permissions.IdentityType);
     }
 
     [Fact]
-    public async Task ARoleChange_ShowsOnceTheCacheEntryIsRemoved()
+    public async Task AChange_ShowsOnceTheV3KeyIsRemoved()
     {
-        var access = new FakeUserAccess([AccessGroup.TechService]);
+        var access = new FixedAccess(Permission.ChatAgentStaff);
         using var services = Build(access);
         var userId = Guid.NewGuid();
         await Transform(services, AccessTestUsers.SignedIn(userId));
 
-        access.Groups = [AccessGroup.TechServiceManager];
+        access.Held = [Permission.ChatAgentManager];
         var cached = await Transform(services, AccessTestUsers.SignedIn(userId));
 
-        await services.GetRequiredService<HybridCache>().RemoveAsync($"spirit:access:{userId}", TestContext.Current.CancellationToken);
+        await services.GetRequiredService<HybridCache>().RemoveAsync($"spirit:access:v3:{userId}", TestContext.Current.CancellationToken);
         var fresh = await Transform(services, AccessTestUsers.SignedIn(userId));
 
-        Assert.Equal([AccessGroup.TechService], AccessGroups.Of(cached));
-        Assert.Equal([AccessGroup.TechServiceManager], AccessGroups.Of(fresh));
+        Assert.Equal([Permission.ChatAgentStaff], Permissions.Of(cached));
+        Assert.Equal([Permission.ChatAgentManager], Permissions.Of(fresh));
     }
 
     [Fact]
-    public async Task ASubjectThatIsNotANeonUserId_GetsNoGroups()
+    public async Task ASubjectThatIsNotANeonUserId_GetsNothing_AndReadsNothing()
     {
-        var access = new FakeUserAccess([AccessGroup.Admin]);
+        var access = new FixedAccess(Permission.SettingsPeople);
         using var services = Build(access);
-        var user = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, "user_123")], "neon"));
+        var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "user_123")], "neon"));
 
         user = await Transform(services, user);
 
-        Assert.Empty(AccessGroups.Of(user));
+        Assert.Empty(Permissions.Of(user));
         Assert.Equal(0, access.Reads);
     }
 
-    private static ServiceProvider Build(FakeUserAccess access)
+    private static ServiceProvider Build(FixedAccess access)
     {
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(TestHybridCache.Create());
         services.AddAccess();
-        services.AddScoped<IUserAccess>(_ => access);
+        services.AddScoped<IAccessResolver>(_ => access);
         return services.BuildServiceProvider();
     }
 
     private static Task<ClaimsPrincipal> Transform(IServiceProvider services, ClaimsPrincipal user)
         => services.GetRequiredService<IClaimsTransformation>().TransformAsync(user);
-
-    private sealed class FakeUserAccess(AccessGroup[] groups) : IUserAccess
-    {
-        public AccessGroup[] Groups { get; set; } = groups;
-
-        public int Reads { get; private set; }
-
-        public ValueTask<IReadOnlyList<AccessGroup>> GroupsOfAsync(Guid userId, CancellationToken cancellationToken = default)
-        {
-            Reads++;
-            return ValueTask.FromResult<IReadOnlyList<AccessGroup>>(Groups);
-        }
-    }
 }

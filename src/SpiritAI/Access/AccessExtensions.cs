@@ -1,35 +1,36 @@
-using System.Security.Claims;
-
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace SpiritAI.Access;
 
-/// <summary>Registers roles, access groups, and the entry each group runs.</summary>
+/// <summary>Registers the access model: the resolver, the claims it puts on a caller, one policy per permission, and the chat entry selector.</summary>
 public static class AccessExtensions
 {
-    /// <summary>
-    /// Adds the group lookup, the claims it puts on a signed-in caller, the <see cref="AccessPolicies"/>,
-    /// and the entry selector the Responses route runs.
-    /// </summary>
     /// <param name="services">The host's services. The database and the cache are registered elsewhere.</param>
     /// <returns>The same collection.</returns>
     public static IServiceCollection AddAccess(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddScoped<IUserAccess, DatabaseUserAccess>();
+        services.AddScoped<IAccessResolver, AccessResolver>();
         services.AddSingleton<IClaimsTransformation, AccessClaimsTransformation>();
-        services.AddSingleton<GroupEntrySelector>();
+        services.AddSingleton<AgentEntrySelector>();
+        services.AddSingleton<AccessCache>();
+        services.AddScoped<AccessWriter>();
+        services.TryAddSingleton(TimeProvider.System);
         services.AddHostedService<AccessEntryCheck>();
 
-        services.AddAuthorizationBuilder()
-            .AddPolicy(AccessPolicies.Staff, policy => policy.RequireAssertion(context => RankAtLeast(context.User, 2)))
-            .AddPolicy(AccessPolicies.Manager, policy => policy.RequireAssertion(context => RankAtLeast(context.User, 3)))
-            .AddPolicy(AccessPolicies.Admin, policy => policy.RequireAssertion(context => RankAtLeast(context.User, 4)));
+        var authorization = services.AddAuthorizationBuilder();
+
+        foreach (var info in Permissions.All)
+        {
+            var permission = info.Key;
+            
+            authorization.AddPolicy(
+                Permissions.PolicyOf(permission),
+                policy => policy.RequireAssertion(context => Permissions.Of(context.User).Contains(permission)));
+        }
 
         return services;
     }
-
-    private static bool RankAtLeast(ClaimsPrincipal user, int rank)
-        => AccessGroups.Highest(AccessGroups.Of(user)) is { } group && AccessGroups.RankOf(group) >= rank;
 }

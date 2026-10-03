@@ -55,6 +55,22 @@ public sealed class DeskUsers(HttpClient http, IOptions<ChatwootOptions> options
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Takes the user out of the Spirit account. Chatwoot unassigns their conversations and drops
+    /// their inbox rows; their messages keep them as sender, and a later join gives the same user back.
+    /// </summary>
+    public async Task LeaveAccountAsync(int userId, CancellationToken cancellationToken)
+    {
+        using var response = await api.SendAsync(
+            HttpMethod.Delete,
+            $"{Platform}/accounts/{api.Settings.AccountId}/account_users",
+            new JsonObject { ["user_id"] = userId },
+            cancellationToken,
+            api.Settings.PlatformToken).ConfigureAwait(false);
+
+        await ChatwootApi.EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>Adds one member without disturbing the others; a PATCH here would replace the whole list.</summary>
     public async Task JoinInboxAsync(int userId, CancellationToken cancellationToken)
     {

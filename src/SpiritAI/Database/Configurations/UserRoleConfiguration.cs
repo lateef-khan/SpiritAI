@@ -14,12 +14,11 @@ internal sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
 
         builder.ToTable("user_role");
 
-        builder.HasKey(r => new { r.UserId, r.Role });
+        builder.HasKey(r => new { r.UserId, r.RoleId });
 
         builder.Property(r => r.UserId).HasColumnName("user_id");
-        builder.Property(r => r.Role).HasColumnName("role");
+        builder.Property(r => r.RoleId).HasColumnName("role_id");
 
-        // Deleting a person in Neon Auth deletes their roles.
         builder.HasOne<NeonUserStub>()
             .WithMany()
             .HasForeignKey(r => r.UserId)
@@ -27,7 +26,7 @@ internal sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
 
         builder.HasOne<Role>()
             .WithMany()
-            .HasForeignKey(r => r.Role)
-            .OnDelete(DeleteBehavior.Restrict);
+            .HasForeignKey(r => r.RoleId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

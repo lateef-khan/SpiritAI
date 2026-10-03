@@ -70,6 +70,20 @@ public sealed class PostgresFixture : IAsyncLifetime
     }
 
     /// <summary>
+    /// A database of its own, with the agentcore and neon_auth schemas and no migration applied, for
+    /// a test that migrates step by step. Skips the calling test when there is no database.
+    /// </summary>
+    public async Task<ScratchDatabase> ScratchDatabaseAsync()
+    {
+        if (_connectionString is null)
+        {
+            Assert.Skip($"No database. Set {SecretVariable} to the output of `just db-url` to run this.");
+        }
+
+        return await ScratchDatabase.CreateAsync(_connectionString);
+    }
+
+    /// <summary>
     /// Opens AgentCore's own PostgreSQL conversation store on the database, the way the host does: through
     /// the <c>postgres</c> adapter, with the connection string handed over as the one secret it
     /// reads. Skips the calling test when there is no database.

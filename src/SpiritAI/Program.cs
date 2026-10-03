@@ -11,7 +11,9 @@ using SpiritAI.Handoffs;
 using SpiritAI.Hosting;
 using SpiritAI.Hub;
 using SpiritAI.Lookup;
+using SpiritAI.Neon;
 using SpiritAI.PublicChat;
+using SpiritAI.Settings;
 using SpiritAI.Threads;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,6 +33,10 @@ builder.Services.AddAccess();
 builder.Services.AddChatwoot(builder.Configuration);
 
 builder.Services.AddHub(builder.Configuration);
+
+builder.Services.AddSettings();
+
+builder.Services.AddNeon(builder.Configuration);
 
 builder.Services.AddGoTo(builder.Configuration);
 
@@ -62,6 +68,8 @@ app.UseRateLimiter();
 
 app.UseNeonAuthOnApi();
 
+app.UseAccessBans();
+
 app.UseAuthorization();
 
 app.UseThreadSessions();
@@ -73,13 +81,15 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.MapAgentCoreHost(AgentCoreExtensions.ChatResponsesPattern).Responses.SelectEntry<GroupEntrySelector>();
+app.MapAgentCoreHost(AgentCoreExtensions.ChatResponsesPattern).Responses.SelectEntry<AgentEntrySelector>();
 
 app.MapPublicChat();
 
 app.MapWidgetSettings();
 
 app.MapThreads();
+
+app.MapMe();
 
 app.MapLookup();
 
